@@ -51,13 +51,18 @@
   },
   "devDependencies": {
     "husky": "~9.1.6",
-    "lint-staged": "~13.2.2"
+    "lint-staged": "~13.2.2",
+    "next": "latest"
   },
   "packageManager": "yarn@3.2.3",
   "engines": {
     "node": ">=20.18.3"
   },
   "dependencies": {
-    "@optionality.io/clone-factory": "^0.2.1"
+    "@optionality.io/clone-factory": "^0.2.1",
+    "moment-timezone": "^0.6.0"
+  },
+  "resolutions": {
+    "next": "latest"
   }
 }
