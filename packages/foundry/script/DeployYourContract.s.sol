@@ -25,26 +25,11 @@ contract DeployYourContract is ScaffoldETHDeploy {
      *      - Export contract addresses & ABIs to `nextjs` packages
      */
     function run() external ScaffoldEthDeployerRunner {
-
-        ShortOption short = new ShortOption(
-            "Short Option",
-            "SHORT",
-            deployer,
-            deployer,
-            block.timestamp + 1 days,
-            100,
-            false
-        );
+        ShortOption short =
+            new ShortOption("Short Option", "SHORT", deployer, deployer, block.timestamp + 1 days, 100, false);
 
         LongOption long = new LongOption(
-            "Long Option",
-            "LONG",
-            deployer,
-            deployer,
-            block.timestamp + 1 days,
-            100,
-            false,
-            address(short)
+            "Long Option", "LONG", deployer, deployer, block.timestamp + 1 days, 100, false, address(short)
         );
 
         new OptionFactory(address(short), address(long));
