@@ -2520,6 +2520,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@optionality.io/clone-factory@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "@optionality.io/clone-factory@npm:0.2.1"
+  dependencies:
+    r2pipe-promise: ^1.4.1
+  checksum: 96589d027b1ded308cf2a7108c892153678556968162920806d4fa93bd5620c397ce57bb37740670f1815231ac7face7188002ffc81775be72fcae748c96930b
+  languageName: node
+  linkType: hard
+
 "@paulmillr/qr@npm:^0.2.1":
   version: 0.2.1
   resolution: "@paulmillr/qr@npm:0.2.1"
@@ -4532,12 +4541,37 @@ __metadata:
   languageName: node
   linkType: hard
 
+"acorn-loose@npm:^6.0.0":
+  version: 6.1.0
+  resolution: "acorn-loose@npm:6.1.0"
+  dependencies:
+    acorn: ^6.2.0
+  checksum: 9584621d608856b8ba72031d0a9ca3c84f3c8c4ce7a94a1305b05819a303eb0e8183b3cdbbd0306fb10bdfec4ae0f10c95c1ff956bd9f6e666273befa9852b26
+  languageName: node
+  linkType: hard
+
+"acorn-walk@npm:^6.0.0":
+  version: 6.2.0
+  resolution: "acorn-walk@npm:6.2.0"
+  checksum: ea241a5d96338f1e8030aafae72a91ff0ec4360e2775e44a2fdb2eb618b07fc309e000a5126056631ac7f00fe8bd9bbd23fcb6d018eee4ba11086eb36c1b2e61
+  languageName: node
+  linkType: hard
+
 "acorn-walk@npm:^8.1.1":
   version: 8.3.4
   resolution: "acorn-walk@npm:8.3.4"
   dependencies:
     acorn: ^8.11.0
   checksum: 4ff03f42323e7cf90f1683e08606b0f460e1e6ac263d2730e3df91c7665b6f64e696db6ea27ee4bed18c2599569be61f28a8399fa170c611161a348c402ca19c
+  languageName: node
+  linkType: hard
+
+"acorn@npm:^6.0.0, acorn@npm:^6.2.0":
+  version: 6.4.2
+  resolution: "acorn@npm:6.4.2"
+  bin:
+    acorn: bin/acorn
+  checksum: 44b07053729db7f44d28343eed32247ed56dc4a6ec6dff2b743141ecd6b861406bbc1c20bf9d4f143ea7dd08add5dc8c290582756539bc03a8db605050ce2fb4
   languageName: node
   linkType: hard
 
@@ -6273,6 +6307,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"enhanced-resolve@npm:^2.2.2":
+  version: 2.3.0
+  resolution: "enhanced-resolve@npm:2.3.0"
+  dependencies:
+    graceful-fs: ^4.1.2
+    memory-fs: ^0.3.0
+    object-assign: ^4.0.1
+    tapable: ^0.2.3
+  checksum: 2dce3f55461d96e5723acc128ed66b75d7f08408fc71e6eea42100e0b17932f1a1bfe86a7db923879dcee0ce8b4b1aa63d205a5faffe2a7fef134adf4f503806
+  languageName: node
+  linkType: hard
+
 "enhanced-resolve@npm:^5.18.1":
   version: 5.18.1
   resolution: "enhanced-resolve@npm:5.18.1"
@@ -6310,6 +6356,17 @@ __metadata:
   version: 3.0.1
   resolution: "err-code@npm:3.0.1"
   checksum: aede1f1d5ebe6d6b30b5e3175e3cc13e67de2e2e1ad99ce4917e957d7b59e8451ed10ee37dbc6493521920a47082c479b9097e5c39438d4aff4cc84438568a5a
+  languageName: node
+  linkType: hard
+
+"errno@npm:^0.1.3":
+  version: 0.1.8
+  resolution: "errno@npm:0.1.8"
+  dependencies:
+    prr: ~1.0.1
+  bin:
+    errno: cli.js
+  checksum: 1271f7b9fbb3bcbec76ffde932485d1e3561856d21d847ec613a9722ee924cdd4e523a62dc71a44174d91e898fe21fdc8d5b50823f4b5e0ce8c35c8271e6ef4a
   languageName: node
   linkType: hard
 
@@ -7743,7 +7800,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^7.0.0, glob@npm:^7.1.3":
+"glob@npm:^7.0.0, glob@npm:^7.1.1, glob@npm:^7.1.3":
   version: 7.2.3
   resolution: "glob@npm:7.2.3"
   dependencies:
@@ -7830,7 +7887,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graceful-fs@npm:^4.1.6, graceful-fs@npm:^4.2.0, graceful-fs@npm:^4.2.10, graceful-fs@npm:^4.2.11, graceful-fs@npm:^4.2.4, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
+"graceful-fs@npm:^4.1.2, graceful-fs@npm:^4.1.6, graceful-fs@npm:^4.2.0, graceful-fs@npm:^4.2.10, graceful-fs@npm:^4.2.11, graceful-fs@npm:^4.2.4, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: ac85f94da92d8eb6b7f5a8b20ce65e43d66761c55ce85ac96df6865308390da45a8d3f0296dd3a663de65d30ba497bd46c696cc1e248c72b13d6d567138a4fc7
@@ -8130,9 +8187,9 @@ __metadata:
   linkType: hard
 
 "ignore@npm:^7.0.0":
-  version: 7.0.4
-  resolution: "ignore@npm:7.0.4"
-  checksum: 09b4d69192355ac066f7d99c0fdb26f52035d2eaae423bfb5f7389091d75a93bf9c105e1fbf51f557098f6d446726f29a63cef3a7d26722dc696dd345224719b
+  version: 7.0.5
+  resolution: "ignore@npm:7.0.5"
+  checksum: d0862bf64d3d58bf34d5fb0a9f725bec9ca5ce8cd1aecc8f28034269e8f69b8009ffd79ca3eda96962a6a444687781cd5efdb8c7c8ddc0a6996e36d31c217f14
   languageName: node
   linkType: hard
 
@@ -9736,6 +9793,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"memory-fs@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "memory-fs@npm:0.3.0"
+  dependencies:
+    errno: ^0.1.3
+    readable-stream: ^2.0.1
+  checksum: cc2fcc0fb07e21ac6901f32ebd604b9a42baeec1de85aec3eb0d381ef5a1c7c2e2ccdf4796c6d7d07c10c9a4c56cd035662a8546dc508bb50d5bf6009d09a542
+  languageName: node
+  linkType: hard
+
 "merge-options@npm:^3.0.4":
   version: 3.0.4
   resolution: "merge-options@npm:3.0.4"
@@ -9847,7 +9914,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^3.0.4, minimatch@npm:^3.1.1, minimatch@npm:^3.1.2":
+"minimatch@npm:^3.0.3, minimatch@npm:^3.0.4, minimatch@npm:^3.1.1, minimatch@npm:^3.1.2":
   version: 3.1.2
   resolution: "minimatch@npm:3.1.2"
   dependencies:
@@ -10635,7 +10702,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"object-assign@npm:^4.1.1":
+"object-assign@npm:^4.0.1, object-assign@npm:^4.1.1":
   version: 4.1.1
   resolution: "object-assign@npm:4.1.1"
   checksum: fcc6e4ea8c7fe48abfbb552578b1c53e0d194086e2e6bbbf59e0a536381a292f39943c6e9628af05b5528aa5e3318bb30d6b2e53cadaf5b8fe9e12c4b69af23f
@@ -11541,6 +11608,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prr@npm:~1.0.1":
+  version: 1.0.1
+  resolution: "prr@npm:1.0.1"
+  checksum: 3bca2db0479fd38f8c4c9439139b0c42dcaadcc2fbb7bb8e0e6afaa1383457f1d19aea9e5f961d5b080f1cfc05bfa1fe9e45c97a1d3fd6d421950a73d3108381
+  languageName: node
+  linkType: hard
+
 "pump@npm:^3.0.0":
   version: 3.0.2
   resolution: "pump@npm:3.0.2"
@@ -11633,6 +11707,24 @@ __metadata:
   version: 5.1.1
   resolution: "quick-lru@npm:5.1.1"
   checksum: a516faa25574be7947969883e6068dbe4aa19e8ef8e8e0fd96cddd6d36485e9106d85c0041a27153286b0770b381328f4072aa40d3b18a19f5f7d2b78b94b5ed
+  languageName: node
+  linkType: hard
+
+"r2pipe-promise@npm:^1.4.1":
+  version: 1.6.4
+  resolution: "r2pipe-promise@npm:1.6.4"
+  dependencies:
+    r2pipe: ^2.8.5
+  checksum: f4fb2d4b7e2e5a10ed41589255a2b3a6924c907ca20f5e622d018bcb5752680504aa9d22603814c97f034eab9820170a6fe227c1555c8900eec821a61125c96e
+  languageName: node
+  linkType: hard
+
+"r2pipe@npm:^2.8.5":
+  version: 2.8.6
+  resolution: "r2pipe@npm:2.8.6"
+  dependencies:
+    tern: ^0.24.2
+  checksum: 6d497a7f97b25f08409bcb214e8e36c82bc7c760d0499d0c6e92252b6237becc555a757901a709e6c443358297999b97218d97d79e21c0b6da8706dc50984d35
   languageName: node
   linkType: hard
 
@@ -11792,7 +11884,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"readable-stream@npm:^2.3.3":
+"readable-stream@npm:^2.0.1, readable-stream@npm:^2.3.3":
   version: 2.3.8
   resolution: "readable-stream@npm:2.3.8"
   dependencies:
@@ -11909,6 +12001,13 @@ __metadata:
   version: 1.2.1
   resolution: "resolve-alpn@npm:1.2.1"
   checksum: f558071fcb2c60b04054c99aebd572a2af97ef64128d59bef7ab73bd50d896a222a056de40ffc545b633d99b304c259ea9d0c06830d5c867c34f0bfa60b8eae0
+  languageName: node
+  linkType: hard
+
+"resolve-from@npm:2.0.0":
+  version: 2.0.0
+  resolution: "resolve-from@npm:2.0.0"
+  checksum: 02db4c30fecddef0efafbafb2d66b96c4a80f91d103d9850be3b85d1feb65b6af6c818d137dc546cea7d0288c21e13aa0fb4580af9af34b08052b3516690c5f3
   languageName: node
   linkType: hard
 
@@ -12150,6 +12249,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "se-2@workspace:."
   dependencies:
+    "@optionality.io/clone-factory": ^0.2.1
     husky: ~9.1.6
     lint-staged: ~13.2.2
   languageName: unknown
@@ -12974,6 +13074,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tapable@npm:^0.2.3":
+  version: 0.2.9
+  resolution: "tapable@npm:0.2.9"
+  checksum: 73922f3043b581106622dca60a8a3b9ba044213243c44fa738944cd4f9fa08eb8c159e7340a67349b0f91939bb95f82778f1aa4343979850496771e2e0ff2572
+  languageName: node
+  linkType: hard
+
 "tapable@npm:^2.2.0":
   version: 2.2.2
   resolution: "tapable@npm:2.2.2"
@@ -13021,6 +13128,23 @@ __metadata:
     mkdirp: ^3.0.1
     yallist: ^5.0.0
   checksum: 8485350c0688331c94493031f417df069b778aadb25598abdad51862e007c39d1dd5310702c7be4a6784731a174799d8885d2fde0484269aea205b724d7b2ffa
+  languageName: node
+  linkType: hard
+
+"tern@npm:^0.24.2":
+  version: 0.24.3
+  resolution: "tern@npm:0.24.3"
+  dependencies:
+    acorn: ^6.0.0
+    acorn-loose: ^6.0.0
+    acorn-walk: ^6.0.0
+    enhanced-resolve: ^2.2.2
+    glob: ^7.1.1
+    minimatch: ^3.0.3
+    resolve-from: 2.0.0
+  bin:
+    tern: bin/tern
+  checksum: 3ddaf778049b7f708f33ccf179ec708a16a26f23854e91fb2e859919f50a308926225295e8b5cbb01f2e0a3ea0f93f590ebcf1825bf8a60eae92480b71431082
   languageName: node
   linkType: hard
 

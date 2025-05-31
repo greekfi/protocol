@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./DeployHelpers.s.sol";
-import "../contracts/YourContract.sol";
+import "../contracts/Option.sol";
 
 /**
  * @notice Deploy script for YourContract contract
@@ -25,6 +25,28 @@ contract DeployYourContract is ScaffoldETHDeploy {
      *      - Export contract addresses & ABIs to `nextjs` packages
      */
     function run() external ScaffoldEthDeployerRunner {
-        new YourContract(deployer);
+
+        ShortOption short = new ShortOption(
+            "Short Option",
+            "SHORT",
+            deployer,
+            deployer,
+            block.timestamp + 1 days,
+            100,
+            false
+        );
+
+        LongOption long = new LongOption(
+            "Long Option",
+            "LONG",
+            deployer,
+            deployer,
+            block.timestamp + 1 days,
+            100,
+            false,
+            address(short)
+        );
+
+        new OptionFactory(address(short), address(long));
     }
 }
