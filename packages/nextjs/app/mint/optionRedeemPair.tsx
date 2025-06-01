@@ -71,7 +71,7 @@ const RedeemPair = ({
               onClick={e => {
                 const tooltip = document.createElement("div");
                 tooltip.className = "absolute bg-gray-900 text-sm text-gray-200 p-2 rounded shadow-lg -mt-8 -ml-2";
-                tooltip.textContent = "Redeem your options after expiry";
+                tooltip.textContent = "Redeem your mint after expiry";
 
                 const button = e.currentTarget;
                 button.appendChild(tooltip);

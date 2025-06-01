@@ -63,10 +63,10 @@ const OptionCreator = ({ baseContractAddress }: { baseContractAddress: Address }
   const calculateStrikeRatio = () => {
     const { collateralToken, considerationToken, strikePrice, isPut } = formData;
     if (!strikePrice || !considerationToken || !collateralToken) return { strikeInteger: BigInt(0) };
-    // For PUT options, we need to invert the strike price in the calculation
-    // This is because puts are really just call options but with the strike price inverted
+    // For PUT mint, we need to invert the strike price in the calculation
+    // This is because puts are really just call mint but with the strike price inverted
     if (isPut) {
-      // For PUT options: 1/strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
+      // For PUT mint: 1/strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
       const invertedStrike = strikePrice === 0 ? 0 : 1 / strikePrice;
       return {
         strikeInteger: BigInt(

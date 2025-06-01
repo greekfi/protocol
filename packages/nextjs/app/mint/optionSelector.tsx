@@ -1,6 +1,5 @@
 // Import ABIs and addresses
 import OptionFactoryABI from "./abi/OptionFactory_metadata.json";
-// import { Select, Card, Space } from 'antd';
 import { Address, erc20Abi } from "viem";
 import { useReadContract, useReadContracts } from "wagmi";
 
@@ -43,7 +42,7 @@ const SelectOptionAddress = ({
     },
   });
   const optionNames = data || [];
-  // combine option names with options
+  // combine option names with mint
   const optionList = (optionNames || []).map((option, index) => ({
     name: option.result,
     address: ((createdOptions as Address[]) || [])[index],

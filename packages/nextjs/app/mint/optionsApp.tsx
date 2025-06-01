@@ -1,8 +1,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import logo from "../../public/helmet-white.svg";
 import { Account } from "./account";
-import logo from "./assets/helmet-white.svg";
 import { config } from "./config";
 import OptionCreator from "./optionCreate";
 import ContractDetails from "./optionDetails";
@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Address } from "viem";
 import { WagmiProvider, useAccount } from "wagmi";
 
-const CONTRACT_ADDRESS = "0xb55edadc4a09f380cd4229c4075b9f44e3405585";
+const CONTRACT_ADDRESS = "0xe1Aa25618fA0c7A1CFDab5d6B456af611873b629";
 const queryClient = new QueryClient();
 
 function ConnectWallet() {
@@ -24,7 +24,7 @@ function ConnectWallet() {
   return <WalletOptions />;
 }
 
-function OptionsFunctions() {
+function OptionsApp() {
   console.log("OptionsFunctions");
   // console.log(config);
 
@@ -46,7 +46,7 @@ function OptionsFunctions() {
                 <Image src={logo} alt="Greek.fi" className="w-24 h-24" />
               </li>
               <li>
-                <Link href="/" className="hover:text-blue-500">
+                <Link href="/packages/nextjs/public" className="hover:text-blue-500">
                   About GreekFi
                 </Link>
               </li>
@@ -127,9 +127,9 @@ function OptionsFunctions() {
         <footer className="py-8 px-6 text-gray-200 bg-gray-700">
           <div id="about">
             {/* <p className="text-gray-200">
-              Greek.fi provides the only option protocol on chain that collateralizes any 
-            ERC20 token to a redeemable token and provides a fully on-chain option that is exercisable. 
-            Both the collateral and the option are ERC20 tokens. 
+              Greek.fi provides the only option protocol on chain that collateralizes any
+            ERC20 token to a redeemable token and provides a fully on-chain option that is exercisable.
+            Both the collateral and the option are ERC20 tokens.
             </p> */}
           </div>
           <span className="text-gray-500">Greek.fi © 2025</span>
@@ -139,4 +139,4 @@ function OptionsFunctions() {
   );
 }
 
-export default OptionsFunctions;
+export default OptionsApp;

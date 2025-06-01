@@ -31,7 +31,7 @@ const ContractDetails = ({
   });
 
   const { data: collateralAddress } = useReadContract({
-    address: optionAddress as `0x${string}`,
+    address: optionAddress,
     abi: longAbi,
     functionName: "collateral",
     query: {

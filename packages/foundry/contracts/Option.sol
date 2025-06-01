@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
-// The Long Option contract is the only one that can mint new options
-// The Long Option contract is the only one that can exercise options
+// The Long Option contract is the only one that can mint new mint
+// The Long Option contract is the only one that can exercise mint
 // The redemption is only possible if you own both the Long and Short Option contracts but
 // performed by the Long Option contract
 
-// In options traditionally a Consideration is cash and a Collateral is an asset
+// In mint traditionally a Consideration is cash and a Collateral is an asset
 // Here, we do not distinguish between the Cash and Asset concept and allow consideration
 // to be any asset and collateral to be any asset as well. This can allow wETH to be used
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used

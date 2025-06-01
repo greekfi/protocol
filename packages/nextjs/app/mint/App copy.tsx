@@ -1,9 +1,9 @@
 import "./App.css";
-import OptionsFunctions from "./optionsFunctions";
+import OptionsApp from "./optionsApp";
 import "antd/dist/reset.css";
 
 function App() {
-  return <OptionsFunctions />;
+  return <OptionsApp />;
 }
 
 export default App;

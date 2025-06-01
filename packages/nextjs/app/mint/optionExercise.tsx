@@ -42,11 +42,11 @@ const ExerciseInterface = ({
   useEffect(() => {
     if (optionIsPut !== undefined) {
       if (optionIsPut) {
-        // For PUT options, we use collateral tokens
+        // For PUT mint, we use collateral tokens
         setTokenToApprove(collateralAddress);
         setTokenDecimals(collateralDecimals);
       } else {
-        // For CALL options, we use consideration tokens
+        // For CALL mint, we use consideration tokens
         setTokenToApprove(considerationAddress);
         setTokenDecimals(considerationDecimals);
       }
