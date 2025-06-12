@@ -1,7 +1,7 @@
 import { useState } from "react";
 import LongOptionABI from "./abi/LongOption_metadata.json";
 import TokenBalance from "./components/TokenBalance";
-import erc20abi from "./erc20.abi.json";
+import erc20abi from "./erc20.json";
 import { Address, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
 

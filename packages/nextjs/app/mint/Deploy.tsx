@@ -3,7 +3,7 @@ import Factory from "./abi/OptionFactory_metadata.json";
 import tokenList from "./tokenList.json";
 import moment from "moment-timezone";
 import { Address } from "viem";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 
 const abi = Factory.output.abi;
 
@@ -47,9 +47,12 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
   </div>
 );
 
-const OptionCreator = ({ baseContractAddress }: { baseContractAddress: Address }) => {
+const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
   const { isConnected } = useAccount();
-  const { writeContract } = useWriteContract();
+  const { writeContract, data: hash } = useWriteContract();
+  const { isLoading, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   // Consolidated state
   const [formData, setFormData] = useState({
@@ -136,7 +139,7 @@ const OptionCreator = ({ baseContractAddress }: { baseContractAddress: Address }
 
   return (
     <div className="max-w-2xl mx-auto bg-black/80 border border-gray-800 rounded-lg shadow-lg p-6 text-lg">
-      <form className="flex flex-col space-y-6 ">
+      <div className="flex flex-col space-y-6">
         <h2 className="text-lg font-light text-blue-300">
           <div className="flex items-center gap-1">
             Design New Option
@@ -307,12 +310,14 @@ const OptionCreator = ({ baseContractAddress }: { baseContractAddress: Address }
             )}
 
             <button
+              type="button"
               className={`px-4 py-2 rounded-lg text-black transition-transform hover:scale-105 ${
                 !isConnected ||
                 !formData.collateralToken ||
                 !formData.considerationToken ||
                 !formData.strikePrice ||
-                !formData.expirationDate
+                !formData.expirationDate ||
+                isLoading
                   ? "bg-blue-300 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600"
               }`}
@@ -322,16 +327,21 @@ const OptionCreator = ({ baseContractAddress }: { baseContractAddress: Address }
                 !formData.collateralToken ||
                 !formData.considerationToken ||
                 !formData.strikePrice ||
-                !formData.expirationDate
+                !formData.expirationDate ||
+                isLoading
               }
             >
-              Create Option
+              {isLoading ? "Creating..." : isSuccess ? "Created!" : "Create Option"}
             </button>
           </div>
         </div>
-      </form>
+
+        {isSuccess && (
+          <div className="text-green-500 text-sm">Option created successfully! Transaction hash: {hash}</div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default OptionCreator;
+export default Deploy;

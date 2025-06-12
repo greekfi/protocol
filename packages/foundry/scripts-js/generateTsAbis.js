@@ -80,6 +80,8 @@ function getDeploymentHistory(broadcastPath) {
     }
   }
 
+  console.log(deploymentHistory);
+
   return Array.from(deploymentHistory.values());
 }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./DeployHelpers.s.sol";
-import "../contracts/Option.sol";
+import "../contracts/OptionFactory.sol";
 
 /**
  * @notice Deploy script for YourContract contract
@@ -32,6 +32,10 @@ contract DeployYourContract is ScaffoldETHDeploy {
             "Long Option", "LONG", deployer, deployer, block.timestamp + 1 days, 100, false, address(short)
         );
 
-        new OptionFactory(address(short), address(long));
+        OptionFactory optionFactory = new OptionFactory(address(short), address(long));
+
+        deployments.push(Deployment("ShortOption", address(short)));
+        deployments.push(Deployment("LongOption", address(long)));
+        deployments.push(Deployment("OptionFactory", address(optionFactory)));
     }
 }

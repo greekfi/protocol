@@ -1,10 +1,23 @@
 import * as React from "react";
 import { Connector, useConnect } from "wagmi";
 
-// import { Button, Card, Form, Space } from 'antd'
-
-export function WalletOptions() {
+export function WalletSelector() {
   const { connectors, connect } = useConnect();
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto p-6 bg-gray-600 rounded-lg shadow-md">
+        <div className="flex flex-col space-y-4">
+          <div className="w-full py-3 px-4 bg-gray-500 rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-gray-600 rounded-lg shadow-md">

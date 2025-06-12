@@ -1,5 +1,5 @@
 import LongOptionABI from "./abi/LongOption_metadata.json";
-import erc20abi from "./erc20.abi.json";
+import erc20abi from "./erc20.json";
 import { Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 
@@ -38,8 +38,6 @@ const ContractDetails = ({
       enabled: !!optionAddress,
     },
   });
-  console.log("collateralAddress", collateralAddress);
-  setCollateralAddress(collateralAddress as Address);
 
   const { data: considerationAddress } = useReadContract({
     address: optionAddress as `0x${string}`,
@@ -49,8 +47,6 @@ const ContractDetails = ({
       enabled: !!optionAddress,
     },
   });
-  console.log("consideration", considerationAddress);
-  setConsiderationAddress(considerationAddress as Address);
 
   const { data: collateralDecimals } = useReadContract({
     address: collateralAddress as `0x${string}`,
@@ -60,8 +56,6 @@ const ContractDetails = ({
       enabled: !!collateralAddress,
     },
   });
-  console.log("collateralDecimals", collateralDecimals);
-  setCollateralDecimals(collateralDecimals as number);
 
   const { data: considerationDecimals } = useReadContract({
     address: considerationAddress as `0x${string}`,
@@ -71,8 +65,6 @@ const ContractDetails = ({
       enabled: !!considerationAddress,
     },
   });
-  console.log("considerationDecimals", considerationDecimals);
-  setConsiderationDecimals(considerationDecimals as number);
 
   const { data: expirationDate } = useReadContract({
     address: optionAddress,
@@ -83,9 +75,6 @@ const ContractDetails = ({
     },
   });
 
-  const isExpired = expirationDate ? Date.now() / 1000 > (expirationDate as number) : false;
-  setIsExpired(isExpired);
-
   const { data: shortAddress } = useReadContract({
     address: optionAddress,
     abi: longAbi,
@@ -94,12 +83,26 @@ const ContractDetails = ({
       enabled: !!optionAddress,
     },
   });
-  console.log("shortAddress", shortAddress);
-  setShortAddress(shortAddress as Address);
 
-  console.log("balance");
-  console.log(balance);
-  return <div className="text-blue-300">{balance?.toString()}</div>;
+  // Update parent state with contract data
+  if (collateralAddress) setCollateralAddress(collateralAddress as Address);
+  if (considerationAddress) setConsiderationAddress(considerationAddress as Address);
+  if (collateralDecimals) setCollateralDecimals(collateralDecimals as number);
+  if (considerationDecimals) setConsiderationDecimals(considerationDecimals as number);
+  if (expirationDate) setIsExpired(Date.now() / 1000 > (expirationDate as number));
+  if (shortAddress) setShortAddress(shortAddress as Address);
+
+  return (
+    <div className="text-blue-300">
+      <div>Balance: {balance?.toString()}</div>
+      <div>Collateral Address: {(collateralAddress as Address)?.toString()}</div>
+      <div>Consideration Address: {(considerationAddress as Address)?.toString()}</div>
+      <div>Collateral Decimals: {(collateralDecimals as number)?.toString()}</div>
+      <div>Consideration Decimals: {(considerationDecimals as number)?.toString()}</div>
+      <div>Short Address: {(shortAddress as Address)?.toString()}</div>
+      <div>Expired: {expirationDate ? (Date.now() / 1000 > (expirationDate as number) ? "Yes" : "No") : "No"}</div>
+    </div>
+  );
 };
 
 export default ContractDetails;

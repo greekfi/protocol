@@ -1,4 +1,4 @@
-import erc20abi from "../erc20.abi.json";
+import erc20abi from "../erc20.json";
 import { Address, formatUnits } from "viem";
 import { useReadContract } from "wagmi";
 import { useAccount } from "wagmi";
