@@ -1,5 +1,5 @@
 import erc20abi from "./erc20.json";
-import { Address } from "viem";
+import { Abi, Address } from "viem";
 import { useAccount, useChainId, useReadContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 
@@ -23,7 +23,7 @@ const ContractDetails = ({
   const { address } = useAccount();
   const chainId = useChainId();
   const contract = deployedContracts[chainId as keyof typeof deployedContracts];
-  const longAbi = contract.LongOption.abi;
+  const longAbi = chainId ? contract?.LongOption?.abi : ({} as Abi);
   const isValidOptionAddress = Boolean(optionAddress && optionAddress !== "0x0");
 
   const query = {
