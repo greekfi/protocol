@@ -16,9 +16,7 @@ import { config } from "./config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Address } from "viem";
 import { WagmiProvider, useAccount } from "wagmi";
-import deployedContracts from "~~/contracts/deployedContracts";
 
-const CONTRACT_ADDRESS = deployedContracts[31337].OptionFactory.address;
 const queryClient = new QueryClient();
 
 function ConnectWallet() {
@@ -28,9 +26,6 @@ function ConnectWallet() {
 }
 
 function OptionsApp() {
-  console.log("OptionsFunctions");
-  // console.log(config);
-
   const [optionAddress, setOptionAddress] = useState<Address>("0x0");
   const [shortAddress, setShortAddress] = useState<Address>("0x0");
   const [collateralAddress, setCollateralAddress] = useState<Address>("0x0");
@@ -87,7 +82,7 @@ function OptionsApp() {
               <div className="space-y-2">
                 <div className="border rounded-lg overflow-hidden">
                   <div className="p-4 bg-gray-800">
-                    <SelectOptionAddress baseContractAddress={CONTRACT_ADDRESS} setOptionAddress={setOptionAddress} />
+                    <SelectOptionAddress setOptionAddress={setOptionAddress} />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">

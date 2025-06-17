@@ -74,6 +74,7 @@ contract OptionFactory is Ownable {
         createdOptions.push(long);
         allOptions[collateral][expirationDate][strike].push(long);
         shortOption.setLongOption(long);
+        longOption.setShortOption(short);
         shortOption.transferOwnership(long);
         longOption.transferOwnership(owner());
 

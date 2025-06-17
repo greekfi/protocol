@@ -2,11 +2,8 @@ import { useState } from "react";
 import tokenList from "./tokenListLocal.json";
 import moment from "moment-timezone";
 import { Address } from "viem";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useWriteContract } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
-
-const abi = deployedContracts[31337].OptionFactory.abi;
-const contractAddress = deployedContracts[31337].OptionFactory.address;
 
 interface Token {
   address: string;
@@ -52,6 +49,11 @@ const Deploy = () => {
   const { isConnected } = useAccount();
   const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
 
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const abi = contract.OptionFactory.abi;
+  const contractAddress = contract.OptionFactory.address;
+
   // Consolidated state
   const [formData, setFormData] = useState({
     collateralToken: undefined as Token | undefined,
@@ -91,16 +93,26 @@ const Deploy = () => {
     }
 
     const { strikeInteger } = calculateStrikeRatio();
+    console.log("strikeInteger", strikeInteger);
     const expTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
+    console.log("expTimestamp", expTimestamp);
     const fmtDate = moment(expirationDate).format("YYYYMMDD");
+    console.log("fmtDate", fmtDate);
 
     const optionType = isPut ? "P" : "C";
     const baseNameSymbol = `OPT${optionType}-${collateralToken.symbol}-${considerationToken.symbol}-${fmtDate}-${strikePrice}`;
     const longName = `L${baseNameSymbol}`;
     const shortName = `S${baseNameSymbol}`;
+    console.log("longName", longName);
+    console.log("shortName", shortName);
+    console.log("collateralToken.address", collateralToken.address);
+    console.log("considerationToken.address", considerationToken.address);
+    console.log("expTimestamp", expTimestamp);
+    console.log("strikeInteger", strikeInteger);
+    console.log("isPut", isPut);
 
     try {
-      await writeContract({
+      writeContract({
         address: contractAddress,
         abi,
         functionName: "createOption",
@@ -116,6 +128,7 @@ const Deploy = () => {
           isPut,
         ],
       });
+      console.log("committed transaction", hash);
     } catch (error) {
       console.error("Error creating option:", error);
       alert("Failed to create option. Check console for details.");
@@ -338,7 +351,7 @@ const Deploy = () => {
         </div>
 
         {isSuccess && (
-          <div className="text-green-500 text-sm">Option created successfully! Transaction hash: {hash}</div>
+          <div className="text-green-500 text-sm">Option creation submitted successfully! Transaction hash: {hash}</div>
         )}
       </div>
     </div>

@@ -1,11 +1,9 @@
 import { useState } from "react";
-import LongOptionABI from "./abi/LongOption_metadata.json";
 import TokenBalance from "./components/TokenBalance";
 import { usePermit2 } from "./hooks/usePermit2";
-import { Abi, Address, parseUnits } from "viem";
-import { useWriteContract } from "wagmi";
-
-const longAbi = LongOptionABI.output.abi as Abi;
+import { Address, parseUnits } from "viem";
+import { useChainId, useWriteContract } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 const MintInterface = ({
   optionAddress,
@@ -23,7 +21,9 @@ const MintInterface = ({
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const { getPermitSignature } = usePermit2();
-
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const longAbi = contract.LongOption.abi;
   const handleAction = async () => {
     const { permitDetails, signature } = await getPermitSignature(
       collateralAddress,
@@ -38,7 +38,7 @@ const MintInterface = ({
       args: [parseUnits(amount.toString(), Number(collateralDecimals)), permitDetails, signature],
     };
 
-    writeContract(actionConfig);
+    writeContract(actionConfig as any);
   };
 
   return (

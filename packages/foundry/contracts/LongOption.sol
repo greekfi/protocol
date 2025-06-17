@@ -77,4 +77,8 @@ contract LongOption is OptionBase {
         _burn(msg.sender, amount);
         shortOption._redeemPair(msg.sender, amount);
     }
+
+    function setShortOption(address shortOptionAddress) public onlyOwner {
+        shortOption = ShortOption(shortOptionAddress);
+    }
 }

@@ -104,6 +104,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     ) public {
         require(!initialized, "already init");
         initialized = true;
+        if (collateral_ == address(0)) revert InvalidValue();
+        if (consideration_ == address(0)) revert InvalidValue();
+        if (strike_ == 0) revert InvalidValue();
+        if (expirationDate_ < block.timestamp) revert InvalidValue();
         
         _name = name_;
         _symbol = symbol_;

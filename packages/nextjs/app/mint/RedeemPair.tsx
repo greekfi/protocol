@@ -1,11 +1,9 @@
 import { useState } from "react";
-import LongOptionABI from "./abi/LongOption_metadata.json";
 import TokenBalance from "./components/TokenBalance";
 import erc20abi from "./erc20.json";
 import { Address, parseUnits } from "viem";
-import { useWriteContract } from "wagmi";
-
-const longAbi = LongOptionABI.output.abi;
+import { useChainId, useWriteContract } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 interface RedeemInterfaceProps {
   optionAddress: Address;
@@ -24,7 +22,9 @@ const RedeemPair = ({
 }: RedeemInterfaceProps) => {
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
-
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const longAbi = contract.LongOption.abi;
   const handleApprove = async () => {
     const approveCollateral = {
       address: collateralAddress as `0x${string}`,
@@ -52,9 +52,9 @@ const RedeemPair = ({
       args: [parseUnits(amount.toString(), Number(collateralDecimals))],
     };
     if (!isExpired) {
-      writeContract(redeemPairConfig);
+      writeContract(redeemPairConfig as any);
     } else {
-      writeContract(redeemConfig);
+      writeContract(redeemConfig as any);
     }
   };
 

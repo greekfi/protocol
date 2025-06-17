@@ -1,9 +1,7 @@
-import LongOptionABI from "./abi/LongOption_metadata.json";
 import erc20abi from "./erc20.json";
 import { Address } from "viem";
-import { useAccount, useReadContract } from "wagmi";
-
-const longAbi = LongOptionABI.output.abi;
+import { useAccount, useChainId, useReadContract } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 const ContractDetails = ({
   optionAddress,
@@ -23,6 +21,9 @@ const ContractDetails = ({
   setIsExpired: (isExpired: boolean) => void;
 }) => {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const longAbi = contract.LongOption.abi;
   const isValidOptionAddress = Boolean(optionAddress && optionAddress !== "0x0");
 
   const query = {
@@ -87,7 +88,7 @@ const ContractDetails = ({
   if (considerationAddress) setConsiderationAddress(considerationAddress as Address);
   if (collateralDecimals) setCollateralDecimals(collateralDecimals as number);
   if (considerationDecimals) setConsiderationDecimals(considerationDecimals as number);
-  if (expirationDate) setIsExpired(Date.now() / 1000 > (expirationDate as number));
+  if (expirationDate) setIsExpired(Date.now() / 1000 > (expirationDate as unknown as number));
   if (shortAddress) setShortAddress(shortAddress as Address);
 
   if (!isValidOptionAddress) {
@@ -102,7 +103,9 @@ const ContractDetails = ({
       <div>Collateral Decimals: {(collateralDecimals as number)?.toString()}</div>
       <div>Consideration Decimals: {(considerationDecimals as number)?.toString()}</div>
       <div>Short Address: {(shortAddress as Address)?.toString()}</div>
-      <div>Expired: {expirationDate ? (Date.now() / 1000 > (expirationDate as number) ? "Yes" : "No") : "No"}</div>
+      <div>
+        Expired: {expirationDate ? (Date.now() / 1000 > (expirationDate as unknown as number) ? "Yes" : "No") : "No"}
+      </div>
     </div>
   );
 };

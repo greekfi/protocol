@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import LongOptionABI from "./abi/LongOption_metadata.json";
 import TokenBalance from "./components/TokenBalance";
 import { usePermit2 } from "./hooks/usePermit2";
 import { Abi, Address, parseUnits } from "viem";
-import { useReadContract, useWriteContract } from "wagmi";
-
-const longAbi = LongOptionABI.output.abi;
+import { useChainId, useReadContract, useWriteContract } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
 const ExerciseInterface = ({
   optionAddress,
@@ -24,6 +22,9 @@ const ExerciseInterface = ({
   considerationDecimals: number;
   isExpired: boolean;
 }) => {
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const longAbi = contract.LongOption.abi;
   const [amount, setAmount] = useState<number>(0);
   const [tokenToApprove, setTokenToApprove] = useState<Address>(considerationAddress);
   const [tokenDecimals, setTokenDecimals] = useState<number>(considerationDecimals);

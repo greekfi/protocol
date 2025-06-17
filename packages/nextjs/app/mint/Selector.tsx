@@ -1,23 +1,20 @@
 // Import ABIs and addresses
-import OptionFactoryABI from "./abi/OptionFactory_metadata.json";
 import { Address, erc20Abi } from "viem";
-import { useReadContract, useReadContracts } from "wagmi";
+import { useChainId, useReadContract, useReadContracts } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
-const abi = OptionFactoryABI.output.abi;
-
-const SelectOptionAddress = ({
-  baseContractAddress,
-  setOptionAddress,
-}: {
-  baseContractAddress: Address;
-  setOptionAddress: (address: Address) => void;
-}) => {
+const SelectOptionAddress = ({ setOptionAddress }: { setOptionAddress: (address: Address) => void }) => {
   const handleOptionChange = (optionAddress: string) => {
     setOptionAddress(optionAddress as Address);
   };
 
+  const chainId = useChainId();
+  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
+  const abi = contract.OptionFactory.abi;
+  console.log(chainId);
+
   const { data: createdOptions, error } = useReadContract({
-    address: baseContractAddress,
+    address: contract.OptionFactory.address,
     abi,
     functionName: "getCreatedOptions",
   });
