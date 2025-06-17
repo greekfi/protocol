@@ -48,27 +48,7 @@ contract ShortOption is OptionBase {
         longOption = longOption_;
     }
 
-    function mint(address to, uint256 amount)
-        public
-        onlyOwner
-        sufficientCollateral(to, amount)
-        validAmount(amount)
-        notExpired
-    {
-        __mint(to, amount);
-    }
-
-    function __mint(address to, uint256 amount)
-        private
-        nonReentrant
-        sufficientCollateral(to, amount)
-        validAmount(amount)
-    {
-        collateral.safeTransferFrom(to, address(this), amount);
-        _mint(to, amount);
-    }
-
-    function mint2(address to, uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function mint(address to, uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
         public
         onlyOwner
         sufficientCollateral(to, amount)
@@ -76,10 +56,10 @@ contract ShortOption is OptionBase {
         notExpired
     {
         PERMIT2.permit(to, permitDetails, signature);
-        _mint2(to, amount);
+        __mint(to, amount);
     }
 
-    function _mint2(address to, uint256 amount)
+    function __mint(address to, uint256 amount)
         private
         nonReentrant
         sufficientCollateral(to, amount)
@@ -143,26 +123,15 @@ contract ShortOption is OptionBase {
         _redeem(msg.sender, amount);
     }
 
-    function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) expired {
-        _redeemConsideration(msg.sender, amount);
-    }
-
     function _redeemPair(address to, uint256 amount) public notExpired onlyOwner sufficientBalance(to, amount) {
         _redeem(to, amount);
     }
 
-    function _exercise(address contractHolder, uint256 amount) private nonReentrant notExpired onlyOwner {
-        uint256 considerationAmount = toConsideration(amount);
-        if (consideration.balanceOf(contractHolder) < considerationAmount) revert InsufficientBalance();
-        consideration.safeTransferFrom(contractHolder, address(this), considerationAmount);
-        collateral.safeTransfer(contractHolder, amount);
+    function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) expired {
+        _redeemConsideration(msg.sender, amount);
     }
 
-    function exercise(address contractHolder, uint256 amount) public notExpired onlyOwner {
-        _exercise(contractHolder, amount);
-    }
-
-    function _exercise2(address contractHolder, uint256 amount) public notExpired onlyOwner nonReentrant {
+    function _exercise(address contractHolder, uint256 amount) public notExpired onlyOwner nonReentrant {
         uint256 considerationAmount = toConsideration(amount);
         if (consideration.balanceOf(contractHolder) < considerationAmount) revert InsufficientBalance();
 
@@ -170,14 +139,14 @@ contract ShortOption is OptionBase {
         collateral.safeTransfer(contractHolder, amount);
     }
 
-    function exercise2(
+    function exercise(
         address contractHolder,
         uint256 amount,
         IPermit2.PermitSingle calldata permitDetails,
         bytes calldata signature
     ) public notExpired onlyOwner {
         PERMIT2.permit(contractHolder, permitDetails, signature);
-        _exercise2(contractHolder, amount);
+        _exercise(contractHolder, amount);
     }
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {

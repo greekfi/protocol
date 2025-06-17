@@ -1,11 +1,12 @@
 import { useState } from "react";
-import Factory from "./abi/OptionFactory_metadata.json";
-import tokenList from "./tokenList.json";
+import tokenList from "./tokenListLocal.json";
 import moment from "moment-timezone";
 import { Address } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
-const abi = Factory.output.abi;
+const abi = deployedContracts[31337].OptionFactory.abi;
+const contractAddress = deployedContracts[31337].OptionFactory.address;
 
 interface Token {
   address: string;
@@ -47,12 +48,9 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
   </div>
 );
 
-const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
+const Deploy = () => {
   const { isConnected } = useAccount();
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
 
   // Consolidated state
   const [formData, setFormData] = useState({
@@ -83,6 +81,9 @@ const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
   };
 
   const handleCreateOption = async () => {
+    // Prevent multiple submissions
+    if (isPending) return;
+
     const { collateralToken, considerationToken, strikePrice, expirationDate, isPut } = formData;
     if (!collateralToken || !considerationToken || !strikePrice || !expirationDate) {
       alert("Please fill in all fields");
@@ -99,8 +100,8 @@ const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
     const shortName = `S${baseNameSymbol}`;
 
     try {
-      writeContract({
-        address: baseContractAddress,
+      await writeContract({
+        address: contractAddress,
         abi,
         functionName: "createOption",
         args: [
@@ -317,7 +318,7 @@ const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
                 !formData.considerationToken ||
                 !formData.strikePrice ||
                 !formData.expirationDate ||
-                isLoading
+                isPending
                   ? "bg-blue-300 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600"
               }`}
@@ -328,10 +329,10 @@ const Deploy = ({ baseContractAddress }: { baseContractAddress: Address }) => {
                 !formData.considerationToken ||
                 !formData.strikePrice ||
                 !formData.expirationDate ||
-                isLoading
+                isPending
               }
             >
-              {isLoading ? "Creating..." : isSuccess ? "Created!" : "Create Option"}
+              {isPending ? "Creating..." : isSuccess ? "Created!" : "Create Option"}
             </button>
           </div>
         </div>

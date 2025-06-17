@@ -1,5 +1,15 @@
 [
   {
+    "address": "0x8ce361602b935680e8dec218b820ff5056beb7af",
+    "symbol": "STK",
+    "decimals": 18
+  },
+  {
+    "address": "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
+    "symbol": "SHK",
+    "decimals": 18
+  },
+  {
     "address": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
     "symbol": "osETH",
     "decimals": 18

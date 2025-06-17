@@ -36,6 +36,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     bool public isPut;
     IERC20 public collateral;
     IERC20 public consideration;
+    bool public initialized = false;
 
     error ContractNotExpired();
     error ContractExpired();
@@ -100,7 +101,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_
-    ) public onlyOwner {
+    ) public {
+        require(!initialized, "already init");
+        initialized = true;
+        
         _name = name_;
         _symbol = symbol_;
         collateral = IERC20(collateral_);
@@ -108,5 +112,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         expirationDate = expirationDate_;
         strike = strike_;
         isPut = isPut_;
+
+        // set owner so factory can call restricted functions
+        _transferOwnership(msg.sender);
     }
 }

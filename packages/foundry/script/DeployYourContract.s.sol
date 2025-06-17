@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import "./DeployHelpers.s.sol";
 import "../contracts/OptionFactory.sol";
+import "../contracts/StableToken.sol";
+import "../contracts/ShakyToken.sol";
 
 /**
  * @notice Deploy script for YourContract contract
@@ -34,8 +36,13 @@ contract DeployYourContract is ScaffoldETHDeploy {
 
         OptionFactory optionFactory = new OptionFactory(address(short), address(long));
 
+        StableToken stableToken = new StableToken();
+        ShakyToken shakyToken = new ShakyToken();
+
         deployments.push(Deployment("ShortOption", address(short)));
         deployments.push(Deployment("LongOption", address(long)));
         deployments.push(Deployment("OptionFactory", address(optionFactory)));
+        deployments.push(Deployment("StableToken", address(stableToken)));
+        deployments.push(Deployment("ShakyToken", address(shakyToken)));
     }
 }

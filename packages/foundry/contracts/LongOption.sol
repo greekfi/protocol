@@ -44,35 +44,24 @@ contract LongOption is OptionBase {
         shortOption = ShortOption(shortOptionAddress_);
     }
 
-    function mint(uint256 amount) public nonReentrant validAmount(amount) notExpired {
-        _mint(msg.sender, amount);
-        shortOption.mint(msg.sender, amount);
-    }
-
-    function mint2(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function mint(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
         public
         nonReentrant
         validAmount(amount)
         notExpired
     {
         _mint(msg.sender, amount);
-        shortOption.mint2(msg.sender, amount, permitDetails, signature);
+        shortOption.mint(msg.sender, amount, permitDetails, signature);
     }
 
-    function exercise(uint256 amount) public notExpired nonReentrant validAmount(amount) {
-        _burn(msg.sender, amount);
-        shortOption.exercise(msg.sender, amount);
-        emit Exercise(address(this), msg.sender, amount);
-    }
-
-    function exercise2(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function exercise(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
         public
         notExpired
         nonReentrant
         validAmount(amount)
     {
         _burn(msg.sender, amount);
-        shortOption.exercise2(msg.sender, amount, permitDetails, signature);
+        shortOption.exercise(msg.sender, amount, permitDetails, signature);
         emit Exercise(address(this), msg.sender, amount);
     }
 
@@ -85,8 +74,7 @@ contract LongOption is OptionBase {
     {
         if (shortOption.balanceOf(msg.sender) < amount) revert InsufficientBalance();
 
-        address contractHolder = msg.sender;
-        _burn(contractHolder, amount);
-        shortOption._redeemPair(contractHolder, amount);
+        _burn(msg.sender, amount);
+        shortOption._redeemPair(msg.sender, amount);
     }
 }

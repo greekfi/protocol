@@ -16,8 +16,9 @@ import { config } from "./config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Address } from "viem";
 import { WagmiProvider, useAccount } from "wagmi";
+import deployedContracts from "~~/contracts/deployedContracts";
 
-const CONTRACT_ADDRESS = "0xb19b36b1456E65E3A6D514D3F715f204BD59f431";
+const CONTRACT_ADDRESS = deployedContracts[31337].OptionFactory.address;
 const queryClient = new QueryClient();
 
 function ConnectWallet() {
@@ -118,7 +119,7 @@ function OptionsApp() {
 
                 <div className="border rounded-lg overflow-hidden">
                   <div className="p-4 bg-gray-800">
-                    <Deploy baseContractAddress={CONTRACT_ADDRESS} />
+                    <Deploy />
                   </div>
                 </div>
               </div>
