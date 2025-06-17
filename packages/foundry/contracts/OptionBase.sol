@@ -25,8 +25,6 @@ using SafeERC20 for IERC20;
 
 contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-    string public _name;
-    string public _symbol;
     uint256 public expirationDate;
     uint256 public strike;
     uint256 public constant STRIKE_DECIMALS = 10 ** 18;
@@ -37,6 +35,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     IERC20 public collateral;
     IERC20 public consideration;
     bool public initialized = false;
+    string private _tokenName;
+    string private _tokenSymbol;
 
     error ContractNotExpired();
     error ContractExpired();
@@ -109,8 +109,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
         
-        _name = name_;
-        _symbol = symbol_;
+        _tokenName = name_;
+        _tokenSymbol = symbol_;
         collateral = IERC20(collateral_);
         consideration = IERC20(consideration_);
         expirationDate = expirationDate_;
@@ -119,5 +119,13 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
         // set owner so factory can call restricted functions
         _transferOwnership(msg.sender);
+    }
+
+    function name() public view override returns (string memory) {
+        return _tokenName;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _tokenSymbol;
     }
 }

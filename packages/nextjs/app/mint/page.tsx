@@ -17,6 +17,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Address } from "viem";
 import { WagmiProvider, useAccount } from "wagmi";
 
+export const dynamic = "force-dynamic";
+
 const queryClient = new QueryClient();
 
 function ConnectWallet() {
