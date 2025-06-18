@@ -1,61 +1,39 @@
 import { useState } from "react";
 import TokenBalance from "./components/TokenBalance";
-import erc20abi from "./erc20.json";
-import { Address, parseUnits } from "viem";
-import { useChainId, useWriteContract } from "wagmi";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { useContract } from "./hooks/contract";
+import { useOptionDetails } from "./hooks/details";
+import { parseUnits } from "viem";
+import { useWriteContract } from "wagmi";
 
 interface RedeemInterfaceProps {
-  optionAddress: Address;
-  shortAddress: Address;
-  collateralAddress: Address;
-  collateralDecimals: number;
-  isExpired: boolean;
+  details: ReturnType<typeof useOptionDetails>;
 }
 
-const RedeemPair = ({
-  optionAddress: longOption,
-  shortAddress,
-  collateralAddress,
-  collateralDecimals,
-  isExpired,
-}: RedeemInterfaceProps) => {
+const RedeemPair = ({ details }: RedeemInterfaceProps) => {
+  const { longAddress, shortAddress, collateralAddress, collateralDecimals, isExpired } = details;
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
-  const chainId = useChainId();
-  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
-  const longAbi = contract.LongOption.abi;
-  const handleApprove = async () => {
-    const approveCollateral = {
-      address: collateralAddress as `0x${string}`,
-      abi: erc20abi,
-      functionName: "approve",
-      args: [shortAddress, parseUnits("0", Number(collateralDecimals))],
-    };
-    writeContract(approveCollateral);
-  };
+  const longAbi = useContract().LongOption.abi;
+
+  // const { getPermitSignature } = usePermit2();
 
   const handleRedeem = async () => {
-    await handleApprove();
+    if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
+
+    const amountInWei = parseUnits(amount.toString(), Number(collateralDecimals));
+
+    // Get permit signature
+    // const { permitDetails, signature } = await getPermitSignature(considerationAddress, amountInWei, longAddress);
 
     const redeemConfig = {
-      address: shortAddress,
+      address: isExpired ? longAddress : shortAddress,
       abi: longAbi,
       functionName: "redeem",
-      args: [parseUnits(amount.toString(), Number(collateralDecimals))],
+      // args: [amountInWei, permitDetails, signature],
+      args: [amountInWei],
     };
 
-    const redeemPairConfig = {
-      address: longOption,
-      abi: longAbi,
-      functionName: "redeem",
-      args: [parseUnits(amount.toString(), Number(collateralDecimals))],
-    };
-    if (!isExpired) {
-      writeContract(redeemPairConfig as any);
-    } else {
-      writeContract(redeemConfig as any);
-    }
+    writeContract(redeemConfig as any);
   };
 
   return (
@@ -101,7 +79,7 @@ const RedeemPair = ({
       </div>
 
       <div className="space-y-2 mb-4">
-        <TokenBalance tokenAddress={longOption} decimals={collateralDecimals} label="Long Option Balance" />
+        <TokenBalance tokenAddress={longAddress} decimals={collateralDecimals} label="Long Option Balance" />
         <TokenBalance tokenAddress={shortAddress} decimals={collateralDecimals} label="Short Option Balance" />
       </div>
 

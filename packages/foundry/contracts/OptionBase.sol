@@ -83,6 +83,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         isPut = isPut_;
         collateral = IERC20(collateral_);
         consideration = IERC20(consideration_);
+        _tokenName = name_;
+        _tokenSymbol = symbol_;
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {

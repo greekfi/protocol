@@ -1,77 +1,38 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import TokenBalance from "./components/TokenBalance";
+import { useContract } from "./hooks/contract";
+import { useOptionDetails } from "./hooks/details";
 import { usePermit2 } from "./hooks/usePermit2";
-import { Abi, Address, parseUnits } from "viem";
-import { useChainId, useReadContract, useWriteContract } from "wagmi";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { Abi, parseUnits } from "viem";
+import { useWriteContract } from "wagmi";
 
-const ExerciseInterface = ({
-  optionAddress,
-  shortAddress,
-  collateralAddress,
-  considerationAddress,
-  collateralDecimals,
-  considerationDecimals,
-  isExpired,
-}: {
-  optionAddress: Address;
-  shortAddress: Address;
-  collateralAddress: Address;
-  considerationAddress: Address;
-  collateralDecimals: number;
-  considerationDecimals: number;
-  isExpired: boolean;
-}) => {
-  const chainId = useChainId();
-  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
-  const longAbi = contract.LongOption.abi;
-  const [amount, setAmount] = useState<number>(0);
-  const [tokenToApprove, setTokenToApprove] = useState<Address>(considerationAddress);
-  const [tokenDecimals, setTokenDecimals] = useState<number>(considerationDecimals);
+const ExerciseInterface = ({ details }: { details: ReturnType<typeof useOptionDetails> }) => {
+  const longAbi = useContract().LongOption.abi;
+
+  const { longAddress, considerationAddress, considerationDecimals, isExpired } = details;
+
   const { writeContract, isPending } = useWriteContract();
+
+  const [amount, setAmount] = useState<number>(0);
+
   const { getPermitSignature } = usePermit2();
 
-  // Check if the option is a PUT
-  const { data: optionIsPut } = useReadContract({
-    address: optionAddress,
-    abi: longAbi,
-    functionName: "isPut",
-    query: {
-      enabled: !!optionAddress,
-    },
-  });
-
-  // Update state when option type is determined
-  useEffect(() => {
-    if (optionIsPut !== undefined) {
-      if (optionIsPut) {
-        // For PUT mint, we use collateral tokens
-        setTokenToApprove(collateralAddress);
-        setTokenDecimals(collateralDecimals);
-      } else {
-        // For CALL mint, we use consideration tokens
-        setTokenToApprove(considerationAddress);
-        setTokenDecimals(considerationDecimals);
-      }
-    }
-  }, [optionIsPut, collateralAddress, considerationAddress, collateralDecimals, considerationDecimals]);
+  // if (!longAddress || !considerationAddress || !considerationDecimals) return null;
 
   const handleAction = async () => {
-    if (!amount) return;
+    if (!amount || !considerationAddress || !longAddress) return;
 
-    const amountInWei = parseUnits(amount.toString(), Number(tokenDecimals));
+    const amountInWei = parseUnits(amount.toString(), Number(considerationDecimals));
 
     // Get permit signature
-    const { permitDetails, signature } = await getPermitSignature(tokenToApprove, amountInWei, shortAddress);
+    const { permitDetails, signature } = await getPermitSignature(considerationAddress, amountInWei, longAddress);
 
-    const actionConfig = {
-      address: optionAddress,
+    writeContract({
+      address: longAddress,
       abi: longAbi as Abi,
       functionName: "exercise",
       args: [amountInWei, permitDetails, signature],
-    };
-
-    writeContract(actionConfig);
+    });
   };
 
   return (
@@ -146,7 +107,9 @@ const ExerciseInterface = ({
               !amount || isPending || isExpired ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
             }`}
             onClick={handleAction}
-            disabled={!amount || isPending || isExpired}
+            disabled={
+              !longAddress || !considerationAddress || !considerationDecimals || !amount || isPending || isExpired
+            }
             title={isExpired ? "Option is expired" : ""}
           >
             {isPending ? "Processing..." : "Exercise Options"}

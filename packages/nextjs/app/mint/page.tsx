@@ -6,20 +6,13 @@ import Link from "next/link";
 import logo from "../../public/helmet-white.svg";
 import Deploy from "./Deploy";
 import ContractDetails from "./Details";
-import ExerciseInterface from "./Exercise";
-import MintInterface from "./Mint";
-import RedeemPair from "./RedeemPair";
 import SelectOptionAddress from "./Selector";
 import { Account } from "./account";
+import Action from "./action";
 import { WalletSelector } from "./components/walletSelector";
-import { config } from "./config";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useOptionDetails } from "./hooks/details";
 import { Address } from "viem";
-import { WagmiProvider, useAccount } from "wagmi";
-
-// export const dynamic = "force-dynamic";
-
-const queryClient = new QueryClient();
+import { useAccount, useConfig } from "wagmi";
 
 function ConnectWallet() {
   const { isConnected } = useAccount();
@@ -29,12 +22,9 @@ function ConnectWallet() {
 
 function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address>("0x0");
-  const [shortAddress, setShortAddress] = useState<Address>("0x0");
-  const [collateralAddress, setCollateralAddress] = useState<Address>("0x0");
-  const [considerationAddress, setConsiderationAddress] = useState<Address>("0x0");
-  const [collateralDecimals, setCollateralDecimals] = useState<number>(0);
-  const [considerationDecimals, setConsiderationDecimals] = useState<number>(0);
-  const [isExpired, setIsExpired] = useState<boolean>(false);
+  const contractDetails = useOptionDetails(optionAddress);
+  const wagmiConfig = useConfig();
+  console.log("chain", wagmiConfig);
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
@@ -60,68 +50,35 @@ function OptionsApp() {
                   Contact
                 </Link>
               </li>
+              <li>
+                <ConnectWallet />
+              </li>
             </ul>
           </nav>
 
-          <WagmiProvider config={config}>
-            <QueryClientProvider client={queryClient}>
-              <div>
-                <ConnectWallet />
+          <div>
+            <ContractDetails details={contractDetails} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="border rounded-lg overflow-hidden">
+              <div className="p-4 bg-gray-800">
+                <SelectOptionAddress setOptionAddress={setOptionAddress} />
               </div>
 
-              <div>
-                <ContractDetails
-                  optionAddress={optionAddress}
-                  setShortAddress={setShortAddress}
-                  setCollateralAddress={setCollateralAddress}
-                  setConsiderationAddress={setConsiderationAddress}
-                  setCollateralDecimals={setCollateralDecimals}
-                  setConsiderationDecimals={setConsiderationDecimals}
-                  setIsExpired={setIsExpired}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
+                <Action details={contractDetails} action="exercise" />
+                <Action details={contractDetails} action="mint" />
+                <Action details={contractDetails} action="redeem" />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="p-4 bg-gray-800">
-                    <SelectOptionAddress setOptionAddress={setOptionAddress} />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
-                    <MintInterface
-                      optionAddress={optionAddress}
-                      shortAddress={shortAddress}
-                      collateralAddress={collateralAddress}
-                      collateralDecimals={collateralDecimals}
-                      isExpired={isExpired}
-                    />
-                    <ExerciseInterface
-                      optionAddress={optionAddress}
-                      shortAddress={shortAddress}
-                      collateralAddress={collateralAddress}
-                      considerationAddress={considerationAddress}
-                      collateralDecimals={collateralDecimals}
-                      considerationDecimals={considerationDecimals}
-                      isExpired={isExpired}
-                    />
-                    <RedeemPair
-                      optionAddress={optionAddress}
-                      shortAddress={shortAddress}
-                      collateralAddress={collateralAddress}
-                      collateralDecimals={collateralDecimals}
-                      isExpired={isExpired}
-                    />
-                  </div>
-                </div>
-
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="p-4 bg-gray-800">
-                    <Deploy />
-                  </div>
-                </div>
+            <div className="border rounded-lg overflow-hidden">
+              <div className="p-4 bg-gray-800">
+                <Deploy />
               </div>
-            </QueryClientProvider>
-          </WagmiProvider>
+            </div>
+          </div>
         </div>
 
         <footer className="py-8 px-6 text-gray-200 bg-gray-700">

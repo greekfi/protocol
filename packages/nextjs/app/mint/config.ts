@@ -47,7 +47,7 @@ export const config = createConfig({
   chains: [localhost, sepolia, mainnet],
   transports: {
     [localhost.id]: http(),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: http(process.env.ALCHEMY_SEPOLIA_URL),
+    [mainnet.id]: http(process.env.ALCHEMY_MAINNET_URL),
   },
 });

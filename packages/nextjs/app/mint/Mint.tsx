@@ -1,30 +1,21 @@
 import { useState } from "react";
 import TokenBalance from "./components/TokenBalance";
+import { useContract } from "./hooks/contract";
+import { useOptionDetails } from "./hooks/details";
 import { usePermit2 } from "./hooks/usePermit2";
-import { Address, parseUnits } from "viem";
-import { useChainId, useWriteContract } from "wagmi";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { parseUnits } from "viem";
+import { useWriteContract } from "wagmi";
 
-const MintInterface = ({
-  optionAddress,
-  shortAddress,
-  collateralAddress,
-  collateralDecimals,
-  isExpired,
-}: {
-  optionAddress: Address;
-  shortAddress: Address;
-  collateralAddress: Address;
-  collateralDecimals: number;
-  isExpired: boolean;
-}) => {
+const MintInterface = ({ details }: { details: ReturnType<typeof useOptionDetails> }) => {
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const { getPermitSignature } = usePermit2();
-  const chainId = useChainId();
-  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
-  const longAbi = contract.LongOption.abi;
+  const longAbi = useContract().LongOption.abi;
+  const { longAddress, shortAddress, collateralAddress, collateralDecimals, isExpired } = details;
+
   const handleAction = async () => {
+    if (!collateralAddress || !shortAddress || !longAddress) return;
+
     const { permitDetails, signature } = await getPermitSignature(
       collateralAddress,
       parseUnits(amount.toString(), Number(collateralDecimals)),
@@ -32,9 +23,9 @@ const MintInterface = ({
     );
 
     const actionConfig = {
-      address: optionAddress,
+      address: longAddress,
       abi: longAbi,
-      functionName: "mint2",
+      functionName: "mint",
       args: [parseUnits(amount.toString(), Number(collateralDecimals)), permitDetails, signature],
     };
 

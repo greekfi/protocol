@@ -15,8 +15,8 @@ import { ShortOption } from "./ShortOption.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
-// The Long Option contract is the only one that can mint new mint
-// The Long Option contract is the only one that can exercise mint
+// The Long Option contract is the only one that can mint new 
+// The Long Option contract is the only one that can exercise 
 // The redemption is only possible if you own both the Long and Short Option contracts but
 // performed by the Long Option contract
 

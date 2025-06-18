@@ -1,10 +1,11 @@
 import { Address } from "viem";
-import { useSignTypedData } from "wagmi";
+import { useChainId, useSignTypedData } from "wagmi";
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
 export const usePermit2 = () => {
   const { signTypedDataAsync } = useSignTypedData();
+  const chainId = useChainId();
 
   const getPermitSignature = async (token: Address, amount: bigint, spender: Address) => {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
@@ -23,7 +24,7 @@ export const usePermit2 = () => {
 
     const domain = {
       name: "Permit2",
-      chainId: 1, // You'll need to get this from your wagmi config
+      chainId, // You'll need to get this from your wagmi config
       verifyingContract: PERMIT2_ADDRESS,
     };
 

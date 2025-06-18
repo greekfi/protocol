@@ -1,24 +1,9 @@
 import { useState } from "react";
-import tokenList from "./tokenListLocal.json";
+import { useContract } from "./hooks/contract";
+import { Token, useTokenMap } from "./hooks/useTokenMap";
 import moment from "moment-timezone";
 import { Address } from "viem";
-import { useAccount, useChainId, useWriteContract } from "wagmi";
-import deployedContracts from "~~/contracts/deployedContracts";
-
-interface Token {
-  address: string;
-  symbol: string;
-  decimals: number;
-}
-
-// Create a map of all tokens for easy lookup
-const allTokensMap = tokenList.reduce(
-  (acc, token) => {
-    acc[token.symbol] = token;
-    return acc;
-  },
-  {} as Record<string, Token>,
-);
+import { useAccount, useWriteContract } from "wagmi";
 
 interface TokenSelectProps {
   label: string;
@@ -48,11 +33,12 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
 const Deploy = () => {
   const { isConnected } = useAccount();
   const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
+  const { allTokensMap } = useTokenMap();
+  console.log("allTokensMap", allTokensMap);
 
-  const chainId = useChainId();
-  const contract = deployedContracts[chainId as keyof typeof deployedContracts];
-  const abi = contract.OptionFactory.abi;
-  const contractAddress = contract.OptionFactory.address;
+  const contract = useContract();
+  const abi = contract?.OptionFactory?.abi;
+  const contractAddress = contract?.OptionFactory?.address;
 
   // Consolidated state
   const [formData, setFormData] = useState({

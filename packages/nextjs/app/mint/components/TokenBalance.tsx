@@ -4,8 +4,8 @@ import { useReadContract } from "wagmi";
 import { useAccount } from "wagmi";
 
 interface TokenBalanceProps {
-  tokenAddress: Address;
-  decimals: number;
+  tokenAddress: Address | undefined;
+  decimals: number | undefined;
   label: string;
 }
 
@@ -31,7 +31,7 @@ const TokenBalance = ({ tokenAddress, decimals, label }: TokenBalanceProps) => {
     },
   }) as { data: string };
 
-  const formattedBalance = formatUnits(balance as bigint, decimals);
+  const formattedBalance = formatUnits(balance as bigint, decimals ?? 18);
 
   return (
     <div className="text-sm text-gray-400 mb-2">
