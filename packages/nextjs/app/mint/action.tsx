@@ -27,8 +27,11 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const longAbi = useContract()?.LongOption?.abi;
   const collateralWei = parseUnits(amount.toString(), Number(collateralDecimals));
   const considerationWei = parseUnits(amount.toString(), Number(considerationDecimals));
-  const { getPermitSignature: mintSignature } = usePermit2(collateralAddress as Address, longAddress as Address);
-  const { getPermitSignature: exerciseSignature } = usePermit2(considerationAddress as Address, longAddress as Address);
+  const { getPermitSignature: mintSignature } = usePermit2(collateralAddress as Address, shortAddress as Address);
+  const { getPermitSignature: exerciseSignature } = usePermit2(
+    considerationAddress as Address,
+    shortAddress as Address,
+  );
 
   const redeem = async () => {
     if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
@@ -58,6 +61,14 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
     if (!collateralAddress || !shortAddress || !longAddress) return;
 
     const { permitDetails, signature } = await mintSignature(collateralWei);
+    console.log("permitDetails", permitDetails);
+    console.log("signature", signature);
+    console.log("collateralWei", collateralWei);
+    console.log("longAddress", longAddress);
+    console.log("shortAddress", shortAddress);
+    console.log("longAbi", longAbi);
+    console.log("functionName", "mint");
+    console.log("args", [collateralWei, permitDetails, signature]);
 
     const actionConfig = {
       address: longAddress,

@@ -12,6 +12,8 @@ export const usePermit2 = (token: Address, spender: Address) => {
   const getPermitSignature = async (amount: bigint) => {
     const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
+    console.log("nonce", nonce === undefined);
+    console.log("nonce", nonce);
     const permitDetails = {
       details: {
         token,
@@ -29,6 +31,7 @@ export const usePermit2 = (token: Address, spender: Address) => {
       verifyingContract: PERMIT2_ADDRESS,
       version: "1",
     };
+    console.log("domain", domain);
 
     const types = {
       PermitDetails: [
