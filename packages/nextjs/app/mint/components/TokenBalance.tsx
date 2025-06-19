@@ -1,5 +1,4 @@
-import erc20abi from "../erc20.json";
-import { Address, formatUnits } from "viem";
+import { Address, erc20Abi, formatUnits } from "viem";
 import { useReadContract } from "wagmi";
 import { useAccount } from "wagmi";
 
@@ -14,7 +13,7 @@ const TokenBalance = ({ tokenAddress, decimals, label }: TokenBalanceProps) => {
 
   const { data: balance = 0n } = useReadContract({
     address: tokenAddress,
-    abi: erc20abi,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: [userAddress as `0x${string}`],
     query: {
@@ -24,7 +23,7 @@ const TokenBalance = ({ tokenAddress, decimals, label }: TokenBalanceProps) => {
 
   const { data: symbol } = useReadContract({
     address: tokenAddress,
-    abi: erc20abi,
+    abi: erc20Abi,
     functionName: "symbol",
     query: {
       enabled: !!tokenAddress,

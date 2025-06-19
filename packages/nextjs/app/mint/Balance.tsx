@@ -1,6 +1,4 @@
-import erc20abi from "./erc20.json";
-// import { Statistic } from 'antd';
-import { Address, formatUnits } from "viem";
+import { Address, erc20Abi, formatUnits } from "viem";
 import { useReadContract } from "wagmi";
 
 const TokenBalance = ({
@@ -17,14 +15,14 @@ const TokenBalance = ({
 }) => {
   const { data: balance = 0n } = useReadContract({
     address: tokenAddress as Address,
-    abi: erc20abi,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: [userAddress],
   });
 
   const { data: decimals_ } = useReadContract({
     address: tokenAddress as Address,
-    abi: erc20abi,
+    abi: erc20Abi,
     functionName: "decimals",
   });
   if (!decimals) {
@@ -34,7 +32,7 @@ const TokenBalance = ({
 
   const { data: name = "" } = useReadContract({
     address: tokenAddress as Address,
-    abi: erc20abi,
+    abi: erc20Abi,
     functionName: "name",
   });
 

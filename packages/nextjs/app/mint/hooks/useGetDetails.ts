@@ -1,5 +1,5 @@
 // Import ABIs and addresses
-import { useContract } from "./contract";
+import { useContract } from "./useContract";
 import { Address, erc20Abi } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 

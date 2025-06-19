@@ -1,27 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import logo from "../../public/helmet-white.svg";
-import Deploy from "./Deploy";
+import Create from "./Create";
 import ContractDetails from "./Details";
+import Navbar from "./Navbar";
 import SelectOptionAddress from "./Selector";
-import { Account } from "./account";
 import Action from "./action";
-import { WalletSelector } from "./components/walletSelector";
-import { useOptionDetails } from "./hooks/details";
+import { useOptionDetails } from "./hooks/useGetDetails";
+import { useGetOptions } from "./hooks/useGetOptions";
 import { Address } from "viem";
-import { useAccount, useConfig } from "wagmi";
-
-function ConnectWallet() {
-  const { isConnected } = useAccount();
-  if (isConnected) return <Account />;
-  return <WalletSelector />;
-}
+import { useConfig } from "wagmi";
 
 function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address>("0x0");
+  const { refetch, optionList } = useGetOptions();
   const contractDetails = useOptionDetails(optionAddress);
   const wagmiConfig = useConfig();
   console.log("chain", wagmiConfig);
@@ -30,40 +22,12 @@ function OptionsApp() {
     <div className="min-h-screen bg-black text-gray-200">
       <main className="flex-1">
         <div className="flex flex-col gap-6 max-w-7xl mx-auto p-6">
-          <nav className="flex justify-between w-full">
-            <ul className="flex items-center space-x-6">
-              <li>
-                <Image src={logo} alt="Greek.fi" className="w-24 h-24" />
-              </li>
-              <li>
-                <Link href="/packages/nextjs/public" className="hover:text-blue-500">
-                  About GreekFi
-                </Link>
-              </li>
-              <li>
-                <Link href="https://github.com/greekfi/whitepaper" className="hover:text-blue-500">
-                  Whitepaper
-                </Link>
-              </li>
-              <li>
-                <Link href="mailto:hello@greek.fi" className="hover:text-blue-500 text-blue-300">
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <ConnectWallet />
-              </li>
-            </ul>
-          </nav>
-
-          <div>
-            <ContractDetails details={contractDetails} />
-          </div>
-
+          <Navbar />
+          <ContractDetails details={contractDetails} />
           <div className="space-y-2">
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
-                <SelectOptionAddress setOptionAddress={setOptionAddress} />
+                <SelectOptionAddress setOptionAddress={setOptionAddress} optionList={optionList} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
@@ -75,7 +39,7 @@ function OptionsApp() {
 
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
-                <Deploy />
+                <Create refetchOptions={refetch} />
               </div>
             </div>
           </div>

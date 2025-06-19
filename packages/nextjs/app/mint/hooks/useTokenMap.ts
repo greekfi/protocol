@@ -1,5 +1,5 @@
 import tokenList from "../tokenListLocal.json";
-import { useContract } from "./contract";
+import { useContract } from "./useContract";
 
 export interface Token {
   address: string;

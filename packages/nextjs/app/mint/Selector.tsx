@@ -1,52 +1,13 @@
 // Import ABIs and addresses
-import { useContract } from "./hooks/contract";
-import { Address, erc20Abi } from "viem";
-import { useReadContract, useReadContracts } from "wagmi";
+import { Address } from "viem";
 
-const SelectOptionAddress = ({ setOptionAddress }: { setOptionAddress: (address: Address) => void }) => {
-  const handleOptionChange = (optionAddress: string) => {
-    setOptionAddress(optionAddress as Address);
-  };
-
-  const contract = useContract();
-  const abi = contract?.OptionFactory?.abi;
-
-  const { data: createdOptions, error } = useReadContract({
-    address: contract?.OptionFactory?.address,
-    abi,
-    functionName: "getCreatedOptions",
-    query: {
-      enabled: !!contract?.OptionFactory?.address,
-    },
-  });
-
-  console.log("createdOptions", createdOptions);
-  console.log("error", error);
-
-  const { data, error: error_ } = useReadContracts({
-    contracts: ((createdOptions as Address[]) || [])
-      .map((option: Address) =>
-        option
-          ? {
-              address: option,
-              abi: erc20Abi,
-              functionName: "name",
-            }
-          : undefined,
-      )
-      .filter(option => option !== undefined),
-    query: {
-      enabled: !!createdOptions,
-    },
-  });
-  const optionNames = data || [];
-  // combine option names with mint
-  const optionList = (optionNames || []).map((option, index) => ({
-    name: option.result,
-    address: ((createdOptions as Address[]) || [])[index],
-  }));
-
-  console.log("error", error_);
+const SelectOptionAddress = ({
+  setOptionAddress,
+  optionList,
+}: {
+  setOptionAddress: (address: Address) => void;
+  optionList: { name: string; address: Address }[];
+}) => {
   console.log("optionList", optionList);
 
   return (
@@ -56,7 +17,7 @@ const SelectOptionAddress = ({ setOptionAddress }: { setOptionAddress: (address:
         <div className="flex justify-center w-full">
           <select
             className=" p-2 text-center rounded-lg border border-gray-800 bg-black/60 text-blue-300 w-64"
-            onChange={e => handleOptionChange(e.target.value)}
+            onChange={e => setOptionAddress(e.target.value as Address)}
           >
             <option value="">Select an option</option>
             {optionList.map(option => (

@@ -1,4 +1,4 @@
-import { useOptionDetails } from "./hooks/details";
+import { useOptionDetails } from "./hooks/useGetDetails";
 
 const ContractDetails = ({ details }: { details: ReturnType<typeof useOptionDetails> }) => {
   const isValidOptionAddress = Boolean(details.longAddress && details.longAddress !== "0x0");

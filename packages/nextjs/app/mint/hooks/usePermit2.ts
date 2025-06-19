@@ -1,15 +1,16 @@
+import { useGetNonce } from "./useGetNonce";
 import { Address } from "viem";
 import { useChainId, useSignTypedData } from "wagmi";
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
-export const usePermit2 = () => {
+export const usePermit2 = (token: Address, spender: Address) => {
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = useChainId();
+  const nonce = useGetNonce(token, spender);
 
-  const getPermitSignature = async (token: Address, amount: bigint, spender: Address) => {
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
-    const nonce = BigInt(Math.floor(Math.random() * 1000000)); // You might want to get this from the contract
+  const getPermitSignature = async (amount: bigint) => {
+    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
     const permitDetails = {
       details: {
@@ -24,8 +25,9 @@ export const usePermit2 = () => {
 
     const domain = {
       name: "Permit2",
-      chainId, // You'll need to get this from your wagmi config
+      chainId,
       verifyingContract: PERMIT2_ADDRESS,
+      version: "1",
     };
 
     const types = {

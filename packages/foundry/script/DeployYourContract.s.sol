@@ -38,7 +38,7 @@ contract DeployYourContract is ScaffoldETHDeploy {
             "Long Option", "LONG", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false, address(short)
         );
 
-        OptionFactory optionFactory = new OptionFactory(address(short), address(long));
+        new OptionFactory(address(short), address(long));
 
 
         // deployments.push(Deployment("ShortOption", address(short)));

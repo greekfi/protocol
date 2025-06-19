@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useContract } from "./hooks/contract";
+import { useContract } from "./hooks/useContract";
 import { Token, useTokenMap } from "./hooks/useTokenMap";
 import moment from "moment-timezone";
 import { Address } from "viem";
@@ -30,7 +30,7 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
   </div>
 );
 
-const Deploy = () => {
+const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
   const { isConnected } = useAccount();
   const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
   const { allTokensMap } = useTokenMap();
@@ -98,23 +98,30 @@ const Deploy = () => {
     console.log("isPut", isPut);
 
     try {
-      writeContract({
-        address: contractAddress,
-        abi,
-        functionName: "createOption",
-        args: [
-          longName,
-          shortName,
-          longName,
-          shortName,
-          collateralToken.address as Address,
-          considerationToken.address as Address,
-          BigInt(expTimestamp),
-          strikeInteger,
-          isPut,
-        ],
-      });
-      console.log("committed transaction", hash);
+      writeContract(
+        {
+          address: contractAddress,
+          abi,
+          functionName: "createOption",
+          args: [
+            longName,
+            shortName,
+            longName,
+            shortName,
+            collateralToken.address as Address,
+            considerationToken.address as Address,
+            BigInt(expTimestamp),
+            strikeInteger,
+            isPut,
+          ],
+        },
+        {
+          onSuccess: () => {
+            console.log("committed transaction", hash);
+            refetchOptions();
+          },
+        },
+      );
     } catch (error) {
       console.error("Error creating option:", error);
       alert("Failed to create option. Check console for details.");
@@ -344,4 +351,4 @@ const Deploy = () => {
   );
 };
 
-export default Deploy;
+export default Create;

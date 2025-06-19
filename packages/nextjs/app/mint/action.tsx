@@ -1,10 +1,10 @@
 import { useState } from "react";
 import TokenBalance from "./components/TokenBalance";
 import TooltipButton from "./components/TooltipButton";
-import { useContract } from "./hooks/contract";
-import { useOptionDetails } from "./hooks/details";
+import { useContract } from "./hooks/useContract";
+import { useOptionDetails } from "./hooks/useGetDetails";
 import { usePermit2 } from "./hooks/usePermit2";
-import { Abi, parseUnits } from "viem";
+import { Abi, Address, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
 
 interface ActionInterfaceProps {
@@ -25,6 +25,49 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const longAbi = useContract()?.LongOption?.abi;
+  const collateralWei = parseUnits(amount.toString(), Number(collateralDecimals));
+  const considerationWei = parseUnits(amount.toString(), Number(considerationDecimals));
+  const { getPermitSignature: mintSignature } = usePermit2(collateralAddress as Address, longAddress as Address);
+  const { getPermitSignature: exerciseSignature } = usePermit2(considerationAddress as Address, longAddress as Address);
+
+  const redeem = async () => {
+    if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
+    const redeemConfig = {
+      address: isExpired ? longAddress : shortAddress,
+      abi: longAbi,
+      functionName: "redeem",
+      args: [collateralWei],
+    };
+    writeContract(redeemConfig as any);
+  };
+
+  const exercise = async () => {
+    if (!amount || !considerationAddress || !longAddress) return;
+
+    const { permitDetails, signature } = await exerciseSignature(considerationWei);
+
+    writeContract({
+      address: longAddress,
+      abi: longAbi as Abi,
+      functionName: "exercise",
+      args: [considerationWei, permitDetails, signature],
+    });
+  };
+
+  const mint = async () => {
+    if (!collateralAddress || !shortAddress || !longAddress) return;
+
+    const { permitDetails, signature } = await mintSignature(collateralWei);
+
+    const actionConfig = {
+      address: longAddress,
+      abi: longAbi,
+      functionName: "mint",
+      args: [collateralWei, permitDetails, signature],
+    };
+
+    writeContract(actionConfig as any);
+  };
 
   const handleAction = async () => {
     if (action === "redeem") {
@@ -34,54 +77,6 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
     } else if (action === "mint") {
       await mint();
     }
-  };
-
-  const { getPermitSignature } = usePermit2();
-
-  const redeem = async () => {
-    if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
-    const amountInWei = parseUnits(amount.toString(), Number(collateralDecimals));
-    const redeemConfig = {
-      address: isExpired ? longAddress : shortAddress,
-      abi: longAbi,
-      functionName: "redeem",
-      args: [amountInWei],
-    };
-    writeContract(redeemConfig as any);
-  };
-
-  const exercise = async () => {
-    if (!amount || !considerationAddress || !longAddress) return;
-
-    const amountInWei = parseUnits(amount.toString(), Number(considerationDecimals));
-    const { permitDetails, signature } = await getPermitSignature(considerationAddress, amountInWei, longAddress);
-
-    writeContract({
-      address: longAddress,
-      abi: longAbi as Abi,
-      functionName: "exercise",
-      args: [amountInWei, permitDetails, signature],
-    });
-  };
-
-  const mint = async () => {
-    if (!collateralAddress || !shortAddress || !longAddress) return;
-
-    const { permitDetails, signature } = await getPermitSignature(
-      collateralAddress,
-      parseUnits(amount.toString(), Number(collateralDecimals)),
-      shortAddress,
-    );
-
-    const actionConfig = {
-      address: longAddress,
-      abi: longAbi,
-      functionName: "mint",
-      chainId: 31337,
-      args: [parseUnits(amount.toString(), Number(collateralDecimals)), permitDetails, signature],
-    };
-
-    writeContract(actionConfig as any);
   };
 
   const title = {
