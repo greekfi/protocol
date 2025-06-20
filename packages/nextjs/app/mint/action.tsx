@@ -10,6 +10,7 @@ import { Abi, Address, erc20Abi, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
 
 const STRIKE_DECIMALS = 10n ** 18n;
+const MAX_UINT256 = 2n ** 256n - 1n;
 
 const toConsideration = (amount: bigint, strike: bigint): bigint => {
   return (amount * strike) / STRIKE_DECIMALS;
@@ -48,10 +49,10 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const redeem = async () => {
     if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
     const redeemConfig = {
-      address: isExpired ? longAddress : shortAddress,
+      address: isExpired ? shortAddress : longAddress,
       abi: longAbi,
       functionName: "redeem",
-      args: [collateralWei],
+      args: [amountWei],
     };
     writeContract(redeemConfig as any);
   };
@@ -59,19 +60,21 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const exercise = async () => {
     if (!amount || !considerationAddress || !longAddress || !details.strike) return;
 
-    const strike = details.strike;
-    const considerationWei = toConsideration(amountWei, strike);
-    const { permit, signature, transferDetails } = await exerciseSignature(considerationWei);
+    const considerationWei = toConsideration(amountWei, details.strike);
 
     if (!considerationAllowance || considerationAllowance < considerationWei) {
       writeContract({
         address: considerationAddress,
         abi: erc20Abi,
         functionName: "approve",
-        args: [PERMIT2_ADDRESS, 2n ** 256n - 1n],
+        args: [PERMIT2_ADDRESS, MAX_UINT256],
       } as any);
     }
 
+    const { permit, signature, transferDetails } = await exerciseSignature(considerationWei);
+    console.log("permit", permit);
+    console.log("signature", signature);
+    console.log("transferDetails", transferDetails);
     writeContract({
       address: longAddress,
       abi: longAbi as Abi,
@@ -83,24 +86,16 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const mint = async () => {
     if (!collateralAddress || !shortAddress || !longAddress) return;
 
-    const { permit, signature, transferDetails } = await mintSignature(collateralWei);
-    console.log("permit", permit);
-    console.log("signature", signature);
-    console.log("collateralWei", collateralWei);
-    console.log("longAddress", longAddress);
-    console.log("shortAddress", shortAddress);
-    console.log("longAbi", longAbi);
-    console.log("functionName", "mint");
-
     if (!collateralAllowance || collateralAllowance < collateralWei) {
       writeContract({
         address: collateralAddress,
         abi: erc20Abi,
         functionName: "approve",
-        args: [PERMIT2_ADDRESS, 2n ** 256n - 1n],
+        args: [PERMIT2_ADDRESS, MAX_UINT256],
       } as any);
     }
 
+    const { permit, signature, transferDetails } = await mintSignature(collateralWei);
     writeContract({
       address: longAddress,
       abi: longAbi as Abi,
@@ -131,7 +126,6 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   }[action];
 
   const buttonColor = { notAllowed: "bg-blue-300 cursor-not-allowed", allowed: "bg-blue-500 hover:bg-blue-600" };
-
   const buttonClass = `px-4 py-2 rounded-lg text-black transition-transform hover:scale-105 ${
     !amount || isPending ? buttonColor.notAllowed : buttonColor.allowed
   }`;

@@ -29,6 +29,7 @@ using SafeERC20 for IERC20;
 contract LongOption is OptionBase {
     ShortOption public shortOption;
 
+    event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
 
     constructor(
@@ -50,8 +51,9 @@ contract LongOption is OptionBase {
         validAmount(transferDetails.requestedAmount)
         notExpired
     {
-        _mint(msg.sender, transferDetails.requestedAmount);
         shortOption.mint(permit, transferDetails, msg.sender, signature);
+        _mint(msg.sender, transferDetails.requestedAmount);
+        emit Mint(address(this), msg.sender, transferDetails.requestedAmount);
     }
 
     function exercise(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
@@ -65,12 +67,6 @@ contract LongOption is OptionBase {
         emit Exercise(address(this), msg.sender, transferDetails.requestedAmount);
     }
 
-    function permit_(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
-        public
-    {
-        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
-    }
-
     function redeem(uint256 amount)
         public
         notExpired
@@ -78,8 +74,6 @@ contract LongOption is OptionBase {
         sufficientBalance(msg.sender, amount)
         validAmount(amount)
     {
-        if (shortOption.balanceOf(msg.sender) < amount) revert InsufficientBalance();
-
         _burn(msg.sender, amount);
         shortOption._redeemPair(msg.sender, amount);
     }

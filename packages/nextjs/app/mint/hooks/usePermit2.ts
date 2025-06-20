@@ -1,17 +1,22 @@
-import { useGetNonce } from "./useGetNonce";
 import { PermitTransferFrom, SignatureTransfer } from "@uniswap/permit2-sdk";
 import { Address, recoverAddress } from "viem";
 import { useChainId, useSignTypedData } from "wagmi";
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+const generateNonce = () => {
+  const now = BigInt(Date.now()); // milliseconds
+  const rand = BigInt(Math.floor(Math.random() * 1e6)); // up to ~20 bits
+  const nonce = (now << 20n) | rand; // shift timestamp to make room for rand bits
+  return nonce & ((1n << 48n) - 1n); // ensure it’s uint48
+};
 
 export const usePermit2 = (token: Address, spender: Address) => {
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = useChainId();
-  const nonce = useGetNonce(token, spender);
 
   const getPermitSignature = async (amount: bigint) => {
     const PERMIT_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const nonce = generateNonce();
 
     /**
      * Converts an expiration (in milliseconds) to a deadline (in seconds) suitable for the EVM.
@@ -51,6 +56,7 @@ export const usePermit2 = (token: Address, spender: Address) => {
       signature,
     });
     console.log("recoveredAddress", recoveredAddress);
+    console.log("nonce", nonce);
 
     return { permit, signature, transferDetails };
   };

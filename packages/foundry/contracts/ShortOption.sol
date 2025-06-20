@@ -27,8 +27,8 @@ contract ShortOption is OptionBase {
 
     event Redemption(address longOption, address holder, uint256 amount);
 
-    modifier sufficientCollateral(address contractHolder, uint256 amount) {
-        if (collateral.balanceOf(contractHolder) < amount) {
+    modifier sufficientCollateral(address owner, uint256 amount) {
+        if (collateral.balanceOf(owner) < amount) {
             revert InsufficientBalance();
         }
         _;
@@ -111,7 +111,6 @@ contract ShortOption is OptionBase {
         uint256 considerationAmount = toConsideration(amount);
         if (consideration.balanceOf(address(this)) < considerationAmount) revert InsufficientBalance();
         _burn(to, amount);
-        // Transfer consideration tokens for the remaining amount
         consideration.safeTransfer(to, considerationAmount);
         emit Redemption(address(longOption), to, amount);
     }
@@ -131,9 +130,9 @@ contract ShortOption is OptionBase {
     function _exercise(
         IPermit2.PermitTransferFrom calldata permit, 
         IPermit2.SignatureTransferDetails calldata transferDetails, 
-        address owner, bytes calldata signature
-        ) 
-    public notExpired onlyOwner nonReentrant {
+        address owner, 
+        bytes calldata signature
+        ) public notExpired onlyOwner nonReentrant {
         if (consideration.balanceOf(owner) < transferDetails.requestedAmount) revert InsufficientBalance();
         
         PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
@@ -142,9 +141,10 @@ contract ShortOption is OptionBase {
     function exercise(
         IPermit2.PermitTransferFrom calldata permit, 
         IPermit2.SignatureTransferDetails calldata transferDetails, 
-        address contractHolder, bytes calldata signature
+        address owner, 
+        bytes calldata signature
         ) public notExpired onlyOwner {
-        _exercise(permit, transferDetails, contractHolder, signature);
+        _exercise(permit, transferDetails, owner, signature);
     }
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {
