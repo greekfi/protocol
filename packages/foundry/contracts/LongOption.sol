@@ -44,25 +44,31 @@ contract LongOption is OptionBase {
         shortOption = ShortOption(shortOptionAddress_);
     }
 
-    function mint(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
         public
         nonReentrant
-        validAmount(amount)
+        validAmount(transferDetails.requestedAmount)
         notExpired
     {
-        _mint(msg.sender, amount);
-        shortOption.mint(msg.sender, amount, permitDetails, signature);
+        _mint(msg.sender, transferDetails.requestedAmount);
+        shortOption.mint(permit, transferDetails, msg.sender, signature);
     }
 
-    function exercise(uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function exercise(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
         public
         notExpired
         nonReentrant
-        validAmount(amount)
+        validAmount(transferDetails.requestedAmount)
     {
-        _burn(msg.sender, amount);
-        shortOption.exercise(msg.sender, amount, permitDetails, signature);
-        emit Exercise(address(this), msg.sender, amount);
+        _burn(msg.sender, transferDetails.requestedAmount);
+        shortOption.exercise(permit, transferDetails, msg.sender, signature);
+        emit Exercise(address(this), msg.sender, transferDetails.requestedAmount);
+    }
+
+    function permit_(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
+        public
+    {
+        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
     }
 
     function redeem(uint256 amount)

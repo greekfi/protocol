@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     StableToken: {
-      address: "0x10e7c08bd22dde461d361628fa6bbd2f2c195852",
+      address: "0xcc4da2e24f49ec0c81a2c53aed46017b7c72ca00",
       abi: [
         {
           type: "constructor",
@@ -429,11 +429,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750314927.json",
+      deploymentFile: "run-1750400034.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x0ae047f518188f1fabc45f762290ff2d5882cfda",
+      address: "0x544b0ef4f396878e63cc62230ceba63c060c0929",
       abi: [
         {
           type: "constructor",
@@ -855,11 +855,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750314927.json",
+      deploymentFile: "run-1750400034.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0xd793617f9888e00087570f8e8b61a7d51f033b0a",
+      address: "0xf930945a7d7cda7aacf41578ff07d3715841473b",
       abi: [
         {
           type: "constructor",
@@ -933,14 +933,65 @@ const deployedContracts = {
           name: "_exercise",
           inputs: [
             {
-              name: "contractHolder",
+              name: "permit",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
+              components: [
+                {
+                  name: "permitted",
+                  type: "tuple",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
+                  components: [
+                    {
+                      name: "token",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "amount",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                  ],
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
               type: "address",
               internalType: "address",
             },
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -1075,24 +1126,14 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "contractHolder",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -1101,32 +1142,44 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
-                  type: "address",
-                  internalType: "address",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "deadline",
                   type: "uint256",
                   internalType: "uint256",
                 },
               ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
             {
               name: "signature",
@@ -1237,24 +1290,14 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "to",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -1263,32 +1306,44 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
-                  type: "address",
-                  internalType: "address",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "deadline",
                   type: "uint256",
                   internalType: "uint256",
                 },
               ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
             {
               name: "signature",
@@ -1748,11 +1803,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750314927.json",
+      deploymentFile: "run-1750400034.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0xcea7af0eec267ad233ba5a6b512671562d9201f4",
+      address: "0xaef0e14ed994eb77c9ddf72fa1e5bdde9c3ecfd8",
       abi: [
         {
           type: "constructor",
@@ -1937,19 +1992,14 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -1958,28 +2008,35 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "requestedAmount",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -2081,19 +2138,14 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -2102,28 +2154,35 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "requestedAmount",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -2163,6 +2222,75 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "permit_",
+          inputs: [
+            {
+              name: "permit",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
+              components: [
+                {
+                  name: "permitted",
+                  type: "tuple",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
+                  components: [
+                    {
+                      name: "token",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "amount",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                  ],
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -2563,11 +2691,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750314927.json",
+      deploymentFile: "run-1750400034.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xeb2bb99ad6adb6d18231fa2ac0d058e5ccd9de1b",
+      address: "0x97eac28abebdc1248f18be1fab731c4a89f94a18",
       abi: [
         {
           type: "constructor",
@@ -2900,7 +3028,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750314927.json",
+      deploymentFile: "run-1750400034.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -3832,14 +3960,65 @@ const deployedContracts = {
           name: "_exercise",
           inputs: [
             {
-              name: "contractHolder",
+              name: "permit",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
+              components: [
+                {
+                  name: "permitted",
+                  type: "tuple",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
+                  components: [
+                    {
+                      name: "token",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "amount",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                  ],
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
               type: "address",
               internalType: "address",
             },
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -3974,24 +4153,14 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "contractHolder",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -4000,32 +4169,44 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
-                  type: "address",
-                  internalType: "address",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "deadline",
                   type: "uint256",
                   internalType: "uint256",
                 },
               ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
             {
               name: "signature",
@@ -4136,24 +4317,14 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "to",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -4162,32 +4333,44 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
-                  type: "address",
-                  internalType: "address",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "deadline",
                   type: "uint256",
                   internalType: "uint256",
                 },
               ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
             {
               name: "signature",
@@ -4836,19 +5019,14 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -4857,28 +5035,35 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "requestedAmount",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -4980,19 +5165,14 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "permitDetails",
+              name: "permit",
               type: "tuple",
-              internalType: "struct IAllowanceTransfer.PermitSingle",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
               components: [
                 {
-                  name: "details",
+                  name: "permitted",
                   type: "tuple",
-                  internalType: "struct IAllowanceTransfer.PermitDetails",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
                   components: [
                     {
                       name: "token",
@@ -5001,28 +5181,35 @@ const deployedContracts = {
                     },
                     {
                       name: "amount",
-                      type: "uint160",
-                      internalType: "uint160",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint48",
-                      internalType: "uint48",
-                    },
-                    {
-                      name: "nonce",
-                      type: "uint48",
-                      internalType: "uint48",
+                      type: "uint256",
+                      internalType: "uint256",
                     },
                   ],
                 },
                 {
-                  name: "spender",
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "sigDeadline",
+                  name: "requestedAmount",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -5062,6 +5249,75 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "permit_",
+          inputs: [
+            {
+              name: "permit",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.PermitTransferFrom",
+              components: [
+                {
+                  name: "permitted",
+                  type: "tuple",
+                  internalType: "struct ISignatureTransfer.TokenPermissions",
+                  components: [
+                    {
+                      name: "token",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "amount",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                  ],
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "deadline",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "transferDetails",
+              type: "tuple",
+              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+              components: [
+                {
+                  name: "to",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "requestedAmount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",

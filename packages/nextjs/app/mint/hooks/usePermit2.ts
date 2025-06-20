@@ -1,5 +1,6 @@
 import { useGetNonce } from "./useGetNonce";
-import { Address } from "viem";
+import { PermitTransferFrom, SignatureTransfer } from "@uniswap/permit2-sdk";
+import { Address, recoverAddress } from "viem";
 import { useChainId, useSignTypedData } from "wagmi";
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
@@ -10,51 +11,48 @@ export const usePermit2 = (token: Address, spender: Address) => {
   const nonce = useGetNonce(token, spender);
 
   const getPermitSignature = async (amount: bigint) => {
-    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+    const PERMIT_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
-    console.log("nonce", nonce === undefined);
-    console.log("nonce", nonce);
-    const permitDetails = {
-      details: {
-        token,
-        amount,
-        expiration: deadline,
-        nonce,
+    /**
+     * Converts an expiration (in milliseconds) to a deadline (in seconds) suitable for the EVM.
+     * Permit2 expresses expirations as deadlines, but JavaScript usually uses milliseconds,
+     * so this is provided as a convenience function.
+     */
+    function toDeadline(expiration: number): number {
+      return Math.floor((Date.now() + expiration) / 1000);
+    }
+
+    const permit: PermitTransferFrom = {
+      permitted: {
+        token: token,
+        amount: amount,
       },
-      spender,
-      sigDeadline: deadline,
+      spender: spender,
+      nonce: nonce ?? 0n,
+      deadline: toDeadline(PERMIT_EXPIRATION),
     };
 
-    const domain = {
-      name: "Permit2",
-      chainId,
-      verifyingContract: PERMIT2_ADDRESS,
-      version: "1",
-    };
-    console.log("domain", domain);
-
-    const types = {
-      PermitDetails: [
-        { name: "token", type: "address" },
-        { name: "amount", type: "uint160" },
-        { name: "expiration", type: "uint48" },
-        { name: "nonce", type: "uint48" },
-      ],
-      PermitSingle: [
-        { name: "details", type: "PermitDetails" },
-        { name: "spender", type: "address" },
-        { name: "sigDeadline", type: "uint256" },
-      ],
-    };
-
+    const { domain, types, values } = SignatureTransfer.getPermitData(permit, PERMIT2_ADDRESS, chainId);
+    const digest = SignatureTransfer.hash(permit, PERMIT2_ADDRESS, chainId);
     const signature = await signTypedDataAsync({
-      domain,
-      types,
-      primaryType: "PermitSingle",
-      message: permitDetails,
+      domain: domain as any,
+      types: types as any,
+      primaryType: "PermitTransferFrom",
+      message: values as any,
     });
 
-    return { permitDetails, signature };
+    const transferDetails = {
+      to: spender,
+      requestedAmount: amount,
+    };
+
+    const recoveredAddress = await recoverAddress({
+      hash: digest as `0x${string}`,
+      signature,
+    });
+    console.log("recoveredAddress", recoveredAddress);
+
+    return { permit, signature, transferDetails };
   };
 
   return { getPermitSignature };

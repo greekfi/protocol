@@ -1,11 +1,19 @@
 import { useState } from "react";
 import TokenBalance from "./components/TokenBalance";
 import TooltipButton from "./components/TooltipButton";
+import { useAllowanceCheck } from "./hooks/useAllowanceCheck";
 import { useContract } from "./hooks/useContract";
 import { useOptionDetails } from "./hooks/useGetDetails";
 import { usePermit2 } from "./hooks/usePermit2";
-import { Abi, Address, parseUnits } from "viem";
+import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
+import { Abi, Address, erc20Abi, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
+
+const STRIKE_DECIMALS = 10n ** 18n;
+
+const toConsideration = (amount: bigint, strike: bigint): bigint => {
+  return (amount * strike) / STRIKE_DECIMALS;
+};
 
 interface ActionInterfaceProps {
   details: ReturnType<typeof useOptionDetails>;
@@ -26,11 +34,15 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   const { writeContract, isPending } = useWriteContract();
   const longAbi = useContract()?.LongOption?.abi;
   const collateralWei = parseUnits(amount.toString(), Number(collateralDecimals));
-  const considerationWei = parseUnits(amount.toString(), Number(considerationDecimals));
+  const amountWei = parseUnits(amount.toString(), Number(considerationDecimals));
   const { getPermitSignature: mintSignature } = usePermit2(collateralAddress as Address, shortAddress as Address);
   const { getPermitSignature: exerciseSignature } = usePermit2(
     considerationAddress as Address,
     shortAddress as Address,
+  );
+  const { considerationAllowance, collateralAllowance } = useAllowanceCheck(
+    considerationAddress as Address,
+    collateralAddress as Address,
   );
 
   const redeem = async () => {
@@ -45,39 +57,56 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   };
 
   const exercise = async () => {
-    if (!amount || !considerationAddress || !longAddress) return;
+    if (!amount || !considerationAddress || !longAddress || !details.strike) return;
 
-    const { permitDetails, signature } = await exerciseSignature(considerationWei);
+    const strike = details.strike;
+    const considerationWei = toConsideration(amountWei, strike);
+    const { permit, signature, transferDetails } = await exerciseSignature(considerationWei);
+
+    if (!considerationAllowance || considerationAllowance < considerationWei) {
+      writeContract({
+        address: considerationAddress,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [PERMIT2_ADDRESS, 2n ** 256n - 1n],
+      } as any);
+    }
 
     writeContract({
       address: longAddress,
       abi: longAbi as Abi,
       functionName: "exercise",
-      args: [considerationWei, permitDetails, signature],
+      args: [permit, transferDetails, signature],
     });
   };
 
   const mint = async () => {
     if (!collateralAddress || !shortAddress || !longAddress) return;
 
-    const { permitDetails, signature } = await mintSignature(collateralWei);
-    console.log("permitDetails", permitDetails);
+    const { permit, signature, transferDetails } = await mintSignature(collateralWei);
+    console.log("permit", permit);
     console.log("signature", signature);
     console.log("collateralWei", collateralWei);
     console.log("longAddress", longAddress);
     console.log("shortAddress", shortAddress);
     console.log("longAbi", longAbi);
     console.log("functionName", "mint");
-    console.log("args", [collateralWei, permitDetails, signature]);
 
-    const actionConfig = {
+    if (!collateralAllowance || collateralAllowance < collateralWei) {
+      writeContract({
+        address: collateralAddress,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [PERMIT2_ADDRESS, 2n ** 256n - 1n],
+      } as any);
+    }
+
+    writeContract({
       address: longAddress,
-      abi: longAbi,
+      abi: longAbi as Abi,
       functionName: "mint",
-      args: [collateralWei, permitDetails, signature],
-    };
-
-    writeContract(actionConfig as any);
+      args: [permit, transferDetails, signature],
+    });
   };
 
   const handleAction = async () => {

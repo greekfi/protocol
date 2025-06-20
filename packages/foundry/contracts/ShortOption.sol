@@ -48,25 +48,22 @@ contract ShortOption is OptionBase {
         longOption = longOption_;
     }
 
-    function mint(address to, uint256 amount, IPermit2.PermitSingle calldata permitDetails, bytes calldata signature)
+    function mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
         public
         onlyOwner
-        sufficientCollateral(to, amount)
-        validAmount(amount)
+        validAmount(transferDetails.requestedAmount)
         notExpired
     {
-        PERMIT2.permit(to, permitDetails, signature);
-        __mint(to, amount);
+        __mint(permit, transferDetails, owner, signature);
     }
 
-    function __mint(address to, uint256 amount)
+    function __mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
         private
         nonReentrant
-        sufficientCollateral(to, amount)
-        validAmount(amount)
+        validAmount(transferDetails.requestedAmount)
     {
-        PERMIT2.transferFrom(to, address(this), uint160(amount), address(collateral));
-        _mint(to, amount);
+        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
+        _mint(owner, transferDetails.requestedAmount);
     }
 
     function _redeem(address to, uint256 amount)
@@ -127,26 +124,27 @@ contract ShortOption is OptionBase {
         _redeem(to, amount);
     }
 
-    function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) expired {
+    function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) {
         _redeemConsideration(msg.sender, amount);
     }
 
-    function _exercise(address contractHolder, uint256 amount) public notExpired onlyOwner nonReentrant {
-        uint256 considerationAmount = toConsideration(amount);
-        if (consideration.balanceOf(contractHolder) < considerationAmount) revert InsufficientBalance();
-
-        PERMIT2.transferFrom(contractHolder, address(this), uint160(considerationAmount), address(consideration));
-        collateral.safeTransfer(contractHolder, amount);
+    function _exercise(
+        IPermit2.PermitTransferFrom calldata permit, 
+        IPermit2.SignatureTransferDetails calldata transferDetails, 
+        address owner, bytes calldata signature
+        ) 
+    public notExpired onlyOwner nonReentrant {
+        if (consideration.balanceOf(owner) < transferDetails.requestedAmount) revert InsufficientBalance();
+        
+        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
     }
 
     function exercise(
-        address contractHolder,
-        uint256 amount,
-        IPermit2.PermitSingle calldata permitDetails,
-        bytes calldata signature
-    ) public notExpired onlyOwner {
-        PERMIT2.permit(contractHolder, permitDetails, signature);
-        _exercise(contractHolder, amount);
+        IPermit2.PermitTransferFrom calldata permit, 
+        IPermit2.SignatureTransferDetails calldata transferDetails, 
+        address contractHolder, bytes calldata signature
+        ) public notExpired onlyOwner {
+        _exercise(permit, transferDetails, contractHolder, signature);
     }
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {

@@ -128,6 +128,15 @@ export const useOptionDetails = (longAddress: Address) => {
     },
   });
 
+  const { data: strike } = useReadContract({
+    address: longAddress as Address,
+    functionName: "strike",
+    abi,
+    query: {
+      enabled: !!longAddress,
+    },
+  });
+
   const isExpired = expirationDate ? Date.now() / 1000 > Number(expirationDate) : false;
 
   console.log("balanceLong", balanceLong);
@@ -144,6 +153,7 @@ export const useOptionDetails = (longAddress: Address) => {
   console.log("considerationName", considerationName);
   console.log("collateralDecimals", collateralDecimals);
   console.log("longName", longName);
+  console.log("strike", strike);
 
   // Format option name for display
   const formatOptionName = (name: string) => {
@@ -184,6 +194,7 @@ export const useOptionDetails = (longAddress: Address) => {
     considerationDecimals: considerationDecimals,
     considerationBalance: balanceConsideration,
     expirationDate: expirationDate,
+    strike: strike,
     isExpired: isExpired,
   };
 };
