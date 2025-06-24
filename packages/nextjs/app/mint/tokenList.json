@@ -1,15 +1,5 @@
 [
   {
-    "address": "0x8ce361602b935680e8dec218b820ff5056beb7af",
-    "symbol": "STK",
-    "decimals": 18
-  },
-  {
-    "address": "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
-    "symbol": "SHK",
-    "decimals": 18
-  },
-  {
     "address": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
     "symbol": "osETH",
     "decimals": 18
@@ -17,11 +7,6 @@
   {
     "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "symbol": "USDC",
-    "decimals": 6
-  },
-  {
-    "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    "symbol": "USDCT",
     "decimals": 6
   },
   {
@@ -40,28 +25,8 @@
     "decimals": 18
   },
   {
-    "address": "0xDfa556856B77dA71F70D56C9fD1Ef4Dd891FF131",
-    "symbol": "WBTCt",
-    "decimals": 18
-  },
-  {
-    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "symbol": "USDC",
-    "decimals": 6
-  },
-  {
-    "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-    "symbol": "DAI",
-    "decimals": 18
-  },
-  {
-    "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    "symbol": "USDCT",
-    "decimals": 6
-  },
-  {
-    "address": "0xe101FB315a64cDa9944E570a7bFfaFE60b994b1D",
-    "symbol": "RLUSD",
+    "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+    "symbol": "UNI",
     "decimals": 18
   }
 ]
