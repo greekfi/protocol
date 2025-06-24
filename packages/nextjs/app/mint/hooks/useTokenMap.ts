@@ -1,5 +1,6 @@
-import tokenList from "../tokenListLocal.json";
+import tokenList from "../tokenList.json";
 import { useContract } from "./useContract";
+import { useChainId } from "wagmi";
 
 export interface Token {
   address: string;
@@ -8,6 +9,7 @@ export interface Token {
 }
 
 export const useTokenMap = () => {
+  const chainId = useChainId();
   const contract = useContract();
   const stableToken = contract?.StableToken;
   const shakyToken = contract?.ShakyToken;
@@ -20,9 +22,10 @@ export const useTokenMap = () => {
     },
     {} as Record<string, Token>,
   );
+  console.log("chainId", chainId);
 
   // If we have stable and shaky tokens, override the token list
-  if (stableToken && shakyToken) {
+  if (chainId != 1 && stableToken && shakyToken) {
     Object.keys(allTokensMap).forEach(key => {
       delete allTokensMap[key];
     });
