@@ -106,8 +106,6 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
           args: [
             longName,
             shortName,
-            longName,
-            shortName,
             collateralToken.address as Address,
             considerationToken.address as Address,
             BigInt(expTimestamp),

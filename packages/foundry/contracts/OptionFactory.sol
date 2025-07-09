@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.30;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import { IPermit2 } from "./interfaces/IPermit2.sol";
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
@@ -26,6 +24,27 @@ using SafeERC20 for IERC20;
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
 
+struct OptionInfo {
+    address optionAddress;
+    uint256 expiration;
+    uint256 strike;
+    }
+
+struct Option {
+    string longSymbol;
+    string shortSymbol;
+    address collateral;
+    address consideration;
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
+}
+
+struct OptionPair {
+    address collateral;
+    address consideration;
+}
+
 contract OptionFactory is Ownable {
     address public shortContract;
     address public longContract;
@@ -41,7 +60,10 @@ contract OptionFactory is Ownable {
     );
 
     address[] public createdOptions;
+    OptionPair[] public pairs;
     mapping(uint256 => address[]) public shortLong;
+
+    mapping(address => mapping(address => address[])) public pairToOption;
 
     mapping(address => mapping(uint256 => mapping(uint256 => address[]))) public allOptions;
 
@@ -50,9 +72,8 @@ contract OptionFactory is Ownable {
         longContract = long_;
     }
 
+
     function createOption(
-        string memory longOptionName,
-        string memory shortOptionName,
         string memory longSymbol,
         string memory shortSymbol,
         address collateral,
@@ -67,24 +88,56 @@ contract OptionFactory is Ownable {
         ShortOption shortOption = ShortOption(short);
         LongOption longOption = LongOption(long);
 
-        shortOption.init(shortOptionName, shortSymbol, collateral, consideration, expirationDate, strike, isPut);
+        shortOption.init(shortSymbol, shortSymbol, collateral, consideration, expirationDate, strike, isPut);
+        longOption.init(longSymbol, longSymbol, collateral, consideration, expirationDate, strike, isPut);
 
-        longOption.init(longOptionName, longSymbol, collateral, consideration, expirationDate, strike, isPut);
-
-        createdOptions.push(long);
-        allOptions[collateral][expirationDate][strike].push(long);
         shortOption.setLongOption(long);
         longOption.setShortOption(short);
         shortOption.transferOwnership(long);
         longOption.transferOwnership(owner());
 
+        pairs.push(OptionPair(collateral, consideration));
+        createdOptions.push(long);
+        allOptions[collateral][expirationDate][strike].push(long);
+        pairToOption[collateral][consideration].push(long);
         emit OptionCreated(long, short, collateral, consideration, expirationDate, strike, isPut);
+    }
+
+
+    function createOptions(Option[] memory options) public {
+        for(uint256 i = 0; i < options.length; i++) {
+            createOption(
+                options[i].longSymbol, 
+                options[i].shortSymbol, 
+                options[i].collateral, 
+                options[i].consideration, 
+                options[i].expiration, 
+                options[i].strike, 
+                options[i].isPut
+                );
+        }
     }
 
     function getCreatedOptions() public view returns (address[] memory) {
         return createdOptions;
     }
-    // function getOption(address collateral, uint256 expiration, uint256 strike) public view returns (address[] memory) {
-    //     return allOptions[collateral][expiration][strike];
-    // }
+
+    function getPairs() public view returns (OptionPair[] memory) {
+        return pairs;
+    }
+
+    function getPairToOptions(address collateral, address consideration) public view returns (address[] memory) {
+        return pairToOption[collateral][consideration];
+    }
+    function getPairToOptionsStruct(address collateral, address consideration) public view returns (OptionInfo[] memory) {
+        address[] memory options = pairToOption[collateral][consideration];
+        OptionInfo[] memory optionInfos = new OptionInfo[](options.length);
+
+        for (uint256 i = 0; i < options.length; i++) {
+            LongOption longOption = LongOption(options[i]);
+            optionInfos[i] = OptionInfo(options[i], longOption.expirationDate(), longOption.strike());
+        }
+        return optionInfos;
+    }
+
 }

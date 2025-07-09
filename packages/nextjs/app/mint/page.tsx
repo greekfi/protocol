@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Create from "./Create";
+import CreateMany from "./CreateMany";
 import ContractDetails from "./Details";
 import Navbar from "./Navbar";
 import SelectOptionAddress from "./Selector";
@@ -39,7 +39,7 @@ function OptionsApp() {
 
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
-                <Create refetchOptions={refetch} />
+                <CreateMany refetchOptions={refetch} />
               </div>
             </div>
           </div>

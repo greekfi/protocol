@@ -2708,16 +2708,6 @@ const deployedContracts = {
           name: "createOption",
           inputs: [
             {
-              name: "longOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
               name: "longSymbol",
               type: "string",
               internalType: "string",
@@ -2758,6 +2748,56 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "createOptions",
+          inputs: [
+            {
+              name: "options",
+              type: "tuple[]",
+              internalType: "struct Option[]",
+              components: [
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "createdOptions",
           inputs: [
             {
@@ -2790,6 +2830,96 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "getPairToOptions",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairToOptionsStruct",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "optionAddress",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairs",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionPair[]",
+              components: [
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "longContract",
           inputs: [],
           outputs: [
@@ -2808,6 +2938,59 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairToOption",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairs",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
               type: "address",
               internalType: "address",
             },
@@ -2990,7 +3173,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0x10e7c08bd22dde461d361628fa6bbd2f2c195852",
+      address: "0x0e441dc154148d7f241c59bbaeec36e38f4d89dc",
       abi: [
         {
           type: "constructor",
@@ -3412,11 +3595,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750446728.json",
+      deploymentFile: "run-1752100350.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x0ae047f518188f1fabc45f762290ff2d5882cfda",
+      address: "0xfe5ff99821c97b73a1c3f6f89bc87b51cd65bc66",
       abi: [
         {
           type: "constructor",
@@ -3838,11 +4021,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750446728.json",
+      deploymentFile: "run-1752100350.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0xd793617f9888e00087570f8e8b61a7d51f033b0a",
+      address: "0x2b9227052a9bbfa0ed7ccab777ffff2139bfab77",
       abi: [
         {
           type: "constructor",
@@ -4786,11 +4969,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750446728.json",
+      deploymentFile: "run-1752100350.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0xcea7af0eec267ad233ba5a6b512671562d9201f4",
+      address: "0x95ec51e4ecf18e1a9e7ee32dfdb232268d27d110",
       abi: [
         {
           type: "constructor",
@@ -5630,11 +5813,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750446728.json",
+      deploymentFile: "run-1752100350.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xeb2bb99ad6adb6d18231fa2ac0d058e5ccd9de1b",
+      address: "0x88a4470eb8bec11016db4182f52a0495f97bb857",
       abi: [
         {
           type: "constructor",
@@ -5691,16 +5874,6 @@ const deployedContracts = {
           name: "createOption",
           inputs: [
             {
-              name: "longOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
               name: "longSymbol",
               type: "string",
               internalType: "string",
@@ -5741,6 +5914,56 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "createOptions",
+          inputs: [
+            {
+              name: "options",
+              type: "tuple[]",
+              internalType: "struct Option[]",
+              components: [
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "createdOptions",
           inputs: [
             {
@@ -5773,6 +5996,96 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "getPairToOptions",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairToOptionsStruct",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "optionAddress",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairs",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionPair[]",
+              components: [
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "longContract",
           inputs: [],
           outputs: [
@@ -5791,6 +6104,59 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairToOption",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairs",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
               type: "address",
               internalType: "address",
             },
@@ -5967,7 +6333,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750446728.json",
+      deploymentFile: "run-1752100350.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -8674,16 +9040,6 @@ const deployedContracts = {
           name: "createOption",
           inputs: [
             {
-              name: "longOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortOptionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
               name: "longSymbol",
               type: "string",
               internalType: "string",
@@ -8724,6 +9080,56 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "createOptions",
+          inputs: [
+            {
+              name: "options",
+              type: "tuple[]",
+              internalType: "struct Option[]",
+              components: [
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "createdOptions",
           inputs: [
             {
@@ -8756,6 +9162,96 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "getPairToOptions",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairToOptionsStruct",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "optionAddress",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPairs",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionPair[]",
+              components: [
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "longContract",
           inputs: [],
           outputs: [
@@ -8774,6 +9270,59 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairToOption",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "pairs",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
               type: "address",
               internalType: "address",
             },
