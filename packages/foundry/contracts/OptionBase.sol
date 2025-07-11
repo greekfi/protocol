@@ -23,6 +23,11 @@ using SafeERC20 for IERC20;
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
 
+struct TokenData {
+    string name;
+    string symbol;
+    uint8 decimals;
+}
 contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 public expirationDate;
@@ -129,5 +134,13 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
     function symbol() public view override returns (string memory) {
         return _tokenSymbol;
+    }
+    function collateralData() public view returns (TokenData memory) {
+        IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
+        return TokenData(collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals());
+    }
+    function considerationData() public view returns (TokenData memory) {
+        IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
+        return TokenData(considerationMetadata.name(), considerationMetadata.symbol(), considerationMetadata.decimals());
     }
 }

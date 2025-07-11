@@ -1,167 +1,116 @@
 import { useContract } from "./useContract";
-import { Address, erc20Abi } from "viem";
-import { useReadContract, useReadContracts } from "wagmi";
+import { Address } from "viem";
+import { useReadContract } from "wagmi";
 
 export interface OptionData {
-  address: Address;
-  name: string;
-  expirationDate: bigint;
-  strike: bigint;
-  isPut: boolean;
-  collateralAddress: Address;
-  considerationAddress: Address;
+  longOption: Address;
+  shortOption: Address;
+  longSymbol: string;
+  shortSymbol: string;
   collateralName: string;
   considerationName: string;
+  collateralSymbol: string;
+  considerationSymbol: string;
+  collateralDecimals: number;
+  considerationDecimals: number;
+  collateral: Address;
+  consideration: Address;
+  expiration: bigint;
+  strike: bigint;
+  isPut: boolean;
+}
+
+export interface OptionPlus extends OptionData {
+  strikePrice: number;
 }
 
 export interface ExpirationGroup {
   expirationDate: bigint;
   formattedDate: string;
-  options: OptionData[];
+  options: OptionPlus[];
 }
 
-export const useGetOptionsByPair = (collateralAddress?: Address, considerationAddress?: Address) => {
+/**
+ * Calculates the visual (human-readable) strike price for an option.
+ * For a call: strike / 10^collateralDecimals
+ * For a put:  strike / 10^considerationDecimals
+ * Returns a string for display.
+ */
+/**
+ * Converts a human-readable strike price string back to the on-chain integer representation.
+ * This is the inverse of getVisualStrikePrice.
+ * For a call: strikeInteger = strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
+ * For a put:  strikeInteger = (1/strikePrice) * 10^(18 + considerationDecimals - collateralDecimals)
+ * Accepts a string input (e.g. "123.45") and returns a BigInt.
+ */
+
+export function getOnChainStrikePrice(
+  strikePrice: bigint,
+  isPut: boolean,
+  collateralDecimals: number,
+  considerationDecimals: number,
+): number {
+  const strike = strikePrice / BigInt(10 ** (18 + considerationDecimals - collateralDecimals));
+  return isPut ? 1 / Number(strike) : Number(strike);
+}
+
+export const useGetOptionsByPair = (collateralAddress: Address, considerationAddress: Address) => {
   const contract = useContract();
   const abi = contract?.OptionFactory?.abi;
-  const longOptionAbi = contract?.LongOption?.abi;
 
-  // Get all created options
+  // Get all options for the specified pair using the contract's getPairToOptions function
   const {
-    data: createdOptions,
+    data: options,
     error,
     refetch,
   } = useReadContract({
     address: contract?.OptionFactory?.address,
     abi,
-    functionName: "getCreatedOptions",
+    functionName: "getPairToOptions",
+    args: [collateralAddress, considerationAddress],
     query: {
       enabled: !!contract?.OptionFactory?.address,
     },
   });
 
-  // Fetch details for all options
-  const optionContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: longOptionAbi,
-    functionName: "collateral" as const,
-  }));
+  // Convert the contract response to our OptionData format
+  const filteredOptions: OptionPlus[] = [];
 
-  const { data: collateralAddresses, error: collateralError } = useReadContracts({
-    contracts: optionContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  const considerationContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: longOptionAbi,
-    functionName: "consideration" as const,
-  }));
-
-  const { data: considerationAddresses, error: considerationError } = useReadContracts({
-    contracts: considerationContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  const expirationContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: longOptionAbi,
-    functionName: "expirationDate" as const,
-  }));
-
-  const { data: expirationDates, error: expirationError } = useReadContracts({
-    contracts: expirationContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  const strikeContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: longOptionAbi,
-    functionName: "strike" as const,
-  }));
-
-  const { data: strikes, error: strikeError } = useReadContracts({
-    contracts: strikeContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  const isPutContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: longOptionAbi,
-    functionName: "isPut" as const,
-  }));
-
-  const { data: isPuts, error: isPutError } = useReadContracts({
-    contracts: isPutContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  const nameContracts = ((createdOptions as Address[]) || []).map(address => ({
-    address,
-    abi: erc20Abi,
-    functionName: "name" as const,
-  }));
-
-  const { data: names, error: nameError } = useReadContracts({
-    contracts: nameContracts,
-    query: {
-      enabled: !!createdOptions && createdOptions.length > 0,
-    },
-  });
-
-  // Filter options by pair if specified
-  const filteredOptions: OptionData[] = [];
-
-  if (
-    createdOptions &&
-    collateralAddresses &&
-    considerationAddresses &&
-    expirationDates &&
-    strikes &&
-    isPuts &&
-    names
-  ) {
-    for (let i = 0; i < createdOptions.length; i++) {
-      const optionAddress = createdOptions[i] as Address;
-      const optionCollateral = collateralAddresses[i]?.result as Address;
-      const optionConsideration = considerationAddresses[i]?.result as Address;
-
-      // Filter by pair if specified
-      if (collateralAddress && considerationAddress) {
-        if (optionCollateral !== collateralAddress || optionConsideration !== considerationAddress) {
-          continue;
-        }
-      }
-
+  if (options) {
+    // The contract returns an array of Option structs
+    for (const option of options as any[]) {
       filteredOptions.push({
-        address: optionAddress,
-        name: names[i]?.result as string,
-        expirationDate: expirationDates[i]?.result as bigint,
-        strike: strikes[i]?.result as bigint,
-        isPut: isPuts[i]?.result as boolean,
-        collateralAddress: optionCollateral,
-        considerationAddress: optionConsideration,
-        collateralName: "", // Will be filled later
-        considerationName: "", // Will be filled later
+        longOption: option.longOption,
+        shortOption: option.shortOption,
+        longSymbol: option.longSymbol,
+        shortSymbol: option.shortSymbol,
+        collateralName: option.collateralName,
+        considerationName: option.considerationName,
+        collateralSymbol: option.collateralSymbol,
+        considerationSymbol: option.considerationSymbol,
+        collateralDecimals: Number(option.collateralDecimals),
+        considerationDecimals: Number(option.considerationDecimals),
+        collateral: option.collateral,
+        consideration: option.consideration,
+        expiration: option.expiration,
+        strike: option.strike,
+        isPut: option.isPut,
+        strikePrice: getOnChainStrikePrice(
+          option.strike,
+          option.isPut,
+          option.collateralDecimals,
+          option.considerationDecimals,
+        ),
       });
     }
   }
 
   // Group by expiration date
   const expirationGroups: ExpirationGroup[] = [];
-  const groupedByExpiration = new Map<string, OptionData[]>();
+  const groupedByExpiration = new Map<string, OptionPlus[]>();
 
   filteredOptions.forEach(option => {
-    const expirationKey = option.expirationDate.toString();
+    const expirationKey = option.expiration.toString();
     if (!groupedByExpiration.has(expirationKey)) {
       groupedByExpiration.set(expirationKey, []);
     }
@@ -189,7 +138,7 @@ export const useGetOptionsByPair = (collateralAddress?: Address, considerationAd
   return {
     options: filteredOptions,
     expirationGroups,
-    error: error || collateralError || considerationError || expirationError || strikeError || isPutError || nameError,
+    error,
     refetch,
   };
 };

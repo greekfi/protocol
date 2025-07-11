@@ -2,23 +2,16 @@
 
 import { useState } from "react";
 import { useOptionDetails } from "../shared/hooks/useGetDetails";
-import { OptionData } from "../shared/hooks/useGetOptionsByPair";
 import { OptionPair } from "../shared/hooks/useGetPairs";
-import OptionSelector from "./components/OptionSelector";
+import OptionViewer from "./components/OptionViewer";
 import PairSelector from "./components/PairSelector";
 import TradeInterface from "./components/TradeInterface";
 import TradeNavbar from "./components/TradeNavbar";
-import { Address } from "viem";
-import { useConfig } from "wagmi";
 
 function TradeApp() {
   const [selectedPair, setSelectedPair] = useState<OptionPair | null>(null);
-  const [optionAddress, setOptionAddress] = useState<Address>("0x0");
-  const [selectedOption] = useState<OptionData | undefined>(undefined);
 
-  const contractDetails = useOptionDetails(optionAddress);
-  const wagmiConfig = useConfig();
-  console.log("chain", wagmiConfig);
+  const contractDetails = useOptionDetails(selectedPair?.collateral || "0x0");
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
@@ -37,11 +30,7 @@ function TradeApp() {
             {/* Option Selector and Trade Interface */}
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
-                <OptionSelector
-                  setOptionAddress={setOptionAddress}
-                  selectedOption={selectedOption}
-                  selectedPair={selectedPair}
-                />
+                <OptionViewer selectedPair={selectedPair} />
               </div>
 
               <div className="p-4 bg-gray-800">

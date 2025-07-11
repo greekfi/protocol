@@ -1,61 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { OptionPair, useGetPairs } from "../../shared/hooks/useGetPairs";
-import { erc20Abi } from "viem";
-import { useReadContracts } from "wagmi";
 
 interface PairSelectorProps {
   selectedPair: OptionPair | null;
   onPairSelect: (pair: OptionPair) => void;
 }
 
-interface PairWithNames extends OptionPair {
-  collateralName: string;
-  considerationName: string;
-}
-
 export default function PairSelector({ selectedPair, onPairSelect }: PairSelectorProps) {
   const { pairs, isLoading, error } = useGetPairs();
-  const [pairsWithNames, setPairsWithNames] = useState<PairWithNames[]>([]);
-
-  // Create contracts array for all token names
-  const allTokenContracts = pairs.flatMap(pair => [
-    {
-      address: pair.collateral,
-      abi: erc20Abi,
-      functionName: "name" as const,
-    },
-    {
-      address: pair.consideration,
-      abi: erc20Abi,
-      functionName: "name" as const,
-    },
-  ]);
-
-  const { data: tokenNames } = useReadContracts({
-    contracts: allTokenContracts,
-    query: {
-      enabled: pairs.length > 0,
-    },
-  });
-
-  // Combine pairs with names
-  useEffect(() => {
-    if (pairs.length > 0 && tokenNames) {
-      const pairsWithNamesData = pairs.map((pair, index) => {
-        const collateralNameIndex = index * 2;
-        const considerationNameIndex = index * 2 + 1;
-
-        return {
-          ...pair,
-          collateralName: (tokenNames[collateralNameIndex]?.result as string) || `Token ${index + 1}`,
-          considerationName: (tokenNames[considerationNameIndex]?.result as string) || `Token ${index + 1}`,
-        };
-      });
-      setPairsWithNames(pairsWithNamesData);
-    }
-  }, [pairs, tokenNames]);
 
   if (isLoading) {
     return (
@@ -89,7 +42,7 @@ export default function PairSelector({ selectedPair, onPairSelect }: PairSelecto
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Select Trading Pair</label>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {pairsWithNames.map(pair => (
+          {pairs.map(pair => (
             <button
               key={`${pair.collateral}-${pair.consideration}`}
               onClick={() => onPairSelect(pair)}

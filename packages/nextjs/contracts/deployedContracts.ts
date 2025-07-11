@@ -1097,6 +1097,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -1104,6 +1134,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -1963,6 +2023,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -1970,6 +2060,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -2753,7 +2873,7 @@ const deployedContracts = {
             {
               name: "options",
               type: "tuple[]",
-              internalType: "struct Option[]",
+              internalType: "struct OptionParameter[]",
               components: [
                 {
                   name: "longSymbol",
@@ -2846,35 +2966,66 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairToOptionsStruct",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
               type: "tuple[]",
-              internalType: "struct OptionInfo[]",
+              internalType: "struct Option[]",
               components: [
                 {
-                  name: "optionAddress",
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
                   type: "address",
                   internalType: "address",
                 },
@@ -2887,6 +3038,11 @@ const deployedContracts = {
                   name: "strike",
                   type: "uint256",
                   internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
                 },
               ],
             },
@@ -2912,6 +3068,36 @@ const deployedContracts = {
                   name: "consideration",
                   type: "address",
                   internalType: "address",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
                 },
               ],
             },
@@ -2946,6 +3132,60 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "pairMap",
+          inputs: [
+            {
+              name: "",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "pairToOption",
           inputs: [
             {
@@ -2966,9 +3206,79 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "",
+              name: "longOption",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "shortOption",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "longSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "shortSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expiration",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -2993,6 +3303,36 @@ const deployedContracts = {
               name: "consideration",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
             },
           ],
           stateMutability: "view",
@@ -3595,7 +3935,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752100350.json",
+      deploymentFile: "run-1752169340.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
@@ -4021,7 +4361,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752100350.json",
+      deploymentFile: "run-1752169340.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
@@ -4263,6 +4603,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -4270,6 +4640,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -4969,7 +5369,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752100350.json",
+      deploymentFile: "run-1752169340.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
@@ -5129,6 +5529,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -5136,6 +5566,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -5813,7 +6273,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752100350.json",
+      deploymentFile: "run-1752169340.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
@@ -5919,7 +6379,7 @@ const deployedContracts = {
             {
               name: "options",
               type: "tuple[]",
-              internalType: "struct Option[]",
+              internalType: "struct OptionParameter[]",
               components: [
                 {
                   name: "longSymbol",
@@ -6012,35 +6472,66 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairToOptionsStruct",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
               type: "tuple[]",
-              internalType: "struct OptionInfo[]",
+              internalType: "struct Option[]",
               components: [
                 {
-                  name: "optionAddress",
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
                   type: "address",
                   internalType: "address",
                 },
@@ -6053,6 +6544,11 @@ const deployedContracts = {
                   name: "strike",
                   type: "uint256",
                   internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
                 },
               ],
             },
@@ -6078,6 +6574,36 @@ const deployedContracts = {
                   name: "consideration",
                   type: "address",
                   internalType: "address",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
                 },
               ],
             },
@@ -6112,6 +6638,60 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "pairMap",
+          inputs: [
+            {
+              name: "",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "pairToOption",
           inputs: [
             {
@@ -6132,9 +6712,79 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "",
+              name: "longOption",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "shortOption",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "longSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "shortSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expiration",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -6159,6 +6809,36 @@ const deployedContracts = {
               name: "consideration",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
             },
           ],
           stateMutability: "view",
@@ -6333,7 +7013,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752100350.json",
+      deploymentFile: "run-1752169340.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -7429,6 +8109,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -7436,6 +8146,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -8295,6 +9035,36 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collateralData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "consideration",
           inputs: [],
           outputs: [
@@ -8302,6 +9072,36 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "contract IERC20",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerationData",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -9085,7 +9885,7 @@ const deployedContracts = {
             {
               name: "options",
               type: "tuple[]",
-              internalType: "struct Option[]",
+              internalType: "struct OptionParameter[]",
               components: [
                 {
                   name: "longSymbol",
@@ -9178,35 +9978,66 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairToOptionsStruct",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
               type: "tuple[]",
-              internalType: "struct OptionInfo[]",
+              internalType: "struct Option[]",
               components: [
                 {
-                  name: "optionAddress",
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
                   type: "address",
                   internalType: "address",
                 },
@@ -9219,6 +10050,11 @@ const deployedContracts = {
                   name: "strike",
                   type: "uint256",
                   internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
                 },
               ],
             },
@@ -9244,6 +10080,36 @@ const deployedContracts = {
                   name: "consideration",
                   type: "address",
                   internalType: "address",
+                },
+                {
+                  name: "collateralName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateralDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "considerationDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "collateralSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "considerationSymbol",
+                  type: "string",
+                  internalType: "string",
                 },
               ],
             },
@@ -9278,6 +10144,60 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "pairMap",
+          inputs: [
+            {
+              name: "",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          outputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "pairToOption",
           inputs: [
             {
@@ -9298,9 +10218,79 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "",
+              name: "longOption",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "shortOption",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "longSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "shortSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expiration",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -9325,6 +10315,36 @@ const deployedContracts = {
               name: "consideration",
               type: "address",
               internalType: "address",
+            },
+            {
+              name: "collateralName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateralDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "considerationDecimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "collateralSymbol",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "considerationSymbol",
+              type: "string",
+              internalType: "string",
             },
           ],
           stateMutability: "view",
