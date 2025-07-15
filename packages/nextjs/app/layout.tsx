@@ -9,6 +9,12 @@ export const metadata = getMetadata({
   description: "Trade DeFi options with advanced Greeks calculations.",
 });
 
+export const viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+};
+
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning lang="en">

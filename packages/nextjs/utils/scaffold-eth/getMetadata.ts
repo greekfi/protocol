@@ -59,7 +59,5 @@ export const getMetadata = ({
       apple: [{ url: "/helmet-white.png", sizes: "180x180", type: "image/png" }],
     },
     manifest: "/manifest.json",
-    viewport: "width=device-width, initial-scale=1",
-    themeColor: "#000000",
   };
 };
