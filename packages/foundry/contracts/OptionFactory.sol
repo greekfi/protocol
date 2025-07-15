@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
+import { AddressSet } from "./AddressSet.sol";
 import { TokenData } from "./OptionBase.sol";
 import { ShortOption } from "./ShortOption.sol";
 import { LongOption } from "./LongOption.sol";
@@ -80,8 +81,8 @@ contract OptionFactory is Ownable {
 
     address[] public createdOptions;
     OptionPair[] public pairs;
-    AddressSet.Set public collaterals;
-    AddressSet.Set public considerations;
+    AddressSet public collaterals;
+    AddressSet public considerations;
     mapping(string => OptionPair) public pairMap;
     mapping(uint256 => address[]) public shortLong;
 
@@ -92,6 +93,8 @@ contract OptionFactory is Ownable {
     constructor(address short_, address long_) Ownable(msg.sender) {
         shortContract = short_;
         longContract = long_;
+        collaterals = new AddressSet();
+        considerations = new AddressSet();
     }
 
 
@@ -164,6 +167,30 @@ contract OptionFactory is Ownable {
 
     function getPairToOptions(address collateral, address consideration) public view returns (Option[] memory) {
         return pairToOption[collateral][consideration];
+    }
+
+    function getCollaterals() public view returns (address[] memory) {
+        return collaterals.values();
+    }
+
+    function getConsiderations() public view returns (address[] memory) {
+        return considerations.values();
+    }
+
+    function getCollateralsCount() public view returns (uint256) {
+        return collaterals.length();
+    }
+
+    function getConsiderationsCount() public view returns (uint256) {
+        return considerations.length();
+    }
+
+    function isCollateral(address token) public view returns (bool) {
+        return collaterals.contains(token);
+    }
+
+    function isConsideration(address token) public view returns (bool) {
+        return considerations.contains(token);
     }
 
 }

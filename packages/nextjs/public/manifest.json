@@ -1,1 +1,33 @@
-{ "name": "Scaffold-ETH 2 DApp", "description": "A DApp built with Scaffold-ETH", "iconPath": "logo.svg" }
+{
+  "name": "Greek Contract",
+  "short_name": "Greek Contract",
+  "description": "A DeFi options trading platform built with Scaffold-ETH 2",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/helmet-white.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/helmet.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

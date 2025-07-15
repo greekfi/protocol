@@ -2825,6 +2825,32 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "createOption",
           inputs: [
             {
@@ -2931,6 +2957,58 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollateralsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderationsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -3100,6 +3178,44 @@ const deployedContracts = {
                   internalType: "string",
                 },
               ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isCollateral",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isConsideration",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -3935,7 +4051,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752169340.json",
+      deploymentFile: "run-1752615402.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
@@ -4361,7 +4477,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752169340.json",
+      deploymentFile: "run-1752615402.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
@@ -5369,7 +5485,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752169340.json",
+      deploymentFile: "run-1752615402.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
@@ -6273,7 +6389,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752169340.json",
+      deploymentFile: "run-1752615402.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
@@ -6325,6 +6441,32 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "collaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
             },
           ],
           stateMutability: "view",
@@ -6437,6 +6579,58 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollateralsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderationsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -6606,6 +6800,44 @@ const deployedContracts = {
                   internalType: "string",
                 },
               ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isCollateral",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isConsideration",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -7013,7 +7245,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752169340.json",
+      deploymentFile: "run-1752615402.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -9837,6 +10069,32 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "collaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "createOption",
           inputs: [
             {
@@ -9943,6 +10201,58 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollateralsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderationsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -10112,6 +10422,44 @@ const deployedContracts = {
                   internalType: "string",
                 },
               ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isCollateral",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isConsideration",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
