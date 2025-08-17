@@ -66,6 +66,24 @@ contract ShortOption is OptionBase {
         _mint(owner, transferDetails.requestedAmount);
     }
 
+
+    function mint(address sender, uint256 amount)
+        public
+        onlyOwner
+        validAmount(amount)
+        notExpired
+    {
+        __mint(sender, amount);
+    }
+
+    function __mint(address sender, uint256 amount)
+        private   
+        nonReentrant
+        validAmount(amount)
+    {
+        _mint(sender, amount);
+    }
+
     function _redeem(address to, uint256 amount)
         private
         nonReentrant
