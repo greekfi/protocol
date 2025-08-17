@@ -56,6 +56,17 @@ contract LongOption is OptionBase {
         emit Mint(address(this), msg.sender, transferDetails.requestedAmount);
     }
 
+    function mint(uint256 amount)
+        public
+        nonReentrant
+        validAmount(amount)
+        notExpired
+    {
+        shortOption.mint(msg.sender, amount);
+        _mint(msg.sender, amount);
+        emit Mint(address(this), msg.sender, amount);
+    }
+
     function exercise(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
         public
         notExpired

@@ -1350,6 +1350,24 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
+              name: "sender",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
               name: "permit",
               type: "tuple",
               internalType: "struct ISignatureTransfer.PermitTransferFrom",
@@ -2312,6 +2330,19 @@ const deployedContracts = {
               name: "signature",
               type: "bytes",
               internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -3629,7 +3660,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0x0e441dc154148d7f241c59bbaeec36e38f4d89dc",
+      address: "0x7afd54f4f1be998a2f1be1521213536dd255f368",
       abi: [
         {
           type: "constructor",
@@ -4051,11 +4082,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752615402.json",
+      deploymentFile: "run-1755418509.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0xfe5ff99821c97b73a1c3f6f89bc87b51cd65bc66",
+      address: "0x9d470323f6ba206c331f915cdbea9a6d36cd60bd",
       abi: [
         {
           type: "constructor",
@@ -4477,11 +4508,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752615402.json",
+      deploymentFile: "run-1755418509.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0x2b9227052a9bbfa0ed7ccab777ffff2139bfab77",
+      address: "0x694cb89a3837d3c140e5073c121e8c0e30e09efe",
       abi: [
         {
           type: "constructor",
@@ -4966,6 +4997,24 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
+              name: "sender",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -5485,11 +5534,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752615402.json",
+      deploymentFile: "run-1755418509.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0x95ec51e4ecf18e1a9e7ee32dfdb232268d27d110",
+      address: "0x1a781ccdda5df428c255a95c5588e9497c0eecd4",
       abi: [
         {
           type: "constructor",
@@ -5934,6 +5983,19 @@ const deployedContracts = {
               name: "signature",
               type: "bytes",
               internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -6389,11 +6451,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752615402.json",
+      deploymentFile: "run-1755418509.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x88a4470eb8bec11016db4182f52a0495f97bb857",
+      address: "0xee733f681e4387457f791c2d009d45352c5bcdd9",
       abi: [
         {
           type: "constructor",
@@ -7245,13 +7307,13 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752615402.json",
+      deploymentFile: "run-1755418509.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
   11155111: {
     StableToken: {
-      address: "0x4e1bacc8eabcf40755869523eb5e3b92a979f6c7",
+      address: "0x6550c8d40f06c8a5b003a0622538980fc4af7492",
       abi: [
         {
           type: "constructor",
@@ -7673,11 +7735,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750448616.json",
+      deploymentFile: "run-1755418646.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x072169c87f2d470829b942fa13b8301398adaf90",
+      address: "0x083dc0b99f583b5f6ed9c86612b3ccb8e8845b4a",
       abi: [
         {
           type: "constructor",
@@ -8099,11 +8161,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750448616.json",
+      deploymentFile: "run-1755418646.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0x2092e52ed0b6479875f9c734c28fa04ccd7f83d9",
+      address: "0x208040693f82fa7e77cbcd4970245f8a29b93896",
       abi: [
         {
           type: "constructor",
@@ -8588,6 +8650,24 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
+              name: "sender",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -9107,11 +9187,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750448616.json",
+      deploymentFile: "run-1755418646.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0x15d3c9f6ee919b6308310a620637a97925c374a1",
+      address: "0x742e3b35c48b1932d5e65ba4b8aaf9dab64390ec",
       abi: [
         {
           type: "constructor",
@@ -9556,6 +9636,19 @@ const deployedContracts = {
               name: "signature",
               type: "bytes",
               internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "mint",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -10011,11 +10104,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750448616.json",
+      deploymentFile: "run-1755418646.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x8eaea95b943e18f2f337fb73ee1b31930b9c9b5e",
+      address: "0x02a116f142bd7c8d25a36799b757e52f581ae129",
       abi: [
         {
           type: "constructor",
@@ -10867,7 +10960,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750448616.json",
+      deploymentFile: "run-1755418646.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
