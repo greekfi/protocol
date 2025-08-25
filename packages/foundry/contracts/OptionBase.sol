@@ -42,6 +42,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     bool public initialized = false;
     string private _tokenName;
     string private _tokenSymbol;
+    bool locked = false;
 
     error ContractNotExpired();
     error ContractExpired();
@@ -142,5 +143,13 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
         return TokenData(considerationMetadata.name(), considerationMetadata.symbol(), considerationMetadata.decimals());
+    }
+
+    function lock() public onlyOwner {
+        locked = true;
+    }
+
+    function unlock() public onlyOwner {
+        locked = false;
     }
 }
