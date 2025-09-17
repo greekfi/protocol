@@ -1,9 +1,9 @@
 import { useState } from "react";
-import TokenBalance from "./components/TokenBalance";
+import TokenBalanceNow from "./components/TokenBalanceNow";
 import TooltipButton from "./components/TooltipButton";
 import { useAllowanceCheck } from "./hooks/useAllowanceCheck";
 import { useContract } from "./hooks/useContract";
-import { useOptionDetails } from "./hooks/useGetDetails";
+import { useOptionDetails } from "./hooks/useGetOption";
 import { usePermit2 } from "./hooks/usePermit2";
 import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
 import { Abi, Address, erc20Abi, parseUnits } from "viem";
@@ -12,8 +12,9 @@ import { useWriteContract } from "wagmi";
 const STRIKE_DECIMALS = 10n ** 18n;
 const MAX_UINT256 = 2n ** 256n - 1n;
 
-const toConsideration = (amount: bigint, strike: bigint): bigint => {
-  return (amount * strike) / STRIKE_DECIMALS;
+const toConsideration = (amount: bigint, details: any): bigint => {
+  const { strike, collDecimals, consDecimals } = details;
+  return (amount * strike * 10n ** BigInt(consDecimals)) / (STRIKE_DECIMALS * 10n ** BigInt(collDecimals));
 };
 
 interface ActionInterfaceProps {
@@ -22,34 +23,30 @@ interface ActionInterfaceProps {
 }
 
 const Action = ({ details, action }: ActionInterfaceProps) => {
-  const {
-    longAddress,
-    shortAddress,
-    collateralAddress,
-    collateralDecimals,
-    isExpired,
-    considerationAddress,
-    considerationDecimals,
-  } = details;
+  const { collDecimals: collateralDecimals, consDecimals, isExpired } = details || {};
+
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const longAbi = useContract()?.LongOption?.abi;
-  const collateralWei = parseUnits(amount.toString(), Number(collateralDecimals));
-  const amountWei = parseUnits(amount.toString(), Number(considerationDecimals));
-  const { getPermitSignature: mintSignature } = usePermit2(collateralAddress as Address, shortAddress as Address);
+  const collateralWei = parseUnits(amount.toString(), Number(details?.collDecimals));
+  const amountWei = parseUnits(amount.toString(), Number(details));
+  const { getPermitSignature: mintSignature } = usePermit2(
+    details?.collateral as Address,
+    details?.shortOption as Address,
+  );
   const { getPermitSignature: exerciseSignature } = usePermit2(
-    considerationAddress as Address,
-    shortAddress as Address,
+    details?.consideration as Address,
+    details?.shortOption as Address,
   );
   const { considerationAllowance, collateralAllowance } = useAllowanceCheck(
-    considerationAddress as Address,
-    collateralAddress as Address,
+    details?.consideration as Address,
+    details?.collateral as Address,
   );
 
   const redeem = async () => {
-    if (!longAddress || !shortAddress || !collateralAddress || !collateralDecimals) return;
+    if (!details) return;
     const redeemConfig = {
-      address: isExpired ? shortAddress : longAddress,
+      address: details.isExpired ? details.shortOption : details.longOption,
       abi: longAbi,
       functionName: "redeem",
       args: [amountWei],
@@ -58,13 +55,13 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   };
 
   const exercise = async () => {
-    if (!amount || !considerationAddress || !longAddress || !details.strike) return;
+    if (!amount || !details) return;
 
-    const considerationWei = toConsideration(amountWei, details.strike);
+    const considerationWei = toConsideration(amountWei, details);
 
     if (!considerationAllowance || considerationAllowance < considerationWei) {
       writeContract({
-        address: considerationAddress,
+        address: details.consideration,
         abi: erc20Abi,
         functionName: "approve",
         args: [PERMIT2_ADDRESS, MAX_UINT256],
@@ -76,7 +73,7 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
     console.log("signature", signature);
     console.log("transferDetails", transferDetails);
     writeContract({
-      address: longAddress,
+      address: details.longOption,
       abi: longAbi as Abi,
       functionName: "exercise",
       args: [permit, transferDetails, signature],
@@ -84,11 +81,11 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   };
 
   const mint = async () => {
-    if (!collateralAddress || !shortAddress || !longAddress) return;
+    if (!details) return;
 
     if (!collateralAllowance || collateralAllowance < collateralWei) {
       writeContract({
-        address: collateralAddress,
+        address: details.collateral,
         abi: erc20Abi,
         functionName: "approve",
         args: [PERMIT2_ADDRESS, MAX_UINT256],
@@ -97,7 +94,7 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
 
     const { permit, signature, transferDetails } = await mintSignature(collateralWei);
     writeContract({
-      address: longAddress,
+      address: details.longOption,
       abi: longAbi as Abi,
       functionName: "mint",
       args: [permit, transferDetails, signature],
@@ -144,24 +141,50 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
       <div className="space-y-2 mb-4">
         {action === "redeem" && (
           <>
-            <TokenBalance tokenAddress={longAddress} decimals={collateralDecimals} label="Long Option Balance" />
-            <TokenBalance tokenAddress={shortAddress} decimals={collateralDecimals} label="Short Option Balance" />
+            <TokenBalanceNow
+              symbol={details?.symbol}
+              balance={details?.balanceLong}
+              decimals={collateralDecimals}
+              label="Long Option Balance"
+            />
+            <TokenBalanceNow
+              symbol={details?.shortSymbol}
+              balance={details?.balanceShort}
+              decimals={collateralDecimals}
+              label="Short Option Balance"
+            />
           </>
         )}
         {action === "exercise" && (
           <>
-            <TokenBalance
-              tokenAddress={considerationAddress}
-              decimals={considerationDecimals}
+            <TokenBalanceNow
+              symbol={details?.consSymbol}
+              balance={details?.balanceConsideration}
+              decimals={consDecimals}
               label="Consideration Balance"
             />
-            <TokenBalance tokenAddress={longAddress} decimals={collateralDecimals} label="Long Option Balance" />
+            <TokenBalanceNow
+              symbol={details?.symbol}
+              balance={details?.balanceLong}
+              decimals={collateralDecimals}
+              label="Long Option Balance"
+            />
           </>
         )}
         {action === "mint" && (
           <>
-            <TokenBalance tokenAddress={collateralAddress} decimals={collateralDecimals} label="Collateral Balance" />
-            <TokenBalance tokenAddress={longAddress} decimals={collateralDecimals} label="Long Option Balance" />
+            <TokenBalanceNow
+              symbol={details?.collSymbol}
+              balance={details?.balanceCollateral}
+              decimals={collateralDecimals}
+              label="Collateral Balance"
+            />
+            <TokenBalanceNow
+              symbol={details?.symbol}
+              balance={details?.balanceLong}
+              decimals={collateralDecimals}
+              label="Long Option Balance"
+            />
           </>
         )}
       </div>

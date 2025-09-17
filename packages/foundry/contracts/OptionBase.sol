@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
@@ -22,6 +23,7 @@ using SafeERC20 for IERC20;
 // to be any asset and collateral to be any asset as well. This can allow wETH to be used
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
+
 
 struct TokenData {
     string name;
@@ -39,6 +41,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     bool public isPut;
     IERC20 public collateral;
     IERC20 public consideration;
+    IERC20Metadata cons;
+    IERC20Metadata coll;
+    uint8 consDecimals;
+    uint8 collDecimals;
     bool public initialized = false;
     string private _tokenName;
     string private _tokenSymbol;
@@ -94,11 +100,17 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        // The strike price actually contains the ratio of Consideration
-        // over Collateral including the decimals associated. The ratio is
-        // multiplied by 10**18 as is the standard convention. That's why
-        // we eventually divide by the STRIKE_DECIMALS. MulDiv?
-        return (amount * strike) / STRIKE_DECIMALS;
+        // The strike price is decimal18
+        // The Long Option is the same decimals as the collateral
+        // This allows the exercise to be like a 1:1 of the option
+        return (amount * strike * 10**consDecimals) / (STRIKE_DECIMALS * 10**collDecimals);
+    }
+
+    function toCollateral(uint256 consAmount) public view returns (uint256) {
+        // The strike price is decimal18
+        // The Long Option is the same decimals as the collateral
+        // This allows the exercise to be like a 1:1 of the option
+        return (consAmount *  10**collDecimals * STRIKE_DECIMALS)/ (strike * 10**consDecimals);
     }
 
     function init(
@@ -124,6 +136,11 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         expirationDate = expirationDate_;
         strike = strike_;
         isPut = isPut_;
+
+        cons = IERC20Metadata(consideration_);
+        coll = IERC20Metadata(collateral_);
+        consDecimals = cons.decimals();
+        collDecimals = coll.decimals();
 
         // set owner so factory can call restricted functions
         _transferOwnership(msg.sender);
@@ -152,4 +169,6 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     function unlock() public onlyOwner {
         locked = false;
     }
+
+
 }

@@ -1334,6 +1334,13 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "longOption",
           inputs: [],
           outputs: [
@@ -1545,6 +1552,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -1638,6 +1664,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -2028,6 +2061,40 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "balancesOf",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "collBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "consBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "longBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "shortBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "collateral",
           inputs: [],
           outputs: [
@@ -2121,6 +2188,116 @@ const deployedContracts = {
               name: "",
               type: "uint8",
               internalType: "uint8",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "details",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct OptionDetails",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "collName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "consDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "expirationDate",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "totalSupply",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "locked",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -2270,6 +2447,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -2448,6 +2632,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -2541,6 +2744,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -3660,7 +3870,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0x7afd54f4f1be998a2f1be1521213536dd255f368",
+      address: "0x00427edf0c3c3bd42188ab4c907759942abebd93",
       abi: [
         {
           type: "constructor",
@@ -4082,11 +4292,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418509.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x9d470323f6ba206c331f915cdbea9a6d36cd60bd",
+      address: "0xcd1c5dd3680fe93127f2acbc70567a22faafb0ec",
       abi: [
         {
           type: "constructor",
@@ -4508,11 +4718,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418509.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0x694cb89a3837d3c140e5073c121e8c0e30e09efe",
+      address: "0x57eaa1fd8d80135db195b147a249aad777ad10f0",
       abi: [
         {
           type: "constructor",
@@ -4987,6 +5197,13 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "longOption",
           inputs: [],
           outputs: [
@@ -5198,6 +5415,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -5291,6 +5527,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -5534,11 +5777,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418509.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0x1a781ccdda5df428c255a95c5588e9497c0eecd4",
+      address: "0x39f8ff5eca1fe23e7489ecbb5857ce76c3449580",
       abi: [
         {
           type: "constructor",
@@ -5681,6 +5924,40 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "balancesOf",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "collBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "consBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "longBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "shortBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "collateral",
           inputs: [],
           outputs: [
@@ -5774,6 +6051,116 @@ const deployedContracts = {
               name: "",
               type: "uint8",
               internalType: "uint8",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "details",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct OptionDetails",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "collName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "consDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "expirationDate",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "totalSupply",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "locked",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -5923,6 +6310,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -6101,6 +6495,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -6194,6 +6607,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -6451,11 +6871,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418509.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xee733f681e4387457f791c2d009d45352c5bcdd9",
+      address: "0xf3f924c9badf6891d3676cfe9bf72e2c78527e17",
       abi: [
         {
           type: "constructor",
@@ -7307,7 +7727,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418509.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -8640,6 +9060,13 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "longOption",
           inputs: [],
           outputs: [
@@ -8851,6 +9278,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -8944,6 +9390,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -9334,6 +9787,40 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "balancesOf",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "collBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "consBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "longBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "shortBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "collateral",
           inputs: [],
           outputs: [
@@ -9427,6 +9914,116 @@ const deployedContracts = {
               name: "",
               type: "uint8",
               internalType: "uint8",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "details",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct OptionDetails",
+              components: [
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "shortSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "collName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consName",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "consSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "consDecimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+                {
+                  name: "expirationDate",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "totalSupply",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "locked",
+                  type: "bool",
+                  internalType: "bool",
+                },
+                {
+                  name: "shortOption",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "longOption",
+                  type: "address",
+                  internalType: "address",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -9576,6 +10173,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "lock",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -9754,6 +10358,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "toCollateral",
+          inputs: [
+            {
+              name: "consAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "toConsideration",
           inputs: [
             {
@@ -9847,6 +10470,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "unlock",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },

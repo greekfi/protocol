@@ -26,9 +26,9 @@ export const useTokenMap = () => {
 
   // If we have stable and shaky tokens, override the token list
   if (chainId != 1 && stableToken && shakyToken) {
-    Object.keys(allTokensMap).forEach(key => {
-      delete allTokensMap[key];
-    });
+    // Object.keys(allTokensMap).forEach(key => {
+    //   delete allTokensMap[key];
+    // });
     allTokensMap["STK"] = {
       address: stableToken.address,
       symbol: "STK",

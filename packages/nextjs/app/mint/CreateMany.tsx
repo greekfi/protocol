@@ -71,13 +71,11 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
       // For PUT mint: 1/strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
       const invertedStrike = strikePrice === 0 ? 0 : 1 / strikePrice;
       return {
-        strikeInteger: BigInt(
-          Math.floor(invertedStrike * Math.pow(10, 18 + considerationToken.decimals - collateralToken.decimals)),
-        ),
+        strikeInteger: BigInt(Math.floor(invertedStrike * Math.pow(10, 18))),
       };
     }
     return {
-      strikeInteger: BigInt(strikePrice * Math.pow(10, 18 + considerationToken.decimals - collateralToken.decimals)),
+      strikeInteger: BigInt(strikePrice * Math.pow(10, 18)),
     };
   };
 

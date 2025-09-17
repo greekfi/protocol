@@ -31,7 +31,7 @@ const SelectOptionAddress = ({
                   const collateral = parts[1];
                   const consideration = parts[2];
                   const dateStr = parts[3];
-                  const strike = parseFloat(parts[4]);
+                  const strike = parseFloat(parts[4]) / 1e18;
 
                   // Format date from YYYYMMDD to ISO
                   const year = dateStr.substring(0, 4);

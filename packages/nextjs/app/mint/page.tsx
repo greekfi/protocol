@@ -6,7 +6,7 @@ import ContractDetails from "./Details";
 import Navbar from "./Navbar";
 import SelectOptionAddress from "./Selector";
 import Action from "./action";
-import { useOptionDetails } from "./hooks/useGetDetails";
+import { useOptionDetails } from "./hooks/useGetOption";
 import { useGetOptions } from "./hooks/useGetOptions";
 import { Address } from "viem";
 import { useConfig } from "wagmi";

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { OptionBase } from "./OptionBase.sol";
@@ -152,8 +152,12 @@ contract ShortOption is OptionBase {
         bytes calldata signature
         ) public notExpired onlyOwner nonReentrant {
         if (consideration.balanceOf(owner) < transferDetails.requestedAmount) revert InsufficientBalance();
-        
+        // This transfers the consideration from the owner to this contract
         PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
+        // Now we can transfer the collateral to the owner
+        uint256 collateralToSend = toCollateral(transferDetails.requestedAmount);
+        if (collateral.balanceOf(address(this)) < collateralToSend) revert InsufficientBalance();
+        collateral.safeTransfer(owner, collateralToSend);
     }
 
     function exercise(
