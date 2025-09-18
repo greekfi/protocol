@@ -15,7 +15,8 @@ export const useTokenMap = () => {
   const shakyToken = contract?.ShakyToken;
 
   // Create a map of all tokens for easy lookup
-  const allTokensMap = tokenList.reduce(
+  const chainKey = String(chainId) as keyof typeof tokenList;
+  const allTokensMap = (tokenList[chainKey] ?? []).reduce(
     (acc, token) => {
       acc[token.symbol] = token;
       return acc;
