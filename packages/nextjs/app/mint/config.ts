@@ -1,5 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { arbitrum, base, baseSepolia, mainnet, optimism, plume, plumeTestnet, sepolia } from "wagmi/chains";
+import { arbitrum, base, baseSepolia, mainnet, optimism, plume, plumeTestnet, sepolia, unichain } from "wagmi/chains";
 import { Chain } from "wagmi/chains";
 import { create } from "zustand";
 
@@ -20,6 +20,7 @@ export const localhost = {
 
 // Define available chains
 export const availableChains = [
+  unichain,
   localhost,
   sepolia,
   mainnet,
@@ -38,14 +39,15 @@ interface ChainState {
 }
 
 export const useChainStore = create<ChainState>(set => ({
-  currentChain: localhost,
+  currentChain: unichain,
   setCurrentChain: chain => set({ currentChain: chain }),
 }));
 
 // Create the initial config
 export const config = createConfig({
-  chains: [localhost, sepolia, mainnet],
+  chains: [unichain, localhost, sepolia, mainnet],
   transports: {
+    [unichain.id]: http(),
     [localhost.id]: http(),
     [sepolia.id]: http(process.env.ALCHEMY_SEPOLIA_URL),
     [mainnet.id]: http(process.env.ALCHEMY_MAINNET_URL),
