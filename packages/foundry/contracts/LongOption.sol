@@ -2,10 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 

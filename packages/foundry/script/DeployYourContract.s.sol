@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./DeployHelpers.s.sol";
-import "../contracts/OptionFactory.sol";
-import "../contracts/StableToken.sol";
-import "../contracts/ShakyToken.sol";
+import { ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
+import {OptionFactory, ShortOption, LongOption} from "../contracts/OptionFactory.sol";
+import {StableToken} from "../contracts/StableToken.sol";
+import {ShakyToken} from "../contracts/ShakyToken.sol";
 
 /**
  * @notice Deploy script for YourContract contract

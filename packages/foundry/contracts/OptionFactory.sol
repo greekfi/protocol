@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { AddressSet } from "./AddressSet.sol";
-import { TokenData } from "./OptionBase.sol";
 import { ShortOption } from "./ShortOption.sol";
 import { LongOption } from "./LongOption.sol";
 
@@ -121,7 +119,7 @@ contract OptionFactory is Ownable {
         shortOption.transferOwnership(long);
         longOption.transferOwnership(owner());
 
-        string memory pair_name = string(abi.encodePacked(collateral, "_", consideration));
+        string memory pairName = string(abi.encodePacked(collateral, "_", consideration));
         Option memory option = Option(long, short, longSymbol, shortSymbol, longOption.collateralData().name, shortOption.considerationData().name, longOption.collateralData().symbol, shortOption.considerationData().symbol, longOption.collateralData().decimals, shortOption.considerationData().decimals, collateral, consideration, expirationDate, strike, isPut);
 
         OptionPair memory pair = OptionPair(
@@ -129,9 +127,9 @@ contract OptionFactory is Ownable {
             option.collateralName, option.considerationName, 
             option.collateralDecimals, option.considerationDecimals, 
             option.collateralSymbol, option.considerationSymbol);
-        if (pairMap[pair_name].collateral == address(0)) {
+        if (pairMap[pairName].collateral == address(0)) {
             pairs.push(pair);
-            pairMap[pair_name] = pair;
+            pairMap[pairName] = pair;
         }
         createdOptions.push(long);
         allOptions[collateral][expirationDate][strike].push(long);

@@ -2,8 +2,6 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
@@ -100,8 +98,7 @@ contract ShortOption is OptionBase {
         _burn(to, amount);
         // If we couldn't fully fulfill with collateral, try to fulfill remainder with consideration
         if (collateralToSend < amount) {
-            uint256 remainingAmount = amount - collateralToSend;
-            uint256 considerationNeeded = toConsideration(remainingAmount);
+            uint256 considerationNeeded = toConsideration(amount - collateralToSend);
 
             // Verify we have enough consideration tokens; this should never happen
             if (considerationBalance < considerationNeeded) {

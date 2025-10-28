@@ -9,7 +9,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
@@ -84,7 +83,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_
-    ) ERC20(name_, symbol_) Ownable(msg.sender) ReentrancyGuard() {
+    ) ERC20(name_, symbol_) Ownable(msg.sender) {
         if (collateral_ == address(0)) revert InvalidValue();
         if (consideration_ == address(0)) revert InvalidValue();
         if (strike_ == 0) revert InvalidValue();

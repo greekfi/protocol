@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
-import "../contracts/AddressSet.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {AddressSet} from "../contracts/AddressSet.sol";
 
 contract GasComparisonTest is Test {
     // Library approach (simulated)
