@@ -65,8 +65,20 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         _;
     }
 
+    modifier notLocked() {
+        require(!locked, "Contract is Locked");
+        if (locked) revert();
+        _;
+    }
+
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert InvalidValue();
+        _;
+    }
+
+    modifier validAddress(address addr) {
+        require(addr != address(0), "Invalid address");
+        if (addr == address(0)) revert InvalidValue();
         _;
     }
 
@@ -167,6 +179,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
     function unlock() public onlyOwner {
         locked = false;
+    }
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
     }
 
 

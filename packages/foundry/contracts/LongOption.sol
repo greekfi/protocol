@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import { IPermit2 } from "./interfaces/IPermit2.sol";
-
-
 import { OptionBase } from "./OptionBase.sol";
 import { ShortOption } from "./ShortOption.sol";
 
-using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
 // The Long Option contract is the only one that can mint new 
 // The Long Option contract is the only one that can exercise 
@@ -46,7 +40,8 @@ struct OptionDetails {
 }
 
 contract LongOption is OptionBase {
-    ShortOption public shortOption;
+    address public shortOption;
+    ShortOption public shortOption_;
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
@@ -61,7 +56,8 @@ contract LongOption is OptionBase {
         bool isPut,
         address shortOptionAddress_
     ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {
-        shortOption = ShortOption(shortOptionAddress_);
+        shortOption = shortOptionAddress_;
+        shortOption_ = ShortOption(shortOptionAddress_);
     }
 
     function mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
@@ -70,7 +66,7 @@ contract LongOption is OptionBase {
         validAmount(transferDetails.requestedAmount)
         notExpired
     {
-        shortOption.mint(permit, transferDetails, msg.sender, signature);
+        shortOption_.mint(permit, transferDetails, msg.sender, signature);
         _mint(msg.sender, transferDetails.requestedAmount);
         emit Mint(address(this), msg.sender, transferDetails.requestedAmount);
     }
@@ -81,9 +77,28 @@ contract LongOption is OptionBase {
         validAmount(amount)
         notExpired
     {
-        shortOption.mint(msg.sender, amount);
+        shortOption_.mint(msg.sender, amount);
         _mint(msg.sender, amount);
         emit Mint(address(this), msg.sender, amount);
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool success) {
+
+        success = super.transferFrom(from, to, amount);
+        uint256 shortBalance = shortOption_.balanceOf(from);
+        if (shortBalance > 0){
+            redeem(min(shortBalance, amount));
+        }
+        
+    }
+
+    function transfer(address to, uint256 amount) public override notLocked returns (bool success) {
+        uint256 opBalance = this.balanceOf(msg.sender);
+        if (opBalance <amount){
+            mint(amount - opBalance);
+        }
+
+        success = super.transfer(to, amount);
     }
 
     function exercise(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
@@ -93,7 +108,7 @@ contract LongOption is OptionBase {
         validAmount(transferDetails.requestedAmount)
     {
         _burn(msg.sender, transferDetails.requestedAmount);
-        shortOption.exercise(permit, transferDetails, msg.sender, signature);
+        shortOption_.exercise(permit, transferDetails, msg.sender, signature);
         emit Exercise(address(this), msg.sender, transferDetails.requestedAmount);
     }
 
@@ -105,11 +120,12 @@ contract LongOption is OptionBase {
         validAmount(amount)
     {
         _burn(msg.sender, amount);
-        shortOption._redeemPair(msg.sender, amount);
+        shortOption_._redeemPair(msg.sender, amount);
     }
 
     function setShortOption(address shortOptionAddress) public onlyOwner {
-        shortOption = ShortOption(shortOptionAddress);
+        shortOption = shortOptionAddress;
+        shortOption_ = ShortOption(shortOptionAddress);
     }
 
     function balancesOf(address account) public view returns (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) {
@@ -118,12 +134,13 @@ contract LongOption is OptionBase {
         longBalance = balanceOf(account);
         shortBalance = balanceOf(account);
     }
+
     function details() public view returns (OptionDetails memory) {
         return OptionDetails({
             name: name(),
             symbol: symbol(),
-            shortName: shortOption.name(),
-            shortSymbol: shortOption.symbol(),
+            shortName: shortOption_.name(),
+            shortSymbol: shortOption_.symbol(),
             collateral: address(collateral),
             consideration: address(consideration),
             collDecimals: collDecimals,

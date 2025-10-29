@@ -2599,6 +2599,19 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "shortOption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
               internalType: "contract ShortOption",
             },
           ],
@@ -2691,14 +2704,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -2720,14 +2733,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -6462,6 +6475,19 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "shortOption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
               internalType: "contract ShortOption",
             },
           ],
@@ -6554,14 +6580,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -6583,14 +6609,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -7733,7 +7759,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0x55a0acf6d9511ce3719ff8274ff8e30f3e35c543",
+      address: "0x00427edf0c3c3bd42188ab4c907759942abebd93",
       abi: [
         {
           type: "constructor",
@@ -8155,11 +8181,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755433246.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x33882bb4cea9646c26765a354b91236d9c30a1ba",
+      address: "0xcd1c5dd3680fe93127f2acbc70567a22faafb0ec",
       abi: [
         {
           type: "constructor",
@@ -8581,11 +8607,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755433246.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0x379fbd5c740a4f262fa9b5f40831496bcbaa7eab",
+      address: "0x57eaa1fd8d80135db195b147a249aad777ad10f0",
       abi: [
         {
           type: "constructor",
@@ -9640,11 +9666,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755433246.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0x44ceec503501ad612ab504c2b19a2599aa33c11b",
+      address: "0x39f8ff5eca1fe23e7489ecbb5857ce76c3449580",
       abi: [
         {
           type: "constructor",
@@ -10325,6 +10351,19 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "shortOption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
               internalType: "contract ShortOption",
             },
           ],
@@ -10417,14 +10456,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -10446,14 +10485,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -10734,11 +10773,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755433246.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xdfbefd41c3861ab7446b7c0e86f372ce9b888c6d",
+      address: "0xf3f924c9badf6891d3676cfe9bf72e2c78527e17",
       abi: [
         {
           type: "constructor",
@@ -11590,13 +11629,13 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755433246.json",
+      deploymentFile: "run-1758112975040.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
   11155111: {
     StableToken: {
-      address: "0x6550c8d40f06c8a5b003a0622538980fc4af7492",
+      address: "0xa1e7dda6a1ac05781c8f030eb435902ee006c5fb",
       abi: [
         {
           type: "constructor",
@@ -12018,11 +12057,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418646.json",
+      deploymentFile: "run-1761703152606.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x083dc0b99f583b5f6ed9c86612b3ccb8e8845b4a",
+      address: "0x223d2dff04853643c32575c22f0bd35a2c69faeb",
       abi: [
         {
           type: "constructor",
@@ -12444,11 +12483,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418646.json",
+      deploymentFile: "run-1761703152606.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShortOption: {
-      address: "0x208040693f82fa7e77cbcd4970245f8a29b93896",
+      address: "0x46c5a79a0a8db3d9877f8a52097dda26e309061d",
       abi: [
         {
           type: "constructor",
@@ -13503,11 +13542,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418646.json",
+      deploymentFile: "run-1761703152606.json",
       deploymentScript: "Deploy.s.sol",
     },
     LongOption: {
-      address: "0x742e3b35c48b1932d5e65ba4b8aaf9dab64390ec",
+      address: "0x6e9ed34896e941e77d679d3d647977bd54172458",
       abi: [
         {
           type: "constructor",
@@ -14188,6 +14227,19 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "shortOption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
               internalType: "contract ShortOption",
             },
           ],
@@ -14280,14 +14332,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -14309,14 +14361,14 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "value",
+              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
           outputs: [
             {
-              name: "",
+              name: "success",
               type: "bool",
               internalType: "bool",
             },
@@ -14597,11 +14649,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418646.json",
+      deploymentFile: "run-1761703152606.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x02a116f142bd7c8d25a36799b757e52f581ae129",
+      address: "0x8f625835a481b22285aa3ee4d8986b60ae6e4121",
       abi: [
         {
           type: "constructor",
@@ -15453,7 +15505,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1755418646.json",
+      deploymentFile: "run-1761703152606.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

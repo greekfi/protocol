@@ -60,6 +60,14 @@ contract ShortOption is OptionBase {
         nonReentrant
         validAmount(transferDetails.requestedAmount)
     {
+        // 1) Enforce it’s the collateral token and sent here
+        require(permit.permitted.token == address(collateral), "Wrong token");
+        require(transferDetails.to == address(this), "Send collateral to contract");
+
+        // 2) Enforce correct collateral quantity for the minted amount
+        uint256 required = /* e.g. */ toCollateral(transferDetails.requestedAmount);
+        require(transferDetails.requestedAmount == required, "Bad collateral amount");
+
         PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
         _mint(owner, transferDetails.requestedAmount);
     }
@@ -78,7 +86,13 @@ contract ShortOption is OptionBase {
         private   
         nonReentrant
         validAmount(amount)
+        validAddress(sender)
     {
+        if (collateral.allowance(sender, address(this)) >= amount) {
+            collateral.safeTransferFrom(sender, address(this), amount);
+        } else {
+            PERMIT2.transferFrom(sender, address(this), uint160(amount), address(collateral));
+        }
         _mint(sender, amount);
     }
 
