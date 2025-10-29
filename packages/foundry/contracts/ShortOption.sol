@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { OptionBase } from "./OptionBase.sol";
 
 using SafeERC20 for IERC20;
@@ -120,11 +119,11 @@ contract ShortOption is OptionBase {
         private
         
         sufficientBalance(to, amount)
+        sufficientConsideration(address(this), amount)
         validAmount(amount)
     {
-        uint256 consAmount = toConsideration(amount);
-        require(consideration.balanceOf(address(this)) >= consAmount, "Insufficient Consideration");
         _burn(to, amount);
+        uint256 consAmount = toConsideration(amount);
         consideration.safeTransfer(to, consAmount);
         emit Redemption(address(longOption), address(consideration), to, consAmount);
     }

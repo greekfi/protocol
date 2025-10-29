@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { OptionBase } from "./OptionBase.sol";
 import { ShortOption } from "./ShortOption.sol";
 
