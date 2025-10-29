@@ -23,10 +23,10 @@ using SafeERC20 for IERC20;
 contract ShortOption is OptionBase {
     address public longOption;
 
-    event Redemption(address longOption, address holder, uint256 amount);
+    event Redemption(address longOption, address token, address holder, uint256 amount);
 
-    modifier sufficientCollateral(address owner, uint256 amount) {
-        if (collateral.balanceOf(owner) < amount) {
+    modifier sufficientCollateral(address sender, uint256 amount) {
+        if (collateral.balanceOf(sender) < amount) {
             revert InsufficientBalance();
         }
         _;
@@ -46,27 +46,40 @@ contract ShortOption is OptionBase {
         longOption = longOption_;
     }
 
-    function mint(address sender, uint256 amount)
+    function mint(address to, uint256 amount)
         public
         onlyOwner
         validAmount(amount)
         notExpired
     {
-        __mint(sender, amount);
+        __mint(to, amount);
     }
 
-    function __mint(address sender, uint256 amount)
+    function __mint(address to, uint256 amount)
         private   
         nonReentrant
         validAmount(amount)
-        validAddress(sender)
+        validAddress(to)
     {
-        if (collateral.allowance(sender, address(this)) >= amount) {
-            collateral.safeTransferFrom(sender, address(this), amount);
+        if (collateral.allowance(to, address(this)) >= amount) {
+            collateral.safeTransferFrom(to, address(this), amount);
         } else {
-            PERMIT2.transferFrom(sender, address(this), uint160(amount), address(collateral));
+            PERMIT2.transferFrom(to, address(this), uint160(amount), address(collateral));
         }
-        _mint(sender, amount);
+        _mint(to, amount);
+    }
+
+    function redeem(uint256 amount) public expired sufficientBalance(msg.sender, amount) {
+        _redeem(msg.sender, amount);
+    }
+
+    function redeem(address to, uint256 amount) public expired sufficientBalance(to, amount) {
+        _redeem(to, amount);
+    }
+
+    function _redeemPair(address to, uint256 amount) public notExpired onlyOwner sufficientBalance(to, amount) {
+        // only LongOption can call
+        _redeem(to, amount);
     }
 
     function _redeem(address to, uint256 amount)
@@ -88,7 +101,7 @@ contract ShortOption is OptionBase {
         if (collateralToSend > 0) {
             collateral.safeTransfer(to, collateralToSend);
         }
-        emit Redemption(address(longOption), to, amount);
+        emit Redemption(address(longOption), address(collateral), to, amount);
     }
 
     function _redeemConsideration(address to, uint256 amount)
@@ -101,15 +114,7 @@ contract ShortOption is OptionBase {
         require(consideration.balanceOf(address(this)) >= considerationAmount, "Insufficient Consideration");
         _burn(to, amount);
         consideration.safeTransfer(to, considerationAmount);
-        emit Redemption(address(longOption), to, amount);
-    }
-
-    function redeem(uint256 amount) public expired sufficientBalance(msg.sender, amount) {
-        _redeem(msg.sender, amount);
-    }
-
-    function _redeemPair(address to, uint256 amount) public notExpired onlyOwner sufficientBalance(to, amount) {
-        _redeem(to, amount);
+        emit Redemption(address(longOption), address(consideration), to, considerationAmount);
     }
 
     function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) {
@@ -118,24 +123,24 @@ contract ShortOption is OptionBase {
 
     function _exercise(
         uint256 amount,
-        address owner
+        address to
         ) public notExpired onlyOwner nonReentrant {
-        require(consideration.balanceOf(owner) >= amount, "Insufficient Consideration");
-        if (consideration.allowance(owner, address(this)) >= amount) {
-            consideration.safeTransferFrom(owner, address(this), amount);
+        require(consideration.balanceOf(to) >= amount, "Insufficient Consideration");
+        if (consideration.allowance(to, address(this)) >= amount) {
+            consideration.safeTransferFrom(to, address(this), amount);
         } else {
-            PERMIT2.transferFrom(owner, address(this), uint160(amount), address(consideration));
+            PERMIT2.transferFrom(to, address(this), uint160(amount), address(consideration));
         }
 
         uint256 collateralToSend = toCollateral(amount);
         require(collateral.balanceOf(address(this)) >= collateralToSend, "Insufficient Collateral");
-        collateral.safeTransfer(owner, collateralToSend);
+        collateral.safeTransfer(to, collateralToSend);
     }
 
     function exercise(
-        uint256 amount, address owner
+        uint256 amount, address to
         ) public notExpired onlyOwner {
-        _exercise(amount, owner);
+        _exercise(amount, to);
     }
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {

@@ -60,8 +60,8 @@ contract LongOption is OptionBase {
         shortOption_ = ShortOption(shortOptionAddress_);
     }
 
-    function mint(uint256 amount) public {mint(amount, msg.sender); }
-    function mint(uint256 amount, address to)
+    function mint(uint256 amount) public {mint(msg.sender, amount); }
+    function mint(address to, uint256 amount)
         public
         nonReentrant
         validAmount(amount)
@@ -77,7 +77,7 @@ contract LongOption is OptionBase {
         success = super.transferFrom(from, to, amount);
         uint256 balance = shortOption_.balanceOf(to);
         if (balance > 0){
-            redeem(min(balance, amount), to);
+            redeem(to, min(balance, amount));
         }
     }
 
@@ -92,12 +92,12 @@ contract LongOption is OptionBase {
 
         balance = shortOption_.balanceOf(to);
         if (balance > 0){
-            redeem(min(balance, amount), to);
+            redeem(to, min(balance, amount));
         }
     }
 
-    function exercise(uint256 amount) public { exercise(amount, msg.sender); }
-    function exercise(uint256 amount, address to)
+    function exercise(uint256 amount) public { exercise(msg.sender, amount); }
+    function exercise(address to, uint256 amount)
         public
         notExpired
         nonReentrant
@@ -108,8 +108,8 @@ contract LongOption is OptionBase {
         emit Exercise(address(this), to, amount);
     }
 
-    function redeem(uint256 amount) public { redeem(amount, msg.sender); }
-    function redeem(uint256 amount, address to)
+    function redeem(uint256 amount) public { redeem(msg.sender, amount); }
+    function redeem(address to, uint256 amount)
         public
         notExpired
         nonReentrant
