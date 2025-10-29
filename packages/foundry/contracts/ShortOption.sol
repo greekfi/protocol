@@ -46,33 +46,6 @@ contract ShortOption is OptionBase {
         longOption = longOption_;
     }
 
-    function mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
-        public
-        onlyOwner
-        validAmount(transferDetails.requestedAmount)
-        notExpired
-    {
-        __mint(permit, transferDetails, owner, signature);
-    }
-
-    function __mint(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, address owner, bytes calldata signature)
-        private
-        nonReentrant
-        validAmount(transferDetails.requestedAmount)
-    {
-        // 1) Enforce it’s the collateral token and sent here
-        require(permit.permitted.token == address(collateral), "Wrong token");
-        require(transferDetails.to == address(this), "Send collateral to contract");
-
-        // 2) Enforce correct collateral quantity for the minted amount
-        // uint256 required = /* e.g. */ toCollateral(transferDetails.requestedAmount);
-        // require(transferDetails.requestedAmount == required, "Bad collateral amount");
-
-        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
-        _mint(owner, transferDetails.requestedAmount);
-    }
-
-
     function mint(address sender, uint256 amount)
         public
         onlyOwner
@@ -103,13 +76,11 @@ contract ShortOption is OptionBase {
         validAmount(amount)
     {
         uint256 balance = collateral.balanceOf(address(this));
-
-        // First try to fulfill with collateral
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
         _burn(to, amount);
+        // fulfill with consideration first
         if (balance < amount) {
-            // fulfill with consideration first
             _redeemConsideration(to, amount - balance);
         }
 
@@ -126,9 +97,8 @@ contract ShortOption is OptionBase {
         sufficientBalance(to, amount)
         validAmount(amount)
     {
-        // Verify we have enough consideration tokens
         uint256 considerationAmount = toConsideration(amount);
-        if (consideration.balanceOf(address(this)) < considerationAmount) revert InsufficientBalance();
+        require(consideration.balanceOf(address(this)) >= considerationAmount, "Insufficient Consideration");
         _burn(to, amount);
         consideration.safeTransfer(to, considerationAmount);
         emit Redemption(address(longOption), to, amount);
@@ -147,43 +117,20 @@ contract ShortOption is OptionBase {
     }
 
     function _exercise(
-        IPermit2.PermitTransferFrom calldata permit, 
-        IPermit2.SignatureTransferDetails calldata transferDetails, 
-        address owner, 
-        bytes calldata signature
-        ) public notExpired onlyOwner nonReentrant {
-        if (consideration.balanceOf(owner) < transferDetails.requestedAmount) revert InsufficientBalance();
-        // This transfers the consideration from the owner to this contract
-        PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
-        // Now we can transfer the collateral to the owner
-        uint256 collateralToSend = toCollateral(transferDetails.requestedAmount);
-        if (collateral.balanceOf(address(this)) < collateralToSend) revert InsufficientBalance();
-        collateral.safeTransfer(owner, collateralToSend);
-    }
-
-
-    function _exercise(
         uint256 amount,
         address owner
         ) public notExpired onlyOwner nonReentrant {
         require(consideration.balanceOf(owner) >= amount, "Insufficient Consideration");
-        // This transfers the consideration from the owner to this contract
-        PERMIT2.transferFrom(owner, address(this), uint160(amount), address(consideration));
-        // Now we can transfer the collateral to the owner
+        if (consideration.allowance(owner, address(this)) >= amount) {
+            consideration.safeTransferFrom(owner, address(this), amount);
+        } else {
+            PERMIT2.transferFrom(owner, address(this), uint160(amount), address(consideration));
+        }
+
         uint256 collateralToSend = toCollateral(amount);
         require(collateral.balanceOf(address(this)) >= collateralToSend, "Insufficient Collateral");
         collateral.safeTransfer(owner, collateralToSend);
     }
-
-    function exercise(
-        IPermit2.PermitTransferFrom calldata permit, 
-        IPermit2.SignatureTransferDetails calldata transferDetails, 
-        address owner, 
-        bytes calldata signature
-        ) public notExpired onlyOwner {
-        _exercise(permit, transferDetails, owner, signature);
-    }
-
 
     function exercise(
         uint256 amount, address owner

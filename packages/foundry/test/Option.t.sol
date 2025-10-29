@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {OptionFactory, ShortOption, LongOption, OptionParameter} from "../contracts/OptionFactory.sol";
 import {StableToken} from "../contracts/StableToken.sol";
 import {ShakyToken} from "../contracts/ShakyToken.sol";
@@ -15,6 +16,10 @@ contract OptionTest is Test {
     OptionFactory public factory;
 
     IPermit2 permit2 = IPermit2(PERMIT2);
+    LongOption longOption;
+    address shortOption;
+    address shakyToken_;
+    address stableToken_;
 
     // Unichain RPC URL - replace with actual Unichain RPC endpoint
     string constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
@@ -31,6 +36,8 @@ contract OptionTest is Test {
         // Deploy tokens
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
+        shakyToken_ = address(shakyToken);
+        stableToken_ = address(stableToken);
 
         // Mint tokens to test address
         stableToken.mint(address(this), 1_000_000 * 10**18);
@@ -88,135 +95,98 @@ contract OptionTest is Test {
         });
 
         factory.createOptions(options);
+
+
+        address[] memory options1 = factory.getCreatedOptions();
+        longOption = LongOption(options1[0]);
+        shortOption = longOption.shortOption();
     }
 
-    function test_DeploymentSuccessful() public view {
-        // Verify all contracts are deployed
-        assertTrue(address(stableToken) != address(0), "StableToken not deployed");
-        assertTrue(address(shakyToken) != address(0), "ShakyToken not deployed");
-        assertTrue(address(short) != address(0), "ShortOption not deployed");
-        assertTrue(address(long) != address(0), "LongOption not deployed");
-        assertTrue(address(factory) != address(0), "OptionFactory not deployed");
+    function approve1(address token, address spender) public {
+        IERC20(token).approve(PERMIT2, MAX256);
+        permit2.approve(token, spender, MAX160, MAX48);
     }
 
-    function test_ContractAddresses() public view {
-        // Verify contracts have correct addresses set
-        assertEq(address(long), address(long), "LongOption address mismatch");
-        assertEq(address(short), address(short), "ShortOption address mismatch");
+    function approve2(address token, address spender) public {
+        IERC20(token).approve(spender, MAX256);
     }
 
-    function test_Mint() public {
-        // Placeholder for exercise test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        shakyToken.approve(longOption.shortOption(), type(uint256).max);
+    function consoleBalances() public view {
+        console.log("ShakyToken balance:", shakyToken.balanceOf(address(this)));
+        console.log("StableToken balance:", stableToken.balanceOf(address(this)));
+        console.log("LongOption balance:", longOption.balanceOf(address(this)));
+        console.log("ShortOption balance:", longOption.shortOption_().balanceOf(address(this)));
+    }
+
+    modifier t1 {
+        approve1(shakyToken_, shortOption);
+        approve1(stableToken_, shortOption);
+        _;
+        consoleBalances();
+    }
+
+    modifier t2 {
+        approve2(shakyToken_, shortOption);
+        approve2(stableToken_, shortOption);
+        _;
+        consoleBalances();
+    }
+
+    function test_Mint() public t1 {
         longOption.mint(1);
-
-        // console.log("Exercise test executed");
-
     }
 
-
-    function test_Exercise1() public {
-        // Placeholder for exercise test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        // shakyToken.approve(longOption.shortOption(), 1000 * 10**18);
-        shakyToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), longOption.shortOption(), MAX160, MAX48);
-        longOption.mint(1);
-
-        // console.log("Exercise test executed");
-
-    }
-
-    function test_Transfer() public {
-        // Placeholder for transfer test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        shakyToken.approve(longOption.shortOption(), type(uint256).max);
-        // longOption.mint(1);
-
+    function test_Transfer1() public t1 {
         longOption.transfer(address(0x123), 1);
-
-        // console.log("Transfer test executed");
     }
 
-
-    function test_Transfer1() public {
-        // Placeholder for transfer test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        // shakyToken.approve(longOption.shortOption(), type(uint256).max);
-        // longOption.mint(1);
-        shakyToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), longOption.shortOption(), MAX160, MAX48);
-
-
+    function test_Transfer2() public t2 {
         longOption.transfer(address(0x123), 1);
-
-        console.log("Transfer test executed", shakyToken.balanceOf(address(this)) );
-        console.log("Transfer test executed", longOption.shortOption_().balanceOf(address(this)) );
     }
 
-
-
-    function test_TransferFrom1() public {
-        // Placeholder for transfer test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        // shakyToken.approve(longOption.shortOption(), type(uint256).max);
-        // longOption.mint(1);
-        shakyToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), longOption.shortOption(), MAX160, MAX48);
-
-
+    function test_TransferFrom1() public t1 {
         longOption.transfer(address(0x123), 1);
-
         vm.prank(address(0x123));
-        longOption.approve(address(this), 1);
+        approve2(address(longOption), address(this));
         longOption.transferFrom(address(0x123), address(this), 1);
-
-        console.log("Transfer test executed", shakyToken.balanceOf(address(this)) );
-        console.log("Transfer test executed", longOption.shortOption_().balanceOf(address(this)) );
     }
 
-
-    function test_TransferTransfer() public {
-        // Placeholder for transfer test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        // shakyToken.approve(longOption.shortOption(), type(uint256).max);
-        // longOption.mint(1);
-        shakyToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), longOption.shortOption(), MAX160, MAX48);
-
-
+    function test_TransferTransfer() public t1 {
         longOption.transfer(address(0x123), 1);
-
         vm.prank(address(0x123));
         longOption.transfer( address(this), 1);
+        }
 
-        console.log("Transfer test executed", shakyToken.balanceOf(address(this)) );
-        console.log("Transfer test executed", longOption.shortOption_().balanceOf(address(this)) );
-    }
-
-    function test_Exercise() public {
-        // Placeholder for transfer test logic
-        address[] memory options = factory.getCreatedOptions();
-        LongOption longOption = LongOption(options[0]);
-        // shakyToken.approve(longOption.shortOption(), type(uint256).max);
-        shakyToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), longOption.shortOption(), MAX160, MAX48);
-        stableToken.approve(PERMIT2, MAX256);
-        permit2.approve(address(stableToken), longOption.shortOption(), MAX160, MAX48);
+    function test_Exercise1() public t1 {
         longOption.mint(1);
         longOption.exercise(1);
-
-        // vm.prank(address(0x123));
-        // longOption.transfer( address(this), 1);
-
-        console.log("Transfer test executed", shakyToken.balanceOf(address(this)) );
-        console.log("Transfer test executed", longOption.shortOption_().balanceOf(address(this)) );
     }
+
+    function test_Exercise2() public t2 {
+        longOption.mint(1);
+        longOption.exercise(1);
+    }
+
+    function test_Redeem1() public t1 {
+        longOption.mint(1);
+        longOption.redeem(1);
+    }
+
+    function test_Redeem2() public t2 {
+        longOption.mint(1);
+        longOption.redeem(1);
+    }
+
+    function test_RedeemConsideration1() public t1 {
+        longOption.mint(1);
+        longOption.exercise(1);
+        longOption.shortOption_().redeemConsideration(1);
+    }
+
+    function test_RedeemConsideration2() public t2 {
+        longOption.mint(1);
+        longOption.exercise(1);
+        longOption.shortOption_().redeemConsideration(1);
+    }
+
 }
