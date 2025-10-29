@@ -25,10 +25,14 @@ contract ShortOption is OptionBase {
 
     event Redemption(address longOption, address token, address holder, uint256 amount);
 
-    modifier sufficientCollateral(address sender, uint256 amount) {
-        if (collateral.balanceOf(sender) < amount) {
-            revert InsufficientBalance();
-        }
+    modifier sufficientCollateral(address account, uint256 amount) {
+        require(collateral.balanceOf(account) >= amount, "Insufficient Collateral");
+        _;
+    }
+
+    modifier sufficientConsideration(address account, uint256 amount) {
+        uint256 consAmount = toConsideration(amount);
+        require(consideration.balanceOf(account) >= consAmount, "Insufficient Consideration");
         _;
     }
 
@@ -104,36 +108,39 @@ contract ShortOption is OptionBase {
         emit Redemption(address(longOption), address(collateral), to, amount);
     }
 
+    function redeemConsideration(uint256 amount)
+        public
+        sufficientBalance(msg.sender, amount)
+        validAmount(amount)
+        nonReentrant
+    {
+        _redeemConsideration(msg.sender, amount);
+    }
     function _redeemConsideration(address to, uint256 amount)
         private
+        
         sufficientBalance(to, amount)
         validAmount(amount)
     {
-        uint256 considerationAmount = toConsideration(amount);
-        require(consideration.balanceOf(address(this)) >= considerationAmount, "Insufficient Consideration");
+        uint256 consAmount = toConsideration(amount);
+        require(consideration.balanceOf(address(this)) >= consAmount, "Insufficient Consideration");
         _burn(to, amount);
-        consideration.safeTransfer(to, considerationAmount);
-        emit Redemption(address(longOption), address(consideration), to, considerationAmount);
+        consideration.safeTransfer(to, consAmount);
+        emit Redemption(address(longOption), address(consideration), to, consAmount);
     }
 
-    function redeemConsideration(uint256 amount) public sufficientBalance(msg.sender, amount) {
-        _redeemConsideration(msg.sender, amount);
-    }
-
-    function _exercise(
-        uint256 amount,
-        address to
-        ) public notExpired onlyOwner nonReentrant {
-        require(consideration.balanceOf(to) >= amount, "Insufficient Consideration");
-        if (consideration.allowance(to, address(this)) >= amount) {
-            consideration.safeTransferFrom(to, address(this), amount);
-        } else {
-            PERMIT2.transferFrom(to, address(this), uint160(amount), address(consideration));
-        }
-
-        uint256 collateralToSend = toCollateral(amount);
-        require(collateral.balanceOf(address(this)) >= collateralToSend, "Insufficient Collateral");
-        collateral.safeTransfer(to, collateralToSend);
+    function transferFrom_(
+        address caller,
+        address from,
+        address to,
+        address token, 
+        uint256 amount
+        ) private {
+        if (IERC20(token).allowance(from, caller) >= amount) {
+                IERC20(token).safeTransferFrom(from, to, amount);
+            } else {
+                PERMIT2.transferFrom(from, to, uint160(amount), token);
+            }
     }
 
     function exercise(
@@ -141,6 +148,27 @@ contract ShortOption is OptionBase {
         ) public notExpired onlyOwner {
         _exercise(amount, to);
     }
+
+    function _exercise(
+        uint256 amount,
+        address to
+        ) public 
+        notExpired 
+        onlyOwner nonReentrant 
+        sufficientConsideration(to, amount) 
+        sufficientCollateral(address(this), amount)
+        validAmount(amount) {
+
+        transferFrom_(
+            address(this), 
+            to, 
+            address(this), 
+            address(consideration), 
+            toConsideration(amount));
+
+        collateral.safeTransfer(to, amount);
+    }
+
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {
         _redeem(holder, balanceOf(holder));

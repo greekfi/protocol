@@ -47,7 +47,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     bool public initialized = false;
     string private _tokenName;
     string private _tokenSymbol;
-    bool locked = false;
+    bool public locked = false;
 
     error ContractNotExpired();
     error ContractExpired();
