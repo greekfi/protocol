@@ -67,7 +67,6 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
     modifier notLocked() {
         require(!locked, "Contract is Locked");
-        if (locked) revert();
         _;
     }
 
@@ -78,7 +77,6 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
     modifier validAddress(address addr) {
         require(addr != address(0), "Invalid address");
-        if (addr == address(0)) revert InvalidValue();
         _;
     }
 

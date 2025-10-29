@@ -91,7 +91,7 @@ contract ShortOption is OptionBase {
         uint256 balance = collateral.balanceOf(address(this));
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
-        _burn(to, amount);
+        _burn(to, collateralToSend);
         // fulfill with consideration first
         if (balance < amount) {
             _redeemConsideration(to, amount - balance);
@@ -106,7 +106,6 @@ contract ShortOption is OptionBase {
 
     function _redeemConsideration(address to, uint256 amount)
         private
-        nonReentrant
         sufficientBalance(to, amount)
         validAmount(amount)
     {

@@ -60,7 +60,7 @@ contract LongOption is OptionBase {
         shortOption_ = ShortOption(shortOptionAddress_);
     }
 
-    function mint(uint256 amount) public {mint(msg.sender, amount); }
+    function mint(uint256 amount) public { mint(msg.sender, amount); }
     function mint(address to, uint256 amount)
         public
         nonReentrant
@@ -129,7 +129,7 @@ contract LongOption is OptionBase {
         collBalance = collateral.balanceOf(account);
         consBalance = consideration.balanceOf(account);
         longBalance = balanceOf(account);
-        shortBalance = balanceOf(account);
+        shortBalance = shortOption_.balanceOf(account);
     }
 
     function details() public view returns (OptionDetails memory) {
