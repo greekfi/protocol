@@ -70,35 +70,44 @@ contract LongOption is OptionBase {
         _mint(msg.sender, transferDetails.requestedAmount);
         emit Mint(address(this), msg.sender, transferDetails.requestedAmount);
     }
-
-    function mint(uint256 amount)
+    function mint(uint256 amount) public {mint(amount, msg.sender); }
+    function mint(uint256 amount, address to)
         public
         nonReentrant
         validAmount(amount)
-        notExpired
+        notExpired 
     {
-        shortOption_.mint(msg.sender, amount);
-        _mint(msg.sender, amount);
-        emit Mint(address(this), msg.sender, amount);
+        shortOption_.mint(to, amount);
+        _mint(to, amount);
+        emit Mint(address(this), to, amount);
     }
 
-    function transferFrom(address from, address to, uint256 amount) public override returns (bool success) {
 
+    function transferFrom(address from, address to, uint256 amount) 
+    public override returns (bool success) {
         success = super.transferFrom(from, to, amount);
-        uint256 shortBalance = shortOption_.balanceOf(from);
+        uint256 shortBalance = shortOption_.balanceOf(to);
         if (shortBalance > 0){
-            redeem(min(shortBalance, amount));
+            redeem(min(shortBalance, amount), to);
         }
         
     }
 
     function transfer(address to, uint256 amount) public override notLocked returns (bool success) {
-        uint256 opBalance = this.balanceOf(msg.sender);
-        if (opBalance <amount){
-            mint(amount - opBalance);
+        uint256 balance = this.balanceOf(msg.sender);
+        // allows JIT minting
+        if (balance < amount){
+            mint(amount - balance);
         }
 
         success = super.transfer(to, amount);
+        if (!success){
+            revert("Transfer failed");
+        }
+        uint256 shortBalance = shortOption_.balanceOf(to);
+        if (shortBalance > 0){
+            redeem(min(shortBalance, amount), to);
+        }
     }
 
     function exercise(IPermit2.PermitTransferFrom calldata permit, IPermit2.SignatureTransferDetails calldata transferDetails, bytes calldata signature)
@@ -112,15 +121,28 @@ contract LongOption is OptionBase {
         emit Exercise(address(this), msg.sender, transferDetails.requestedAmount);
     }
 
-    function redeem(uint256 amount)
+    function exercise(uint256 amount) public { exercise(amount, msg.sender); }
+    function exercise(uint256 amount, address to)
         public
         notExpired
         nonReentrant
-        sufficientBalance(msg.sender, amount)
         validAmount(amount)
     {
-        _burn(msg.sender, amount);
-        shortOption_._redeemPair(msg.sender, amount);
+        _burn(to, amount);
+        shortOption_.exercise(amount, to);
+        emit Exercise(address(this), to, amount);
+    }
+
+    function redeem(uint256 amount) public { redeem(amount, msg.sender); }
+    function redeem(uint256 amount, address to)
+        public
+        notExpired
+        nonReentrant
+        sufficientBalance(to, amount)
+        validAmount(amount)
+    {
+        _burn(to, amount);
+        shortOption_._redeemPair(to, amount);
     }
 
     function setShortOption(address shortOptionAddress) public onlyOwner {

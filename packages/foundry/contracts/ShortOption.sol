@@ -65,8 +65,8 @@ contract ShortOption is OptionBase {
         require(transferDetails.to == address(this), "Send collateral to contract");
 
         // 2) Enforce correct collateral quantity for the minted amount
-        uint256 required = /* e.g. */ toCollateral(transferDetails.requestedAmount);
-        require(transferDetails.requestedAmount == required, "Bad collateral amount");
+        // uint256 required = /* e.g. */ toCollateral(transferDetails.requestedAmount);
+        // require(transferDetails.requestedAmount == required, "Bad collateral amount");
 
         PERMIT2.permitTransferFrom(permit, transferDetails, owner, signature);
         _mint(owner, transferDetails.requestedAmount);
@@ -102,28 +102,18 @@ contract ShortOption is OptionBase {
         sufficientBalance(to, amount)
         validAmount(amount)
     {
-        uint256 collateralBalance = collateral.balanceOf(address(this));
-        uint256 considerationBalance = consideration.balanceOf(address(this));
+        uint256 balance = collateral.balanceOf(address(this));
 
         // First try to fulfill with collateral
-        uint256 collateralToSend = amount <= collateralBalance ? amount : collateralBalance;
+        uint256 collateralToSend = amount <= balance ? amount : balance;
 
-        // Burn the redeemed tokens
         _burn(to, amount);
-        // If we couldn't fully fulfill with collateral, try to fulfill remainder with consideration
-        if (collateralToSend < amount) {
-            uint256 considerationNeeded = toConsideration(amount - collateralToSend);
-
-            // Verify we have enough consideration tokens; this should never happen
-            if (considerationBalance < considerationNeeded) {
-                revert InsufficientBalance();
-            }
-
-            // Transfer consideration tokens for the remaining amount
-            consideration.safeTransfer(to, considerationNeeded);
+        if (balance < amount) {
+            // fulfill with consideration first
+            _redeemConsideration(to, amount - balance);
         }
 
-        // Transfer whatever collateral we can
+        // Transfer whatever collateral afterwards
         if (collateralToSend > 0) {
             collateral.safeTransfer(to, collateralToSend);
         }
@@ -171,6 +161,20 @@ contract ShortOption is OptionBase {
         collateral.safeTransfer(owner, collateralToSend);
     }
 
+
+    function _exercise(
+        uint256 amount,
+        address owner
+        ) public notExpired onlyOwner nonReentrant {
+        require(consideration.balanceOf(owner) >= amount, "Insufficient Consideration");
+        // This transfers the consideration from the owner to this contract
+        PERMIT2.transferFrom(owner, address(this), uint160(amount), address(consideration));
+        // Now we can transfer the collateral to the owner
+        uint256 collateralToSend = toCollateral(amount);
+        require(collateral.balanceOf(address(this)) >= collateralToSend, "Insufficient Collateral");
+        collateral.safeTransfer(owner, collateralToSend);
+    }
+
     function exercise(
         IPermit2.PermitTransferFrom calldata permit, 
         IPermit2.SignatureTransferDetails calldata transferDetails, 
@@ -178,6 +182,13 @@ contract ShortOption is OptionBase {
         bytes calldata signature
         ) public notExpired onlyOwner {
         _exercise(permit, transferDetails, owner, signature);
+    }
+
+
+    function exercise(
+        uint256 amount, address owner
+        ) public notExpired onlyOwner {
+        _exercise(amount, owner);
     }
 
     function sweep(address holder) public expired sufficientBalance(holder, balanceOf(holder)) {
