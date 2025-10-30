@@ -54,6 +54,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     error InsufficientBalance();
     error InvalidValue();
 
+    event Locked();
+    event Unlocked();
+
     modifier expired() {
         if (block.timestamp < expirationDate) revert ContractNotExpired();
         _;
@@ -104,6 +107,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         isPut = isPut_;
         collateral = IERC20(collateral_);
         consideration = IERC20(consideration_);
+        cons = IERC20Metadata(consideration_);
+        coll = IERC20Metadata(collateral_);
+        consDecimals = cons.decimals();
+        collDecimals = coll.decimals();
         _tokenName = name_;
         _tokenSymbol = symbol_;
     }
@@ -173,10 +180,12 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
 
     function lock() public onlyOwner {
         locked = true;
+        emit Locked();
     }
 
     function unlock() public onlyOwner {
         locked = false;
+        emit Unlocked();
     }
 
     function min(uint256 a, uint256 b) internal pure returns (uint256) {

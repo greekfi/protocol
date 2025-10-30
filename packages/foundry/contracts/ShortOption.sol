@@ -3,10 +3,12 @@ pragma solidity ^0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { OptionBase } from "./OptionBase.sol";
 
 using SafeERC20 for IERC20;
+using EnumerableSet for EnumerableSet.AddressSet;
 // The Long Option contract is the owner of the Short Option contract
 // The Long Option contract is the only one that can mint new mint
 // The Long Option contract is the only one that can exercise mint
@@ -21,7 +23,7 @@ using SafeERC20 for IERC20;
 
 contract ShortOption is OptionBase {
     address public longOption;
-    address[] accounts;
+    EnumerableSet.AddressSet private accountsWithBalance;
 
     event Redemption(address longOption, address token, address holder, uint256 amount);
 
@@ -36,14 +38,18 @@ contract ShortOption is OptionBase {
         _;
     }
 
-    modifier saveAccount(address account) {
-        accounts.push(account);
-        _;
-    }
-
     function _update(address from, address to, uint256 value) internal override {
          super._update(from, to, value);
-         accounts.push(to);
+         
+         // Add recipient to set if they now have a balance
+         if (to != address(0) && balanceOf(to) + value > 0) {
+             accountsWithBalance.add(to);
+         }
+         
+         // Remove sender from set if they no longer have a balance
+         if (from != address(0) && balanceOf(from) - value == 0) {
+             accountsWithBalance.remove(from);
+         }
     }
 
     constructor(
@@ -70,7 +76,7 @@ contract ShortOption is OptionBase {
 
 
     function mint(address account, uint256 amount)
-        public onlyOwner notExpired nonReentrant validAmount(amount) sufficientCollateral(account, amount) validAddress(account) saveAccount(account) {
+        public onlyOwner notExpired nonReentrant validAmount(amount) sufficientCollateral(account, amount) validAddress(account) {
 
         transferFrom_(account, address(this), collateral, amount );
         _mint(account, amount);
@@ -129,8 +135,10 @@ contract ShortOption is OptionBase {
     }
 
     function sweep() public expired nonReentrant {
-        for (uint256 i = 0; i < accounts.length; i++){
-            address holder = accounts[i];
+        uint256 length = accountsWithBalance.length();
+        for (uint256 i = 0; i < length; i++){
+            // Always get index 0 since we remove elements as we process them
+            address holder = accountsWithBalance.at(0);
             if (balanceOf(holder) > 0){
                 _redeem(holder, balanceOf(holder));
             }

@@ -55,6 +55,7 @@ contract LongOption is OptionBase {
         bool isPut,
         address shortOptionAddress_
     ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {
+        require(shortOptionAddress_ != address(0), "Invalid short option address");
         shortOption = shortOptionAddress_;
         short = ShortOption(shortOptionAddress_);
     }
@@ -82,15 +83,12 @@ contract LongOption is OptionBase {
 
     function transfer(address to, uint256 amount) 
         public override notLocked nonReentrant returns (bool success) {
-        uint256 balance = this.balanceOf(msg.sender);
-        if (balance < amount){
-            mint_(msg.sender, amount - balance);
-        }
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
 
         success = super.transfer(to, amount);
         require(success, "Transfer failed");
 
-        balance = short.balanceOf(to);
+        uint256 balance = short.balanceOf(to);
         if (balance > 0){
             redeem_(to, min(balance, amount));
         }
