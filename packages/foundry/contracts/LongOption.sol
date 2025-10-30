@@ -83,8 +83,6 @@ contract LongOption is OptionBase {
 
     function transfer(address to, uint256 amount) 
         public override notLocked nonReentrant returns (bool success) {
-        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
-
         success = super.transfer(to, amount);
         require(success, "Transfer failed");
 

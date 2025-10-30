@@ -40,11 +40,13 @@ EnumerableSet.AddressSet private accountsWithBalance;
 function _update(address from, address to, uint256 value) internal override {
     super._update(from, to, value);
     
-    if (to != address(0) && balanceOf(to) + value > 0) {
+    // Add recipient if they have a balance (after transfer)
+    if (to != address(0) && balanceOf(to) > 0) {
         accountsWithBalance.add(to);
     }
     
-    if (from != address(0) && balanceOf(from) - value == 0) {
+    // Remove sender if they have no balance (after transfer)
+    if (from != address(0) && balanceOf(from) == 0) {
         accountsWithBalance.remove(from);
     }
 }
@@ -109,7 +111,8 @@ function transfer(address to, uint256 amount) public override {
 
 // After
 function transfer(address to, uint256 amount) public override {
-    require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+    // Standard ERC20 transfer - reverts if insufficient balance
+    success = super.transfer(to, amount);
     // ...
 }
 ```
