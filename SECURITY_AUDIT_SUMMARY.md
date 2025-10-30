@@ -109,11 +109,16 @@ function transfer(address to, uint256 amount) public override {
     // ...
 }
 
-// After
+// After - Standard ERC20 behavior
 function transfer(address to, uint256 amount) public override {
-    // Standard ERC20 transfer - reverts if insufficient balance
-    success = super.transfer(to, amount);
-    // ...
+    success = super.transfer(to, amount);  // Reverts if insufficient balance
+    require(success, "Transfer failed");
+    
+    // Auto-redeem if recipient has both long and short
+    uint256 balance = short.balanceOf(to);
+    if (balance > 0){
+        redeem_(to, min(balance, amount));
+    }
 }
 ```
 

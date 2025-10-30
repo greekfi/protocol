@@ -41,12 +41,12 @@ contract ShortOption is OptionBase {
     function _update(address from, address to, uint256 value) internal override {
          super._update(from, to, value);
          
-         // Add recipient to set if they now have a balance
+         // Add recipient to set if they have a balance (checked after super._update)
          if (to != address(0) && balanceOf(to) > 0) {
              accountsWithBalance.add(to);
          }
          
-         // Remove sender from set if they no longer have a balance
+         // Remove sender from set if they have zero balance (checked after super._update)
          if (from != address(0) && balanceOf(from) == 0) {
              accountsWithBalance.remove(from);
          }
