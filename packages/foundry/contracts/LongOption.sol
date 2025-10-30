@@ -61,27 +61,18 @@ contract LongOption is OptionBase {
 
     function mint(uint256 amount) public { mint(msg.sender, amount); }
     function mint(address to, uint256 amount)
-        public
-        nonReentrant
-        validAmount(amount)
-        notExpired 
-    {
-        shortOption_.mint(to, amount);
-        _mint(to, amount);
-        emit Mint(address(this), to, amount);
+        public nonReentrant {
+        mint_(to, amount);
     }
     function mint_(address to, uint256 amount)
-        internal
-        validAmount(amount)
-        notExpired 
-    {
+        internal notExpired notLocked validAmount(amount) {
         shortOption_.mint(to, amount);
         _mint(to, amount);
         emit Mint(address(this), to, amount);
     }
 
     function transferFrom(address from, address to, uint256 amount) 
-    public override notLocked nonReentrant returns (bool success) {
+        public override notLocked nonReentrant returns (bool success) {
         success = super.transferFrom(from, to, amount);
         uint256 balance = shortOption_.balanceOf(to);
         if (balance > 0){
@@ -90,7 +81,7 @@ contract LongOption is OptionBase {
     }
 
     function transfer(address to, uint256 amount) 
-    public override notLocked nonReentrant returns (bool success) {
+        public override notLocked nonReentrant returns (bool success) {
         uint256 balance = this.balanceOf(msg.sender);
         if (balance < amount){
             mint_(msg.sender, amount - balance);
@@ -104,42 +95,21 @@ contract LongOption is OptionBase {
             redeem_(to, min(balance, amount));
         }
     }
-
-    function exercise(uint256 amount)
-        public
-        notExpired
-        nonReentrant
-        validAmount(amount)
-    {
+    function exercise(uint256 amount) public { exercise(msg.sender, amount); }
+    function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
-        shortOption_.exercise(amount, msg.sender);
+        shortOption_.exercise(amount, account, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
-// do we need a redeemTo ?
-
-    function redeem_(address to, uint256 amount) internal sufficientBalance(to, amount) {
+    function redeem(uint256 amount) public { redeem(msg.sender, amount); }
+    function redeem(address to, uint256 amount)
+        public nonReentrant {
+        redeem_(to, amount);
+    }
+    function redeem_(address to, uint256 amount) internal notExpired sufficientBalance(to, amount) {
         _burn(to, amount);
         shortOption_._redeemPair(to, amount);
-    }
-
-    function redeem(uint256 amount)
-        public
-        notExpired
-        nonReentrant
-        sufficientBalance(msg.sender, amount)
-        validAmount(amount)
-    {
-        redeem_(msg.sender, amount);
-    }
-    function redeem(address to, uint256 amount)
-        public
-        notExpired
-        nonReentrant
-        sufficientBalance(to, amount)
-        validAmount(amount)
-    {
-        redeem_(to, amount);
     }
 
     function setShortOption(address shortOptionAddress) public onlyOwner {
