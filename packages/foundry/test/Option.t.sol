@@ -104,7 +104,7 @@ contract OptionTest is Test {
         longOption = LongOption(options1[0]);
         shortOption = longOption.shortOption();
 
-        shortOption_ = longOption.shortOption_();
+        shortOption_ = longOption.short();
     }
 
     function approve1(address token, address spender) public {
@@ -128,7 +128,7 @@ contract OptionTest is Test {
         console.log("ShakyToken balance:", shakyToken.balanceOf(address(this)));
         console.log("StableToken balance:", stableToken.balanceOf(address(this)));
         console.log("LongOption balance:", longOption.balanceOf(address(this)));
-        console.log("ShortOption balance:", longOption.shortOption_().balanceOf(address(this)));
+        console.log("ShortOption balance:", shortOption_.balanceOf(address(this)));
     }
 
     modifier t1 {
@@ -193,13 +193,13 @@ contract OptionTest is Test {
     function test_RedeemConsideration1() public t1 {
         longOption.mint(1);
         longOption.exercise(1);
-        longOption.shortOption_().redeemConsideration(1);
+        shortOption_.redeemConsideration(1);
     }
 
     function test_RedeemConsideration2() public t2 {
         longOption.mint(1);
         longOption.exercise(1);
-        longOption.shortOption_().redeemConsideration(1);
+        shortOption_.redeemConsideration(1);
     }
 
     function test_ZeroAmountMint() public t1 {
@@ -261,7 +261,7 @@ contract OptionTest is Test {
     function test_ShortRedeemAfterExpiration() public t1 {
         longOption.mint(1);
         vm.warp(block.timestamp + 2 days);
-        longOption.shortOption_().redeem(1);
+        shortOption_.redeem(1);
     }
 
     function test_LockAndTransfer() public t1 {
@@ -343,8 +343,8 @@ contract OptionTest is Test {
     function test_Sweep() public t1 {
         longOption.mint(5);
         vm.warp(block.timestamp + 2 days);
-        longOption.shortOption_().sweep(address(this));
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 0);
+        shortOption_.sweep(address(this));
+        assertEq(shortOption_.balanceOf(address(this)), 0);
     }
 
     function test_ToConsideration() public view {
@@ -362,7 +362,7 @@ contract OptionTest is Test {
     function test_TransferAutoMint() public t1 {
         safeTransfer(address(longOption), address(0x123), 5);
         assertEq(longOption.balanceOf(address(0x123)), 5);
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 5);
+        assertEq(shortOption_.balanceOf(address(this)), 5);
     }
 
     function test_TransferFromAutoRedeem() public t1 {
@@ -372,9 +372,9 @@ contract OptionTest is Test {
         vm.prank(address(0x123));
         approve2(address(longOption), address(this));
 
-        uint256 shortBalanceBefore = longOption.shortOption_().balanceOf(address(this));
+        uint256 shortBalanceBefore = shortOption_.balanceOf(address(this));
         safeTransferFrom(address(longOption), address(0x123), address(this), 3);
-        uint256 shortBalanceAfter = longOption.shortOption_().balanceOf(address(this));
+        uint256 shortBalanceAfter = shortOption_.balanceOf(address(this));
 
         assertEq(shortBalanceBefore - shortBalanceAfter, 3);
     }
@@ -391,7 +391,7 @@ contract OptionTest is Test {
         longOption.exercise(6);
 
         vm.warp(block.timestamp + 2 days);
-        longOption.shortOption_().redeem(10);
+        shortOption_.redeem(10);
     }
 
     function test_RedeemConsiderationInsufficientBalance() public {
@@ -413,14 +413,14 @@ contract OptionTest is Test {
         vm.stopPrank();
 
         assertEq(longOption.balanceOf(address(0x123)), 5);
-        assertEq(longOption.shortOption_().balanceOf(address(0x123)), 5);
+        assertEq(shortOption_.balanceOf(address(0x123)), 5);
     }
 
     function test_TransferBothTokensToSameAddress() public t1 {
         longOption.mint(10);
 
         uint256 longBefore = longOption.balanceOf(address(this));
-        uint256 shortBefore = longOption.shortOption_().balanceOf(address(this));
+        uint256 shortBefore = shortOption_.balanceOf(address(this));
 
         safeTransfer(address(longOption), address(0x123), 5);
 
@@ -428,8 +428,8 @@ contract OptionTest is Test {
         assertEq(shortBefore, 10);
         assertEq(longOption.balanceOf(address(0x123)), 5);
         assertEq(longOption.balanceOf(address(this)), 5);
-        assertEq(longOption.shortOption_().balanceOf(address(0x123)), 0);
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 10);
+        assertEq(shortOption_.balanceOf(address(0x123)), 0);
+        assertEq(shortOption_.balanceOf(address(this)), 10);
     }
 
     function test_MultipleExerciseSessions() public t1 {
@@ -448,7 +448,7 @@ contract OptionTest is Test {
         longOption.redeem(1);
 
         assertEq(longOption.balanceOf(address(this)), 4);
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 4);
+        assertEq(shortOption_.balanceOf(address(this)), 4);
     }
 
     function test_TransferFromWithApproval() public t1 {
@@ -492,7 +492,7 @@ contract OptionTest is Test {
     function test_FullLifecycle1() public t1 {
         longOption.mint(10);
         safeTransfer(address(longOption), address(0x123), 5);
-        safeTransfer(address(longOption.shortOption_()), address(0x123), 5);
+        safeTransfer(address(shortOption_), address(0x123), 5);
 
         stableToken.mint(address(0x123), 1000e18);
 
@@ -500,11 +500,11 @@ contract OptionTest is Test {
         approve1(shakyToken_, shortOption);
         approve1(stableToken_, shortOption);
         longOption.exercise(3);
-        longOption.shortOption_().redeemConsideration(2);
+        shortOption_.redeemConsideration(2);
         vm.stopPrank();
 
         assertEq(longOption.balanceOf(address(0x123)), 2);
-        assertEq(longOption.shortOption_().balanceOf(address(0x123)), 3);
+        assertEq(shortOption_.balanceOf(address(0x123)), 3);
     }
 
     function test_FullLifecycle2() public t1 {
@@ -517,24 +517,24 @@ contract OptionTest is Test {
         longOption.redeem(5);
 
         assertEq(longOption.balanceOf(address(this)), 0);
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 5);
+        assertEq(shortOption_.balanceOf(address(this)), 5);
         assertEq(longOption.balanceOf(address(0x123)), 2);
         assertEq(longOption.balanceOf(address(0x456)), 3);
     }
 
     function test_PostExpirationFlow() public t1 {
         longOption.mint(10);
-        safeTransfer(address(longOption), address(0x123), 5);
+        safeTransfer(address(shortOption_), address(0x123), 5);
 
-        vm.warp(block.timestamp + 2 days);
+        vm.warp(block.timestamp + 10 days);
 
-        longOption.shortOption_().redeem(5);
+        shortOption_.redeem(5);
 
         vm.prank(address(0x123));
-        longOption.shortOption_().redeem(5);
+        shortOption_.redeem(5);
 
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 0);
-        assertEq(longOption.shortOption_().balanceOf(address(0x123)), 0);
+        assertEq(shortOption_.balanceOf(address(this)), 0);
+        assertEq(shortOption_.balanceOf(address(0x123)), 0);
     }
 
     function test_DecimalConversionRoundtrip() public view {
@@ -549,17 +549,17 @@ contract OptionTest is Test {
 
         vm.warp(block.timestamp + 2 days);
 
-        longOption.shortOption_().sweep(address(this));
+        shortOption_.sweep(address(this));
 
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 0);
+        assertEq(shortOption_.balanceOf(address(this)), 0);
     }
 
     function test_DirectShortTransfer() public t1 {
         longOption.mint(10);
-        safeTransfer(address(longOption.shortOption_()), address(0x123), 5);
+        safeTransfer(address(shortOption_), address(0x123), 5);
 
-        assertEq(longOption.shortOption_().balanceOf(address(0x123)), 5);
-        assertEq(longOption.shortOption_().balanceOf(address(this)), 5);
+        assertEq(shortOption_.balanceOf(address(0x123)), 5);
+        assertEq(shortOption_.balanceOf(address(this)), 5);
     }
 
 }

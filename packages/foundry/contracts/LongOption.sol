@@ -40,7 +40,7 @@ struct OptionDetails {
 
 contract LongOption is OptionBase {
     address public shortOption;
-    ShortOption public shortOption_;
+    ShortOption public short;
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
@@ -56,7 +56,7 @@ contract LongOption is OptionBase {
         address shortOptionAddress_
     ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {
         shortOption = shortOptionAddress_;
-        shortOption_ = ShortOption(shortOptionAddress_);
+        short = ShortOption(shortOptionAddress_);
     }
 
     function mint(uint256 amount) public { mint(msg.sender, amount); }
@@ -66,7 +66,7 @@ contract LongOption is OptionBase {
     }
     function mint_(address account, uint256 amount)
         internal notExpired notLocked validAmount(amount) {
-        shortOption_.mint(account, amount);
+        short.mint(account, amount);
         _mint(account, amount);
         emit Mint(address(this), account, amount);
     }
@@ -74,7 +74,7 @@ contract LongOption is OptionBase {
     function transferFrom(address from, address to, uint256 amount) 
         public override notLocked nonReentrant returns (bool success) {
         success = super.transferFrom(from, to, amount);
-        uint256 balance = shortOption_.balanceOf(to);
+        uint256 balance = short.balanceOf(to);
         if (balance > 0){
             redeem_(to, min(balance, amount));
         }
@@ -90,7 +90,7 @@ contract LongOption is OptionBase {
         success = super.transfer(to, amount);
         require(success, "Transfer failed");
 
-        balance = shortOption_.balanceOf(to);
+        balance = short.balanceOf(to);
         if (balance > 0){
             redeem_(to, min(balance, amount));
         }
@@ -98,7 +98,7 @@ contract LongOption is OptionBase {
     function exercise(uint256 amount) public { exercise(msg.sender, amount); }
     function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
-        shortOption_.exercise(account, amount, msg.sender);
+        short.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
@@ -109,12 +109,12 @@ contract LongOption is OptionBase {
     }
     function redeem_(address account, uint256 amount) internal notExpired sufficientBalance(account, amount) {
         _burn(account, amount);
-        shortOption_._redeemPair(account, amount);
+        short._redeemPair(account, amount);
     }
 
     function setShortOption(address shortOptionAddress) public onlyOwner {
         shortOption = shortOptionAddress;
-        shortOption_ = ShortOption(shortOption);
+        short = ShortOption(shortOption);
     }
 
     function balancesOf(address account) 
@@ -122,15 +122,15 @@ contract LongOption is OptionBase {
         collBalance = collateral.balanceOf(account);
         consBalance = consideration.balanceOf(account);
         longBalance = balanceOf(account);
-        shortBalance = shortOption_.balanceOf(account);
+        shortBalance = short.balanceOf(account);
     }
 
     function details() public view returns (OptionDetails memory) {
         return OptionDetails({
             longName: name(),
             longSymbol: symbol(),
-            shortName: shortOption_.name(),
-            shortSymbol: shortOption_.symbol(),
+            shortName: short.name(),
+            shortSymbol: short.symbol(),
             collateral: address(collateral),
             consideration: address(consideration),
             collDecimals: collDecimals,
