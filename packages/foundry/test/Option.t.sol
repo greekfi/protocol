@@ -150,10 +150,12 @@ contract OptionTest is Test {
     }
 
     function test_Transfer1() public t1 {
+        longOption.mint(1);
         safeTransfer(address(longOption), address(0x123), 1);
     }
 
     function test_Transfer2() public t2 {
+        longOption.mint(1);
         safeTransfer(address(longOption), address(0x123), 1);
     }
 
@@ -360,6 +362,8 @@ contract OptionTest is Test {
     }
 
     function test_TransferAutoMint() public t1 {
+        // Mint first since auto-mint was removed for security
+        longOption.mint(5);
         safeTransfer(address(longOption), address(0x123), 5);
         assertEq(longOption.balanceOf(address(0x123)), 5);
         assertEq(shortOption_.balanceOf(address(this)), 5);
