@@ -17,8 +17,8 @@ import { ShortOption } from "./ShortOption.sol";
 // or even staked stable coins can be used as well for either consideration or collateral.
 
 struct OptionDetails {
-    string name;
-    string symbol;
+    string longName;
+    string longSymbol;
     string shortName;
     string shortSymbol;
     address collateral;
@@ -60,15 +60,15 @@ contract LongOption is OptionBase {
     }
 
     function mint(uint256 amount) public { mint(msg.sender, amount); }
-    function mint(address to, uint256 amount)
+    function mint(address account, uint256 amount)
         public nonReentrant {
-        mint_(to, amount);
+        mint_(account, amount);
     }
-    function mint_(address to, uint256 amount)
+    function mint_(address account, uint256 amount)
         internal notExpired notLocked validAmount(amount) {
-        shortOption_.mint(to, amount);
-        _mint(to, amount);
-        emit Mint(address(this), to, amount);
+        shortOption_.mint(account, amount);
+        _mint(account, amount);
+        emit Mint(address(this), account, amount);
     }
 
     function transferFrom(address from, address to, uint256 amount) 
@@ -98,18 +98,18 @@ contract LongOption is OptionBase {
     function exercise(uint256 amount) public { exercise(msg.sender, amount); }
     function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
-        shortOption_.exercise(amount, account, msg.sender);
+        shortOption_.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
     function redeem(uint256 amount) public { redeem(msg.sender, amount); }
-    function redeem(address to, uint256 amount)
+    function redeem(address account, uint256 amount)
         public nonReentrant {
-        redeem_(to, amount);
+        redeem_(account, amount);
     }
-    function redeem_(address to, uint256 amount) internal notExpired sufficientBalance(to, amount) {
-        _burn(to, amount);
-        shortOption_._redeemPair(to, amount);
+    function redeem_(address account, uint256 amount) internal notExpired sufficientBalance(account, amount) {
+        _burn(account, amount);
+        shortOption_._redeemPair(account, amount);
     }
 
     function setShortOption(address shortOptionAddress) public onlyOwner {
@@ -117,7 +117,8 @@ contract LongOption is OptionBase {
         shortOption_ = ShortOption(shortOption);
     }
 
-    function balancesOf(address account) public view returns (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) {
+    function balancesOf(address account) 
+    public view returns (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) {
         collBalance = collateral.balanceOf(account);
         consBalance = consideration.balanceOf(account);
         longBalance = balanceOf(account);
@@ -126,8 +127,8 @@ contract LongOption is OptionBase {
 
     function details() public view returns (OptionDetails memory) {
         return OptionDetails({
-            name: name(),
-            symbol: symbol(),
+            longName: name(),
+            longSymbol: symbol(),
             shortName: shortOption_.name(),
             shortSymbol: shortOption_.symbol(),
             collateral: address(collateral),
