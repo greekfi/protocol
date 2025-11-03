@@ -4,7 +4,6 @@ import TooltipButton from "./components/TooltipButton";
 import { useAllowanceCheck } from "./hooks/useAllowanceCheck";
 import { useContract } from "./hooks/useContract";
 import { useOptionDetails } from "./hooks/useGetOption";
-import { usePermit2 } from "./hooks/usePermit2";
 import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
 import { Abi, Address, erc20Abi, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
@@ -23,31 +22,24 @@ interface ActionInterfaceProps {
 }
 
 const Action = ({ details, action }: ActionInterfaceProps) => {
-  const { collDecimals: collateralDecimals, consDecimals, isExpired } = details || {};
+  const {} = details || {};
 
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
-  const longAbi = useContract()?.LongOption?.abi;
-  const collateralWei = parseUnits(amount.toString(), Number(details?.collDecimals));
-  const amountWei = parseUnits(amount.toString(), Number(details));
-  const { getPermitSignature: mintSignature } = usePermit2(
-    details?.collateral as Address,
-    details?.shortOption as Address,
-  );
-  const { getPermitSignature: exerciseSignature } = usePermit2(
-    details?.consideration as Address,
-    details?.shortOption as Address,
-  );
+  const optionAbi = useContract()?.Option?.abi;
+  const collateralWei = parseUnits(amount.toString(), Number(details?.collateral.decimals));
+  const amountWei = parseUnits(amount.toString(), Number(details?.option.decimals));
+
   const { considerationAllowance, collateralAllowance } = useAllowanceCheck(
-    details?.consideration as Address,
-    details?.collateral as Address,
+    details?.consideration.address_ as Address,
+    details?.collateral.address_ as Address,
   );
 
   const redeem = async () => {
     if (!details) return;
     const redeemConfig = {
-      address: details.isExpired ? details.shortOption : details.longOption,
-      abi: longAbi,
+      address: details.isExpired ? details.redemption : details.option,
+      abi: optionAbi,
       functionName: "redeem",
       args: [amountWei],
     };
@@ -68,15 +60,11 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
       } as any);
     }
 
-    const { permit, signature, transferDetails } = await exerciseSignature(considerationWei);
-    console.log("permit", permit);
-    console.log("signature", signature);
-    console.log("transferDetails", transferDetails);
     writeContract({
-      address: details.longOption,
-      abi: longAbi as Abi,
+      address: details.option.address_,
+      abi: optionAbi as Abi,
       functionName: "exercise",
-      args: [permit, transferDetails, signature],
+      args: [amountWei],
     });
   };
 
@@ -92,12 +80,11 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
       } as any);
     }
 
-    const { permit, signature, transferDetails } = await mintSignature(collateralWei);
     writeContract({
-      address: details.longOption,
-      abi: longAbi as Abi,
+      address: details.option.address_,
+      abi: optionAbi as Abi,
       functionName: "mint",
-      args: [permit, transferDetails, signature],
+      args: [collateralWei],
     });
   };
 
@@ -142,15 +129,15 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
         {action === "redeem" && (
           <>
             <TokenBalanceNow
-              symbol={details?.symbol}
-              balance={details?.balanceLong}
-              decimals={collateralDecimals}
+              symbol={details?.option.symbol}
+              balance={details?.balances?.option}
+              decimals={details?.option.decimals}
               label="Long Option Balance"
             />
             <TokenBalanceNow
-              symbol={details?.shortSymbol}
-              balance={details?.balanceShort}
-              decimals={collateralDecimals}
+              symbol={details?.redemption.symbol}
+              balance={details?.balances?.redemption}
+              decimals={details?.redemption.decimals}
               label="Short Option Balance"
             />
           </>
@@ -158,15 +145,15 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
         {action === "exercise" && (
           <>
             <TokenBalanceNow
-              symbol={details?.consSymbol}
-              balance={details?.balanceConsideration}
-              decimals={consDecimals}
+              symbol={details?.consideration.symbol}
+              balance={details?.balances?.consideration}
+              decimals={details?.consideration.decimals}
               label="Consideration Balance"
             />
             <TokenBalanceNow
-              symbol={details?.symbol}
-              balance={details?.balanceLong}
-              decimals={collateralDecimals}
+              symbol={details?.option.symbol}
+              balance={details?.balances?.option}
+              decimals={details?.option.decimals}
               label="Long Option Balance"
             />
           </>
@@ -174,15 +161,15 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
         {action === "mint" && (
           <>
             <TokenBalanceNow
-              symbol={details?.collSymbol}
-              balance={details?.balanceCollateral}
-              decimals={collateralDecimals}
+              symbol={details?.collateral.symbol}
+              balance={details?.balances?.collateral}
+              decimals={details?.collateral.decimals}
               label="Collateral Balance"
             />
             <TokenBalanceNow
-              symbol={details?.symbol}
-              balance={details?.balanceLong}
-              decimals={collateralDecimals}
+              symbol={details?.option.symbol}
+              balance={details?.balances?.option}
+              decimals={details?.option.decimals}
               label="Long Option Balance"
             />
           </>
@@ -212,7 +199,7 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
             className={buttonClass}
             onClick={handleAction}
             disabled={!amount || isPending}
-            title={isExpired ? "Option is expired" : ""}
+            title={details?.isExpired ? "Option is expired" : ""}
           >
             {isPending ? "Processing..." : title}
           </button>

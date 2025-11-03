@@ -126,10 +126,10 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
       console.log("isPut", isPut);
 
       const options = longNames.map((longName, i) => ({
-        longSymbol: longName,
-        shortSymbol: shortNames[i],
-        collateral: collateralToken.address,
-        consideration: considerationToken.address,
+        optionSymbol: longName,
+        redemptionSymbol: shortNames[i],
+        collateral_: collateralToken.address,
+        consideration_: considerationToken.address,
         expiration: BigInt(expTimestamp),
         strike: strikeIntegers[i],
         isPut,

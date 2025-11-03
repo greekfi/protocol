@@ -13,7 +13,7 @@ export const useGetOptions = () => {
   } = useReadContract({
     address: contract?.OptionFactory?.address,
     abi,
-    functionName: "getCreatedOptions",
+    functionName: "getOptions",
     query: {
       enabled: !!contract?.OptionFactory?.address,
     },

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { OptionBase } from "./OptionBase.sol";
+import { OptionBase, OptionInfo, OptionParameter, TokenData } from "./OptionBase.sol";
 import {Redemption} from "./Redemption.sol";
 /*
 The Option contract is the owner of the Redemption contract
@@ -24,27 +24,11 @@ or even staked stable coins can be used as well for either consideration or coll
 
 */
 
-
-struct OptionDetails {
-    string optionName;
-    string optionSymbol;
-    string redName;
-    string redSymbol;
-    address collateral;
-    address consideration;
-    string collName;
-    string consName;
-    string collSymbol;
-    string consSymbol;
-    uint8 collDecimals;
-    uint8 consDecimals;
-    uint256 expirationDate;
-    uint256 strike;
-    bool isPut;
-    uint256 totalSupply;
-    bool locked;
-    address redemption;
-    address option;
+struct Balances {
+    uint256 collateral;
+    uint256 consideration;
+    uint256 option;
+    uint256 redemption;
 }
 
 contract Option is OptionBase {
@@ -127,34 +111,35 @@ contract Option is OptionBase {
     }
 
     function balancesOf(address account) 
-    public view returns (uint256 collBalance, uint256 consBalance, uint256 optionBalance, uint256 redemptionBalance) {
-        collBalance = collateral.balanceOf(account);
-        consBalance = consideration.balanceOf(account);
-        optionBalance = balanceOf(account);
-        redemptionBalance = redemption.balanceOf(account);
+    public view returns (Balances memory) {
+        return Balances({
+            collateral: collateral.balanceOf(account),
+            consideration: consideration.balanceOf(account),
+            option: balanceOf(account),
+            redemption: redemption.balanceOf(account)
+        });
     }
 
-    function details() public view returns (OptionDetails memory) {
-        return OptionDetails({
-            optionName: name(),
-            optionSymbol: symbol(),
-            redName: redemption.name(),
-            redSymbol: redemption.symbol(),
-            collateral: address(collateral),
-            consideration: address(consideration),
-            collDecimals: collDecimals,
-            consDecimals: consDecimals,
-            collName: coll.name(),
-            consName: cons.name(),
-            collSymbol: coll.symbol(),
-            consSymbol: cons.symbol(),
-            expirationDate: expirationDate,
+    function details() public view returns (OptionInfo memory) {
+        return OptionInfo({
+            option: TokenData(address(this), name(), symbol(), 18),
+            redemption: TokenData(redemption_, redemption.name(), redemption.symbol(), 18),
+            collateral: TokenData(address(collateral), coll.name(), coll.symbol(), coll.decimals()),
+            consideration: TokenData(address(consideration), cons.name(), cons.symbol(), cons.decimals()),
+            p: OptionParameter({
+                optionSymbol: name(),
+                redemptionSymbol: redemption.name(),
+                collateral_: address(collateral),
+                consideration_: address(consideration),
+                expiration: expirationDate,
+                strike: strike,
+                isPut: isPut
+            }),
+            coll: address(collateral),
+            cons: address(consideration),
+            expiration: expirationDate,
             strike: strike,
-            isPut: isPut,
-            totalSupply: totalSupply(),
-            locked: locked,
-            redemption: address(redemption_),
-            option: address(this)
+            isPut: isPut
         });
     }
 }

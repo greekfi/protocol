@@ -5,9 +5,9 @@
 import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
 const deployedContracts = {
-  1: {
+  130: {
     StableToken: {
-      address: "0x694cb89a3837d3c140e5073c121e8c0e30e09efe",
+      address: "0x5fe4271b59cc8808b263cfd5b30006302462accd",
       abi: [
         {
           type: "constructor",
@@ -429,11 +429,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758132097.json",
+      deploymentFile: "run-1762203184366.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x1a781ccdda5df428c255a95c5588e9497c0eecd4",
+      address: "0xd6a70706e3a70bf43fabb918ebfbeb1fe4dab3c9",
       abi: [
         {
           type: "constructor",
@@ -855,11 +855,872 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758132097.json",
+      deploymentFile: "run-1762203184366.json",
       deploymentScript: "Deploy.s.sol",
     },
-    ShortOption: {
-      address: "0xee733f681e4387457f791c2d009d45352c5bcdd9",
+    OptionFactory: {
+      address: "0x10e7c08bd22dde461d361628fa6bbd2f2c195852",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "redemption_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "collaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "createOption",
+          inputs: [
+            {
+              name: "optionName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "redemptionName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "createOptions",
+          inputs: [
+            {
+              name: "optionParams",
+              type: "tuple[]",
+              internalType: "struct OptionParameter[]",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "get",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "collateral",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollateralsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderationsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getOptions",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getOptionsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isCollateral",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isConsideration",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isOption",
+          inputs: [
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "optionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "options",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "option",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "redemption",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "collateral",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "consideration",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "p",
+              type: "tuple",
+              internalType: "struct OptionParameter",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+            {
+              name: "coll",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "cons",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expiration",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "optionsSet",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "owner",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemptionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "renounceOwnership",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "transferOwnership",
+          inputs: [
+            {
+              name: "newOwner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "event",
+          name: "OptionCreated",
+          inputs: [
+            {
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "redemption",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "expirationDate",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              indexed: false,
+              internalType: "bool",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "OwnershipTransferred",
+          inputs: [
+            {
+              name: "previousOwner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "newOwner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "FailedDeployment",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientBalance",
+          inputs: [
+            {
+              name: "balance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "needed",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "OwnableInvalidOwner",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "OwnableUnauthorizedAccount",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+      ],
+      inheritedFunctions: {},
+      deploymentFile: "run-1762203184366.json",
+      deploymentScript: "Deploy.s.sol",
+    },
+    Redemption: {
+      address: "0x3f64c97e2d4383d489942e513251c83daa0ef5a3",
       abi: [
         {
           type: "constructor",
@@ -930,79 +1791,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "_exercise",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "_redeemPair",
           inputs: [
             {
-              name: "to",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -1014,6 +1806,25 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "accounts",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -1106,6 +1917,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -1149,6 +1965,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -1186,65 +2007,19 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
+              name: "account",
               type: "address",
               internalType: "address",
             },
             {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "caller",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -1341,13 +2116,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longOption",
+          name: "locked",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -1357,7 +2132,7 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "sender",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -1365,75 +2140,6 @@ const deployedContracts = {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "mint",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -1454,6 +2160,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "option",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "owner",
           inputs: [],
           outputs: [
@@ -1464,6 +2183,37 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -1493,6 +2243,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeemConsideration",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -1500,10 +2268,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setLongOption",
+          name: "setOption",
           inputs: [
             {
-              name: "longOption_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
@@ -1534,6 +2302,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "sweep",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -1701,6 +2476,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "OwnershipTransferred",
           inputs: [
             {
@@ -1720,10 +2508,16 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Redemption",
+          name: "Redeemed",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "token",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -1871,7 +2665,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -1914,11 +2718,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758132097.json",
+      deploymentFile: "run-1762203184366.json",
       deploymentScript: "Deploy.s.sol",
     },
-    LongOption: {
-      address: "0xfe1f4b7ee32ebf46647060a4b0d0d35d6ac16371",
+    Option: {
+      address: "0x6af1176c3cbfaf3c603ac381c321b83ff8f5a8ee",
       abi: [
         {
           type: "constructor",
@@ -1959,7 +2763,7 @@ const deployedContracts = {
               internalType: "bool",
             },
             {
-              name: "shortOptionAddress_",
+              name: "redemption__",
               type: "address",
               internalType: "address",
             },
@@ -2071,24 +2875,31 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "collBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "consBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "longBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "shortBalance",
-              type: "uint256",
-              internalType: "uint256",
+              name: "",
+              type: "tuple",
+              internalType: "struct Balances",
+              components: [
+                {
+                  name: "collateral",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "consideration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "option",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "redemption",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -2116,6 +2927,11 @@ const deployedContracts = {
               type: "tuple",
               internalType: "struct TokenData",
               components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
                 {
                   name: "name",
                   type: "string",
@@ -2160,6 +2976,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -2200,70 +3021,170 @@ const deployedContracts = {
             {
               name: "",
               type: "tuple",
-              internalType: "struct OptionDetails",
+              internalType: "struct OptionInfo",
               components: [
                 {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "collateral",
-                  type: "address",
-                  internalType: "address",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "collName",
-                  type: "string",
-                  internalType: "string",
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
                 },
                 {
-                  name: "consName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "consSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "consDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "expirationDate",
+                  name: "expiration",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -2277,26 +3198,6 @@ const deployedContracts = {
                   type: "bool",
                   internalType: "bool",
                 },
-                {
-                  name: "totalSupply",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "locked",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
               ],
             },
           ],
@@ -2307,60 +3208,27 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "exercise",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -2457,63 +3325,30 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "locked",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "mint",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -2563,6 +3398,11 @@ const deployedContracts = {
           name: "redeem",
           inputs: [
             {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
@@ -2573,6 +3413,45 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redemption",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract Redemption",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -2580,7 +3459,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setShortOption",
+          name: "setRedemption",
           inputs: [
             {
               name: "shortOptionAddress",
@@ -2590,32 +3469,6 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortOption",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortOption_",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract ShortOption",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -2819,6 +3672,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Mint",
           inputs: [
             {
@@ -2989,7 +3855,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -3021,869 +3897,13 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758132097.json",
-      deploymentScript: "Deploy.s.sol",
-    },
-    OptionFactory: {
-      address: "0xb88c0c0770f9b7fe30c24044f640120402111c56",
-      abi: [
-        {
-          type: "constructor",
-          inputs: [
-            {
-              name: "short_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "long_",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "allOptions",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "collaterals",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract AddressSet",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "considerations",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract AddressSet",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "createOption",
-          inputs: [
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "createOptions",
-          inputs: [
-            {
-              name: "options",
-              type: "tuple[]",
-              internalType: "struct OptionParameter[]",
-              components: [
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "createdOptions",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCollaterals",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCollateralsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderations",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderationsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCreatedOptions",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairToOptions",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct Option[]",
-              components: [
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairs",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct OptionPair[]",
-              components: [
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isCollateral",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isConsideration",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "longContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairMap",
-          inputs: [
-            {
-              name: "",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          outputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairToOption",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "longOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "shortOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expiration",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairs",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "renounceOwnership",
-          inputs: [],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortLong",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "transferOwnership",
-          inputs: [
-            {
-              name: "newOwner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "event",
-          name: "OptionCreated",
-          inputs: [
-            {
-              name: "longOption",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "shortOption",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              indexed: false,
-              internalType: "bool",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "OwnershipTransferred",
-          inputs: [
-            {
-              name: "previousOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "newOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "error",
-          name: "FailedDeployment",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InsufficientBalance",
-          inputs: [
-            {
-              name: "balance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "needed",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableInvalidOwner",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableUnauthorizedAccount",
-          inputs: [
-            {
-              name: "account",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-      ],
-      inheritedFunctions: {},
-      deploymentFile: "run-1758132097.json",
+      deploymentFile: "run-1762203184366.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
-  130: {
+  8453: {
     StableToken: {
-      address: "0x3fda03b6223566d150923e81db214a645a0cab3a",
+      address: "0x2230b654e281c9eed215c15516e3b6c383fbc5a1",
       abi: [
         {
           type: "constructor",
@@ -4305,11 +4325,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758140437.json",
+      deploymentFile: "run-1762200779438.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x5df9b3a87f4abab841632e2cb0fa7614dcff2dea",
+      address: "0x46f6004a66c69e291e17937c91ecf892047e4ff7",
       abi: [
         {
           type: "constructor",
@@ -4731,11 +4751,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758140437.json",
+      deploymentFile: "run-1762200779438.json",
       deploymentScript: "Deploy.s.sol",
     },
-    ShortOption: {
-      address: "0xf7b3f812fe7dc09cab7c511cdb8ce835e6bd23e6",
+    Redemption: {
+      address: "0xa43876939c3443d77bc045ff301b964e5cfebd3d",
       abi: [
         {
           type: "constructor",
@@ -4806,79 +4826,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "_exercise",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "_redeemPair",
           inputs: [
             {
-              name: "to",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -4890,6 +4841,25 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "accounts",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -4982,6 +4952,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -5025,6 +5000,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -5062,65 +5042,19 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
+              name: "account",
               type: "address",
               internalType: "address",
             },
             {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "caller",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -5217,13 +5151,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longOption",
+          name: "locked",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -5233,7 +5167,7 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "sender",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -5241,75 +5175,6 @@ const deployedContracts = {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "mint",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -5330,6 +5195,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "option",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "owner",
           inputs: [],
           outputs: [
@@ -5340,6 +5218,37 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -5369,6 +5278,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeemConsideration",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -5376,10 +5303,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setLongOption",
+          name: "setOption",
           inputs: [
             {
-              name: "longOption_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
@@ -5410,6 +5337,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "sweep",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -5577,6 +5511,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "OwnershipTransferred",
           inputs: [
             {
@@ -5596,10 +5543,16 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Redemption",
+          name: "Redeemed",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "token",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -5747,7 +5700,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -5790,11 +5753,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758140437.json",
+      deploymentFile: "run-1762200779438.json",
       deploymentScript: "Deploy.s.sol",
     },
-    LongOption: {
-      address: "0x04b9a195f5ca8ef0726aaee90f272dc3924726f2",
+    Option: {
+      address: "0x5e91384643a21816eddbb2b7b49f42f3bd8b374b",
       abi: [
         {
           type: "constructor",
@@ -5835,7 +5798,7 @@ const deployedContracts = {
               internalType: "bool",
             },
             {
-              name: "shortOptionAddress_",
+              name: "redemption__",
               type: "address",
               internalType: "address",
             },
@@ -5947,24 +5910,31 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "collBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "consBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "longBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "shortBalance",
-              type: "uint256",
-              internalType: "uint256",
+              name: "",
+              type: "tuple",
+              internalType: "struct Balances",
+              components: [
+                {
+                  name: "collateral",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "consideration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "option",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "redemption",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -5992,6 +5962,11 @@ const deployedContracts = {
               type: "tuple",
               internalType: "struct TokenData",
               components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
                 {
                   name: "name",
                   type: "string",
@@ -6036,6 +6011,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -6076,70 +6056,170 @@ const deployedContracts = {
             {
               name: "",
               type: "tuple",
-              internalType: "struct OptionDetails",
+              internalType: "struct OptionInfo",
               components: [
                 {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "collateral",
-                  type: "address",
-                  internalType: "address",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "collName",
-                  type: "string",
-                  internalType: "string",
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
                 },
                 {
-                  name: "consName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "consSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "consDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "expirationDate",
+                  name: "expiration",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -6153,26 +6233,6 @@ const deployedContracts = {
                   type: "bool",
                   internalType: "bool",
                 },
-                {
-                  name: "totalSupply",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "locked",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
               ],
             },
           ],
@@ -6183,60 +6243,27 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "exercise",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -6333,63 +6360,30 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "locked",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "mint",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -6439,6 +6433,11 @@ const deployedContracts = {
           name: "redeem",
           inputs: [
             {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
@@ -6449,6 +6448,45 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redemption",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract Redemption",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -6456,7 +6494,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setShortOption",
+          name: "setRedemption",
           inputs: [
             {
               name: "shortOptionAddress",
@@ -6466,32 +6504,6 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortOption",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortOption_",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract ShortOption",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -6695,6 +6707,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Mint",
           inputs: [
             {
@@ -6865,7 +6890,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -6897,61 +6932,27 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758140437.json",
+      deploymentFile: "run-1762200779438.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x5513fdc19ad4347f4257e7a158c03f15ded85cca",
+      address: "0x545de408c37b7de5b9ea3af71d929055b1201b47",
       abi: [
         {
           type: "constructor",
           inputs: [
             {
-              name: "short_",
+              name: "redemption_",
               type: "address",
               internalType: "address",
             },
             {
-              name: "long_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
           ],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "allOptions",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -6984,12 +6985,12 @@ const deployedContracts = {
           name: "createOption",
           inputs: [
             {
-              name: "longSymbol",
+              name: "optionName",
               type: "string",
               internalType: "string",
             },
             {
-              name: "shortSymbol",
+              name: "redemptionName",
               type: "string",
               internalType: "string",
             },
@@ -7027,27 +7028,27 @@ const deployedContracts = {
           name: "createOptions",
           inputs: [
             {
-              name: "options",
+              name: "optionParams",
               type: "tuple[]",
               internalType: "struct OptionParameter[]",
               components: [
                 {
-                  name: "longSymbol",
+                  name: "optionSymbol",
                   type: "string",
                   internalType: "string",
                 },
                 {
-                  name: "shortSymbol",
+                  name: "redemptionSymbol",
                   type: "string",
                   internalType: "string",
                 },
                 {
-                  name: "collateral",
+                  name: "collateral_",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "consideration",
+                  name: "consideration_",
                   type: "address",
                   internalType: "address",
                 },
@@ -7074,19 +7075,201 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "createdOptions",
+          name: "get",
           inputs: [
             {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "collateral",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -7145,7 +7328,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "getCreatedOptions",
+          name: "getOptions",
           inputs: [],
           outputs: [
             {
@@ -7158,156 +7341,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "getPairToOptions",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct Option[]",
-              components: [
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairs",
+          name: "getOptionsCount",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "tuple[]",
-              internalType: "struct OptionPair[]",
-              components: [
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-              ],
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -7352,87 +7392,39 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairMap",
+          name: "isOption",
           inputs: [
             {
-              name: "",
-              type: "string",
-              internalType: "string",
+              name: "option_",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [
             {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
+              name: "",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
         },
         {
           type: "function",
-          name: "pairToOption",
+          name: "optionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "options",
           inputs: [
             {
               name: "",
@@ -7452,62 +7444,162 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "longOption",
-              type: "address",
-              internalType: "address",
+              name: "option",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
             {
-              name: "shortOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
+              name: "redemption",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
             {
               name: "collateral",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "consideration",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "p",
+              type: "tuple",
+              internalType: "struct OptionParameter",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+            {
+              name: "coll",
               type: "address",
               internalType: "address",
             },
             {
-              name: "consideration",
+              name: "cons",
               type: "address",
               internalType: "address",
             },
@@ -7531,54 +7623,39 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "pairs",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          name: "optionsSet",
+          inputs: [],
           outputs: [
             {
-              name: "collateral",
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "owner",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
               type: "address",
               internalType: "address",
             },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemptionClone",
+          inputs: [],
+          outputs: [
             {
-              name: "consideration",
+              name: "",
               type: "address",
               internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
             },
           ],
           stateMutability: "view",
@@ -7589,43 +7666,6 @@ const deployedContracts = {
           inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortLong",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -7645,13 +7685,13 @@ const deployedContracts = {
           name: "OptionCreated",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
               type: "address",
               indexed: false,
               internalType: "address",
             },
             {
-              name: "shortOption",
+              name: "redemption",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -7753,13 +7793,13 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1758140437.json",
+      deploymentFile: "run-1762200779438.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
   31337: {
     StableToken: {
-      address: "0x8832be3ba338067a48e40494dd4f249e54f40595",
+      address: "0xf887ac426854d7b5e4abbc4d645a3afa55033e67",
       abi: [
         {
           type: "constructor",
@@ -8181,11 +8221,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761704336535.json",
+      deploymentFile: "run-1762204732230.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x0337b504408a12d2fa22758e1b5ccb58c53cb914",
+      address: "0x5c5744982fef3ef1d21c237280397e048babae9c",
       abi: [
         {
           type: "constructor",
@@ -8607,11 +8647,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761704336535.json",
+      deploymentFile: "run-1762204732230.json",
       deploymentScript: "Deploy.s.sol",
     },
-    ShortOption: {
-      address: "0xaf65abf26e1f0b5da8c40a5c6928c7c52ef298e1",
+    Redemption: {
+      address: "0xf40faded846619750a8ada900bc1860604ce7245",
       abi: [
         {
           type: "constructor",
@@ -8682,79 +8722,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "_exercise",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "_redeemPair",
           inputs: [
             {
-              name: "to",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -8766,6 +8737,25 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "accounts",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -8858,6 +8848,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -8901,6 +8896,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -8938,65 +8938,19 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
+              name: "account",
               type: "address",
               internalType: "address",
             },
             {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "caller",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -9093,13 +9047,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longOption",
+          name: "locked",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -9109,7 +9063,7 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "sender",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -9117,75 +9071,6 @@ const deployedContracts = {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "mint",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -9206,6 +9091,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "option",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "owner",
           inputs: [],
           outputs: [
@@ -9216,6 +9114,37 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -9245,6 +9174,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeemConsideration",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -9252,10 +9199,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setLongOption",
+          name: "setOption",
           inputs: [
             {
-              name: "longOption_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
@@ -9286,6 +9233,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "sweep",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -9453,6 +9407,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "OwnershipTransferred",
           inputs: [
             {
@@ -9472,10 +9439,16 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Redemption",
+          name: "Redeemed",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "token",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -9623,7 +9596,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -9666,11 +9649,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761704336535.json",
+      deploymentFile: "run-1762204732230.json",
       deploymentScript: "Deploy.s.sol",
     },
-    LongOption: {
-      address: "0xbeff25c3ed23698c0e77908d4666e8cae125bbfa",
+    Option: {
+      address: "0x2230b654e281c9eed215c15516e3b6c383fbc5a1",
       abi: [
         {
           type: "constructor",
@@ -9711,7 +9694,7 @@ const deployedContracts = {
               internalType: "bool",
             },
             {
-              name: "shortOptionAddress_",
+              name: "redemption__",
               type: "address",
               internalType: "address",
             },
@@ -9823,24 +9806,31 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "collBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "consBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "longBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "shortBalance",
-              type: "uint256",
-              internalType: "uint256",
+              name: "",
+              type: "tuple",
+              internalType: "struct Balances",
+              components: [
+                {
+                  name: "collateral",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "consideration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "option",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "redemption",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -9868,6 +9858,11 @@ const deployedContracts = {
               type: "tuple",
               internalType: "struct TokenData",
               components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
                 {
                   name: "name",
                   type: "string",
@@ -9912,6 +9907,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -9952,70 +9952,170 @@ const deployedContracts = {
             {
               name: "",
               type: "tuple",
-              internalType: "struct OptionDetails",
+              internalType: "struct OptionInfo",
               components: [
                 {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "collateral",
-                  type: "address",
-                  internalType: "address",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "collName",
-                  type: "string",
-                  internalType: "string",
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
                 },
                 {
-                  name: "consName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "consSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "consDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "expirationDate",
+                  name: "expiration",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -10029,26 +10129,6 @@ const deployedContracts = {
                   type: "bool",
                   internalType: "bool",
                 },
-                {
-                  name: "totalSupply",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "locked",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
               ],
             },
           ],
@@ -10059,60 +10139,27 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "exercise",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -10209,63 +10256,30 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "locked",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "mint",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -10315,6 +10329,11 @@ const deployedContracts = {
           name: "redeem",
           inputs: [
             {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
@@ -10325,6 +10344,45 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redemption",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract Redemption",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -10332,7 +10390,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setShortOption",
+          name: "setRedemption",
           inputs: [
             {
               name: "shortOptionAddress",
@@ -10342,32 +10400,6 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortOption",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortOption_",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract ShortOption",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -10571,6 +10603,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Mint",
           inputs: [
             {
@@ -10741,7 +10786,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -10773,61 +10828,27 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761704336535.json",
+      deploymentFile: "run-1762204732230.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xc58d125cd55bdf2c7ad13cd0cdb50d7162eba2c6",
+      address: "0x46f6004a66c69e291e17937c91ecf892047e4ff7",
       abi: [
         {
           type: "constructor",
           inputs: [
             {
-              name: "short_",
+              name: "redemption_",
               type: "address",
               internalType: "address",
             },
             {
-              name: "long_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
           ],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "allOptions",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -10860,12 +10881,12 @@ const deployedContracts = {
           name: "createOption",
           inputs: [
             {
-              name: "longSymbol",
+              name: "optionName",
               type: "string",
               internalType: "string",
             },
             {
-              name: "shortSymbol",
+              name: "redemptionName",
               type: "string",
               internalType: "string",
             },
@@ -10903,27 +10924,27 @@ const deployedContracts = {
           name: "createOptions",
           inputs: [
             {
-              name: "options",
+              name: "optionParams",
               type: "tuple[]",
               internalType: "struct OptionParameter[]",
               components: [
                 {
-                  name: "longSymbol",
+                  name: "optionSymbol",
                   type: "string",
                   internalType: "string",
                 },
                 {
-                  name: "shortSymbol",
+                  name: "redemptionSymbol",
                   type: "string",
                   internalType: "string",
                 },
                 {
-                  name: "collateral",
+                  name: "collateral_",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "consideration",
+                  name: "consideration_",
                   type: "address",
                   internalType: "address",
                 },
@@ -10950,19 +10971,201 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "createdOptions",
+          name: "get",
           inputs: [
             {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "collateral",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -11021,7 +11224,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "getCreatedOptions",
+          name: "getOptions",
           inputs: [],
           outputs: [
             {
@@ -11034,156 +11237,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "getPairToOptions",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct Option[]",
-              components: [
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairs",
+          name: "getOptionsCount",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "tuple[]",
-              internalType: "struct OptionPair[]",
-              components: [
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-              ],
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -11228,87 +11288,39 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairMap",
+          name: "isOption",
           inputs: [
             {
-              name: "",
-              type: "string",
-              internalType: "string",
+              name: "option_",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [
             {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
+              name: "",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
         },
         {
           type: "function",
-          name: "pairToOption",
+          name: "optionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "options",
           inputs: [
             {
               name: "",
@@ -11328,62 +11340,162 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "longOption",
-              type: "address",
-              internalType: "address",
+              name: "option",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
             {
-              name: "shortOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
+              name: "redemption",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
             },
             {
               name: "collateral",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "consideration",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "p",
+              type: "tuple",
+              internalType: "struct OptionParameter",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+            {
+              name: "coll",
               type: "address",
               internalType: "address",
             },
             {
-              name: "consideration",
+              name: "cons",
               type: "address",
               internalType: "address",
             },
@@ -11407,54 +11519,39 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "pairs",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          name: "optionsSet",
+          inputs: [],
           outputs: [
             {
-              name: "collateral",
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "owner",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
               type: "address",
               internalType: "address",
             },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemptionClone",
+          inputs: [],
+          outputs: [
             {
-              name: "consideration",
+              name: "",
               type: "address",
               internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
             },
           ],
           stateMutability: "view",
@@ -11465,43 +11562,6 @@ const deployedContracts = {
           inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortLong",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -11521,13 +11581,13 @@ const deployedContracts = {
           name: "OptionCreated",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
               type: "address",
               indexed: false,
               internalType: "address",
             },
             {
-              name: "shortOption",
+              name: "redemption",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -11629,13 +11689,13 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761704336535.json",
+      deploymentFile: "run-1762204732230.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
   11155111: {
     StableToken: {
-      address: "0xa1e7dda6a1ac05781c8f030eb435902ee006c5fb",
+      address: "0x6d0830ea17386cf004b38461c1b8b98b489a1bbe",
       abi: [
         {
           type: "constructor",
@@ -12057,11 +12117,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761703152606.json",
+      deploymentFile: "run-1762200662159.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x223d2dff04853643c32575c22f0bd35a2c69faeb",
+      address: "0x55b2a3024c4e8f114e3897efcbe64c8c1eb9e3d5",
       abi: [
         {
           type: "constructor",
@@ -12483,11 +12543,872 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761703152606.json",
+      deploymentFile: "run-1762200662159.json",
       deploymentScript: "Deploy.s.sol",
     },
-    ShortOption: {
-      address: "0x46c5a79a0a8db3d9877f8a52097dda26e309061d",
+    OptionFactory: {
+      address: "0x3b9c1b3b2529a4c4200856c3e56b0713b2651352",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "redemption_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "collaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "considerations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "createOption",
+          inputs: [
+            {
+              name: "optionName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "redemptionName",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "createOptions",
+          inputs: [
+            {
+              name: "optionParams",
+              type: "tuple[]",
+              internalType: "struct OptionParameter[]",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "get",
+          inputs: [
+            {
+              name: "collateral",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple[]",
+              internalType: "struct OptionInfo[]",
+              components: [
+                {
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "collateral",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollaterals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCollateralsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderations",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getConsiderationsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getOptions",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getOptionsCount",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isCollateral",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isConsideration",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "isOption",
+          inputs: [
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "optionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "options",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "option",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "redemption",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "collateral",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "consideration",
+              type: "tuple",
+              internalType: "struct TokenData",
+              components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "name",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "symbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "decimals",
+                  type: "uint8",
+                  internalType: "uint8",
+                },
+              ],
+            },
+            {
+              name: "p",
+              type: "tuple",
+              internalType: "struct OptionParameter",
+              components: [
+                {
+                  name: "optionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "redemptionSymbol",
+                  type: "string",
+                  internalType: "string",
+                },
+                {
+                  name: "collateral_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "consideration_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "expiration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "strike",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "isPut",
+                  type: "bool",
+                  internalType: "bool",
+                },
+              ],
+            },
+            {
+              name: "coll",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "cons",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expiration",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "optionsSet",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract AddressSet",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "owner",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemptionClone",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "renounceOwnership",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "transferOwnership",
+          inputs: [
+            {
+              name: "newOwner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "event",
+          name: "OptionCreated",
+          inputs: [
+            {
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "redemption",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "collateral",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "expirationDate",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "strike",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              indexed: false,
+              internalType: "bool",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "OwnershipTransferred",
+          inputs: [
+            {
+              name: "previousOwner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "newOwner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "FailedDeployment",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientBalance",
+          inputs: [
+            {
+              name: "balance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "needed",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "OwnableInvalidOwner",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "OwnableUnauthorizedAccount",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+      ],
+      inheritedFunctions: {},
+      deploymentFile: "run-1762200662159.json",
+      deploymentScript: "Deploy.s.sol",
+    },
+    Redemption: {
+      address: "0xd4e77c59d8d59655b728d31fc4cd37e927b0a836",
       abi: [
         {
           type: "constructor",
@@ -12558,79 +13479,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "_exercise",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "_redeemPair",
           inputs: [
             {
-              name: "to",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -12642,6 +13494,25 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "accounts",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -12734,6 +13605,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -12777,6 +13653,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -12814,65 +13695,19 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
+              name: "account",
               type: "address",
               internalType: "address",
             },
             {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "caller",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -12969,13 +13804,13 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "longOption",
+          name: "locked",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "address",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -12985,7 +13820,7 @@ const deployedContracts = {
           name: "mint",
           inputs: [
             {
-              name: "sender",
+              name: "account",
               type: "address",
               internalType: "address",
             },
@@ -12993,75 +13828,6 @@ const deployedContracts = {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "mint",
-          inputs: [
-            {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
             },
           ],
           outputs: [],
@@ -13082,6 +13848,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "option",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "owner",
           inputs: [],
           outputs: [
@@ -13092,6 +13871,37 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -13121,6 +13931,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeemConsideration",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -13128,10 +13956,10 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setLongOption",
+          name: "setOption",
           inputs: [
             {
-              name: "longOption_",
+              name: "option_",
               type: "address",
               internalType: "address",
             },
@@ -13162,6 +13990,13 @@ const deployedContracts = {
               internalType: "address",
             },
           ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "sweep",
+          inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -13329,6 +14164,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "OwnershipTransferred",
           inputs: [
             {
@@ -13348,10 +14196,16 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Redemption",
+          name: "Redeemed",
           inputs: [
             {
-              name: "longOption",
+              name: "option",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "token",
               type: "address",
               indexed: false,
               internalType: "address",
@@ -13499,7 +14353,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -13542,11 +14406,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761703152606.json",
+      deploymentFile: "run-1762200662159.json",
       deploymentScript: "Deploy.s.sol",
     },
-    LongOption: {
-      address: "0x6e9ed34896e941e77d679d3d647977bd54172458",
+    Option: {
+      address: "0x3c0779a2247ead3699941556f2cbbce1445b8406",
       abi: [
         {
           type: "constructor",
@@ -13587,7 +14451,7 @@ const deployedContracts = {
               internalType: "bool",
             },
             {
-              name: "shortOptionAddress_",
+              name: "redemption__",
               type: "address",
               internalType: "address",
             },
@@ -13699,24 +14563,31 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "collBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "consBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "longBalance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "shortBalance",
-              type: "uint256",
-              internalType: "uint256",
+              name: "",
+              type: "tuple",
+              internalType: "struct Balances",
+              components: [
+                {
+                  name: "collateral",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "consideration",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "option",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "redemption",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
             },
           ],
           stateMutability: "view",
@@ -13744,6 +14615,11 @@ const deployedContracts = {
               type: "tuple",
               internalType: "struct TokenData",
               components: [
+                {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
                 {
                   name: "name",
                   type: "string",
@@ -13788,6 +14664,11 @@ const deployedContracts = {
               internalType: "struct TokenData",
               components: [
                 {
+                  name: "address_",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
                   name: "name",
                   type: "string",
                   internalType: "string",
@@ -13828,70 +14709,170 @@ const deployedContracts = {
             {
               name: "",
               type: "tuple",
-              internalType: "struct OptionDetails",
+              internalType: "struct OptionInfo",
               components: [
                 {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
+                  name: "option",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
+                  name: "redemption",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "collateral",
-                  type: "address",
-                  internalType: "address",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
                 },
                 {
                   name: "consideration",
+                  type: "tuple",
+                  internalType: "struct TokenData",
+                  components: [
+                    {
+                      name: "address_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "name",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "symbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "decimals",
+                      type: "uint8",
+                      internalType: "uint8",
+                    },
+                  ],
+                },
+                {
+                  name: "p",
+                  type: "tuple",
+                  internalType: "struct OptionParameter",
+                  components: [
+                    {
+                      name: "optionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "redemptionSymbol",
+                      type: "string",
+                      internalType: "string",
+                    },
+                    {
+                      name: "collateral_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "consideration_",
+                      type: "address",
+                      internalType: "address",
+                    },
+                    {
+                      name: "expiration",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "strike",
+                      type: "uint256",
+                      internalType: "uint256",
+                    },
+                    {
+                      name: "isPut",
+                      type: "bool",
+                      internalType: "bool",
+                    },
+                  ],
+                },
+                {
+                  name: "coll",
                   type: "address",
                   internalType: "address",
                 },
                 {
-                  name: "collName",
-                  type: "string",
-                  internalType: "string",
+                  name: "cons",
+                  type: "address",
+                  internalType: "address",
                 },
                 {
-                  name: "consName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "consSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "consDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "expirationDate",
+                  name: "expiration",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -13905,26 +14886,6 @@ const deployedContracts = {
                   type: "bool",
                   internalType: "bool",
                 },
-                {
-                  name: "totalSupply",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "locked",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
               ],
             },
           ],
@@ -13935,60 +14896,27 @@ const deployedContracts = {
           name: "exercise",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "exercise",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -14085,63 +15013,30 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "locked",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "mint",
           inputs: [
             {
-              name: "permit",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.PermitTransferFrom",
-              components: [
-                {
-                  name: "permitted",
-                  type: "tuple",
-                  internalType: "struct ISignatureTransfer.TokenPermissions",
-                  components: [
-                    {
-                      name: "token",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "amount",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                  ],
-                },
-                {
-                  name: "nonce",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "deadline",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
+              name: "account",
+              type: "address",
+              internalType: "address",
             },
             {
-              name: "transferDetails",
-              type: "tuple",
-              internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-              components: [
-                {
-                  name: "to",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "requestedAmount",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-              ],
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes",
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -14191,6 +15086,11 @@ const deployedContracts = {
           name: "redeem",
           inputs: [
             {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
               name: "amount",
               type: "uint256",
               internalType: "uint256",
@@ -14201,6 +15101,45 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "redeem",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "redemption",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract Redemption",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "redemption_",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "renounceOwnership",
           inputs: [],
           outputs: [],
@@ -14208,7 +15147,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setShortOption",
+          name: "setRedemption",
           inputs: [
             {
               name: "shortOptionAddress",
@@ -14218,32 +15157,6 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortOption",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortOption_",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract ShortOption",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -14447,6 +15360,19 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Initialized",
+          inputs: [
+            {
+              name: "version",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Mint",
           inputs: [
             {
@@ -14617,7 +15543,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidInitialization",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotInitializing",
           inputs: [],
         },
         {
@@ -14649,863 +15585,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1761703152606.json",
-      deploymentScript: "Deploy.s.sol",
-    },
-    OptionFactory: {
-      address: "0x8f625835a481b22285aa3ee4d8986b60ae6e4121",
-      abi: [
-        {
-          type: "constructor",
-          inputs: [
-            {
-              name: "short_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "long_",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "allOptions",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "collaterals",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract AddressSet",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "considerations",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract AddressSet",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "createOption",
-          inputs: [
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "createOptions",
-          inputs: [
-            {
-              name: "options",
-              type: "tuple[]",
-              internalType: "struct OptionParameter[]",
-              components: [
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "createdOptions",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCollaterals",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCollateralsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderations",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderationsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCreatedOptions",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairToOptions",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct Option[]",
-              components: [
-                {
-                  name: "longOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "shortOption",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "longSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "shortSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getPairs",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct OptionPair[]",
-              components: [
-                {
-                  name: "collateral",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "collateralName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationName",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateralDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "considerationDecimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-                {
-                  name: "collateralSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "considerationSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isCollateral",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isConsideration",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "longContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairMap",
-          inputs: [
-            {
-              name: "",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          outputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairToOption",
-          inputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "longOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "shortOption",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "longSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "shortSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expiration",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "pairs",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "collateralName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateralDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "considerationDecimals",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "collateralSymbol",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "considerationSymbol",
-              type: "string",
-              internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "renounceOwnership",
-          inputs: [],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "shortContract",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "shortLong",
-          inputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "transferOwnership",
-          inputs: [
-            {
-              name: "newOwner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "event",
-          name: "OptionCreated",
-          inputs: [
-            {
-              name: "longOption",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "shortOption",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              indexed: false,
-              internalType: "bool",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "OwnershipTransferred",
-          inputs: [
-            {
-              name: "previousOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "newOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "error",
-          name: "FailedDeployment",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InsufficientBalance",
-          inputs: [
-            {
-              name: "balance",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "needed",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableInvalidOwner",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableUnauthorizedAccount",
-          inputs: [
-            {
-              name: "account",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-      ],
-      inheritedFunctions: {},
-      deploymentFile: "run-1761703152606.json",
+      deploymentFile: "run-1762200662159.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

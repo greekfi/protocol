@@ -3,31 +3,31 @@ import { useContract } from "./useContract";
 import { Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 
-export const useOptionDetails = (longAddress: Address) => {
+export const useOptionDetails = (option: Address) => {
   const userAccount = useAccount();
-  const abi = useContract()?.LongOption?.abi;
+  const abi = useContract()?.Option?.abi;
   // Fetch details for selected option
 
   const { data } = useReadContract({
-    address: longAddress as Address,
+    address: option as Address,
     functionName: "details",
     abi,
     query: {
-      enabled: !!longAddress,
+      enabled: !!option,
     },
   });
 
   const { data: balances } = useReadContract({
-    address: longAddress as Address,
+    address: option as Address,
     functionName: "balancesOf",
     abi,
     args: [userAccount.address as Address],
     query: {
-      enabled: !!longAddress,
+      enabled: !!option,
     },
   });
 
-  const isExpired = data?.expirationDate ? Date.now() / 1000 > Number(data.expirationDate) : false;
+  const isExpired = data?.expiration ? Date.now() / 1000 > Number(data.expiration) : false;
 
   console.log("data", data);
 
@@ -58,12 +58,9 @@ export const useOptionDetails = (longAddress: Address) => {
   if (!data) return null;
   return {
     ...data,
-    formatOptionName: formatOptionName(data.name || ""),
+    formatOptionName: formatOptionName(data.option.name || ""),
     isExpired,
-    balanceCollateral: balances ? balances[0] : 0n,
-    balanceConsideration: balances ? balances[1] : 0n,
-    balanceLong: balances ? balances[2] : 0n,
-    balanceShort: balances ? balances[3] : 0n,
+    balances,
   };
 };
 

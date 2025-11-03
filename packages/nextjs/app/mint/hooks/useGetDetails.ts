@@ -1,160 +1,36 @@
 // Import ABIs and addresses
 import { useContract } from "./useContract";
-import { Address, erc20Abi } from "viem";
+import { Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 
 export const useOptionDetails = (longAddress: Address) => {
   const userAccount = useAccount();
-  const abi = useContract()?.LongOption?.abi;
+  const abi = useContract()?.Option?.abi;
   // Fetch details for selected option
 
-  const { data: shortAddress } = useReadContract({
+  const { data: details } = useReadContract({
     address: longAddress as Address,
-    functionName: "shortOption",
+    functionName: "details",
     abi,
     query: {
       enabled: !!longAddress,
     },
   });
 
-  const { data: collateralAddress } = useReadContract({
+  const { data: balances } = useReadContract({
     address: longAddress as Address,
-    functionName: "collateral",
+    functionName: "balancesOf",
     abi,
     query: {
-      enabled: !!longAddress,
+      enabled: !!userAccount.address && !!longAddress,
     },
-  });
-
-  const { data: considerationAddress } = useReadContract({
-    address: longAddress as Address,
-    functionName: "consideration",
-    abi,
-    query: {
-      enabled: !!longAddress,
-    },
-  });
-
-  const { data: longName } = useReadContract({
-    address: longAddress as Address,
-    functionName: "name",
-    abi,
-    query: {
-      enabled: !!longAddress,
-    },
-  });
-  const { data: collateralName } = useReadContract({
-    address: collateralAddress as Address,
-    functionName: "name",
-    abi: erc20Abi,
-    query: {
-      enabled: !!collateralAddress,
-    },
-  });
-
-  const { data: considerationName } = useReadContract({
-    address: considerationAddress as Address,
-    functionName: "name",
-    abi: erc20Abi,
-    query: {
-      enabled: !!considerationAddress,
-    },
-  });
-
-  const { data: collateralDecimals } = useReadContract({
-    address: collateralAddress as Address,
-    functionName: "decimals",
-    abi: erc20Abi,
-    query: {
-      enabled: !!collateralAddress,
-    },
-  });
-
-  const { data: considerationDecimals } = useReadContract({
-    address: considerationAddress as Address,
-    functionName: "decimals",
-    abi: erc20Abi,
-    query: {
-      enabled: !!considerationAddress,
-    },
-  });
-
-  const { data: balanceShort } = useReadContract({
-    address: shortAddress as Address,
-    functionName: "balanceOf",
     args: [userAccount.address as Address],
-    abi,
-    query: {
-      enabled: !!shortAddress,
-    },
   });
 
-  const { data: balanceLong } = useReadContract({
-    address: longAddress as Address,
-    functionName: "balanceOf",
-    args: [userAccount.address as Address],
-    abi,
-    query: {
-      enabled: !!longAddress,
-    },
-  });
+  const isExpired = details?.expiration ? Date.now() / 1000 > Number(details.expiration) : false;
 
-  const { data: balanceCollateral } = useReadContract({
-    address: collateralAddress as Address,
-    functionName: "balanceOf",
-    args: [userAccount.address as Address],
-    abi: erc20Abi,
-    query: {
-      enabled: !!collateralAddress,
-    },
-  });
-
-  const { data: balanceConsideration } = useReadContract({
-    address: considerationAddress as Address,
-    functionName: "balanceOf",
-    args: [userAccount.address as Address],
-    abi: erc20Abi,
-    query: {
-      enabled: !!considerationAddress,
-    },
-  });
-
-  const { data: expirationDate } = useReadContract({
-    address: longAddress as Address,
-    functionName: "expirationDate",
-    abi,
-    query: {
-      enabled: !!longAddress,
-    },
-  });
-
-  const { data: strike } = useReadContract({
-    address: longAddress as Address,
-    functionName: "strike",
-    abi,
-    query: {
-      enabled: !!longAddress,
-    },
-  });
-
-  const isExpired = expirationDate ? Date.now() / 1000 > Number(expirationDate) : false;
-
-  console.log("balanceLong", balanceLong);
-  console.log("balanceShort", balanceShort);
-  console.log("balanceCollateral", balanceCollateral);
-  console.log("balanceConsideration", balanceConsideration);
-  console.log("expirationDate", expirationDate);
-  console.log("isExpired", isExpired);
-  console.log("longAddress", longAddress);
-  console.log("shortAddress", shortAddress);
-  console.log("collateralAddress", collateralAddress);
-  console.log("considerationAddress", considerationAddress);
-  console.log("collateralName", collateralName);
-  console.log("considerationName", considerationName);
-  console.log("collateralDecimals", collateralDecimals);
-  console.log("longName", longName);
-  console.log("strike", strike);
-
+  console.log("balanceLong", balances);
+  console.log("details", details);
   // Format option name for display
   const formatOptionName = (name: string) => {
     const parts = name.split("-");
@@ -180,22 +56,10 @@ export const useOptionDetails = (longAddress: Address) => {
   };
 
   return {
-    formatOptionName: formatOptionName(longName || ""),
-    longAddress: longAddress,
-    balanceLong: balanceLong,
-    shortAddress: shortAddress,
-    balanceShort: balanceShort,
-    collateralAddress: collateralAddress,
-    collateralName: collateralName,
-    collateralDecimals: collateralDecimals,
-    collateralBalance: balanceCollateral,
-    considerationAddress: considerationAddress,
-    considerationName: considerationName,
-    considerationDecimals: considerationDecimals,
-    considerationBalance: balanceConsideration,
-    expirationDate: expirationDate,
-    strike: strike,
-    isExpired: isExpired,
+    formatOptionName: formatOptionName(details?.option.name || ""),
+    ...details,
+    isExpired,
+    balances,
   };
 };
 

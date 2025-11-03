@@ -66,7 +66,7 @@ export const useGetOptionsByPair = (collateralAddress: Address, considerationAdd
   } = useReadContract({
     address: contract?.OptionFactory?.address,
     abi,
-    functionName: "getPairToOptions",
+    functionName: "get",
     args: [collateralAddress, considerationAddress],
     query: {
       enabled: !!contract?.OptionFactory?.address,

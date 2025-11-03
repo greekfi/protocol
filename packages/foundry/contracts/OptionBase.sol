@@ -31,6 +31,30 @@ struct TokenData {
     string symbol;
     uint8 decimals;
 }
+
+struct OptionParameter {
+    string optionSymbol;
+    string redemptionSymbol;
+    address collateral_;
+    address consideration_;
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
+}
+
+struct OptionInfo {
+    TokenData option;
+    TokenData redemption;
+    TokenData collateral;
+    TokenData consideration;
+    OptionParameter p;
+    address coll; //shortcut
+    address cons; //shortcut
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
+}
+
 contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
     IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 public expirationDate;

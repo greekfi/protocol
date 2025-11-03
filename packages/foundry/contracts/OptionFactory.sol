@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {TokenData} from "./OptionBase.sol";
+import {TokenData, OptionInfo, OptionParameter} from "./OptionBase.sol";
 import { AddressSet } from "./AddressSet.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
@@ -26,29 +26,6 @@ using SafeERC20 for IERC20;
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
 
-
-struct OptionParameter {
-    string optionSymbol;
-    string redemptionSymbol;
-    address collateral_;
-    address consideration_;
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
-}
-
-struct OptionInfo {
-    TokenData option;
-    TokenData redemption;
-    TokenData collateral;
-    TokenData consideration;
-    OptionParameter p;
-    address coll; //shortcut
-    address cons; //shortcut
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
-}
 
 contract OptionFactory is Ownable {
     address public redemptionClone;

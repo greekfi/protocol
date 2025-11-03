@@ -32,10 +32,10 @@ contract DeployYourContract is ScaffoldETHDeploy {
         ShakyToken shakyToken = new ShakyToken();
 
         Redemption short =
-            new Redemption("Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false);
+            new Redemption("Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false);
 
         Option long = new Option(
-            "Long Option", "LONG", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false, address(short)
+            "Option", "OPT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false, address(short)
         );
 
         new OptionFactory(address(short), address(long));
