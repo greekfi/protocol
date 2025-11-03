@@ -7,23 +7,24 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import { OptionBase } from "./OptionBase.sol";
 
 using SafeERC20 for IERC20;
-// The Long Option contract is the owner of the Short Option contract
-// The Long Option contract is the only one that can mint new mint
-// The Long Option contract is the only one that can exercise mint
-// The redemption is only possible if you own both the Long and Short Option contracts but
-// performed by the Long Option contract
+/*
+The Option contract is the owner of the Redemption contract
+The Option contract is the only one that can mint new mint
+The Option contract is the only one that can exercise mint
+The redemption is only possible if you own both the Option and
+Redemption contracts but performed by the Option contract
 
-// In mint traditionally a Consideration is cash and a Collateral is an asset
-// Here, we do not distinguish between the Cash and Asset concept and allow consideration
-// to be any asset and collateral to be any asset as well. This can allow wETH to be used
-// as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-// or even staked stable coins can be used as well for either consideration or collateral.
+In mint traditionally a Consideration is cash and a Collateral is an asset
+Here, we do not distinguish between the Cash and Asset concept and allow consideration
+to be any asset and collateral to be any asset as well. This can allow wETH to be used
+as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
+or even staked stable coins can be used as well for either consideration or collateral.
+*/
+contract Redemption is OptionBase {
+    address public option;
+    address[] public accounts;
 
-contract ShortOption is OptionBase {
-    address public longOption;
-    address[] accounts;
-
-    event Redemption(address longOption, address token, address holder, uint256 amount);
+    event Redeemed(address option, address token, address holder, uint256 amount);
 
     modifier sufficientCollateral(address account, uint256 amount) {
         require(collateral.balanceOf(account) >= amount, "Insufficient Collateral");
@@ -56,8 +57,9 @@ contract ShortOption is OptionBase {
         bool isPut
     ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) { }
 
-    function setLongOption(address longOption_) public onlyOwner {
-        longOption = longOption_;
+    function setOption(address option_) public onlyOwner {
+        option = option_;
+        transferOwnership(option_);
     }
 
     function transferFrom_( address from, address to, IERC20 token, uint256 amount )internal {
@@ -99,7 +101,7 @@ contract ShortOption is OptionBase {
         if (collateralToSend > 0) { // Transfer remaining collateral afterwards
             collateral.safeTransfer(account, collateralToSend);
         }
-        emit Redemption(address(longOption), address(collateral), account, amount);
+        emit Redeemed(address(option), address(collateral), account, amount);
     }
 
     function redeemConsideration(uint256 amount) public {
@@ -113,7 +115,7 @@ contract ShortOption is OptionBase {
         _burn(account, amount);
         uint256 consAmount = toConsideration(amount);
         consideration.safeTransfer(account, consAmount);
-        emit Redemption(address(longOption), address(consideration), account, consAmount);
+        emit Redeemed(address(option), address(consideration), account, consAmount);
     }
 
     function exercise(address account, uint256 amount,  address caller

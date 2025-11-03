@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -25,11 +26,12 @@ using SafeERC20 for IERC20;
 
 
 struct TokenData {
+    address address_;
     string name;
     string symbol;
     uint8 decimals;
 }
-contract OptionBase is ERC20, Ownable, ReentrancyGuard {
+contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
     IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 public expirationDate;
     uint256 public strike;
@@ -109,16 +111,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        // The strike price is decimal18
-        // The Long Option is the same decimals as the collateral
-        // This allows the exercise to be like a 1:1 of the option
         return (amount * strike * 10**consDecimals) / (STRIKE_DECIMALS * 10**collDecimals);
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        // The strike price is decimal18
-        // The Long Option is the same decimals as the collateral
-        // This allows the exercise to be like a 1:1 of the option
         return (consAmount *  10**collDecimals * STRIKE_DECIMALS)/ (strike * 10**consDecimals);
     }
 
@@ -130,7 +126,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_
-    ) public {
+    ) public initializer {
         require(!initialized, "already init");
         initialized = true;
         if (collateral_ == address(0)) revert InvalidValue();
@@ -164,11 +160,11 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard {
     }
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
-        return TokenData(collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals());
+        return TokenData(address(collateral), collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals());
     }
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
-        return TokenData(considerationMetadata.name(), considerationMetadata.symbol(), considerationMetadata.decimals());
+        return TokenData(address(consideration), considerationMetadata.name(), considerationMetadata.symbol(), considerationMetadata.decimals());
     }
 
     function lock() public onlyOwner {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
-import {OptionFactory, ShortOption, LongOption} from "../contracts/OptionFactory.sol";
+import {OptionFactory, Redemption, Option} from "../contracts/OptionFactory.sol";
 import {StableToken} from "../contracts/StableToken.sol";
 import {ShakyToken} from "../contracts/ShakyToken.sol";
 
@@ -31,10 +31,10 @@ contract DeployYourContract is ScaffoldETHDeploy {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 
-        ShortOption short =
-            new ShortOption("Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false);
+        Redemption short =
+            new Redemption("Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false);
 
-        LongOption long = new LongOption(
+        Option long = new Option(
             "Long Option", "LONG", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false, address(short)
         );
 

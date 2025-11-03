@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import {TokenData} from "./OptionBase.sol";
+import { AddressSet } from "./AddressSet.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import { AddressSet } from "./AddressSet.sol";
-import { ShortOption } from "./ShortOption.sol";
-import { LongOption } from "./LongOption.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {Option} from "./Option.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Redemption} from "./Redemption.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 using SafeERC20 for IERC20;
 // The Long OptionParameter contract is the owner of the Short OptionParameter contract
@@ -24,52 +26,37 @@ using SafeERC20 for IERC20;
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
 
-struct Option {
-    address longOption;
-    address shortOption;
-    string longSymbol;
-    string shortSymbol;
-    string collateralName;
-    string considerationName;
-    string collateralSymbol;
-    string considerationSymbol;
-    uint8 collateralDecimals;
-    uint8 considerationDecimals;
-    address collateral;
-    address consideration;
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
-}
 
 struct OptionParameter {
-    string longSymbol;
-    string shortSymbol;
-    address collateral;
-    address consideration;
+    string optionSymbol;
+    string redemptionSymbol;
+    address collateral_;
+    address consideration_;
     uint256 expiration;
     uint256 strike;
     bool isPut;
 }
 
-struct OptionPair {
-    address collateral;
-    address consideration;
-    string collateralName;
-    string considerationName;
-    uint8 collateralDecimals;
-    uint8 considerationDecimals;
-    string collateralSymbol;
-    string considerationSymbol;
+struct OptionInfo {
+    TokenData option;
+    TokenData redemption;
+    TokenData collateral;
+    TokenData consideration;
+    OptionParameter p;
+    address coll; //shortcut
+    address cons; //shortcut
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
 }
 
 contract OptionFactory is Ownable {
-    address public shortContract;
-    address public longContract;
+    address public redemptionClone;
+    address public optionClone;
 
     event OptionCreated(
-        address longOption,
-        address shortOption,
+        address option,
+        address redemption,
         address collateral,
         address consideration,
         uint256 expirationDate,
@@ -77,94 +64,86 @@ contract OptionFactory is Ownable {
         bool isPut
     );
 
-    address[] public createdOptions;
-    OptionPair[] public pairs;
+    mapping(address => mapping(address => OptionInfo[])) public options;
     AddressSet public collaterals;
     AddressSet public considerations;
-    mapping(string => OptionPair) public pairMap;
-    mapping(uint256 => address[]) public shortLong;
+    AddressSet public optionsSet;
 
-    mapping(address => mapping(address => Option[])) public pairToOption;
-
-    mapping(address => mapping(uint256 => mapping(uint256 => address[]))) public allOptions;
-
-    constructor(address short_, address long_) Ownable(msg.sender) {
-        shortContract = short_;
-        longContract = long_;
+    constructor(address redemption_, address option_) Ownable(msg.sender) {
+        redemptionClone = redemption_;
+        optionClone = option_;
         collaterals = new AddressSet();
         considerations = new AddressSet();
+        optionsSet = new AddressSet();
     }
 
 
     function createOption(
-        string memory longSymbol,
-        string memory shortSymbol,
+        string memory optionName,
+        string memory redemptionName,
         address collateral,
         address consideration,
         uint256 expirationDate,
         uint256 strike,
         bool isPut
     ) public {
-        address short = Clones.clone(shortContract);
-        address long = Clones.clone(longContract);
+        address redemption_ = Clones.clone(redemptionClone);
+        address option_ = Clones.clone(optionClone);
 
-        ShortOption shortOption = ShortOption(short);
-        LongOption longOption = LongOption(long);
+        Redemption redemption = Redemption(redemption_);
+        Option option = Option(option_);
 
-        shortOption.init(shortSymbol, shortSymbol, collateral, consideration, expirationDate, strike, isPut);
-        longOption.init(longSymbol, longSymbol, collateral, consideration, expirationDate, strike, isPut);
+        redemption.init(redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut);
+        option.init(optionName, optionName, collateral, consideration, expirationDate, strike, isPut);
 
-        shortOption.setLongOption(long);
-        longOption.setShortOption(short);
-        shortOption.transferOwnership(long);
-        longOption.transferOwnership(owner());
+        redemption.setOption(option_);
+        option.setRedemption(redemption_);
+        option.transferOwnership(owner());
 
-        string memory pairName = string(abi.encodePacked(collateral, "_", consideration));
-        Option memory option = Option(long, short, longSymbol, shortSymbol, longOption.collateralData().name, shortOption.considerationData().name, longOption.collateralData().symbol, shortOption.considerationData().symbol, longOption.collateralData().decimals, shortOption.considerationData().decimals, collateral, consideration, expirationDate, strike, isPut);
+        OptionInfo memory info = OptionInfo(
+            TokenData(option_, optionName, optionName, 18),
+            TokenData(redemption_, redemptionName, redemptionName, 18),
+            TokenData(collateral, option.collateralData().name, option.collateralData().symbol, option.collateralData().decimals),
+            TokenData(consideration, option.considerationData().name, option.considerationData().symbol, option.considerationData().decimals),
+            OptionParameter(optionName, redemptionName, collateral, consideration, expirationDate, strike, isPut),
+            collateral, consideration, expirationDate, strike, isPut);
 
-        OptionPair memory pair = OptionPair(
-            collateral, consideration, 
-            option.collateralName, option.considerationName, 
-            option.collateralDecimals, option.considerationDecimals, 
-            option.collateralSymbol, option.considerationSymbol);
-        if (pairMap[pairName].collateral == address(0)) {
-            pairs.push(pair);
-            pairMap[pairName] = pair;
-        }
-        createdOptions.push(long);
-        allOptions[collateral][expirationDate][strike].push(long);
-        pairToOption[collateral][consideration].push(option);
+        options[collateral][consideration].push(info);
         collaterals.add(collateral);
         considerations.add(consideration);
-        emit OptionCreated(long, short, collateral, consideration, expirationDate, strike, isPut);
+        optionsSet.add(option_);
+        emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
     }
 
 
-    function createOptions(OptionParameter[] memory options) public {
-        for(uint256 i = 0; i < options.length; i++) {
-            OptionParameter memory option = options[i];
+    function createOptions(OptionParameter[] memory optionParams) public {
+        for(uint256 i = 0; i < optionParams.length; i++) {
+            OptionParameter memory param = optionParams[i];
             createOption(
-                option.longSymbol, 
-                option.shortSymbol, 
-                option.collateral, 
-                option.consideration, 
-                option.expiration, 
-                option.strike, 
-                option.isPut
+                param.optionSymbol,
+                param.redemptionSymbol,
+                param.collateral_,
+                param.consideration_,
+                param.expiration,
+                param.strike,
+                param.isPut
                 );
         }
     }
 
-    function getCreatedOptions() public view returns (address[] memory) {
-        return createdOptions;
+    function get(address collateral, address consideration) public view returns (OptionInfo[] memory) {
+        return options[collateral][consideration];
     }
 
-    function getPairs() public view returns (OptionPair[] memory) {
-        return pairs;
+    function getOptions() public view returns (address[] memory) {
+        return optionsSet.values();
+    }
+    function getOptionsCount() public view returns (uint256) {
+        return optionsSet.length();
     }
 
-    function getPairToOptions(address collateral, address consideration) public view returns (Option[] memory) {
-        return pairToOption[collateral][consideration];
+    function isOption(address option_) public view returns (bool) {
+        return optionsSet.contains(option_);
     }
 
     function getCollaterals() public view returns (address[] memory) {
