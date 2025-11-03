@@ -20,14 +20,14 @@
     "verify": "make verify RPC_URL=${1:-localhost}"
   },
   "dependencies": {
-    "dotenv": "~16.3.1",
-    "envfile": "~6.18.0",
-    "ethers": "~5.7.1",
-    "prettier": "~2.8.8",
-    "qrcode": "~1.5.3",
+    "dotenv": "~17.2.3",
+    "envfile": "~7.1.0",
+    "ethers": "~6.15.0",
+    "prettier": "~3.6.2",
+    "qrcode": "~1.5.4",
     "toml": "~3.0.0"
   },
   "devDependencies": {
-    "shx": "^0.3.4"
+    "shx": "^0.4.0"
   }
 }
