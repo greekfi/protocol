@@ -49,10 +49,15 @@
     "vercel:yolo": "yarn workspace @se-2/nextjs vercel:yolo",
     "verify": "yarn foundry:verify"
   },
+  "dependencies": {
+    "react": "~19.2.0",
+    "react-dom": "~19.2.0"
+  },
   "devDependencies": {
     "husky": "~9.1.7",
     "lint-staged": "~16.2.6",
-    "next": "^16.0.1"
+    "next": "^16.0.1",
+    "typescript": "~5.9.3"
   },
   "packageManager": "yarn@3.2.3",
   "engines": {

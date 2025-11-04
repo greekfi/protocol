@@ -3276,6 +3276,7 @@ __metadata:
     eslint-config-next: ~16.0.1
     eslint-config-prettier: ~10.1.8
     eslint-plugin-prettier: ~5.5.4
+    fastestsmallesttextencoderdecoder: ^1.0.22
     kubo-rpc-client: ~6.0.2
     moment-timezone: ~0.6.0
     next: ^16.0.1
@@ -3291,10 +3292,12 @@ __metadata:
     tailwindcss: 4.1.16
     type-fest: ~5.2.0
     typescript: ~5.9.3
+    undici: ~7.16.0
     usehooks-ts: ~3.1.1
     vercel: ~48.8.2
     viem: 2.38.6
     wagmi: 2.19.2
+    ws: ^8.18.0
     zustand: ~5.0.8
   languageName: unknown
   linkType: soft
@@ -8852,6 +8855,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fastestsmallesttextencoderdecoder@npm:^1.0.22":
+  version: 1.0.22
+  resolution: "fastestsmallesttextencoderdecoder@npm:1.0.22"
+  checksum: cc5e6c3b4c13de41a24e1311af4d0726e85d9edd75af8a13282f9e5f2751805d869455352a0bf065ab59c9c240d078b7abd98d676da9257666402e56ce9395d0
+  languageName: node
+  linkType: hard
+
 "fastq@npm:^1.6.0":
   version: 1.19.1
   resolution: "fastq@npm:1.19.1"
@@ -14044,6 +14054,9 @@ __metadata:
     husky: ~9.1.7
     lint-staged: ~16.2.6
     next: ^16.0.1
+    react: ~19.2.0
+    react-dom: ~19.2.0
+    typescript: ~5.9.3
   languageName: unknown
   linkType: soft
 
@@ -16359,7 +16372,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:8.18.3, ws@npm:^8.5.0":
+"ws@npm:8.18.3, ws@npm:^8.18.0, ws@npm:^8.5.0":
   version: 8.18.3
   resolution: "ws@npm:8.18.3"
   peerDependencies:
