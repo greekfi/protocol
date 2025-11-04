@@ -45,7 +45,22 @@ jobs:
           EOF
 
       - name: Run foundry node, deploy contracts (& generate contracts typescript output)
-        run: yarn chain & yarn deploy
+        run: |
+          yarn chain &
+          CHAIN_PID=$!
+          echo "Waiting for anvil to be ready..."
+          for i in {1..30}; do
+            if curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 > /dev/null 2>&1; then
+              echo "Anvil is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Timeout waiting for anvil"
+              exit 1
+            fi
+            sleep 1
+          done
+          yarn deploy
 
       - name: Run nextjs lint
         run: yarn next:lint --max-warnings=0
