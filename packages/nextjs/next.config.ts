@@ -9,12 +9,7 @@ const nextConfig: any = {
   turbopack: {
     root: "../..",
   },
-  transpilePackages: [
-    "@base-org/account",
-    "@coinbase/wallet-sdk",
-    "@noble/curves",
-    "@noble/hashes",
-  ],
+  transpilePackages: ["@base-org/account", "@coinbase/wallet-sdk", "@noble/curves", "@noble/hashes"],
   serverExternalPackages: ["pino-pretty", "lokijs", "encoding"],
   webpack: (config: any) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };

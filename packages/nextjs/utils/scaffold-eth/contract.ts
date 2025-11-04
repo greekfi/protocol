@@ -12,7 +12,7 @@ import {
   ExtractAbiFunction,
 } from "abitype";
 import type { ExtractAbiFunctionNames } from "abitype";
-import type { Simplify, MergeDeep } from "type-fest";
+import type { MergeDeep, Simplify } from "type-fest";
 import {
   Address,
   Block,
