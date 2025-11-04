@@ -6,9 +6,16 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
   },
-  eslint: {
-    ignoreDuringBuilds: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
+  turbopack: {
+    root: "../..",
   },
+  transpilePackages: [
+    "@base-org/account",
+    "@coinbase/wallet-sdk",
+    "@noble/curves",
+    "@noble/hashes",
+  ],
+  serverExternalPackages: ["pino-pretty", "lokijs", "encoding"],
   webpack: (config: any) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push("pino-pretty", "lokijs", "encoding");

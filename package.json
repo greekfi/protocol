@@ -70,7 +70,9 @@
     "@walletconnect/core": "2.23.0",
     "@walletconnect/utils": "2.23.0",
     "@walletconnect/types": "2.23.0",
-    "@reown/appkit": "1.8.12"
+    "@reown/appkit": "1.8.12",
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.1"
   },
   "overrides": {
     "fast-redact": "3.5.0",
@@ -83,6 +85,8 @@
     "@walletconnect/core": "2.23.0",
     "@walletconnect/utils": "2.23.0",
     "@walletconnect/types": "2.23.0",
-    "@reown/appkit": "1.8.12"
+    "@reown/appkit": "1.8.12",
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.1"
   }
 }
