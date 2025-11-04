@@ -42,7 +42,9 @@ interface IOption is IERC20 {
 
     function setRedemption(address shortOptionAddress) external;
 
-    function balancesOf(address account) external view
+    function balancesOf(address account)
+        external
+        view
         returns (uint256 collBalance, uint256 consBalance, uint256 optionBalance, uint256 redemptionBalance);
 
     function details() external view returns (OptionDetails memory);

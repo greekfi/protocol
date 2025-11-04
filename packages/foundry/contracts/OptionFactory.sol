@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {TokenData, OptionInfo, OptionParameter} from "./OptionBase.sol";
-import { AddressSet } from "./AddressSet.sol";
+import {AddressSet} from "./AddressSet.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,7 +25,6 @@ using SafeERC20 for IERC20;
 // to be any asset and collateral to be any asset as well. This can allow wETH to be used
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
-
 
 contract OptionFactory is Ownable {
     address public redemptionClone;
@@ -54,7 +53,6 @@ contract OptionFactory is Ownable {
         optionsSet = new AddressSet();
     }
 
-
     function createOption(
         string memory optionName,
         string memory redemptionName,
@@ -80,10 +78,25 @@ contract OptionFactory is Ownable {
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, 18),
             TokenData(redemption_, redemptionName, redemptionName, 18),
-            TokenData(collateral, option.collateralData().name, option.collateralData().symbol, option.collateralData().decimals),
-            TokenData(consideration, option.considerationData().name, option.considerationData().symbol, option.considerationData().decimals),
+            TokenData(
+                collateral,
+                option.collateralData().name,
+                option.collateralData().symbol,
+                option.collateralData().decimals
+            ),
+            TokenData(
+                consideration,
+                option.considerationData().name,
+                option.considerationData().symbol,
+                option.considerationData().decimals
+            ),
             OptionParameter(optionName, redemptionName, collateral, consideration, expirationDate, strike, isPut),
-            collateral, consideration, expirationDate, strike, isPut);
+            collateral,
+            consideration,
+            expirationDate,
+            strike,
+            isPut
+        );
 
         options[collateral][consideration].push(info);
         collaterals.add(collateral);
@@ -92,9 +105,8 @@ contract OptionFactory is Ownable {
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
     }
 
-
     function createOptions(OptionParameter[] memory optionParams) public {
-        for(uint256 i = 0; i < optionParams.length; i++) {
+        for (uint256 i = 0; i < optionParams.length; i++) {
             OptionParameter memory param = optionParams[i];
             createOption(
                 param.optionSymbol,
@@ -104,7 +116,7 @@ contract OptionFactory is Ownable {
                 param.expiration,
                 param.strike,
                 param.isPut
-                );
+            );
         }
     }
 
@@ -115,6 +127,7 @@ contract OptionFactory is Ownable {
     function getOptions() public view returns (address[] memory) {
         return optionsSet.values();
     }
+
     function getOptionsCount() public view returns (uint256) {
         return optionsSet.length();
     }
@@ -146,5 +159,4 @@ contract OptionFactory is Ownable {
     function isConsideration(address token) public view returns (bool) {
         return considerations.contains(token);
     }
-
 }

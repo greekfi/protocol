@@ -28,7 +28,6 @@ export function useDeployedContractInfo<TContractName extends ContractName>(
 export function useDeployedContractInfo<TContractName extends ContractName>(
   contractName: TContractName,
 ): DeployedContractData<TContractName>;
-
 export function useDeployedContractInfo<TContractName extends ContractName>(
   configOrName: UseDeployedContractConfig<TContractName> | TContractName,
 ): DeployedContractData<TContractName> {

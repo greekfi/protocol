@@ -7799,7 +7799,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0xf887ac426854d7b5e4abbc4d645a3afa55033e67",
+      address: "0xf56aa3aceddf88ab12e494d0b96da3c09a5d264e",
       abi: [
         {
           type: "constructor",
@@ -8221,11 +8221,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762204732230.json",
+      deploymentFile: "run-1762230040435.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x5c5744982fef3ef1d21c237280397e048babae9c",
+      address: "0xdbd296711ec8ef9aacb623ee3f1c0922dce0d7b2",
       abi: [
         {
           type: "constructor",
@@ -8647,11 +8647,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762204732230.json",
+      deploymentFile: "run-1762230040435.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
-      address: "0xf40faded846619750a8ada900bc1860604ce7245",
+      address: "0xdfd787c807dea8d7e53311b779bc0c6a4704d286",
       abi: [
         {
           type: "constructor",
@@ -9649,11 +9649,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762204732230.json",
+      deploymentFile: "run-1762230040435.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
-      address: "0x2230b654e281c9eed215c15516e3b6c383fbc5a1",
+      address: "0x6d014319e0f36651997697c98da594c7cf235fa4",
       abi: [
         {
           type: "constructor",
@@ -10828,11 +10828,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762204732230.json",
+      deploymentFile: "run-1762230040435.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x46f6004a66c69e291e17937c91ecf892047e4ff7",
+      address: "0x5621d0b4d8043524ac5837918d6a95b1050ef228",
       abi: [
         {
           type: "constructor",
@@ -11689,7 +11689,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762204732230.json",
+      deploymentFile: "run-1762230040435.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

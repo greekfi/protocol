@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
-import { DeployYourContract } from "./DeployYourContract.s.sol";
+import {DeployYourContract} from "./DeployYourContract.s.sol";
 
 /**
  * @notice Main deployment script for all contracts

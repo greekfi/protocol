@@ -5,7 +5,7 @@ contract AddressSet {
     // Direct storage - no struct overhead
     mapping(address => uint256) private _indices; // 1-based index, 0 = not present
     address[] private _values;
-    
+
     // Cache length to avoid array access
     uint256 private _length;
 

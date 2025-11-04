@@ -11,6 +11,7 @@ import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;
+
     StableToken public stableToken;
     ShakyToken public shakyToken;
     Redemption public redemptionClone;
@@ -31,7 +32,7 @@ contract OptionTest is Test {
     uint160 constant MAX160 = type(uint160).max;
     uint48 constant MAX48 = type(uint48).max;
     uint256 constant MAX256 = type(uint256).max;
-    
+
     function setUp() public {
         // Fork Unichain at the latest block
         vm.createSelectFork(UNICHAIN_RPC_URL);
@@ -43,18 +44,12 @@ contract OptionTest is Test {
         stableToken_ = address(stableToken);
 
         // Mint tokens to test address
-        stableToken.mint(address(this), 1_000_000 * 10**18);
-        shakyToken.mint(address(this), 1_000_000 * 10**18);
+        stableToken.mint(address(this), 1_000_000 * 10 ** 18);
+        shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy ShortOption
         redemptionClone = new Redemption(
-            "Short Option",
-            "SHORT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false
+            "Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
 
         // Deploy LongOption
@@ -85,7 +80,6 @@ contract OptionTest is Test {
 
         // factory.createOptions(options);
 
-
         OptionParameter[] memory options = new OptionParameter[](1);
         options[0] = OptionParameter({
             optionSymbol: "LONG",
@@ -98,7 +92,6 @@ contract OptionTest is Test {
         });
 
         factory.createOptions(options);
-
 
         address[] memory options1 = factory.getOptions();
         option = Option(options1[0]);
@@ -131,14 +124,14 @@ contract OptionTest is Test {
         console.log("ShortOption balance:", redemption.balanceOf(address(this)));
     }
 
-    modifier t1 {
+    modifier t1() {
         approve1(shakyToken_, shortOption);
         approve1(stableToken_, shortOption);
         _;
         consoleBalances();
     }
 
-    modifier t2 {
+    modifier t2() {
         approve2(shakyToken_, shortOption);
         approve2(stableToken_, shortOption);
         _;
@@ -168,7 +161,7 @@ contract OptionTest is Test {
         safeTransfer(address(option), address(0x123), 1);
         vm.prank(address(0x123));
         safeTransfer(address(option), address(this), 1);
-        }
+    }
 
     function test_Exercise1() public t1 {
         option.mint(1);
@@ -280,7 +273,8 @@ contract OptionTest is Test {
 
     function test_BalancesOf() public t1 {
         option.mint(1);
-        (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) = option.balancesOf(address(this));
+        (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) =
+            option.balancesOf(address(this));
         assertEq(longBalance, 1);
         assertEq(shortBalance, 1);
         assertGt(collBalance, 0);
@@ -468,7 +462,7 @@ contract OptionTest is Test {
         option.mint(100);
 
         uint256 stableBalance = stableToken.balanceOf(address(this));
-        
+
         // stableToken.transfer(address(0x999), stableBalance);
         safeTransfer(stableToken_, address(0x999), stableBalance);
 
@@ -561,5 +555,4 @@ contract OptionTest is Test {
         assertEq(redemption.balanceOf(address(0x123)), 5);
         assertEq(redemption.balanceOf(address(this)), 5);
     }
-
 }

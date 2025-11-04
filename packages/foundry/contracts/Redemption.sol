@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { OptionBase } from "./OptionBase.sol";
+import {OptionBase} from "./OptionBase.sol";
 
 using SafeERC20 for IERC20;
 /*
@@ -20,6 +20,7 @@ to be any asset and collateral to be any asset as well. This can allow wETH to b
 as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 or even staked stable coins can be used as well for either consideration or collateral.
 */
+
 contract Redemption is OptionBase {
     address public option;
     address[] public accounts;
@@ -43,8 +44,8 @@ contract Redemption is OptionBase {
     }
 
     function _update(address from, address to, uint256 value) internal override {
-         super._update(from, to, value);
-         accounts.push(to);
+        super._update(from, to, value);
+        accounts.push(to);
     }
 
     constructor(
@@ -55,14 +56,14 @@ contract Redemption is OptionBase {
         uint256 expirationDate,
         uint256 strike,
         bool isPut
-    ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) { }
+    ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {}
 
     function setOption(address option_) public onlyOwner {
         option = option_;
         transferOwnership(option_);
     }
 
-    function transferFrom_( address from, address to, IERC20 token, uint256 amount )internal {
+    function transferFrom_(address from, address to, IERC20 token, uint256 amount) internal {
         if (token.allowance(from, address(this)) >= amount) {
             token.safeTransferFrom(from, to, amount);
         } else {
@@ -70,35 +71,50 @@ contract Redemption is OptionBase {
         }
     }
 
-
     function mint(address account, uint256 amount)
-        public onlyOwner notExpired nonReentrant validAmount(amount) sufficientCollateral(account, amount) validAddress(account) saveAccount(account) {
-
-        transferFrom_(account, address(this), collateral, amount );
+        public
+        onlyOwner
+        notExpired
+        nonReentrant
+        validAmount(amount)
+        sufficientCollateral(account, amount)
+        validAddress(account)
+        saveAccount(account)
+    {
+        transferFrom_(account, address(this), collateral, amount);
         _mint(account, amount);
     }
 
-    function redeem(address account) public { redeem(account, balanceOf(account)); }
-    function redeem(uint256 amount) public { redeem(msg.sender, amount); }
-    function redeem(address account, uint256 amount) public expired nonReentrant{
+    function redeem(address account) public {
+        redeem(account, balanceOf(account));
+    }
+
+    function redeem(uint256 amount) public {
+        redeem(msg.sender, amount);
+    }
+
+    function redeem(address account, uint256 amount) public expired nonReentrant {
         _redeem(account, amount);
     }
+
     function _redeemPair(address account, uint256 amount) public notExpired onlyOwner {
         // only LongOption can call
         _redeem(account, amount);
     }
-    function _redeem(address account, uint256 amount)
-        internal sufficientBalance(account, amount) validAmount(amount) {
+
+    function _redeem(address account, uint256 amount) internal sufficientBalance(account, amount) validAmount(amount) {
         uint256 balance = collateral.balanceOf(address(this));
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
         _burn(account, collateralToSend);
 
-        if (balance < amount) { // fulfill with consideration because not enough collateral
+        if (balance < amount) {
+            // fulfill with consideration because not enough collateral
             _redeemConsideration(account, amount - balance);
         }
 
-        if (collateralToSend > 0) { // Transfer remaining collateral afterwards
+        if (collateralToSend > 0) {
+            // Transfer remaining collateral afterwards
             collateral.safeTransfer(account, collateralToSend);
         }
         emit Redeemed(address(option), address(collateral), account, amount);
@@ -107,21 +123,32 @@ contract Redemption is OptionBase {
     function redeemConsideration(uint256 amount) public {
         redeemConsideration(msg.sender, amount);
     }
+
     function redeemConsideration(address account, uint256 amount) public nonReentrant {
         _redeemConsideration(account, amount);
     }
+
     function _redeemConsideration(address account, uint256 amount)
-        internal sufficientBalance(account, amount) sufficientConsideration(address(this), amount) validAmount(amount) {
+        internal
+        sufficientBalance(account, amount)
+        sufficientConsideration(address(this), amount)
+        validAmount(amount)
+    {
         _burn(account, amount);
         uint256 consAmount = toConsideration(amount);
         consideration.safeTransfer(account, consAmount);
         emit Redeemed(address(option), address(consideration), account, consAmount);
     }
 
-    function exercise(address account, uint256 amount,  address caller
-        ) public notExpired onlyOwner nonReentrant sufficientConsideration(caller, amount) sufficientCollateral(address(this), amount)
-        validAmount(amount) {
-
+    function exercise(address account, uint256 amount, address caller)
+        public
+        notExpired
+        onlyOwner
+        nonReentrant
+        sufficientConsideration(caller, amount)
+        sufficientCollateral(address(this), amount)
+        validAmount(amount)
+    {
         transferFrom_(caller, address(this), consideration, toConsideration(amount));
         collateral.safeTransfer(account, amount);
     }
@@ -131,9 +158,9 @@ contract Redemption is OptionBase {
     }
 
     function sweep() public expired nonReentrant {
-        for (uint256 i = 0; i < accounts.length; i++){
+        for (uint256 i = 0; i < accounts.length; i++) {
             address holder = accounts[i];
-            if (balanceOf(holder) > 0){
+            if (balanceOf(holder) > 0) {
                 _redeem(holder, balanceOf(holder));
             }
         }

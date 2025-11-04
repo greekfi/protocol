@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { OptionBase, OptionInfo, OptionParameter, TokenData } from "./OptionBase.sol";
+import {OptionBase, OptionInfo, OptionParameter, TokenData} from "./OptionBase.sol";
 import {Redemption} from "./Redemption.sol";
 /*
 The Option contract is the owner of the Redemption contract
@@ -52,31 +52,37 @@ contract Option is OptionBase {
         redemption = Redemption(redemption__);
     }
 
-    function mint(uint256 amount) public { mint(msg.sender, amount); }
-    function mint(address account, uint256 amount)
-        public nonReentrant {
+    function mint(uint256 amount) public {
+        mint(msg.sender, amount);
+    }
+
+    function mint(address account, uint256 amount) public nonReentrant {
         mint_(account, amount);
     }
-    function mint_(address account, uint256 amount)
-        internal notExpired notLocked validAmount(amount) {
+
+    function mint_(address account, uint256 amount) internal notExpired notLocked validAmount(amount) {
         redemption.mint(account, amount);
         _mint(account, amount);
         emit Mint(address(this), account, amount);
     }
 
-    function transferFrom(address from, address to, uint256 amount) 
-        public override notLocked nonReentrant returns (bool success) {
+    function transferFrom(address from, address to, uint256 amount)
+        public
+        override
+        notLocked
+        nonReentrant
+        returns (bool success)
+    {
         success = super.transferFrom(from, to, amount);
         uint256 balance = redemption.balanceOf(to);
-        if (balance > 0){
+        if (balance > 0) {
             redeem_(to, min(balance, amount));
         }
     }
 
-    function transfer(address to, uint256 amount) 
-        public override notLocked nonReentrant returns (bool success) {
+    function transfer(address to, uint256 amount) public override notLocked nonReentrant returns (bool success) {
         uint256 balance = this.balanceOf(msg.sender);
-        if (balance < amount){
+        if (balance < amount) {
             mint_(msg.sender, amount - balance);
         }
 
@@ -84,22 +90,29 @@ contract Option is OptionBase {
         require(success, "Transfer failed");
 
         balance = redemption.balanceOf(to);
-        if (balance > 0){
+        if (balance > 0) {
             redeem_(to, min(balance, amount));
         }
     }
-    function exercise(uint256 amount) public { exercise(msg.sender, amount); }
+
+    function exercise(uint256 amount) public {
+        exercise(msg.sender, amount);
+    }
+
     function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
         redemption.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
-    function redeem(uint256 amount) public { redeem(msg.sender, amount); }
-    function redeem(address account, uint256 amount)
-        public nonReentrant {
+    function redeem(uint256 amount) public {
+        redeem(msg.sender, amount);
+    }
+
+    function redeem(address account, uint256 amount) public nonReentrant {
         redeem_(account, amount);
     }
+
     function redeem_(address account, uint256 amount) internal notExpired sufficientBalance(account, amount) {
         _burn(account, amount);
         redemption._redeemPair(account, amount);
@@ -110,8 +123,7 @@ contract Option is OptionBase {
         redemption = Redemption(redemption_);
     }
 
-    function balancesOf(address account) 
-    public view returns (Balances memory) {
+    function balancesOf(address account) public view returns (Balances memory) {
         return Balances({
             collateral: collateral.balanceOf(account),
             consideration: consideration.balanceOf(account),

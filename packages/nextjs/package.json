@@ -8,7 +8,7 @@
     "dev": "next dev",
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "ipfs": "NEXT_PUBLIC_IPFS_BUILD=true yarn build && yarn bgipfs upload config init -u https://upload.bgipfs.com && CID=$(yarn bgipfs upload out | grep -o 'CID: [^ ]*' | cut -d' ' -f2) && [ ! -z \"$CID\" ] && echo '🚀 Upload complete! Your site is now available at: https://community.bgipfs.com/ipfs/'$CID || echo '❌ Upload failed'",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "serve": "next start",
     "start": "next dev",
     "vercel": "vercel --build-env YARN_ENABLE_IMMUTABLE_INSTALLS=false --build-env ENABLE_EXPERIMENTAL_COREPACK=1 --build-env VERCEL_TELEMETRY_DISABLED=1",
@@ -24,11 +24,13 @@
     "@uniswap/v2-sdk": "~4.16.0",
     "blo": "~2.0.0",
     "burner-connector": "0.0.19",
-    "daisyui": "5.4.2",
+    "daisyui": "5.4.3",
     "kubo-rpc-client": "~6.0.2",
+    "moment-timezone": "~0.6.0",
     "next": "^16.0.1",
     "next-nprogress-bar": "~2.4.7",
     "next-themes": "~0.4.6",
+    "qr": "^0.5.2",
     "qrcode.react": "~4.2.0",
     "react": "~19.2.0",
     "react-dom": "~19.2.0",
@@ -57,7 +59,7 @@
     "tailwindcss": "4.1.16",
     "type-fest": "~5.2.0",
     "typescript": "~5.9.3",
-    "vercel": "~48.8.1"
+    "vercel": "~48.8.2"
   },
   "packageManager": "yarn@3.2.3"
 }

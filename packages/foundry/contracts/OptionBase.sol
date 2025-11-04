@@ -6,10 +6,9 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IPermit2 } from "./interfaces/IPermit2.sol";
-
+import {IPermit2} from "./interfaces/IPermit2.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
@@ -23,7 +22,6 @@ using SafeERC20 for IERC20;
 // to be any asset and collateral to be any asset as well. This can allow wETH to be used
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
-
 
 struct TokenData {
     address address_;
@@ -55,7 +53,7 @@ struct OptionInfo {
     bool isPut;
 }
 
-contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
+contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 public expirationDate;
     uint256 public strike;
@@ -135,11 +133,11 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        return (amount * strike * 10**consDecimals) / (STRIKE_DECIMALS * 10**collDecimals);
+        return (amount * strike * 10 ** consDecimals) / (STRIKE_DECIMALS * 10 ** collDecimals);
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        return (consAmount *  10**collDecimals * STRIKE_DECIMALS)/ (strike * 10**consDecimals);
+        return (consAmount * 10 ** collDecimals * STRIKE_DECIMALS) / (strike * 10 ** consDecimals);
     }
 
     function init(
@@ -157,7 +155,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
         if (consideration_ == address(0)) revert InvalidValue();
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
-        
+
         _tokenName = name_;
         _tokenSymbol = symbol_;
         collateral = IERC20(collateral_);
@@ -182,13 +180,22 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
     function symbol() public view override returns (string memory) {
         return _tokenSymbol;
     }
+
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
-        return TokenData(address(collateral), collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals());
+        return TokenData(
+            address(collateral), collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals()
+        );
     }
+
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
-        return TokenData(address(consideration), considerationMetadata.name(), considerationMetadata.symbol(), considerationMetadata.decimals());
+        return TokenData(
+            address(consideration),
+            considerationMetadata.name(),
+            considerationMetadata.symbol(),
+            considerationMetadata.decimals()
+        );
     }
 
     function lock() public onlyOwner {
@@ -202,6 +209,4 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable    {
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
-
-
 }

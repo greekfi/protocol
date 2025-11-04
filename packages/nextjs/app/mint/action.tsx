@@ -22,8 +22,6 @@ interface ActionInterfaceProps {
 }
 
 const Action = ({ details, action }: ActionInterfaceProps) => {
-  const {} = details || {};
-
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const optionAbi = useContract()?.Option?.abi;

@@ -257,13 +257,15 @@ function main() {
 
     export default deployedContracts satisfies GenericContractsDeclaration;
   `;
+    format(
+        fileTemplate("~~/utils/scaffold-eth/contract"),
+        { parser: "typescript",}
+    ).then(
+        result => {
+            writeFileSync(`${NEXTJS_TARGET_DIR}deployedContracts.ts`, result);
+        }
+    )
 
-  writeFileSync(
-    `${NEXTJS_TARGET_DIR}deployedContracts.ts`,
-    format(fileTemplate("~~/utils/scaffold-eth/contract"), {
-      parser: "typescript",
-    })
-  );
 
   console.log(
     `📝 Updated TypeScript contract definition file on ${NEXTJS_TARGET_DIR}deployedContracts.ts`

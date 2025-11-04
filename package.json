@@ -58,16 +58,31 @@
   "engines": {
     "node": ">=20.18.3"
   },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0",
-    "@optionality.io/clone-factory": "^0.2.1",
-    "@rainbow-me/rainbowkit": "^2.2.9",
-    "@tailwindcss/postcss": "^4.1.16",
-    "moment-timezone": "^0.6.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.16"
-  },
   "resolutions": {
-    "next": "latest"
+    "next": "latest",
+    "fast-redact": "3.5.0",
+    "esbuild": "0.25.12",
+    "path-to-regexp": "8.3.0",
+    "undici": "7.16.0",
+    "@walletconnect/ethereum-provider": "2.23.0",
+    "@walletconnect/universal-provider": "2.23.0",
+    "@walletconnect/sign-client": "2.23.0",
+    "@walletconnect/core": "2.23.0",
+    "@walletconnect/utils": "2.23.0",
+    "@walletconnect/types": "2.23.0",
+    "@reown/appkit": "1.8.12"
+  },
+  "overrides": {
+    "fast-redact": "3.5.0",
+    "esbuild": "0.25.12",
+    "path-to-regexp": "8.3.0",
+    "undici": "7.16.0",
+    "@walletconnect/ethereum-provider": "2.23.0",
+    "@walletconnect/universal-provider": "2.23.0",
+    "@walletconnect/sign-client": "2.23.0",
+    "@walletconnect/core": "2.23.0",
+    "@walletconnect/utils": "2.23.0",
+    "@walletconnect/types": "2.23.0",
+    "@reown/appkit": "1.8.12"
   }
 }

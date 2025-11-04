@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
+import {ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
 import {OptionFactory, Redemption, Option} from "../contracts/OptionFactory.sol";
 import {StableToken} from "../contracts/StableToken.sol";
 import {ShakyToken} from "../contracts/ShakyToken.sol";
@@ -27,19 +27,25 @@ contract DeployYourContract is ScaffoldETHDeploy {
      *      - Export contract addresses & ABIs to `nextjs` packages
      */
     function run() external ScaffoldEthDeployerRunner {
-
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 
-        Redemption short =
-            new Redemption("Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false);
+        Redemption short = new Redemption(
+            "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
+        );
 
         Option long = new Option(
-            "Option", "OPT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false, address(short)
+            "Option",
+            "OPT",
+            address(stableToken),
+            address(shakyToken),
+            block.timestamp + 1 days,
+            100,
+            false,
+            address(short)
         );
 
         new OptionFactory(address(short), address(long));
-
 
         // deployments.push(Deployment("ShortOption", address(short)));
         // deployments.push(Deployment("LongOption", address(long)));
