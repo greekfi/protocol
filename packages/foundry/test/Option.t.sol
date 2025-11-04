@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test, console} from "forge-std/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptionFactory, Redemption, Option, OptionParameter} from "../contracts/OptionFactory.sol";
-import {StableToken} from "../contracts/StableToken.sol";
-import {ShakyToken} from "../contracts/ShakyToken.sol";
-import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { StableToken } from "../contracts/StableToken.sol";
+import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;

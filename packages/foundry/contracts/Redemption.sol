@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {OptionBase} from "./OptionBase.sol";
+import { OptionBase } from "./OptionBase.sol";
 
 using SafeERC20 for IERC20;
 /*
@@ -56,7 +56,7 @@ contract Redemption is OptionBase {
         uint256 expirationDate,
         uint256 strike,
         bool isPut
-    ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {}
+    ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) { }
 
     function setOption(address option_) public onlyOwner {
         option = option_;

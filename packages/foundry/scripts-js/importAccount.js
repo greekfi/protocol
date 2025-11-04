@@ -42,7 +42,7 @@ async function importAccount() {
     // Check if account name is scaffold-eth-default
     if (accountName === "scaffold-eth-default") {
       console.error(
-        "\n❌ Cannot use 'scaffold-eth-default' as account name. This is reserved for local development."
+        "\n❌ Cannot use 'scaffold-eth-default' as account name. This is reserved for local development.",
       );
       process.exit(1);
     }
@@ -54,7 +54,7 @@ async function importAccount() {
         stdio: "inherit",
         shell: true,
         cwd: process.cwd(),
-      }
+      },
     );
 
     // Handle process completion
