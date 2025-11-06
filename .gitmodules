@@ -7,3 +7,15 @@
 [submodule "packages/foundry/lib/solidity-bytes-utils"]
 	path = packages/foundry/lib/solidity-bytes-utils
 	url = https://github.com/gnsps/solidity-bytes-utils
+[submodule "packages/foundry/lib/uniswap-hooks"]
+	path = packages/foundry/lib/uniswap-hooks
+	url = https://github.com/openzeppelin/uniswap-hooks
+[submodule "packages/foundry/lib/v2-core"]
+	path = packages/foundry/lib/v2-core
+	url = https://github.com/uniswap/v2-core
+[submodule "packages/foundry/lib/universal-router"]
+	path = packages/foundry/lib/universal-router
+	url = https://github.com/uniswap/universal-router
+[submodule "packages/foundry/lib/v3-core"]
+	path = packages/foundry/lib/v3-core
+	url = https://github.com/uniswap/v3-core
