@@ -5,6 +5,7 @@ import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { Balances } from "../contracts/Option.sol";
 import { StableToken } from "../contracts/StableToken.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
@@ -273,12 +274,11 @@ contract OptionTest is Test {
 
     function test_BalancesOf() public t1 {
         option.mint(1);
-        (uint256 collBalance, uint256 consBalance, uint256 longBalance, uint256 shortBalance) =
-            option.balancesOf(address(this));
-        assertEq(longBalance, 1);
-        assertEq(shortBalance, 1);
-        assertGt(collBalance, 0);
-        assertGt(consBalance, 0);
+        Balances memory balances = option.balancesOf(address(this));
+        assertEq(balances.option, 1);
+        assertEq(balances.redemption, 1);
+        assertGt(balances.collateral, 0);
+        assertGt(balances.consideration, 0);
     }
 
     function test_Details() public view {
