@@ -4,9 +4,7 @@ pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
 import {ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
 
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-
 import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 
 import {OpHook} from "../contracts/OpHook.sol";
@@ -28,7 +26,7 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 						Hooks.BEFORE_DONATE_FLAG |
 						Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
 		bytes memory constructorArgs = abi.encode(
-            IPoolManager(ConstantsUnichain.POOLMANAGER),
+            ConstantsUnichain.POOLMANAGER,
             ConstantsUnichain.PERMIT2
 //            ConstantsUnichain.WETH,
 //            ConstantsUnichain.USDC,
@@ -47,7 +45,7 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         console.log("Address", hookAddress);
 
         OpHook opHook = new OpHook{salt: salt}(
-            IPoolManager(ConstantsUnichain.POOLMANAGER),
+            ConstantsUnichain.POOLMANAGER,
             ConstantsUnichain.PERMIT2
 //            ConstantsUnichain.WETH,
 //            ConstantsUnichain.USDC,

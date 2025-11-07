@@ -1,0 +1,352 @@
+import { useState } from "react";
+import { useContract } from "./hooks/useContract";
+import { Token, useTokenMap } from "./hooks/useTokenMap";
+import moment from "moment-timezone";
+import { Address } from "viem";
+import { useAccount, useWriteContract } from "wagmi";
+
+interface TokenSelectProps {
+  label: string;
+  value: Token | undefined;
+  onChange: (token: Token) => void;
+  tokensMap: Record<string, Token>;
+}
+
+const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) => (
+  <div className="flex-1">
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <select
+      className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2"
+      value={value?.symbol || ""}
+      onChange={e => onChange(tokensMap[e.target.value])}
+    >
+      <option value="">Select token</option>
+      {Object.keys(tokensMap).map(symbol => (
+        <option key={symbol} value={symbol}>
+          {symbol}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
+  const { isConnected } = useAccount();
+  const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
+  const { allTokensMap } = useTokenMap();
+  console.log("allTokensMap", allTokensMap);
+
+  const contract = useContract();
+  const abi = contract?.OptionFactory?.abi;
+  const contractAddress = contract?.OptionFactory?.address;
+
+  // Consolidated state
+  const [formData, setFormData] = useState({
+    collateralToken: undefined as Token | undefined,
+    considerationToken: undefined as Token | undefined,
+    strikePrice: 0,
+    isPut: false,
+    expirationDate: undefined as Date | undefined,
+  });
+
+  const calculateStrikeRatio = () => {
+    const { collateralToken, considerationToken, strikePrice, isPut } = formData;
+    if (!strikePrice || !considerationToken || !collateralToken) return { strikeInteger: BigInt(0) };
+    // For PUT mint, we need to invert the strike price in the calculation
+    // This is because puts are really just call mint but with the strike price inverted
+    if (isPut) {
+      // For PUT mint: 1/strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
+      const invertedStrike = strikePrice === 0 ? 0 : 1 / strikePrice;
+      return {
+        strikeInteger: BigInt(
+          Math.floor(invertedStrike * Math.pow(10, 18 + considerationToken.decimals - collateralToken.decimals)),
+        ),
+      };
+    }
+    return {
+      strikeInteger: BigInt(strikePrice * Math.pow(10, 18 + considerationToken.decimals - collateralToken.decimals)),
+    };
+  };
+
+  const handleCreateOption = async () => {
+    // Prevent multiple submissions
+    if (isPending) return;
+
+    const { collateralToken, considerationToken, strikePrice, expirationDate, isPut } = formData;
+    if (!collateralToken || !considerationToken || !strikePrice || !expirationDate) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    const { strikeInteger } = calculateStrikeRatio();
+    console.log("strikeInteger", strikeInteger);
+    const expTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
+    console.log("expTimestamp", expTimestamp);
+    const fmtDate = moment(expirationDate).format("YYYYMMDD");
+    console.log("fmtDate", fmtDate);
+
+    const optionType = isPut ? "P" : "C";
+    const baseNameSymbol = `OPT${optionType}-${collateralToken.symbol}-${considerationToken.symbol}-${fmtDate}-${strikePrice}`;
+    const longName = `L${baseNameSymbol}`;
+    const shortName = `S${baseNameSymbol}`;
+    console.log("longName", longName);
+    console.log("shortName", shortName);
+    console.log("collateralToken.address", collateralToken.address);
+    console.log("considerationToken.address", considerationToken.address);
+    console.log("expTimestamp", expTimestamp);
+    console.log("strikeInteger", strikeInteger);
+    console.log("isPut", isPut);
+
+    try {
+      writeContract(
+        {
+          address: contractAddress,
+          abi,
+          functionName: "createOption",
+          args: [
+            longName,
+            shortName,
+            collateralToken.address as Address,
+            considerationToken.address as Address,
+            BigInt(expTimestamp),
+            strikeInteger,
+            isPut,
+          ],
+        },
+        {
+          onSuccess: () => {
+            console.log("committed transaction", hash);
+            refetchOptions();
+          },
+        },
+      );
+    } catch (error) {
+      console.error("Error creating option:", error);
+      alert("Failed to create option. Check console for details.");
+    }
+  };
+
+  const updateFormData = (field: keyof typeof formData, value: (typeof formData)[keyof typeof formData]) => {
+    if (field === "isPut") {
+      // When toggling between Call and Put, swap the token values
+      setFormData(prev => ({
+        ...prev,
+        isPut: value as boolean,
+        collateralToken: prev.considerationToken,
+        considerationToken: prev.collateralToken,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  moment.tz.setDefault("Europe/London");
+
+  return (
+    <div className="max-w-2xl mx-auto bg-black/80 border border-gray-800 rounded-lg shadow-lg p-6 text-lg">
+      <div className="flex flex-col space-y-6">
+        <h2 className="text-lg font-light text-blue-300">
+          <div className="flex items-center gap-1">
+            Design New Option
+            <button
+              type="button"
+              className="text-sm text-blue-200 hover:text-blue-300 flex items-center gap-1"
+              title="Create a new option contract"
+              onClick={e => {
+                const tooltip = document.createElement("div");
+                tooltip.className = "absolute bg-gray-900 text-sm text-gray-200 p-2 rounded shadow-lg -mt-8 -ml-2";
+                tooltip.textContent = "Create a new option contract";
+
+                const button = e.currentTarget;
+                button.appendChild(tooltip);
+
+                setTimeout(() => {
+                  tooltip.remove();
+                }, 2000);
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                />
+              </svg>
+            </button>
+          </div>
+        </h2>
+
+        {/* Main Layout */}
+        <div className="flex gap-8">
+          {/* Left Side - Controls */}
+          <div className="flex flex-col space-y-6 w-1/2">
+            {/* Option Type Selector */}
+            <div className="flex flex-col space-y-2">
+              <label className=" text-blue-100">Option Type:</label>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => updateFormData("isPut", false)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    !formData.isPut ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  CALL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFormData("isPut", true)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    formData.isPut ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  PUT
+                </button>
+              </div>
+            </div>
+
+            {/* Expiration */}
+            <div className="flex flex-col space-y-2">
+              <label className=" text-blue-100">Expiration:</label>
+              <input
+                type="date"
+                className="rounded-lg border border-gray-800 bg-black/60 text-blue-300 p-2 w-48"
+                onChange={e => updateFormData("expirationDate", new Date(e.target.value))}
+              />
+            </div>
+          </div>
+
+          {/* Right Side - Swap Inputs and Button */}
+          <div className="flex flex-col space-y-4 w-1/2">
+            {formData.isPut ? (
+              // Put Option Layout
+              <>
+                <div className="flex items-center">
+                  <span className="text-blue-100">Put Option Holder swaps</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-10 flex items-center justify-center rounded-lg bg-black text-gray-300 border border-gray-800">
+                    1
+                  </div>
+                  <div className="w-32">
+                    <TokenSelect
+                      label=""
+                      value={formData.considerationToken}
+                      onChange={token => updateFormData("considerationToken", token)}
+                      tokensMap={allTokensMap}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  <span className="text-blue-100">and receives</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="w-16">
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2"
+                      value={formData.strikePrice}
+                      onChange={e => updateFormData("strikePrice", Number(e.target.value))}
+                      placeholder="Strike"
+                    />
+                  </div>
+                  <div className="w-32">
+                    <TokenSelect
+                      label=""
+                      value={formData.collateralToken}
+                      onChange={token => updateFormData("collateralToken", token)}
+                      tokensMap={allTokensMap}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              // Call Option Layout
+              <>
+                <div className="flex items-center">
+                  <span className="text-blue-100">Call Option Holder swaps</span>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-11">
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2"
+                      value={formData.strikePrice}
+                      onChange={e => updateFormData("strikePrice", Number(e.target.value))}
+                      placeholder="Strike"
+                    />
+                  </div>
+
+                  <div className="w-32">
+                    <TokenSelect
+                      label=""
+                      value={formData.considerationToken}
+                      onChange={token => updateFormData("considerationToken", token)}
+                      tokensMap={allTokensMap}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <span className="text-blue-100">and receives</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-11 flex items-center justify-center rounded-lg bg-black text-gray-300 border border-gray-800">
+                    1
+                  </div>
+                  <div className="w-32">
+                    <TokenSelect
+                      label=""
+                      value={formData.collateralToken}
+                      onChange={token => updateFormData("collateralToken", token)}
+                      tokensMap={allTokensMap}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              className={`px-4 py-2 rounded-lg text-black transition-transform hover:scale-105 ${
+                !isConnected ||
+                !formData.collateralToken ||
+                !formData.considerationToken ||
+                !formData.strikePrice ||
+                !formData.expirationDate ||
+                isPending
+                  ? "bg-blue-300 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-600"
+              }`}
+              onClick={handleCreateOption}
+              disabled={
+                !isConnected ||
+                !formData.collateralToken ||
+                !formData.considerationToken ||
+                !formData.strikePrice ||
+                !formData.expirationDate ||
+                isPending
+              }
+            >
+              {isPending ? "Creating..." : isSuccess ? "Created!" : "Create Option"}
+            </button>
+          </div>
+        </div>
+
+        {isSuccess && (
+          <div className="text-green-500 text-sm">Option creation submitted successfully! Transaction hash: {hash}</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Create;
