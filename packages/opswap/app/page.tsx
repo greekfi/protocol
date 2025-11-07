@@ -1,73 +1,165 @@
 "use client";
 
-import Link from "next/link";
-import type { NextPage } from "next";
-import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { Address } from "~~/components/scaffold-eth";
-import { CurrentOptionPrice, useGetOptions } from "~~/hooks/uniHook/useGetOptions";
+import { useEffect, useState } from "react";
+import { useGetOptions } from "./useGetOptions";
+import { OptionInfo } from "./OptionInfo";
+import { useAddOption } from "./useAddOption";
+import { useBuyOption } from "./useBuyOption";
 
-const Home: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
+export default function OpSwapFront() {
+  const [isDark, setIsDark] = useState(false);
 
-  const { options } = useGetOptions();
+  useEffect(() => {
+    console.log("OpSwap page is loading!");
+    // Check system preference on mount
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setIsDark(prefersDark);
+  }, []);
+  const { prices } = useGetOptions();
+  const buyOption = useBuyOption();
+  const addOption = useAddOption();
+  const [buyAmount, setBuyAmount] = useState<number[]>([]);
+  const [cashAmount, setCashAmount] = useState<number[]>([]);
+  const [newPoolAddress, setNewPoolAddress] = useState<string>("0x");
+
+  const handleBuyAmountChange = (idx: number, value: number) => {
+    setBuyAmount(prev => {
+      const updated = [...prev];
+      updated[idx] = value;
+      return updated;
+    });
+  };
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+  };
 
   return (
-    <>
-      <div className="flex items-center flex-col grow pt-10">
-        <div className="px-5">
-          <h1 className="text-center">
-            <span className="block text-2xl mb-2">Welcome tooooo</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
-          </h1>
-          <div className="flex justify-center items-center space-x-2 flex-col">
-            <p className="my-2 font-medium">Connected Address:</p>
-            <Address address={connectedAddress} />
+    <div
+      className={`min-h-screen transition-colors duration-300 font-light ${
+        isDark ? "bg-black text-white" : "bg-white text-black"
+      }`}
+    >
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <header className="flex justify-between items-center mb-12">
+          <div className="flex items-center space-x-4">
+            {/* Placeholder Logo */}
+            <div
+              className={`w-12 h-12 rounded-lg flex items-center justify-center ${isDark ? "bg-white" : "bg-black"}`}
+            >
+              <span className={`font-medium text-xl ${isDark ? "text-black" : "text-white"}`}>OS</span>
+            </div>
+            <h1 className="text-3xl font-semibold font-geist">OpSwap</h1>
           </div>
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">Options:</h2>
-            {options && options.length > 0 ? (
-              <ul className="list-disc pl-5">
-                {options.map((option: CurrentOptionPrice, idx: number) => (
-                  <li key={idx} className="mb-1">
-                    <p>{option.price / BigInt(1e18)}</p>
-                    <p>{option.collateral}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500">No options available.</p>
-            )}
-          </div>
-        </div>
 
-        <div className="grow bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col md:flex-row">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
-                </Link>{" "}
-                tab.
-              </p>
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`relative p-3 rounded-full transition-all duration-300 transform hover:scale-105 ${
+              isDark
+                ? "bg-white hover:bg-gray-100 shadow-lg shadow-white/20"
+                : "bg-black hover:bg-gray-800 shadow-lg shadow-black/20"
+            }`}
+            aria-label="Toggle theme"
+          >
+            <span className="text-lg">{isDark ? "☀️" : "🌙"}</span>
+          </button>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-4xl mx-auto">
+          {/* Hero Section */}
+          <section className="text-center mb-16">
+            <div className="flex justify-center space-x-4">
+              {prices && prices.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl">
+                  {prices.map((price, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-lg border text-center ${
+                        isDark ? "bg-gray-900 border-gray-800 text-white" : "bg-gray-100 border-gray-300 text-black"
+                      }`}
+                    >
+                      <OptionInfo option={price.optionToken as `0x${string}`} />
+                      <div className="text-2xl font-light mt-2">
+                        Price/Option: ${(Number(price.price) / 1e18).toFixed(2)}
+                      </div>
+                      <div className="flex flex-col items-center gap-3 mt-4">
+                        Amount
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.001}
+                          placeholder="Amount of options"
+                          className={`w-20 px-3 py-2 rounded-lg border focus:outline-none ${
+                            isDark ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-black"
+                          }`}
+                          value={buyAmount[idx]}
+                          onChange={e => {
+                            handleBuyAmountChange(idx, Number(e.target.value));
+                            setCashAmount(prev => {
+                              const updated = [...prev];
+                              updated[idx] = Number(e.target.value) * (Number(price.price) / 1e18);
+                              return updated;
+                            });
+                          }}
+                        />
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-20 px-3 py-2 rounded-lg  focus:outline-none text-center ${
+                              isDark ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-black"
+                            }`}
+                          >
+                            {buyAmount[idx] > 0
+                              ? "$" +
+                                (Number(price.price * BigInt(Math.round(buyAmount[idx] * 10000))) / 1e22).toFixed(3)
+                              : ""}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            buyOption(cashAmount[idx], price.optionToken);
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Buy in USDC
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={isDark ? "text-gray-400" : "text-gray-500"}>Loading prices...</div>
+              )}
             </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
+          </section>
+          <section className="text-center">
+            <div>
+              <input
+                className="border rounded-lg px-3 py-2"
+                type="text"
+                onChange={e => setNewPoolAddress(e.target.value)}
+                placeholder="0x..."
+              />
+              <button
+                onClick={() => {
+                  console.log("New Pool Address:", newPoolAddress);
+                  addOption(newPoolAddress);
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                Add New Option to Pool
+              </button>
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
+
+        {/* Footer */}
+        <footer className={`text-center py-8 border-t font-light ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={isDark ? "text-gray-400" : "text-gray-500"}>© 2024 OpSwap. Built with ❤️ on Ethereum</p>
+        </footer>
       </div>
-    </>
+    </div>
   );
-};
-
-export default Home;
+}

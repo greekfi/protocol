@@ -1,4 +1,4 @@
-import { useContract } from "./useContract";
+import { useContract } from "./opswap/useContract";
 import { Address } from "viem";
 import { useReadContract } from "wagmi";
 
