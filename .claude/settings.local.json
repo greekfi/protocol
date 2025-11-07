@@ -8,7 +8,9 @@
       "Bash(npm view:*)",
       "Bash(npm run check-types:*)",
       "Bash(git checkout:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
