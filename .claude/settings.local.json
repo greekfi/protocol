@@ -13,7 +13,11 @@
       "Bash(tree:*)",
       "Bash(cast 4byte:*)",
       "Bash(xxd:*)",
-      "Bash(forge script:*)"
+      "Bash(forge script:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "Bash(node scripts-js/generateTsAbis.js:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []
