@@ -25,7 +25,7 @@ import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
 import {SafeCallback} from "./SafeCallback.sol";
 import {NonzeroDeltaCount} from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import {ConstantsMainnet} from "../contracts/ConstantsMainnet.sol";
-import {ConstantsUnichain} from "../contracts/ConstantsUnichain.sol";
+import {ConstantsUnichain as uni} from "../contracts/ConstantsUnichain.sol";
 import {OptionPrice} from "../contracts/OptionPrice.sol";
 
 import {IOption} from "../contracts/interfaces/IOption.sol";
@@ -46,50 +46,65 @@ contract SwapCallback is SafeCallback {
         zeroForOne = _zeroForOne;
     }
 
-    function _unlockCallback(bytes calldata data) internal override returns (bytes memory) {
-        (address sender) = abi.decode(data, (address));
+    function _unlockCallback(bytes calldata data) internal override returns (bytes memory returnData) {
+        (address sender, uint256 amountIn) = abi.decode(data, (address, uint256));
+		bytes memory d = bytes("");
+		Currency c0 = poolKey.currency0;
+		Currency c1 = poolKey.currency1;
 
-        int256 amountIn = 1e6;
         SwapParams memory params = SwapParams({
             zeroForOne: zeroForOne,
-            amountSpecified: -amountIn,
+            amountSpecified: -int128(int256(amountIn)),
             sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
         });
 
-        bytes memory d = bytes("");
-        IERC20 usdc = IERC20(Currency.unwrap(zeroForOne ? poolKey.currency0 : poolKey.currency1));
-        IERC20 option = IERC20(Currency.unwrap(zeroForOne ? poolKey.currency1 : poolKey.currency0));
-        uint256 initBal = usdc.balanceOf(address(poolManager));
+		BalanceDelta delta = poolManager.swap(
+			poolKey,
+			params,
+			d // forwarded to the hook’s before/afterSwap handlers
+		);
 
-        if (zeroForOne) {
-            poolKey.currency0.settle(poolManager, sender, 1e6, false);
-        } else {
-            poolKey.currency1.settle(poolManager, sender, 1e6, false);
-        }
-        console.log("delta", NonzeroDeltaCount.read());
+		// In a full router you’d now settle/take to square deltas, perform payments, etc.
+		// We just return the deltas like UR often bubbles data back up.
+		returnData = abi.encode(delta.amount0(), delta.amount1());
+//		c0.settle(poolManager, address(this), uint128(delta.amount0()), false);
+//		c1.settle();
 
-        BalanceDelta delta = poolManager.swap(poolKey, params, d);
-        console.log("delta0", delta.amount0());
-        console.log("delta1", delta.amount1());
-        console.log("delta", NonzeroDeltaCount.read());
 
+
+//        IERC20 usdc = IERC20(Currency.unwrap(zeroForOne ? c0 : c1));
+//        IERC20 option = IERC20(Currency.unwrap(zeroForOne ? c1 : c0));
+//        uint256 initBal = usdc.balanceOf(address(poolManager));
+//
+//        if (zeroForOne) {
+//            c0.settle(poolManager, sender, 1e6, false);
+//        } else {
+//            c1.settle(poolManager, sender, 1e6, false);
+//        }
+//        console.log("delta", NonzeroDeltaCount.read());
+//
+//        BalanceDelta delta = poolManager.swap(poolKey, params, d);
+//        console.log("delta0", delta.amount0());
+//        console.log("delta1", delta.amount1());
+//        console.log("delta", NonzeroDeltaCount.read());
+//
         if (zeroForOne) {
             poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
         } else {
             poolKey.currency0.take(poolManager, address(this), uint128(delta.amount0()), false);
         }
-        console.log("delta", NonzeroDeltaCount.read());
-        console.log("option balance", option.balanceOf(address(poolManager)));
-        console.log("option balance", option.balanceOf(address(this)));
-        console.log("usdc balance", int256(usdc.balanceOf(address(poolManager))) - int256(initBal));
-        console.log("usdc balance", usdc.balanceOf(address(sender)));
-        console.log("option balance", option.balanceOf(address(sender)));
-
-        return data;
+//        console.log("delta", NonzeroDeltaCount.read());
+//        console.log("option balance", option.balanceOf(address(poolManager)));
+//        console.log("option balance", option.balanceOf(address(this)));
+//        console.log("usdc balance", int256(usdc.balanceOf(address(poolManager))) - int256(initBal));
+//        console.log("usdc balance", usdc.balanceOf(address(sender)));
+//        console.log("option balance", option.balanceOf(address(sender)));
+//
+//        return data;
     }
 
-    function swap(address sender) public {
-        poolManager.unlock(abi.encode(sender));
+    function swap(address sender, uint256 amountIn) public {
+        poolManager.unlock(abi.encode(sender, amountIn));
     }
 }
 
@@ -276,108 +291,83 @@ abstract contract OpHookTestBase is Test {
         }
     }
 
-    function testSwapCallback() public virtual;
-    function testRouterSwap() public virtual;
-}
 
-// Mainnet-specific tests
-contract OpHookMainnetTest is OpHookTestBase {
+	function testSwapCallback() public {
+		SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, false);
+		address swapcb = address(swapCallback);
+		deal(usdc_, swapcb, 1000e18);
+		deal(usdc_, address(this), 1000e18);
+		deal(weth_, address(this), 1000e18);
+		usdc.approve(permit2_, 1000e6);
+		usdc.approve(swapcb, 1000e6);
+		usdc.approve(poolManager_, 1000e6);
+		swapCallback.swap(address(this), 1);
+	}
 
+
+	function testRouterSwap() public virtual{
+		UniversalRouter router = UniversalRouter(payable(universalRouter_));
+		deal(usdc_, address(this), 1000e6);
+
+		bytes memory commands = abi.encodePacked(uint8(0x10));
+		bytes memory actions = abi.encodePacked(
+			uint8(Actions.SWAP_EXACT_IN_SINGLE),
+			uint8(Actions.SETTLE_ALL),
+			uint8(Actions.TAKE_ALL)
+		);
+
+		bytes[] memory params = new bytes[](3);
+		params[0] = abi.encode(
+			IV4Router.ExactInputSingleParams({
+				poolKey: poolKey1,
+				zeroForOne: false,
+				amountIn: 1e6,
+				amountOutMinimum: 0,
+				hookData: bytes("")
+			})
+		);
+		params[1] = abi.encode(poolKey1.currency1, type(uint256).max);
+		params[2] = abi.encode(poolKey1.currency0, 0);
+
+		bytes[] memory inputs = new bytes[](1);
+		inputs[0] = abi.encode(actions, params);
+
+		router.execute(commands, inputs, block.timestamp + 20);
+
+		console.log("option1 balance (this)", option1.balanceOf(address(this)));
+		console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
+		console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
+		console.log("USDC balance (this)", usdc.balanceOf(address(this)));
+		console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
+		console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
+	}}
+
+contract Mainnet is OpHookTestBase {
     function setUp() public {
 		string memory rpc = "https://reth-ethereum.ithaca.xyz/rpc";
         networkFork = vm.createSelectFork(rpc, 23359458);
-
         weth_ = ConstantsMainnet.WETH;
         usdc_ = ConstantsMainnet.USDC;
         permit2_ = ConstantsMainnet.PERMIT2;
         poolManager_ = ConstantsMainnet.POOLMANAGER;
         universalRouter_ = ConstantsMainnet.UNIVERSALROUTER;
         wethUniPool_ = ConstantsMainnet.WETH_UNI_POOL;
-
         _setupCommon();
-
-    }
-
-    function testSwapCallback() public override {
-        SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, false);
-        address swapcb = address(swapCallback);
-        deal(address(usdc), swapcb, 1000e18);
-        deal(address(usdc), address(this), 1000e18);
-        usdc.approve(permit2_, 1000e6);
-        usdc.approve(swapcb, 1000e6);
-        usdc.approve(poolManager_, 1000e6);
-        swapCallback.swap(address(this));
-    }
-
-    function testRouterSwap() public override {
-        UniversalRouter router = UniversalRouter(payable(universalRouter_));
-        deal(usdc_, address(this), 1000e6);
-        usdc.approve(address(router), 1000e6);
-        usdc.approve(poolManager_, 1000e6);
-        usdc.approve(permit2_, 1000e6);
-
-        permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
-        permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
-
-        bytes memory commands = abi.encodePacked(uint8(0x10));
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.SWAP_EXACT_IN_SINGLE),
-            uint8(Actions.SETTLE_ALL),
-            uint8(Actions.TAKE_ALL)
-        );
-
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(
-            IV4Router.ExactInputSingleParams({
-                poolKey: poolKey1,
-                zeroForOne: false,
-                amountIn: 1e6,
-                amountOutMinimum: 0,
-                hookData: bytes("")
-            })
-        );
-        params[1] = abi.encode(poolKey1.currency1, type(uint256).max);
-        params[2] = abi.encode(poolKey1.currency0, 0);
-
-        bytes[] memory inputs = new bytes[](1);
-        inputs[0] = abi.encode(actions, params);
-
-        router.execute(commands, inputs, block.timestamp + 20);
-
-        console.log("option1 balance (this)", option1.balanceOf(address(this)));
-        console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
-        console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
-        console.log("USDC balance (this)", usdc.balanceOf(address(this)));
-        console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
-        console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
     }
 }
 
 // Unichain-specific tests
-contract OpHookUnichainTest is OpHookTestBase {
-
+contract Unichain is OpHookTestBase {
     function setUp() public {
 		string memory rpc = "https://unichain.drpc.org";
         networkFork = vm.createSelectFork(rpc, 27503100);
-        weth_ = ConstantsUnichain.WETH;
-        usdc_ = ConstantsUnichain.USDC;
-        permit2_ = ConstantsUnichain.PERMIT2;
-        poolManager_ = ConstantsUnichain.POOLMANAGER;
-        universalRouter_ = ConstantsUnichain.UNIVERSALROUTER;
-        wethUniPool_ = ConstantsUnichain.WETH_UNI_POOL;
-
+        weth_ = uni.WETH;
+        usdc_ = uni.USDC;
+        permit2_ = uni.PERMIT2;
+        poolManager_ = uni.POOLMANAGER;
+        universalRouter_ = uni.UNIVERSALROUTER;
+        wethUniPool_ = uni.WETH_UNI_POOL;
 		_setupCommon();
-    }
-
-    function testSwapCallback() public override {
-        SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, true);
-        address swapcb = address(swapCallback);
-        deal(address(usdc), swapcb, 1000e18);
-        deal(address(usdc), address(this), 1000e18);
-        usdc.approve(permit2_, 1000e6);
-        usdc.approve(swapcb, 1000e6);
-        usdc.approve(poolManager_, 1000e6);
-        swapCallback.swap(address(this));
     }
 
     function testRouterSwap() public override {

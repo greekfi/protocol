@@ -10,7 +10,9 @@
       "Bash(git checkout:*)",
       "Bash(npm run build:*)",
       "WebSearch",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(cast 4byte:*)",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": []
