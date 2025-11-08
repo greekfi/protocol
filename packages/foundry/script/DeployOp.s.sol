@@ -10,6 +10,9 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {OpHook} from "../contracts/OpHook.sol";
 import {ConstantsUnichain} from "../contracts/ConstantsUnichain.sol";
 
+import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { StableToken } from "../contracts/StableToken.sol";
+import { ShakyToken } from "../contracts/ShakyToken.sol";
 
 
 /// @notice Mines the address and deploys the PointsHook.sol Hook contract
@@ -18,7 +21,28 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 
     function run() public ScaffoldEthDeployerRunner{
 
-        address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
+		StableToken stableToken = new StableToken();
+		ShakyToken shakyToken = new ShakyToken();
+
+		Redemption short = new Redemption(
+			"Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
+		);
+
+		Option long = new Option(
+			"Option",
+			"OPT",
+			address(stableToken),
+			address(shakyToken),
+			block.timestamp + 1 days,
+			100,
+			false,
+			address(short)
+		);
+
+		new OptionFactory(address(short), address(long));
+
+
+	address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // Deploy OpHook using HookMiner to get correct address
 		uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
 						Hooks.BEFORE_SWAP_FLAG |

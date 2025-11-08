@@ -4,8 +4,7 @@
   "private": true,
   "workspaces": {
     "packages": [
-      "foundry",
-      "packages/opswap"
+      "packages/*"
     ]
   },
   "scripts": {
@@ -35,19 +34,19 @@
     "foundry:verify": "yarn workspace @se-2/foundry verify",
     "generate": "yarn foundry:generate",
     "postinstall": "husky install",
-    "ipfs": "yarn workspace @se-2/nextjs ipfs",
+    "ipfs": "yarn workspace @se-2/opswap ipfs",
     "lint": "yarn next:lint && yarn foundry:lint",
-    "next:build": "yarn workspace @se-2/nextjs build",
-    "next:check-types": "yarn workspace @se-2/nextjs check-types",
-    "next:format": "yarn workspace @se-2/nextjs format",
-    "next:lint": "yarn workspace @se-2/nextjs lint",
-    "next:serve": "yarn workspace @se-2/nextjs serve",
+    "next:build": "yarn workspace @se-2/opswap build",
+    "next:check-types": "yarn workspace @se-2/opswap check-types",
+    "next:format": "yarn workspace @se-2/opswap format",
+    "next:lint": "yarn workspace @se-2/opswap lint",
+    "next:serve": "yarn workspace @se-2/opswap serve",
     "precommit": "lint-staged",
-    "start": "yarn workspace @se-2/nextjs dev",
+    "start": "yarn workspace @se-2/opswap dev",
     "test": "yarn foundry:test",
-    "vercel": "yarn workspace @se-2/nextjs vercel",
-    "vercel:login": "yarn workspace @se-2/nextjs vercel:login",
-    "vercel:yolo": "yarn workspace @se-2/nextjs vercel:yolo",
+    "vercel": "yarn workspace @se-2/opswap vercel",
+    "vercel:login": "yarn workspace @se-2/opswap vercel:login",
+    "vercel:yolo": "yarn workspace @se-2/opswap vercel:yolo",
     "verify": "yarn foundry:verify"
   },
   "dependencies": {

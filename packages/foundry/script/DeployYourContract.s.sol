@@ -47,10 +47,5 @@ contract DeployYourContract is ScaffoldETHDeploy {
 
         new OptionFactory(address(short), address(long));
 
-        // deployments.push(Deployment("ShortOption", address(short)));
-        // deployments.push(Deployment("LongOption", address(long)));
-        // deployments.push(Deployment("OptionFactory", address(optionFactory)));
-        // deployments.push(Deployment("StableToken", address(stableToken)));
-        // deployments.push(Deployment("ShakyToken", address(shakyToken)));
     }
 }

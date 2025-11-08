@@ -12,7 +12,8 @@
       "WebSearch",
       "Bash(tree:*)",
       "Bash(cast 4byte:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(forge script:*)"
     ],
     "deny": [],
     "ask": []

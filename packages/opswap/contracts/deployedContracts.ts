@@ -943,7 +943,13 @@ const deployedContracts = {
               internalType: "bool",
             },
           ],
-          outputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           stateMutability: "nonpayable",
         },
         {
@@ -2076,6 +2082,11 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -3285,6 +3296,64 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "init",
+          inputs: [
+            {
+              name: "name_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "symbol_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut_",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "redemption__",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -5112,6 +5181,11 @@ const deployedContracts = {
               type: "bool",
               internalType: "bool",
             },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
+            },
           ],
           outputs: [],
           stateMutability: "nonpayable",
@@ -6321,6 +6395,64 @@ const deployedContracts = {
               type: "bool",
               internalType: "bool",
             },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "init",
+          inputs: [
+            {
+              name: "name_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "symbol_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut_",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "redemption__",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
           ],
           outputs: [],
           stateMutability: "nonpayable",
@@ -7020,7 +7152,13 @@ const deployedContracts = {
               internalType: "bool",
             },
           ],
-          outputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           stateMutability: "nonpayable",
         },
         {
@@ -7799,7 +7937,7 @@ const deployedContracts = {
   },
   31337: {
     StableToken: {
-      address: "0xe1da8919f262ee86f9be05059c9280142cf23f48",
+      address: "0xc8a331dda92f7a8362f6634a8501c6753cc6b3d7",
       abi: [
         {
           type: "constructor",
@@ -8221,11 +8359,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762484093.json",
+      deploymentFile: "run-1762585102.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0x0c8e79f3534b00d9a3d4a856b665bf4ebc22f2ba",
+      address: "0xd2571e989390f4f654572be25da2f4ec41cb2cc8",
       abi: [
         {
           type: "constructor",
@@ -8647,11 +8785,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762484093.json",
+      deploymentFile: "run-1762585102.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
-      address: "0xed1db453c3156ff3155a97ad217b3087d5dc5f6e",
+      address: "0x94afd75db06a12fd106f02c194835a6dcb47bbee",
       abi: [
         {
           type: "constructor",
@@ -9007,6 +9145,11 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -9649,11 +9792,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762484093.json",
+      deploymentFile: "run-1762585102.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
-      address: "0xf7cd8fa9b94db2aa972023b379c7f72c65e4de9d",
+      address: "0xec5ab17cc35221cdf54eaeb0868ea82d4d75d9bf",
       abi: [
         {
           type: "constructor",
@@ -10216,6 +10359,64 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "init",
+          inputs: [
+            {
+              name: "name_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "symbol_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut_",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "redemption__",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -10828,11 +11029,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762484093.json",
+      deploymentFile: "run-1762585102.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x12975173b87f7595ee45dffb2ab812ece596bf84",
+      address: "0x73992bad0ee2bf03588da062f1bdbcf45088ea07",
       abi: [
         {
           type: "constructor",
@@ -10916,7 +11117,13 @@ const deployedContracts = {
               internalType: "bool",
             },
           ],
-          outputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           stateMutability: "nonpayable",
         },
         {
@@ -11689,7 +11896,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762484093.json",
+      deploymentFile: "run-1762585102.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
@@ -12631,7 +12838,13 @@ const deployedContracts = {
               internalType: "bool",
             },
           ],
-          outputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           stateMutability: "nonpayable",
         },
         {
@@ -13764,6 +13977,11 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "option_",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
@@ -14973,6 +15191,64 @@ const deployedContracts = {
               name: "isPut_",
               type: "bool",
               internalType: "bool",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "init",
+          inputs: [
+            {
+              name: "name_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "symbol_",
+              type: "string",
+              internalType: "string",
+            },
+            {
+              name: "collateral_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "consideration_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "expirationDate_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "strike_",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "isPut_",
+              type: "bool",
+              internalType: "bool",
+            },
+            {
+              name: "redemption__",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
             },
           ],
           outputs: [],
