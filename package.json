@@ -4,8 +4,8 @@
   "private": true,
   "workspaces": {
     "packages": [
-      	"foundry",
-		"opswap"
+      "foundry",
+      "packages/opswap"
     ]
   },
   "scripts": {

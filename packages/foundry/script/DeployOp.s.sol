@@ -18,7 +18,6 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 
     function run() public ScaffoldEthDeployerRunner{
 
-
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // Deploy OpHook using HookMiner to get correct address
 		uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
@@ -28,11 +27,6 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 		bytes memory constructorArgs = abi.encode(
             ConstantsUnichain.POOLMANAGER,
             ConstantsUnichain.PERMIT2
-//            ConstantsUnichain.WETH,
-//            ConstantsUnichain.USDC,
-//            "WethOptionPoolVault",
-//            "ETHCC",
-//            ConstantsUnichain.WETH_UNI_POOL
         );
 
         (address hookAddress, bytes32 salt) = HookMiner.find(
@@ -47,13 +41,7 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         OpHook opHook = new OpHook{salt: salt}(
             ConstantsUnichain.POOLMANAGER,
             ConstantsUnichain.PERMIT2
-//            ConstantsUnichain.WETH,
-//            ConstantsUnichain.USDC,
-//            "WethOptionPoolVault",
-//            "ETHCC",
-//            ConstantsUnichain.WETH_UNI_POOL
         );
-
 
         console.log("Address", hookAddress);
         console.log("Address", address(opHook));
