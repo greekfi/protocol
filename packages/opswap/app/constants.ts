@@ -26,6 +26,9 @@ export const ADDRESS = {
     contracts:{
       universalRouter: "0xEf740bf23aCaE26f6492B10de645D6B98dC8Eaf3" as `0x${string}`,
       permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3" as `0x${string}`,
+    },
+    pricePools:{
+      weth: "0x65081CB48d74A32e9CCfED75164b8c09972DBcF1",
     }
   }
 }
