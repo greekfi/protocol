@@ -11,7 +11,8 @@ export const useAddOption = () => {
       address: contract?.OpHook.address as `0x${string}`,
       abi: contract?.OpHook.abi,
       functionName: "initPool",
-      args: [optionAddress as `0x${string}`, 0],
+      // @ts-expect-error - ABI type inference issue with tuple args
+      args: [optionAddress as `0x${string}`, 0n],
     });
     console.log("Add Option Result:", result_);
     console.log("Add Option Result:", result);

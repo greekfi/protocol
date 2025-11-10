@@ -50,6 +50,7 @@
     "verify": "yarn foundry:verify"
   },
   "dependencies": {
+    "moment-timezone": "^0.5.48",
     "react": "~19.2.0",
     "react-dom": "~19.2.0"
   },
