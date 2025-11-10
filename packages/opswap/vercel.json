@@ -1,3 +1,4 @@
 {
-  "installCommand": "yarn install"
+  "buildCommand": "yarn build",
+  "installCommand": "YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install --mode=skip-build"
 }
