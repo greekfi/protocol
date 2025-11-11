@@ -54,6 +54,8 @@
     "react-dom": "~19.2.0"
   },
   "devDependencies": {
+    "@types/fastestsmallesttextencoderdecoder": "^1.0.2",
+    "@types/react": "^19.2.2",
     "husky": "~9.1.7",
     "lint-staged": "~16.2.6",
     "next": "^16.0.1",

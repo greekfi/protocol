@@ -1,32 +1,56 @@
-import { FlatCompat } from "@eslint/eslintrc";
-import prettierPlugin from "eslint-plugin-prettier";
-import { defineConfig } from "eslint/config";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import nextVitals from 'eslint-config-next/core-web-vitals'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-export default defineConfig([
+const config = [
   {
-    plugins: {
-      prettier: prettierPlugin,
-    },
-    extends: compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
+    ignores: [
+      // Build outputs
+      '.next/**',
+      '.next',
+      'out/**',
+      'out',
+      'build/**',
+      'build',
+      'dist/**',
+      'dist',
 
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
+      // Dependencies
+      'node_modules/**',
+      'node_modules',
 
-      "prettier/prettier": [
-        "warn",
-        {
-          endOfLine: "auto",
-        },
-      ],
-    },
+      // Generated files
+      'next-env.d.ts',
+      '*.tsbuildinfo',
+      '**/*.tsbuildinfo',
+
+      // Testing
+      'coverage/**',
+      'coverage',
+
+      // Cache
+      '.cache/**',
+      '.cache',
+      '.turbo/**',
+      '.turbo',
+
+      // Vercel
+      '.vercel/**',
+      '.vercel',
+
+      // Environment files
+      '.env',
+      '.env.*',
+
+      // System files
+      '.DS_Store',
+      '**/.DS_Store',
+
+      // Generated contract ABIs and artifacts
+      'contracts/deployments/**',
+      'contracts/artifacts/**',
+      'contracts/cache/**',
+      'app/**/abi/**',
+    ],
   },
-]);
+  ...nextVitals,
+]
+export default config;

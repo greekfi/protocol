@@ -24,10 +24,7 @@ const ContractDetails = ({ details }: { details: ReturnType<typeof useOptionDeta
         <div>Consideration Address: {details.consideration.address_}</div>
         <div>Consideration Decimals: {details.consideration.decimals}</div>
         <div>Balance Consideration: {details.balances?.consideration}</div>
-        <div>
-          Expired:{" "}
-          {details.expiration ? (Date.now() / 1000 > (details.expiration as unknown as number) ? "Yes" : "No") : "No"}
-        </div>
+        <div>Expired: {details.isExpired ? "Yes" : "No"}</div>
         <div>
           Expiration Date: {details.expiration ? new Date(Number(details.expiration) * 1000).toUTCString() : "N/A"}
         </div>

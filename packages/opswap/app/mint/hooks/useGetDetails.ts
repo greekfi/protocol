@@ -2,11 +2,11 @@
 import { useContract } from "./useContract";
 import { Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
+import { useIsExpired } from "./useIsExpired";
 
 export const useOptionDetails = (longAddress: Address) => {
   const userAccount = useAccount();
   const abi = useContract()?.Option?.abi;
-  // Fetch details for selected option
 
   const { data: details } = useReadContract({
     address: longAddress as Address,
@@ -27,7 +27,7 @@ export const useOptionDetails = (longAddress: Address) => {
     args: [userAccount.address as Address],
   });
 
-  const isExpired = details?.expiration ? Date.now() / 1000 > Number(details.expiration) : false;
+  const isExpired = useIsExpired(details?.expiration);
 
   console.log("balanceLong", balances);
   console.log("details", details);

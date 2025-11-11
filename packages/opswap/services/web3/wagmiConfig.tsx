@@ -9,7 +9,7 @@ export const enabledChains = targetNetworks;
 
 export const wagmiConfig = createConfig({
   chains: enabledChains,
-  connectors: wagmiConnectors,
+  // connectors: wagmiConnectors,
   ssr: true,
   client: ({ chain }) => {
     return createClient({

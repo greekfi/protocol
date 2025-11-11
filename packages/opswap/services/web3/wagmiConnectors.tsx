@@ -1,17 +1,13 @@
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
 import {
-  coinbaseWallet,
   metaMaskWallet,
-  rainbowWallet,
   walletConnectWallet,
+  rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import scaffoldConfig from "~~/scaffold.config";
 
 const wallets = [
   metaMaskWallet,
-  walletConnectWallet,
-  coinbaseWallet,
-  rainbowWallet,
 ];
 
 /**
@@ -25,7 +21,7 @@ export const wagmiConnectors = connectorsForWallets(
     },
   ],
   {
-    appName: "opswap",
+    appName: "Greek.fi",
     projectId: scaffoldConfig.walletConnectProjectId,
   },
 );
