@@ -9,14 +9,11 @@ import Action from "./action";
 import { useOptionDetails } from "./hooks/useGetOption";
 import { useGetOptions } from "./hooks/useGetOptions";
 import { Address } from "viem";
-import { useConfig, WagmiProvider } from "wagmi";
 
 function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address>("0x0");
   const { refetch, optionList } = useGetOptions();
   const contractDetails = useOptionDetails(optionAddress);
-  const wagmiConfig = useConfig();
-  console.log("chain", wagmiConfig);
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
@@ -61,6 +58,5 @@ function OptionsApp() {
 }
 
 export default function MintPage() {
-  return 
-    <WagmiProvider config={useConfig()}><OptionsApp /></WagmiProvider>;
+  return <OptionsApp />;
 }

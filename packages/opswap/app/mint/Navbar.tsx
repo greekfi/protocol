@@ -3,16 +3,8 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import logo from "../../public/helmet-white.svg";
-import { Account } from "./account";
-import { WalletSelector } from "./components/walletSelector";
-import { useAccount } from "wagmi";
-
-function ConnectWallet() {
-  const { isConnected } = useAccount();
-  if (isConnected) return <Account />;
-  return <WalletSelector />;
-}
 
 const Navbar: React.FC = () => (
   <nav className="flex justify-between w-full">
@@ -36,7 +28,7 @@ const Navbar: React.FC = () => (
         </Link>
       </li>
       <li>
-        <ConnectWallet />
+        <ConnectButton />
       </li>
     </ul>
   </nav>
