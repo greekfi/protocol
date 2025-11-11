@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { OptionBase } from "./OptionBase.sol";
+import {AddressSet} from "./AddressSet.sol";
 
 using SafeERC20 for IERC20;
 /*
@@ -23,7 +24,7 @@ or even staked stable coins can be used as well for either consideration or coll
 
 contract Redemption is OptionBase {
     address public option;
-    address[] public accounts;
+    AddressSet public accounts;
 
     event Redeemed(address option, address token, address holder, uint256 amount);
 
@@ -39,13 +40,13 @@ contract Redemption is OptionBase {
     }
 
     modifier saveAccount(address account) {
-        accounts.push(account);
+        accounts.add(account);
         _;
     }
 
     function _update(address from, address to, uint256 value) internal override {
         super._update(from, to, value);
-        accounts.push(to);
+        accounts.add(to);
     }
 
     constructor(
@@ -172,8 +173,8 @@ contract Redemption is OptionBase {
     }
 
     function sweep() public expired nonReentrant {
-        for (uint256 i = 0; i < accounts.length; i++) {
-            address holder = accounts[i];
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            address holder = accounts.get(i);
             if (balanceOf(holder) > 0) {
                 _redeem(holder, balanceOf(holder));
             }

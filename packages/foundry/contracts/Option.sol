@@ -150,8 +150,8 @@ contract Option is OptionBase {
 
     function details() public view returns (OptionInfo memory) {
         return OptionInfo({
-            option: TokenData(address(this), name(), symbol(), 18),
-            redemption: TokenData(redemption_, redemption.name(), redemption.symbol(), 18),
+            option: TokenData(address(this), name(), symbol(), decimals()),
+            redemption: TokenData(redemption_, redemption.name(), redemption.symbol(), decimals()),
             collateral: TokenData(address(collateral), coll.name(), coll.symbol(), coll.decimals()),
             consideration: TokenData(address(consideration), cons.name(), cons.symbol(), cons.decimals()),
             p: OptionParameter({

@@ -63,7 +63,7 @@ contract AddressSet {
         _length = 0;
     }
 
-    function getAtIndex(uint256 index) public view returns (address) {
+    function get(uint256 index) public view returns (address) {
         require(index < _length, "Index out of bounds");
         return _values[index];
     }

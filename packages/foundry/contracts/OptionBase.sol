@@ -182,6 +182,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         return _tokenSymbol;
     }
 
+    function decimals() public view override returns (uint8){
+        return collDecimals;
+    }
+
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
         return TokenData(
