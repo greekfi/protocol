@@ -1,14 +1,56 @@
-import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
- 
-export const eslintConfig = defineConfig([
+
+const config = [
+  {
+    ignores: [
+      // Build outputs
+      '.next/**',
+      '.next',
+      'out/**',
+      'out',
+      'build/**',
+      'build',
+      'dist/**',
+      'dist',
+
+      // Dependencies
+      'node_modules/**',
+      'node_modules',
+
+      // Generated files
+      'next-env.d.ts',
+      '*.tsbuildinfo',
+      '**/*.tsbuildinfo',
+
+      // Testing
+      'coverage/**',
+      'coverage',
+
+      // Cache
+      '.cache/**',
+      '.cache',
+      '.turbo/**',
+      '.turbo',
+
+      // Vercel
+      '.vercel/**',
+      '.vercel',
+
+      // Environment files
+      '.env',
+      '.env.*',
+
+      // System files
+      '.DS_Store',
+      '**/.DS_Store',
+
+      // Generated contract ABIs and artifacts
+      'contracts/deployments/**',
+      'contracts/artifacts/**',
+      'contracts/cache/**',
+      'app/**/abi/**',
+    ],
+  },
   ...nextVitals,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-  ]),
-])
+]
+export default config;

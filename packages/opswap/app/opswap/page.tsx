@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useGetOptions } from "./useGetOptions";
 import { OptionInfo } from "./OptionInfo";
 import { useAddOption } from "./useAddOption";
 import { useBuyOption } from "./useBuyOption";
 
 export default function OpSwapFront() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    console.log("OpSwap page is loading!");
-    // Check system preference on mount
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setIsDark(prefersDark);
-  }, []);
+  // Initialize state with system preference
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
   const { prices } = useGetOptions();
   const buyOption = useBuyOption();
   const addOption = useAddOption();
