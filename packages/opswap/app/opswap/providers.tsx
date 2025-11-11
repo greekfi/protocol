@@ -5,7 +5,7 @@ import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowki
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { WagmiProvider } from "wagmi";
-import { wagmiConfig } from "../services/web3/wagmiConfig";
+import { wagmiConfig } from "../../services/web3/wagmiConfig";
 
 const queryClient = new QueryClient({
   defaultOptions: {

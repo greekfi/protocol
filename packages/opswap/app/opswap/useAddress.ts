@@ -1,5 +1,5 @@
 import { useChainId } from "wagmi";
-import { ADDRESS } from "~~/app/constants";
+import { ADDRESS } from "./constants";
 
 export const useAddress = () => {
   const chainId = useChainId();

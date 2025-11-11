@@ -9,7 +9,7 @@ import Action from "./action";
 import { useOptionDetails } from "./hooks/useGetOption";
 import { useGetOptions } from "./hooks/useGetOptions";
 import { Address } from "viem";
-import { useConfig } from "wagmi";
+import { useConfig, WagmiProvider } from "wagmi";
 
 function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address>("0x0");
@@ -61,5 +61,6 @@ function OptionsApp() {
 }
 
 export default function MintPage() {
-  return <OptionsApp />;
+  return 
+    <WagmiProvider config={useConfig()}><OptionsApp /></WagmiProvider>;
 }
