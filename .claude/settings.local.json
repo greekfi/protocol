@@ -17,7 +17,8 @@
       "Bash(cat:*)",
       "Bash(sed:*)",
       "Bash(node scripts-js/generateTsAbis.js:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "WebFetch(domain:*)"
     ],
     "deny": [],
     "ask": []
