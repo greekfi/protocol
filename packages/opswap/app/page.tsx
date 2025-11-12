@@ -50,7 +50,7 @@ export default function OptionsPage() {
               <button className="bg-blue-500 text-black px-8 py-4 rounded-lg font-medium hover:scale-105 transition-transform">
                 Start Trading Soon
               </button>
-              <a href="https://github.com/greekfi/whitepaper" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/greekfi/whitepaper/blob/main/build/greekfi/greekfi.pdf?raw=true" target="_blank" rel="noopener noreferrer">
                 <button className="border border-blue-500 text-blue-500 px-8 py-4 rounded-lg font-medium hover:bg-blue-500/10 transition-all">
                   Read the Whitepaper
                 </button>
@@ -241,7 +241,7 @@ export default function OptionsPage() {
                 <h4 className="text-white font-bold mb-4">Resources</h4>
                 <ul className="space-y-2">
                   <li>
-                    <a href="https://github.com/greekfi/whitepaper" className="text-gray-400 hover:text-blue-300">
+                    <a href="https://github.com/greekfi/whitepaper/blob/main/build/greekfi/greekfi.pdf?raw=true" className="text-gray-400 hover:text-blue-300">
                       Whitepaper
                     </a>
                   </li>
