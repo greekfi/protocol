@@ -183,6 +183,5 @@ contract Redemption is OptionBase {
 
     function sweep() public expired nonReentrant {
         sweep(0, accounts.length());
-        }
     }
 }

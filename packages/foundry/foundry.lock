@@ -7,5 +7,17 @@
   },
   "lib/solidity-bytes-utils": {
     "rev": "f4413cd6137b78403e3a1156bee6aceab46b46fa"
+  },
+  "lib/uniswap-hooks": {
+    "rev": "e59fe72c110c3862eec9b332530dce49ca506bbb"
+  },
+  "lib/universal-router": {
+    "rev": "41183d6eb154f0ab0e74a0e911a5ef9ea51fc4bd"
+  },
+  "lib/v2-core": {
+    "rev": "4dd59067c76dea4a0e8e4bfdda41877a6b16dedc"
+  },
+  "lib/v3-core": {
+    "rev": "e3589b192d0be27e100cd0daaf6c97204fdb1899"
   }
 }

@@ -76,8 +76,8 @@ contract OptionFactory is Ownable {
 //        option.transferOwnership(owner());
 
         OptionInfo memory info = OptionInfo(
-            TokenData(option_, optionName, optionName, option.collDecimals),
-            TokenData(redemption_, redemptionName, redemptionName, option.collDecimals),
+            TokenData(option_, optionName, optionName, option.decimals()),
+            TokenData(redemption_, redemptionName, redemptionName, redemption.decimals()),
             TokenData(
                 collateral,
                 option.collateralData().name,
