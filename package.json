@@ -56,6 +56,7 @@
   "devDependencies": {
     "@types/fastestsmallesttextencoderdecoder": "^1.0.2",
     "@types/react": "^19.2.2",
+    "eslint": "9.39.1",
     "husky": "~9.1.7",
     "lint-staged": "~16.2.6",
     "next": "^16.0.1",

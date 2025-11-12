@@ -5668,7 +5668,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:~9.39.1":
+"eslint@npm:9.39.1, eslint@npm:~9.39.1":
   version: 9.39.1
   resolution: "eslint@npm:9.39.1"
   dependencies:
@@ -9144,6 +9144,7 @@ __metadata:
   dependencies:
     "@types/fastestsmallesttextencoderdecoder": ^1.0.2
     "@types/react": ^19.2.2
+    eslint: 9.39.1
     husky: ~9.1.7
     lint-staged: ~16.2.6
     next: ^16.0.1

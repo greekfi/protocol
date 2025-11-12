@@ -65,7 +65,7 @@ jobs:
           yarn deploy
 
       - name: Run nextjs lint
-        run: npx eslint
+        run: yarn dlx eslint
 
       - name: Check typings on nextjs
         run: yarn next:check-types
