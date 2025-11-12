@@ -172,12 +172,17 @@ contract Redemption is OptionBase {
         _redeem(holder, balanceOf(holder));
     }
 
-    function sweep() public expired nonReentrant {
-        for (uint256 i = 0; i < accounts.length(); i++) {
+    function sweep(uint256 start, uint256 stop) public expired nonReentrant {
+        for (uint256 i = start; i < stop; i++) {
             address holder = accounts.get(i);
             if (balanceOf(holder) > 0) {
                 _redeem(holder, balanceOf(holder));
             }
+        }
+    }
+
+    function sweep() public expired nonReentrant {
+        sweep(0, accounts.length());
         }
     }
 }
