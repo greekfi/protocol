@@ -55,9 +55,7 @@ contract SwapCallback is SafeCallback {
         uint160 sqrtPriceLimit = zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1;
 
         SwapParams memory params = SwapParams({
-            zeroForOne: zeroForOne,
-            amountSpecified: -int128(int256(amountIn)),
-            sqrtPriceLimitX96: sqrtPriceLimit
+            zeroForOne: zeroForOne, amountSpecified: -int128(int256(amountIn)), sqrtPriceLimitX96: sqrtPriceLimit
         });
 
         BalanceDelta delta = poolManager.swap(
@@ -272,11 +270,7 @@ abstract contract OpHookTestBase is Test {
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(
             IV4Router.ExactInputSingleParams({
-                poolKey: poolKey1,
-                zeroForOne: zeroForOne,
-                amountIn: 1e6,
-                amountOutMinimum: 0,
-                hookData: bytes("")
+                poolKey: poolKey1, zeroForOne: zeroForOne, amountIn: 1e6, amountOutMinimum: 0, hookData: bytes("")
             })
         );
         params[1] = abi.encode(inputCurrency, type(uint256).max);
