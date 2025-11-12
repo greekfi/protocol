@@ -57,7 +57,7 @@ format:
 
 # Lint code
 lint:
-	forge fmt --check && prettier --check ./scripts-js/**/*.js
+	forge fmt --check && yarn exec prettier --check ./scripts-js/**/*.js
 
 # Run tests
 test:
