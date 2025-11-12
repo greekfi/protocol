@@ -18,7 +18,11 @@
       "Bash(sed:*)",
       "Bash(node scripts-js/generateTsAbis.js:*)",
       "Bash(node -e:*)",
-      "WebFetch(domain:*)"
+      "WebFetch(domain:*)",
+      "Bash(git submodule:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git describe:*)"
     ],
     "deny": [],
     "ask": []
