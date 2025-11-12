@@ -32,9 +32,7 @@ library ConstantsUnichain {
     uint256 public constant DEFAULT_RISK_FREE_RATE = 5e16; // 5% annualized, 1e18 scale
 
     // Uniswap V3 pool fee tiers
-    uint24 public constant FEE_TIER_LOW = 500;    // 0.05%
+    uint24 public constant FEE_TIER_LOW = 500; // 0.05%
     uint24 public constant FEE_TIER_MEDIUM = 3000; // 0.3%
-    uint24 public constant FEE_TIER_HIGH = 10000;  // 1%
-
-
+    uint24 public constant FEE_TIER_HIGH = 10000; // 1%
 }

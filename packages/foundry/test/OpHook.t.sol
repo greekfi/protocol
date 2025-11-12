@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
-import {OpHook, CurrentOptionPrice} from "../contracts/OpHook.sol";
-import {Option, Redemption} from "../contracts/Option.sol";
-import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { Test } from "forge-std/Test.sol";
+import { console } from "forge-std/console.sol";
+import { OpHook, CurrentOptionPrice } from "../contracts/OpHook.sol";
+import { Option, Redemption } from "../contracts/Option.sol";
+import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IWETH9} from "@uniswap/v4-periphery/src/interfaces/external/IWETH9.sol";
-import {UniversalRouter} from "@uniswap/universal-router/contracts/UniversalRouter.sol";
-import {IV4Router} from "@uniswap/v4-periphery/src/interfaces/IV4Router.sol";
-import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IWETH9 } from "@uniswap/v4-periphery/src/interfaces/external/IWETH9.sol";
+import { UniversalRouter } from "@uniswap/universal-router/contracts/UniversalRouter.sol";
+import { IV4Router } from "@uniswap/v4-periphery/src/interfaces/IV4Router.sol";
+import { Actions } from "@uniswap/v4-periphery/src/libraries/Actions.sol";
 
-import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
-import {SwapParams, PoolKey} from "@uniswap/v4-core/src/types/PoolOperation.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
-import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import { CurrencySettler } from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
+import { SwapParams, PoolKey } from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
-import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
-import {SafeCallback} from "./SafeCallback.sol";
-import {NonzeroDeltaCount} from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
-import {ConstantsMainnet} from "../contracts/ConstantsMainnet.sol";
-import {ConstantsUnichain as uni} from "../contracts/ConstantsUnichain.sol";
-import {OptionPrice} from "../contracts/OptionPrice.sol";
+import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
+import { SafeCallback } from "./SafeCallback.sol";
+import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
+import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
+import { ConstantsUnichain as uni } from "../contracts/ConstantsUnichain.sol";
+import { OptionPrice } from "../contracts/OptionPrice.sol";
 
-import {IOption} from "../contracts/interfaces/IOption.sol";
-import {OptionFactory} from "../contracts/OptionFactory.sol";
-
+import { IOption } from "../contracts/interfaces/IOption.sol";
+import { OptionFactory } from "../contracts/OptionFactory.sol";
 
 contract SwapCallback is SafeCallback {
     OpHook public opHook;
     PoolKey public poolKey;
     bool public zeroForOne;
+
     using CurrencySettler for Currency;
 
     constructor(IPoolManager _poolManager, OpHook _opHook, PoolKey memory _poolKey, bool _zeroForOne)
@@ -49,12 +49,10 @@ contract SwapCallback is SafeCallback {
     function _unlockCallback(bytes calldata data) internal override returns (bytes memory returnData) {
         (, uint256 amountIn) = abi.decode(data, (address, uint256));
 
-		// Set price limit based on swap direction
-		// zeroForOne: true -> price decreases, use MIN as limit
-		// zeroForOne: false -> price increases, use MAX as limit
-		uint160 sqrtPriceLimit = zeroForOne
-			? TickMath.MIN_SQRT_PRICE + 1
-			: TickMath.MAX_SQRT_PRICE - 1;
+        // Set price limit based on swap direction
+        // zeroForOne: true -> price decreases, use MIN as limit
+        // zeroForOne: false -> price increases, use MAX as limit
+        uint160 sqrtPriceLimit = zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1;
 
         SwapParams memory params = SwapParams({
             zeroForOne: zeroForOne,
@@ -62,22 +60,22 @@ contract SwapCallback is SafeCallback {
             sqrtPriceLimitX96: sqrtPriceLimit
         });
 
-		BalanceDelta delta = poolManager.swap(
-			poolKey,
-			params,
-			bytes("") // forwarded to the hook's before/afterSwap handlers
-		);
+        BalanceDelta delta = poolManager.swap(
+            poolKey,
+            params,
+            bytes("") // forwarded to the hook's before/afterSwap handlers
+        );
 
-		// Settle the input currency (pay the debt) before taking output
-		// The hook already handled the actual settlement via take/sync/settle in beforeSwap
-		// So we just need to take the output tokens that the swap produced
+        // Settle the input currency (pay the debt) before taking output
+        // The hook already handled the actual settlement via take/sync/settle in beforeSwap
+        // So we just need to take the output tokens that the swap produced
         if (zeroForOne) {
             poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
         } else {
             poolKey.currency0.take(poolManager, address(this), uint128(delta.amount0()), false);
         }
 
-		returnData = abi.encode(delta.amount0(), delta.amount1());
+        returnData = abi.encode(delta.amount0(), delta.amount1());
     }
 
     function swap(address sender, uint256 amountIn) public {
@@ -101,8 +99,8 @@ abstract contract OpHookTestBase is Test {
     address public wethUniPool_;
 
     IOption public option1;
-	IOption public option2;
-	IOption public option3;
+    IOption public option2;
+    IOption public option3;
     address public option1_;
     address public option2_;
     address public option3_;
@@ -112,120 +110,85 @@ abstract contract OpHookTestBase is Test {
 
     uint256 public networkFork;
 
-	function _setupCommon() internal {
-		deal(address(this), 10000e20 ether);
-		deal(usdc_, address(this), 1000e6);
+    function _setupCommon() internal {
+        deal(address(this), 10000e20 ether);
+        deal(usdc_, address(this), 1000e6);
 
-		weth = IWETH9(weth_);
-		usdc = IERC20(usdc_);
-		permit2 = IPermit2(permit2_);
-		poolManager = IPoolManager(poolManager_);
+        weth = IWETH9(weth_);
+        usdc = IERC20(usdc_);
+        permit2 = IPermit2(permit2_);
+        poolManager = IPoolManager(poolManager_);
 
+        uint256 expiration = block.timestamp + 30 days;
+        Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
+        Option o = new Option("", "", weth_, usdc_, expiration, 1e22, false, address(r));
+        OptionFactory factory = new OptionFactory(address(r), address(o));
 
-		uint256 expiration = block.timestamp + 30 days;
-		Redemption r = new Redemption("","",weth_,usdc_,expiration,1e22, false);
-		Option o = new Option("","",weth_,usdc_,expiration,1e22,false, address(r));
-		OptionFactory factory = new OptionFactory(address(r), address(o));
+        option1_ = factory.createOption(
+            "OPT-WETH-USDC-3600-30D", "OPT-WETH-USDC-3600-30D", weth_, usdc_, expiration, 3600e18, false
+        );
 
-		option1_ = factory.createOption(
-			"OPT-WETH-USDC-3600-30D",
-			"OPT-WETH-USDC-3600-30D",
-			weth_,
-			usdc_,
-			expiration,
-			3600e18,
-			false
-		);
+        option2_ = factory.createOption(
+            "OPT-WETH-USDC-4000-30D", "OPT-WETH-USDC-4000-30D", weth_, usdc_, expiration, 4000e18, false
+        );
 
-		option2_ = factory.createOption(
-			"OPT-WETH-USDC-4000-30D",
-			"OPT-WETH-USDC-4000-30D",
-			weth_,
-			usdc_,
-			expiration,
-			4000e18,
-			false
-		);
+        option3_ = factory.createOption(
+            "OPT-WETH-USDC-5000-30D", "OPT-WETH-USDC-5000-30D", weth_, usdc_, expiration, 5000e18, false
+        );
 
+        option1 = IOption(option1_);
+        option2 = IOption(option2_);
+        option3 = IOption(option3_);
 
-		option3_ = factory.createOption(
-			"OPT-WETH-USDC-5000-30D",
-			"OPT-WETH-USDC-5000-30D",
-			weth_,
-			usdc_,
-			expiration,
-			5000e18,
-			false
-		);
+        uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG
+            | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
 
-		option1 = IOption(option1_);
-		option2 = IOption(option2_);
-		option3 = IOption(option3_);
+        bytes memory constructorArgs = abi.encode(poolManager_, permit2_);
 
+        (address hookAddress, bytes32 salt) =
+            HookMiner.find(address(this), flags, type(OpHook).creationCode, constructorArgs);
 
-		uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-						Hooks.BEFORE_SWAP_FLAG |
-						Hooks.BEFORE_DONATE_FLAG |
-						Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
+        opHook = new OpHook{ salt: salt }(poolManager_, permit2_);
+        opHook.setOptionPrice(address(new OptionPrice()));
 
-		bytes memory constructorArgs = abi.encode(
-			poolManager_,
-			permit2_
-		);
+        poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000);
+        poolKey2 = opHook.initPool(option2_, usdc_, weth_, wethUniPool_, 3000);
 
-		(address hookAddress, bytes32 salt) = HookMiner.find(
-			address(this),
-			flags,
-			type(OpHook).creationCode,
-			constructorArgs
-		);
+        console.log("Hook Address (expected)", hookAddress);
+        console.log("Hook Address (actual)", address(opHook));
 
-		opHook = new OpHook{salt: salt}(
-			poolManager_,
-			permit2_
-		);
-		opHook.setOptionPrice(address(new OptionPrice()));
+        address opHook_ = address(opHook);
 
+        deal(weth_, opHook_, 1000e18);
+        deal(usdc_, opHook_, 1000e18);
+        deal(usdc_, poolManager_, 1000e18);
 
-		poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000);
-		poolKey2 = opHook.initPool(option2_, usdc_, weth_, wethUniPool_, 3000);
+        usdc.approve(opHook_, 1000e6);
+        usdc.approve(poolManager_, 1000e6);
+        usdc.approve(permit2_, 1000e6);
+        usdc.approve(option1_, 1000e6);
+        usdc.approve(option2_, 1000e6);
+        usdc.approve(option3_, 1000e6);
+        usdc.approve(option1.redemption_(), 1000e6);
+        usdc.approve(option2.redemption_(), 1000e6);
+        usdc.approve(option3.redemption_(), 1000e6);
+        weth.approve(option1.redemption_(), 1000e6);
+        weth.approve(option2.redemption_(), 1000e6);
+        weth.approve(option3.redemption_(), 1000e6);
 
-		console.log("Hook Address (expected)", hookAddress);
-		console.log("Hook Address (actual)", address(opHook));
+        permit2.approve(usdc_, poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
+        permit2.approve(usdc_, opHook_, type(uint160).max, uint48(block.timestamp + 1 days));
 
-		address opHook_ = address(opHook);
+        // Hook needs to approve WETH to Permit2 and then to redemption contracts for minting
+        vm.startPrank(opHook_);
+        weth.approve(address(permit2_), type(uint256).max);
+        permit2.approve(weth_, option1.redemption_(), type(uint160).max, type(uint48).max);
+        permit2.approve(weth_, option2.redemption_(), type(uint160).max, type(uint48).max);
+        permit2.approve(weth_, option3.redemption_(), type(uint160).max, type(uint48).max);
+        vm.stopPrank();
+    }
 
-		deal(weth_, opHook_, 1000e18);
-		deal(usdc_, opHook_, 1000e18);
-		deal(usdc_, poolManager_, 1000e18);
-
-		usdc.approve(opHook_, 1000e6);
-		usdc.approve(poolManager_, 1000e6);
-		usdc.approve(permit2_, 1000e6);
-		usdc.approve(option1_, 1000e6);
-		usdc.approve(option2_, 1000e6);
-		usdc.approve(option3_, 1000e6);
-		usdc.approve(option1.redemption_(), 1000e6);
-		usdc.approve(option2.redemption_(), 1000e6);
-		usdc.approve(option3.redemption_(), 1000e6);
-		weth.approve(option1.redemption_(), 1000e6);
-		weth.approve(option2.redemption_(), 1000e6);
-		weth.approve(option3.redemption_(), 1000e6);
-
-		permit2.approve(usdc_, poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
-		permit2.approve(usdc_, opHook_, type(uint160).max, uint48(block.timestamp + 1 days));
-
-		// Hook needs to approve WETH to Permit2 and then to redemption contracts for minting
-		vm.startPrank(opHook_);
-		weth.approve(address(permit2_), type(uint256).max);
-		permit2.approve(weth_, option1.redemption_(), type(uint160).max, type(uint48).max);
-		permit2.approve(weth_, option2.redemption_(), type(uint160).max, type(uint48).max);
-		permit2.approve(weth_, option3.redemption_(), type(uint160).max, type(uint48).max);
-		vm.stopPrank();
-	}
-
-
-	function testPrices() public {
+    function testPrices() public {
         if (option3_ != address(0)) {
             opHook.initPool(option3_, usdc_, address(option3.collateral()), wethUniPool_, 3000);
         }
@@ -258,88 +221,84 @@ abstract contract OpHookTestBase is Test {
         }
     }
 
+    function testSwapCallback() public {
+        // Dynamically determine swap direction like in testRouterSwap
+        bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
+        bool zeroForOne = usdcIsZero; // If USDC is currency0, we swap 0->1
 
-	function testSwapCallback() public {
-		// Dynamically determine swap direction like in testRouterSwap
-		bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
-		bool zeroForOne = usdcIsZero;  // If USDC is currency0, we swap 0->1
+        SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, zeroForOne);
+        address swapcb = address(swapCallback);
 
-		SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, zeroForOne);
-		address swapcb = address(swapCallback);
+        // Set up balances with correct decimals
+        deal(usdc_, swapcb, 1000e6);
+        deal(usdc_, address(this), 1000e6);
+        deal(weth_, address(this), 1000e18);
 
-		// Set up balances with correct decimals
-		deal(usdc_, swapcb, 1000e6);
-		deal(usdc_, address(this), 1000e6);
-		deal(weth_, address(this), 1000e18);
+        // Approve from this address
+        usdc.approve(permit2_, type(uint256).max);
+        usdc.approve(swapcb, type(uint256).max);
+        usdc.approve(poolManager_, type(uint256).max);
+        permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
+        permit2.approve(address(usdc), swapcb, type(uint160).max, uint48(block.timestamp + 1 days));
 
-		// Approve from this address
-		usdc.approve(permit2_, type(uint256).max);
-		usdc.approve(swapcb, type(uint256).max);
-		usdc.approve(poolManager_, type(uint256).max);
-		permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
-		permit2.approve(address(usdc), swapcb, type(uint160).max, uint48(block.timestamp + 1 days));
+        // Approve from swapCallback address
+        vm.startPrank(swapcb);
+        usdc.approve(permit2_, type(uint256).max);
+        usdc.approve(poolManager_, type(uint256).max);
+        permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
+        vm.stopPrank();
 
-		// Approve from swapCallback address
-		vm.startPrank(swapcb);
-		usdc.approve(permit2_, type(uint256).max);
-		usdc.approve(poolManager_, type(uint256).max);
-		permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
-		vm.stopPrank();
+        swapCallback.swap(address(this), 1e6);
+    }
 
-		swapCallback.swap(address(this), 1e6);
-	}
+    function testRouterSwap() public virtual {
+        UniversalRouter router = UniversalRouter(payable(universalRouter_));
+        deal(usdc_, address(this), 1000e6);
 
+        // Approve router and permit2
+        usdc.approve(address(router), 1000e6);
+        permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
 
-	function testRouterSwap() public virtual{
-		UniversalRouter router = UniversalRouter(payable(universalRouter_));
-		deal(usdc_, address(this), 1000e6);
+        // Dynamically determine swap direction based on pool currency ordering
+        bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
+        bool zeroForOne = usdcIsZero; // If USDC is currency0, we swap 0->1 (USDC for options)
+        Currency inputCurrency = usdcIsZero ? poolKey1.currency0 : poolKey1.currency1;
+        Currency outputCurrency = usdcIsZero ? poolKey1.currency1 : poolKey1.currency0;
 
-		// Approve router and permit2
-		usdc.approve(address(router), 1000e6);
-		permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
+        bytes memory commands = abi.encodePacked(uint8(0x10));
+        bytes memory actions =
+            abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE_ALL), uint8(Actions.TAKE_ALL));
 
-		// Dynamically determine swap direction based on pool currency ordering
-		bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
-		bool zeroForOne = usdcIsZero;  // If USDC is currency0, we swap 0->1 (USDC for options)
-		Currency inputCurrency = usdcIsZero ? poolKey1.currency0 : poolKey1.currency1;
-		Currency outputCurrency = usdcIsZero ? poolKey1.currency1 : poolKey1.currency0;
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(
+            IV4Router.ExactInputSingleParams({
+                poolKey: poolKey1,
+                zeroForOne: zeroForOne,
+                amountIn: 1e6,
+                amountOutMinimum: 0,
+                hookData: bytes("")
+            })
+        );
+        params[1] = abi.encode(inputCurrency, type(uint256).max);
+        params[2] = abi.encode(outputCurrency, 0);
 
-		bytes memory commands = abi.encodePacked(uint8(0x10));
-		bytes memory actions = abi.encodePacked(
-			uint8(Actions.SWAP_EXACT_IN_SINGLE),
-			uint8(Actions.SETTLE_ALL),
-			uint8(Actions.TAKE_ALL)
-		);
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = abi.encode(actions, params);
 
-		bytes[] memory params = new bytes[](3);
-		params[0] = abi.encode(
-			IV4Router.ExactInputSingleParams({
-				poolKey: poolKey1,
-				zeroForOne: zeroForOne,
-				amountIn: 1e6,
-				amountOutMinimum: 0,
-				hookData: bytes("")
-			})
-		);
-		params[1] = abi.encode(inputCurrency, type(uint256).max);
-		params[2] = abi.encode(outputCurrency, 0);
+        router.execute(commands, inputs, block.timestamp + 20);
 
-		bytes[] memory inputs = new bytes[](1);
-		inputs[0] = abi.encode(actions, params);
-
-		router.execute(commands, inputs, block.timestamp + 20);
-
-		console.log("option1 balance (this)", option1.balanceOf(address(this)));
-		console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
-		console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
-		console.log("USDC balance (this)", usdc.balanceOf(address(this)));
-		console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
-		console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
-	}}
+        console.log("option1 balance (this)", option1.balanceOf(address(this)));
+        console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
+        console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
+        console.log("USDC balance (this)", usdc.balanceOf(address(this)));
+        console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
+        console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
+    }
+}
 
 contract Mainnet is OpHookTestBase {
     function setUp() public {
-		string memory rpc = "https://reth-ethereum.ithaca.xyz/rpc";
+        string memory rpc = "https://reth-ethereum.ithaca.xyz/rpc";
         networkFork = vm.createSelectFork(rpc, 23359458);
         weth_ = ConstantsMainnet.WETH;
         usdc_ = ConstantsMainnet.USDC;
@@ -354,7 +313,7 @@ contract Mainnet is OpHookTestBase {
 // Unichain-specific tests
 contract Unichain is OpHookTestBase {
     function setUp() public {
-		string memory rpc = "https://unichain.drpc.org";
+        string memory rpc = "https://unichain.drpc.org";
         networkFork = vm.createSelectFork(rpc, 27503100);
         weth_ = uni.WETH;
         usdc_ = uni.USDC;
@@ -362,6 +321,6 @@ contract Unichain is OpHookTestBase {
         poolManager_ = uni.POOLMANAGER;
         universalRouter_ = uni.UNIVERSALROUTER;
         wethUniPool_ = uni.WETH_UNI_POOL;
-		_setupCommon();
+        _setupCommon();
     }
 }

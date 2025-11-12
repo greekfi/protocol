@@ -5,7 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { OptionBase } from "./OptionBase.sol";
-import {AddressSet} from "./AddressSet.sol";
+import { AddressSet } from "./AddressSet.sol";
 
 using SafeERC20 for IERC20;
 /*

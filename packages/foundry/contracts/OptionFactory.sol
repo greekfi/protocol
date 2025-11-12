@@ -61,19 +61,23 @@ contract OptionFactory is Ownable {
         uint256 expirationDate,
         uint256 strike,
         bool isPut
-    ) public returns (address){
+    ) public returns (address) {
         address redemption_ = Clones.clone(redemptionClone);
         address option_ = Clones.clone(optionClone);
 
         Redemption redemption = Redemption(redemption_);
         Option option = Option(option_);
 
-        redemption.init(redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut, option_);
-        option.init(optionName, optionName, collateral, consideration, expirationDate, strike, isPut, redemption_, msg.sender);
+        redemption.init(
+            redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut, option_
+        );
+        option.init(
+            optionName, optionName, collateral, consideration, expirationDate, strike, isPut, redemption_, msg.sender
+        );
 
-//        redemption.setOption(option_);
-//        option.setRedemption(redemption_);
-//        option.transferOwnership(owner());
+        //        redemption.setOption(option_);
+        //        option.setRedemption(redemption_);
+        //        option.transferOwnership(owner());
 
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, option.decimals()),
@@ -103,7 +107,7 @@ contract OptionFactory is Ownable {
         considerations.add(consideration);
         optionsSet.add(option_);
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
-		return option_;
+        return option_;
     }
 
     function createOptions(OptionParameter[] memory optionParams) public {

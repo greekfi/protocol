@@ -27,7 +27,7 @@ contract OptionTest is Test {
     address stableToken_;
 
     // Unichain RPC URL - replace with actual Unichain RPC endpoint
-     string constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
+    string constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
     address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     uint160 constant MAX160 = type(uint160).max;
@@ -36,7 +36,7 @@ contract OptionTest is Test {
 
     function setUp() public {
         // Fork Unichain at the latest block
-         vm.createSelectFork(UNICHAIN_RPC_URL);
+        vm.createSelectFork(UNICHAIN_RPC_URL);
 
         // Deploy tokens
         stableToken = new StableToken();

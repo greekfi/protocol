@@ -52,21 +52,21 @@ contract Option is OptionBase {
         redemption = Redemption(redemption__);
     }
 
-	function  init(
-		string memory name_,
-		string memory symbol_,
-		address collateral_,
-		address consideration_,
-		uint256 expirationDate_,
-		uint256 strike_,
-		bool isPut_,
-		address redemption__,
-		address owner
-	) public {
-		super.init(name_,symbol_,collateral_,consideration_,expirationDate_,strike_, isPut_, owner);
-		redemption_ = redemption__;
-		redemption = Redemption(redemption_);
-	}
+    function init(
+        string memory name_,
+        string memory symbol_,
+        address collateral_,
+        address consideration_,
+        uint256 expirationDate_,
+        uint256 strike_,
+        bool isPut_,
+        address redemption__,
+        address owner
+    ) public {
+        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, owner);
+        redemption_ = redemption__;
+        redemption = Redemption(redemption_);
+    }
 
     function mint(uint256 amount) public {
         mint(msg.sender, amount);

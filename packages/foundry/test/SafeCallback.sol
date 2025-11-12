@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 /// @notice Interface for the callback executed when an address unlocks the pool manager
 interface IUnlockCallback {
@@ -38,8 +39,9 @@ contract ImmutableState is IImmutableState {
 }
 /// @title Safe Callback
 /// @notice A contract that only allows the Uniswap v4 PoolManager to call the unlockCallback
+
 abstract contract SafeCallback is ImmutableState, IUnlockCallback {
-    constructor(IPoolManager _poolManager) ImmutableState(_poolManager) {}
+    constructor(IPoolManager _poolManager) ImmutableState(_poolManager) { }
 
     /// @inheritdoc IUnlockCallback
     /// @dev We force the onlyPoolManager modifier by exposing a virtual function after the onlyPoolManager check.

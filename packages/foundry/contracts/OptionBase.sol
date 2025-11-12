@@ -148,7 +148,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_,
-		address owner
+        address owner
     ) public virtual initializer {
         require(!initialized, "already init");
         initialized = true;
@@ -182,7 +182,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         return _tokenSymbol;
     }
 
-    function decimals() public view override returns (uint8){
+    function decimals() public view override returns (uint8) {
         return collDecimals;
     }
 
