@@ -9007,6 +9007,7 @@ __metadata:
     "@types/node": ^24.10.1
     fastify: ^5.6.2
     typescript: ^5.9.3
+    viem: ^2.21.54
   languageName: unknown
   linkType: soft
 
@@ -9032,6 +9033,7 @@ __metadata:
     fastify: ^5.6.2
     tsc: ^2.0.4
     typescript: ^5.9.3
+    viem: ^2.21.54
   languageName: unknown
   linkType: soft
 
@@ -10820,6 +10822,27 @@ __metadata:
     typescript:
       optional: true
   checksum: 19b1d3fab009731c99d6bca7db3d0615de0232716e279026cd69d3495c977c19abc2d05cbb1227a8fc74a332d15108c96e988f4a6acc57a673eccc0a2ec61312
+  languageName: node
+  linkType: hard
+
+"viem@npm:^2.21.54":
+  version: 2.39.0
+  resolution: "viem@npm:2.39.0"
+  dependencies:
+    "@noble/curves": 1.9.1
+    "@noble/hashes": 1.8.0
+    "@scure/bip32": 1.7.0
+    "@scure/bip39": 1.6.0
+    abitype: 1.1.0
+    isows: 1.0.7
+    ox: 0.9.6
+    ws: 8.18.3
+  peerDependencies:
+    typescript: ">=5.0.4"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: a6570b9f7c9bbd1c76bedbd8a7af9b7f8e25350d97135aba8a92de88c97e85e49671723597ece0e283d82649d3a8b3ef4f4ded11a002663f5a6466ac0ac1d209
   languageName: node
   linkType: hard
 

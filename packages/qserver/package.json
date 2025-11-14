@@ -5,7 +5,8 @@
   "dependencies": {
     "@types/node": "^24.10.1",
     "fastify": "^5.6.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "viem": "^2.21.54"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

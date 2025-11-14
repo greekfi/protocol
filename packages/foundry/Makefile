@@ -31,6 +31,9 @@ deploy:
 # Deploy and generate ABIs
 deploy-and-generate-abis: deploy generate-abis
 
+deploy-local:
+	forge script $(SCRIPT) --rpc-url localhost  --password localhost --broadcast --legacy --ffi;
+
 # Generate TypeScript ABIs
 generate-abis:
 	node scripts-js/generateTsAbis.js

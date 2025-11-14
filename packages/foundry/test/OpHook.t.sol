@@ -23,7 +23,6 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { SafeCallback } from "./SafeCallback.sol";
-import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
 import { ConstantsUnichain as uni } from "../contracts/ConstantsUnichain.sol";
 import { OptionPrice } from "../contracts/OptionPrice.sol";
