@@ -24,6 +24,7 @@ export interface QuoteRequest {
 export interface QuoteResponse {
   order: Order
   signature: string
+  remaining?: string
 }
 
 export interface WhitelistConfig {
