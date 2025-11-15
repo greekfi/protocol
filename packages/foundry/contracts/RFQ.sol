@@ -5,7 +5,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol"; // for mulDiv
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControl} from "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // for mulDiv
 
 contract RFQ {
     using SafeERC20 for IERC20;
@@ -13,15 +14,14 @@ contract RFQ {
     // Price is expressed as tokenOut per 1 tokenIn in 1e18 fixed-point (q = out/in).
     struct Order {
         address maker;
-        address tokenIn;
-        address tokenOut;
-        uint256 price1e18; // tokenOut per tokenIn * 1e18
-        uint256 maxIn; // total maker is willing to sell/buy on this order
-        uint256 minPerFillIn; // optional guardrail
-        uint256 maxPerFillIn; // optional guardrail (0 => no limit)
+        address tokenA; // ETH
+        address tokenB; // USDC
+        uint256 priceA; // (tokenB per tokenA) * 1e18 (3000USD/ETH)
+		uint256 priceB; // (tokenA per tokenB) * 1e18 (1ETH/4000USD)
+		uint256 maxOutA; // total maker is willing to sell on this order
+		uint256 maxOutB; // total maker is willing to sell on this order
         uint256 deadline; // unix seconds
         uint256 nonce; // unique per maker
-        bool makerSellsIn; // true: maker sells tokenIn for tokenOut at price
         address allowedFiller; // optional RFQ (0 => public)
         uint256 feeBps; // optional fee taken from takerOut or makerIn depending on policy
     }
@@ -57,15 +57,13 @@ contract RFQ {
             abi.encode(
                 ORDER_TYPEHASH,
                 o.maker,
-                o.tokenIn,
-                o.tokenOut,
-                o.price1e18,
-                o.maxIn,
-                o.minPerFillIn,
-                o.maxPerFillIn,
+                o.tokenA,
+                o.tokenB,
+                o.priceA,
+				o.maxOutA,
+				o.maxOutB,
                 o.deadline,
                 o.nonce,
-                o.makerSellsIn,
                 o.allowedFiller,
                 o.feeBps
             )
@@ -83,7 +81,7 @@ contract RFQ {
     /// @param sig The signature from the maker
     /// @param filler The address attempting to fill (use address(0) to skip filler check)
     /// @return remaining The amount of tokenIn still available to fill
-    function validateOrder(Order calldata o, bytes calldata sig, address filler) public view returns (uint256 remaining) {
+    function validateOrder(Order calldata o, bytes calldata sig, address filler) public view returns (bool) {
         require(block.timestamp <= o.deadline, "expired");
         require(!canceled[o.maker][o.nonce], "canceled");
         if (o.allowedFiller != address(0) && filler != address(0)) {
@@ -94,51 +92,30 @@ contract RFQ {
         bytes32 digest = _hashOrder(o);
         address signer = ECDSA.recover(digest, sig);
         require(signer == o.maker, "bad sig");
-
-        // Calculate remaining
-        uint256 already = filledIn[o.maker][o.nonce];
-        require(already < o.maxIn, "fully filled");
-        remaining = o.maxIn - already;
+		return true;
     }
 
     // Filler chooses inAmt (size). Contract derives outAmt by signed price.
-    function fill(Order calldata o, bytes calldata sig, uint256 inAmt) external {
+    function fill(Order calldata o, bytes calldata sig, address token, uint256 inAmt) external {
         // Validate order and get remaining fillable amount
         uint256 remaining = validateOrder(o, sig, msg.sender);
-
+		uint256 outAmt;
         // Guardrails on fill size
         require(inAmt > 0, "size=0");
-        if (o.minPerFillIn > 0) require(inAmt >= o.minPerFillIn, "lt min fill");
-        if (o.maxPerFillIn > 0) require(inAmt <= o.maxPerFillIn, "gt max fill");
-
-        // Clamp to remaining amount
-        if (inAmt > remaining) inAmt = remaining;
-
-        // Compute outAmt = inAmt * price / 1e18, round in maker's favor
-        uint256 outAmt =
-            Math.mulDiv(inAmt, o.price1e18, 1e18, o.makerSellsIn ? Math.Rounding.Floor : Math.Rounding.Ceil);
-
-        // Optional: apply fee (example: fee taken from taker receives)
-        if (o.feeBps > 0) {
-            uint256 fee = (outAmt * o.feeBps) / 10_000;
-            outAmt -= fee;
-            // send fee to some recipient if desired
-        }
-
-        // Transfers: two cases depending on maker side
-        if (o.makerSellsIn) {
-            // Maker gives tokenIn, receives tokenOut at fixed price
-            IERC20(o.tokenIn).safeTransferFrom(o.maker, msg.sender, inAmt);
-            IERC20(o.tokenOut).safeTransferFrom(msg.sender, o.maker, outAmt);
-        } else {
-            // Maker buys tokenIn with tokenOut (price is tokenOut per tokenIn)
-            IERC20(o.tokenIn).safeTransferFrom(msg.sender, o.maker, inAmt);
-            IERC20(o.tokenOut).safeTransferFrom(o.maker, msg.sender, outAmt);
-        }
-
-        // Update filled amount and emit event
-        uint256 already = filledIn[o.maker][o.nonce];
-        filledIn[o.maker][o.nonce] = already + inAmt;
+		require(token==o.tokenB || token==o.tokenA, "token chosen is not part of order");
+		if (token==o.tokenB){ // sending in B to receive A
+			outAmt = Math.mulDiv(inAmt, o.priceA, 1e18, Math.Rounding.Ceil);
+			require(o.maxOutA==0 || outAmt<o.maxOutA, "Out token quantity exceeds Maker Max");
+			// Swap
+			IERC20(o.tokenB).safeTransferFrom(msg.sender, o.maker, inAmt);
+			IERC20(o.tokenA).safeTransferFrom(o.maker, msg.sender, outAmt);
+		} else {
+			outAmt = Math.mulDiv(inAmt, o.priceB, 1e18, Math.Rounding.Ceil);
+			require(o.maxOutB==0 || outAmt<o.maxOutB, "Out token quantity exceeds Maker Max");
+			// Swap
+			IERC20(o.tokenA).safeTransferFrom(msg.sender, o.maker, inAmt);
+			IERC20(o.tokenB).safeTransferFrom(o.maker, msg.sender, outAmt);
+		}
 
         bytes32 digest = _hashOrder(o);
         emit Filled(digest, o.maker, msg.sender, inAmt, outAmt);
