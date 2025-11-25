@@ -1,6 +1,12 @@
 import "@rainbow-me/rainbowkit/styles.css";
-
+import { Martel_Sans } from "next/font/google";
 import "~~/styles/globals.css";
+
+const martelSans = Martel_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "600", "700"],
+  variable: "--font-martel-sans",
+});
 
 
 
@@ -12,7 +18,7 @@ export const viewport = {
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning lang="en">
+    <html suppressHydrationWarning lang="en" className={martelSans.variable}>
       <head>
         {/* <link rel="icon" href="/favicon.ico" sizes="any" /> */}
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />

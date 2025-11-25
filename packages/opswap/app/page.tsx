@@ -10,22 +10,27 @@ export default function OptionsPage() {
       <div className="min-h-screen bg-black">
         {/* Navbar */}
         <nav className="sticky top-0 z-50 backdrop-blur-sm bg-black/80 border-b border-gray-800">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Image src={Helmet} alt="Greek.fi Logo" className="h-24 w-24" />
-                <h1 className="text-3xl font-light text-blue-300">Greek.fi</h1>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Logo and Title */}
+              <div className="flex items-center gap-3 sm:gap-4">
+                <Image src={Helmet} alt="Greek.fi Logo" className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24" />
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl text-blue-300 font-[var(--font-martel-sans)]">
+                  GreekFi
+                </h1>
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Link href="/mint">
-                  <button className="hover:scale-105 transition-transform bg-blue-300 text-black px-6 py-2 rounded-lg font-medium">
+                  <button className="hover:scale-105 transition-transform bg-blue-300 text-black px-4 py-2 rounded-lg font-medium text-sm sm:text-base">
                     Mint
                   </button>
                 </Link>
-                <button className="hover:scale-105 transition-transform bg-blue-500 text-black px-6 py-2 rounded-lg font-medium">
+                <button className="hover:scale-105 transition-transform bg-blue-500 text-black px-4 py-2 rounded-lg font-medium text-sm sm:text-base">
                   Trade Soon
                 </button>
-                <button className="hover:scale-105 transition-transform bg-blue-100 text-black px-6 py-2 rounded-lg font-medium">
+                <button className="hover:scale-105 transition-transform bg-blue-100 text-black px-4 py-2 rounded-lg font-medium text-sm sm:text-base">
                   Vault Soon
                 </button>
               </div>
@@ -50,7 +55,7 @@ export default function OptionsPage() {
               <button className="bg-blue-500 text-black px-8 py-4 rounded-lg font-medium hover:scale-105 transition-transform">
                 Start Trading Soon
               </button>
-              <a href="https://github.com/greekfi/whitepaper/blob/main/build/greekfi/greekfi.pdf?raw=true" target="_blank" rel="noopener noreferrer">
+              <a href="/greekfi.pdf" target="_blank" rel="noopener noreferrer">
                 <button className="border border-blue-500 text-blue-500 px-8 py-4 rounded-lg font-medium hover:bg-blue-500/10 transition-all">
                   Read the Whitepaper
                 </button>
@@ -130,46 +135,6 @@ export default function OptionsPage() {
           </div>
         </section>
 
-        {/* Supported Chains Section */}
-        {/* <section className="py-20 px-6 border-y border-gray-800 bg-black/50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-blue-300 mb-12">Supported Networks</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
-            {availableChains.map((chain) => (
-              <div key={chain.id} className="flex flex-col items-center p-6 rounded-xl bg-blue-500/10 border border-blue-300/20 hover:border-blue-300/40 transition-all">
-                <div className="h-16 w-16 rounded-full bg-blue-400/20 flex items-center justify-center mb-4">
-                  {chain.id === 8453 && <img src="/images/base.svg" alt="Base" className="w-8 h-8" />}
-                  {chain.id === 11155111 && <img src="/images/sepolia.svg" alt="Sepolia" className="w-8 h-8" />}
-                  {chain.id === 1 && <img src="/images/ethereum.svg" alt="Ethereum" className="w-8 h-8" />}
-                  {chain.id === 42161 && <img src="/images/arbitrum.svg" alt="Arbitrum" className="w-8 h-8" />}
-                  {chain.id === 10 && <img src="/images/optimism.svg" alt="Optimism" className="w-8 h-8" />}
-                  {chain.name.includes("Polygon") && <img src="/images/polygon.svg" alt="Polygon" className="w-8 h-8" />}
-                  {chain.id === 98865 && <img src="/images/plume.svg" alt="Plume" className="w-8 h-8" />}
-                </div>
-                <h3 className="text-xl font-semibold text-blue-200 text-center">{chain.name}</h3>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section> */}
-
-        {/* Stats Section */}
-        {/* <section className="py-20 px-6 border-y border-gray-800 bg-black/50">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="text-center">
-            <p className="text-5xl font-bold text-blue-400">$10M+</p>
-            <p className="text-gray-400 mt-2">Total Volume</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-blue-400">1000+</p>
-            <p className="text-gray-400 mt-2">Active Traders</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-blue-400">5000+</p>
-            <p className="text-gray-400 mt-2">Options Minted</p>
-          </div>
-        </div>
-      </section> */}
 
         {/* Feature Blocks */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-1 py-20">
@@ -227,7 +192,7 @@ export default function OptionsPage() {
                   </li>
                   <li>
                     <Link href="/mint" className="text-gray-400 hover:text-blue-300">
-                      Mint
+                      Mint/Send
                     </Link>
                   </li>
                   <li>
@@ -241,7 +206,7 @@ export default function OptionsPage() {
                 <h4 className="text-white font-bold mb-4">Resources</h4>
                 <ul className="space-y-2">
                   <li>
-                    <a href="https://github.com/greekfi/whitepaper/blob/main/build/greekfi/greekfi.pdf?raw=true" className="text-gray-400 hover:text-blue-300">
+                    <a href="/greekfi.pdf" className="text-gray-400 hover:text-blue-300">
                       Whitepaper
                     </a>
                   </li>
