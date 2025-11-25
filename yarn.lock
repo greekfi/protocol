@@ -3541,6 +3541,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@upstash/redis@npm:^1.34.0":
+  version: 1.35.6
+  resolution: "@upstash/redis@npm:1.35.6"
+  dependencies:
+    uncrypto: ^0.1.3
+  checksum: 0303f8cfc81f83e4e0f9679eb63adb4ef1e85abafaf616811b5b48d91b465bac908aaf29028e39e7d56dcc9702769ed35d28571b42cb9e6ae6ecd51bf808ea62
+  languageName: node
+  linkType: hard
+
 "@vanilla-extract/css@npm:1.17.3":
   version: 1.17.3
   resolution: "@vanilla-extract/css@npm:1.17.3"
@@ -3583,6 +3592,15 @@ __metadata:
   peerDependencies:
     "@vanilla-extract/css": ^1.0.0
   checksum: e4fea79a4f49c2b8095892f6d758958548ee8513c7ee27dd1f229c2639bd5271674d117facf79dbdb31d218a64d208e56489dc7a810c9ad30b7454b355298beb
+  languageName: node
+  linkType: hard
+
+"@vercel/kv@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@vercel/kv@npm:3.0.0"
+  dependencies:
+    "@upstash/redis": ^1.34.0
+  checksum: 5bebab15c770e32409c03054dbd58e3e5a4d77d1a813c91e6613a9382a96b391878b67a1e2fbe8f7e197899a2dc589212ee6f6b11ab272798954e63816c6eba1
   languageName: node
   linkType: hard
 
@@ -9005,6 +9023,7 @@ __metadata:
   resolution: "qserver@workspace:packages/qserver"
   dependencies:
     "@types/node": ^24.10.1
+    "@vercel/kv": ^3.0.0
     fastify: ^5.6.2
     typescript: ^5.9.3
     viem: ^2.21.54

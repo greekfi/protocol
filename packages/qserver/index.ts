@@ -1,7 +1,8 @@
 import fastify from 'fastify'
-import { createPublicClient, http, isAddress } from 'viem'
+import { createPublicClient, http, isAddress, keccak256, toHex } from 'viem'
 import type { QuoteRequest, QuoteResponse, Order } from './types'
 import { getWhitelist, RFQ_CONTRACT, getRpcUrl } from './config'
+import { saveTx, getTx } from './storage'
 
 const server = fastify()
 
@@ -136,6 +137,33 @@ server.post<{ Body: QuoteRequest }>('/rfq', async (request, reply) => {
     }
 
     return { quotes: validQuotes }
+})
+
+server.post<{ Body: QuoteResponse }>('/transactions', async (request, reply) => {
+    const { order, signature } = request.body
+
+    if (!order || !signature) {
+        return reply.code(400).send({ error: 'Missing order or signature' })
+    }
+
+    const txData = JSON.stringify({ order, signature })
+    const txId = keccak256(toHex(txData))
+
+    await saveTx(txId, { order, signature })
+
+    return { id: txId }
+})
+
+server.get<{ Params: { id: string } }>('/transactions/:id', async (request, reply) => {
+    const { id } = request.params
+
+    const tx = await getTx(id)
+
+    if (!tx) {
+        return reply.code(404).send({ error: 'Transaction not found' })
+    }
+
+    return tx
 })
 
 server.listen({ port: 8080 }, (err, address) => {
