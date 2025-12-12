@@ -16,12 +16,7 @@ import { Address } from "../lib/openzeppelin-contracts/contracts/utils/Address.s
 using SafeERC20 for ERC20;
 
 interface IPermit2 {
-    function transferFrom(
-        address from,
-        address to,
-        uint160 amount,
-        address token
-    ) external;
+    function transferFrom(address from, address to, uint160 amount, address token) external;
 
     function allowance(address user, address token, address spender)
         external
@@ -91,12 +86,30 @@ contract OptionFactory is Ownable {
         Option option = Option(option_);
 
         redemption.init(
-            redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut, option_, address(this),fee
+            redemptionName,
+            redemptionName,
+            collateral,
+            consideration,
+            expirationDate,
+            strike,
+            isPut,
+            option_,
+            address(this),
+            fee
         );
         option.init(
-            optionName, optionName, collateral, consideration, expirationDate, strike, isPut, redemption_, msg.sender, address(this), fee
+            optionName,
+            optionName,
+            collateral,
+            consideration,
+            expirationDate,
+            strike,
+            isPut,
+            redemption_,
+            msg.sender,
+            address(this),
+            fee
         );
-
 
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, option.decimals()),
@@ -146,13 +159,15 @@ contract OptionFactory is Ownable {
     }
 
     /**
-    @notice External function to transfer tokens using Permit2 or ERC20 allowance
-    @dev Only called by option contracts to transfer tokens with stored allowances
-    */
+     * @notice External function to transfer tokens using Permit2 or ERC20 allowance
+     * @dev Only called by option contracts to transfer tokens with stored allowances
+     */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
-        require(redemptionsSet.contains(msg.sender) || optionsSet.contains(msg.sender), "Not an option-redemption contract");
+        require(
+            redemptionsSet.contains(msg.sender) || optionsSet.contains(msg.sender), "Not an option-redemption contract"
+        );
 
-        (uint160 allowAmount, uint48 expiration, ) =  permit2.allowance(from, token, address(this));
+        (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
 
         if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
             permit2.transferFrom(from, to, amount, token);

@@ -37,7 +37,7 @@ contract DeployOp is Script, ScaffoldETHDeploy {
             address(short)
         );
 
-        new OptionFactory(address(short), address(long), .0001e18);
+        new OptionFactory(address(short), address(long), 0.0001e18);
 
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // Deploy OpHook using HookMiner to get correct address

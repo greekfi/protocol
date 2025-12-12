@@ -66,7 +66,7 @@ contract OptionTest is Test {
         );
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), .0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
         // options[0] = OptionParameter({
@@ -99,7 +99,6 @@ contract OptionTest is Test {
         shortOption = option.redemption_();
 
         redemption = option.redemption();
-
 
         approve1(shakyToken_, address(factory));
         approve1(stableToken_, address(factory));

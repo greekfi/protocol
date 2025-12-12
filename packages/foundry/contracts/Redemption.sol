@@ -74,8 +74,10 @@ contract Redemption is OptionBase {
         address option_,
         address factory_,
         uint256 fee_
-    ) public override{
-        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, option_, factory_, fee_);
+    ) public override {
+        super.init(
+            name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, option_, factory_, fee_
+        );
         option = option_;
         accounts = new AddressSet();
     }

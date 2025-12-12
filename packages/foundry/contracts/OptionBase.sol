@@ -148,7 +148,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     }
 
     function toFee(uint256 amount) public view returns (uint256) {
-        return fee*amount/1e18;
+        return fee * amount / 1e18;
     }
 
     function init(
