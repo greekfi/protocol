@@ -8,8 +8,6 @@ import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IPermit2 } from "./interfaces/IPermit2.sol";
-
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
 // The Long Option contract is the only one that can mint new mint
@@ -58,7 +56,6 @@ struct OptionInfo {
 }
 
 contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
-    IPermit2 public constant PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     uint256 public expirationDate;
     uint256 public strike;
     uint256 public constant STRIKE_DECIMALS = 10 ** 18;
@@ -148,7 +145,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     }
 
     function toFee(uint256 amount) public view returns (uint256) {
-        return fee * amount / 1e18;
+        return (fee * amount) / 1e18;
     }
 
     function init(

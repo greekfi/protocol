@@ -137,11 +137,6 @@ contract Option is OptionBase {
         redemption._redeemPair(account, amount);
     }
 
-    function setRedemption(address shortOptionAddress) public onlyOwner {
-        redemption_ = shortOptionAddress;
-        redemption = Redemption(redemption_);
-    }
-
     function balancesOf(address account) public view returns (Balances memory) {
         return Balances({
             collateral: collateral.balanceOf(account),

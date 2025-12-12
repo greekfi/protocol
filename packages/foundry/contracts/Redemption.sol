@@ -8,6 +8,7 @@ import { OptionBase } from "./OptionBase.sol";
 import { AddressSet } from "./AddressSet.sol";
 
 using SafeERC20 for IERC20;
+using AddressSet for AddressSet.Set;
 /*
 The Option contract is the owner of the Redemption contract
 The Option contract is the only one that can mint new mint
@@ -28,7 +29,7 @@ interface IFactory {
 
 contract Redemption is OptionBase {
     address public option;
-    AddressSet public accounts;
+    AddressSet.Set private _accounts;
 
     event Redeemed(address option, address token, address holder, uint256 amount);
 
@@ -44,13 +45,13 @@ contract Redemption is OptionBase {
     }
 
     modifier saveAccount(address account) {
-        accounts.add(account);
+        _accounts.add(account);
         _;
     }
 
     function _update(address from, address to, uint256 value) internal override {
         super._update(from, to, value);
-        accounts.add(to);
+        _accounts.add(to);
     }
 
     constructor(
@@ -79,12 +80,7 @@ contract Redemption is OptionBase {
             name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, option_, factory_, fee_
         );
         option = option_;
-        accounts = new AddressSet();
-    }
-
-    function setOption(address option_) public onlyOwner {
-        option = option_;
-        transferOwnership(option_);
+        // No need to initialize library-based set
     }
 
     function mint(address account, uint256 amount)
@@ -176,7 +172,7 @@ contract Redemption is OptionBase {
 
     function sweep(uint256 start, uint256 stop) public expired nonReentrant {
         for (uint256 i = start; i < stop; i++) {
-            address holder = accounts.get(i);
+            address holder = _accounts.at(i);
             if (balanceOf(holder) > 0) {
                 _redeem(holder, balanceOf(holder));
             }
@@ -184,6 +180,16 @@ contract Redemption is OptionBase {
     }
 
     function sweep() public expired nonReentrant {
-        sweep(0, accounts.length());
+        sweep(0, _accounts.length());
+    }
+
+    /// @notice Get the number of accounts tracked
+    function accountsLength() external view returns (uint256) {
+        return _accounts.length();
+    }
+
+    /// @notice Get account at index
+    function getAccount(uint256 index) external view returns (address) {
+        return _accounts.at(index);
     }
 }

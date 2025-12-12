@@ -14,6 +14,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 using SafeERC20 for ERC20;
+using AddressSet for AddressSet.Set;
 
 interface IPermit2 {
     function transferFrom(address from, address to, uint160 amount, address token) external;
@@ -39,6 +40,8 @@ interface IPermit2 {
 contract OptionFactory is Ownable {
     address public redemptionClone;
     address public optionClone;
+    uint256 public fee;
+    IPermit2 public permit2;
 
     event OptionCreated(
         address option,
@@ -51,22 +54,17 @@ contract OptionFactory is Ownable {
     );
 
     mapping(address => mapping(address => OptionInfo[])) public options;
-    AddressSet public collaterals;
-    AddressSet public considerations;
-    AddressSet public optionsSet;
-    AddressSet public redemptionsSet;
+    AddressSet.Set private _collaterals;
+    AddressSet.Set private _considerations;
+    AddressSet.Set private _optionsSet;
+    AddressSet.Set private _redemptionsSet;
 
-    uint256 public fee;
 
-    IPermit2 public permit2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-
-    constructor(address redemption_, address option_, uint256 fee_) Ownable(msg.sender) {
+    constructor(address redemption_, address option_, address permit2_, uint256 fee_) Ownable(msg.sender) {
+        require(fee <= .01e18, "fee too high");
         redemptionClone = redemption_;
         optionClone = option_;
-        collaterals = new AddressSet();
-        considerations = new AddressSet();
-        optionsSet = new AddressSet();
-        redemptionsSet = new AddressSet();
+        permit2 = IPermit2(permit2_);
         fee = fee_;
     }
 
@@ -135,10 +133,10 @@ contract OptionFactory is Ownable {
         );
 
         options[collateral][consideration].push(info);
-        collaterals.add(collateral);
-        considerations.add(consideration);
-        optionsSet.add(option_);
-        redemptionsSet.add(redemption_);
+        _collaterals.add(collateral);
+        _considerations.add(consideration);
+        _optionsSet.add(option_);
+        _redemptionsSet.add(redemption_);
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
         return option_;
     }
@@ -164,7 +162,7 @@ contract OptionFactory is Ownable {
      */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
         require(
-            redemptionsSet.contains(msg.sender) || optionsSet.contains(msg.sender), "Not an option-redemption contract"
+            _redemptionsSet.contains(msg.sender) || _optionsSet.contains(msg.sender), "Not an option-redemption contract"
         );
 
         (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
@@ -185,38 +183,38 @@ contract OptionFactory is Ownable {
     }
 
     function getOptions() public view returns (address[] memory) {
-        return optionsSet.values();
+        return _optionsSet.values();
     }
 
     function getOptionsCount() public view returns (uint256) {
-        return optionsSet.length();
+        return _optionsSet.length();
     }
 
     function isOption(address option_) public view returns (bool) {
-        return optionsSet.contains(option_);
+        return _optionsSet.contains(option_);
     }
 
     function getCollaterals() public view returns (address[] memory) {
-        return collaterals.values();
+        return _collaterals.values();
     }
 
     function getConsiderations() public view returns (address[] memory) {
-        return considerations.values();
+        return _considerations.values();
     }
 
     function getCollateralsCount() public view returns (uint256) {
-        return collaterals.length();
+        return _collaterals.length();
     }
 
     function getConsiderationsCount() public view returns (uint256) {
-        return considerations.length();
+        return _considerations.length();
     }
 
     function isCollateral(address token) public view returns (bool) {
-        return collaterals.contains(token);
+        return _collaterals.contains(token);
     }
 
     function isConsideration(address token) public view returns (bool) {
-        return considerations.contains(token);
+        return _considerations.contains(token);
     }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import { Test, console } from "forge-std/Test.sol";
 import { AddressSet } from "../contracts/AddressSet.sol";
 
+using AddressSet for AddressSet.Set;
+
 contract GasComparisonTest is Test {
     // Library approach (simulated)
     struct LibrarySet {
@@ -13,13 +15,13 @@ contract GasComparisonTest is Test {
 
     LibrarySet private librarySet;
 
-    // Contract approach
-    AddressSet public addressSet;
+    // Library-based approach
+    AddressSet.Set private addressSet;
 
     // Advanced approach
 
     function setUp() public {
-        addressSet = new AddressSet();
+        // No initialization needed for library-based set
     }
 
     function testGasComparison() public {
