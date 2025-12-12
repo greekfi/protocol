@@ -5,7 +5,7 @@ import { TokenData, OptionInfo, OptionParameter } from "./OptionBase.sol";
 import { AddressSet } from "./AddressSet.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { Option } from "./Option.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -13,7 +13,22 @@ import { Redemption } from "./Redemption.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
-using SafeERC20 for IERC20;
+using SafeERC20 for ERC20;
+
+interface IPermit2 {
+    function transferFrom(
+        address from,
+        address to,
+        uint160 amount,
+        address token
+    ) external;
+
+    function allowance(address user, address token, address spender)
+        external
+        view
+        returns (uint160 amount, uint48 expiration, uint48 nonce);
+}
+
 // The Long OptionParameter contract is the owner of the Short OptionParameter contract
 // The Long OptionParameter contract is the only one that can mint new mint
 // The Long OptionParameter contract is the only one that can exercise mint
@@ -44,13 +59,20 @@ contract OptionFactory is Ownable {
     AddressSet public collaterals;
     AddressSet public considerations;
     AddressSet public optionsSet;
+    AddressSet public redemptionsSet;
 
-    constructor(address redemption_, address option_) Ownable(msg.sender) {
+    uint256 public fee;
+
+    IPermit2 public permit2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+
+    constructor(address redemption_, address option_, uint256 fee_) Ownable(msg.sender) {
         redemptionClone = redemption_;
         optionClone = option_;
         collaterals = new AddressSet();
         considerations = new AddressSet();
         optionsSet = new AddressSet();
+        redemptionsSet = new AddressSet();
+        fee = fee_;
     }
 
     function createOption(
@@ -69,15 +91,12 @@ contract OptionFactory is Ownable {
         Option option = Option(option_);
 
         redemption.init(
-            redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut, option_
+            redemptionName, redemptionName, collateral, consideration, expirationDate, strike, isPut, option_, address(this),fee
         );
         option.init(
-            optionName, optionName, collateral, consideration, expirationDate, strike, isPut, redemption_, msg.sender
+            optionName, optionName, collateral, consideration, expirationDate, strike, isPut, redemption_, msg.sender, address(this), fee
         );
 
-        //        redemption.setOption(option_);
-        //        option.setRedemption(redemption_);
-        //        option.transferOwnership(owner());
 
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, option.decimals()),
@@ -106,6 +125,7 @@ contract OptionFactory is Ownable {
         collaterals.add(collateral);
         considerations.add(consideration);
         optionsSet.add(option_);
+        redemptionsSet.add(redemption_);
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
         return option_;
     }
@@ -122,6 +142,26 @@ contract OptionFactory is Ownable {
                 param.strike,
                 param.isPut
             );
+        }
+    }
+
+    /**
+    @notice External function to transfer tokens using Permit2 or ERC20 allowance
+    @dev Only called by option contracts to transfer tokens with stored allowances
+    */
+    function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
+        require(redemptionsSet.contains(msg.sender) || optionsSet.contains(msg.sender), "Not an option-redemption contract");
+
+        (uint160 allowAmount, uint48 expiration, ) =  permit2.allowance(from, token, address(this));
+
+        if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
+            permit2.transferFrom(from, to, amount, token);
+            return true;
+        } else if (ERC20(token).allowance(from, address(this)) >= amount) {
+            ERC20(token).safeTransferFrom(from, to, amount);
+            return true;
+        } else {
+            require(false, "Insufficient allowance");
         }
     }
 

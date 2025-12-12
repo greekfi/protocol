@@ -61,9 +61,11 @@ contract Option is OptionBase {
         uint256 strike_,
         bool isPut_,
         address redemption__,
-        address owner
+        address owner,
+        address factory_,
+        uint256 fee_
     ) public {
-        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, owner);
+        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, owner, factory_, fee_);
         redemption_ = redemption__;
         redemption = Redemption(redemption_);
     }
@@ -78,8 +80,9 @@ contract Option is OptionBase {
 
     function mint_(address account, uint256 amount) internal notExpired notLocked validAmount(amount) {
         redemption.mint(account, amount);
-        _mint(account, amount);
-        emit Mint(address(this), account, amount);
+        uint256 amountMinusFees = amount - toFee(amount);
+        _mint(account, amountMinusFees);
+        emit Mint(address(this), account, amountMinusFees);
     }
 
     function transferFrom(address from, address to, uint256 amount)

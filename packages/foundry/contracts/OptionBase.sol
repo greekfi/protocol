@@ -23,6 +23,10 @@ using SafeERC20 for IERC20;
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
 
+interface IFactory {
+    function transferFrom(address from, address to, uint160 amount, address token) external;
+}
+
 struct TokenData {
     address address_;
     string name;
@@ -72,6 +76,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     string private _tokenName;
     string private _tokenSymbol;
     bool public locked = false;
+    address public factory;
+    IFactory public _factory;
+    uint256 public fee;
 
     error ContractNotExpired();
     error ContractExpired();
@@ -140,6 +147,10 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         return (consAmount * 10 ** collDecimals * STRIKE_DECIMALS) / (strike * 10 ** consDecimals);
     }
 
+    function toFee(uint256 amount) public view returns (uint256) {
+        return fee*amount/1e18;
+    }
+
     function init(
         string memory name_,
         string memory symbol_,
@@ -148,7 +159,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_,
-        address owner
+        address owner,
+        address factory_,
+        uint256 fee_
     ) public virtual initializer {
         require(!initialized, "already init");
         initialized = true;
@@ -164,6 +177,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         expirationDate = expirationDate_;
         strike = strike_;
         isPut = isPut_;
+        factory = factory_;
+        _factory = IFactory(factory_);
+        fee = fee_;
 
         cons = IERC20Metadata(consideration_);
         coll = IERC20Metadata(collateral_);

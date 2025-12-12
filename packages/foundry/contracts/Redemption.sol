@@ -22,6 +22,10 @@ as collateral and wBTC to be used as consideration. Similarly, staked ETH can be
 or even staked stable coins can be used as well for either consideration or collateral.
 */
 
+interface IFactory {
+    function transferFrom(address from, address to, uint160 amount, address token) external;
+}
+
 contract Redemption is OptionBase {
     address public option;
     AddressSet public accounts;
@@ -67,23 +71,18 @@ contract Redemption is OptionBase {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_,
-        address option_
-    ) public override {
-        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, option_);
+        address option_,
+        address factory_,
+        uint256 fee_
+    ) public override{
+        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, option_, factory_, fee_);
         option = option_;
+        accounts = new AddressSet();
     }
 
     function setOption(address option_) public onlyOwner {
         option = option_;
         transferOwnership(option_);
-    }
-
-    function transferFrom_(address from, address to, IERC20 token, uint256 amount) internal {
-        if (token.allowance(from, address(this)) >= amount) {
-            token.safeTransferFrom(from, to, amount);
-        } else {
-            PERMIT2.transferFrom(from, to, uint160(amount), address(token));
-        }
     }
 
     function mint(address account, uint256 amount)
@@ -96,8 +95,9 @@ contract Redemption is OptionBase {
         validAddress(account)
         saveAccount(account)
     {
-        transferFrom_(account, address(this), collateral, amount);
-        _mint(account, amount);
+        _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
+        uint256 amountMinusFee = amount - toFee(amount);
+        _mint(account, amountMinusFee);
     }
 
     function redeem(address account) public {
@@ -112,8 +112,8 @@ contract Redemption is OptionBase {
         _redeem(account, amount);
     }
 
+    /// only LongOption can call
     function _redeemPair(address account, uint256 amount) public notExpired onlyOwner {
-        // only LongOption can call
         _redeem(account, amount);
     }
 
@@ -164,7 +164,7 @@ contract Redemption is OptionBase {
         sufficientCollateral(address(this), amount)
         validAmount(amount)
     {
-        transferFrom_(caller, address(this), consideration, toConsideration(amount));
+        _factory.transferFrom(caller, address(this), uint160(toConsideration(amount)), address(consideration));
         collateral.safeTransfer(account, amount);
     }
 

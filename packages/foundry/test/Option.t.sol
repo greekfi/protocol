@@ -66,7 +66,7 @@ contract OptionTest is Test {
         );
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), .0001e18);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
         // options[0] = OptionParameter({
@@ -99,6 +99,10 @@ contract OptionTest is Test {
         shortOption = option.redemption_();
 
         redemption = option.redemption();
+
+
+        approve1(shakyToken_, address(factory));
+        approve1(stableToken_, address(factory));
     }
 
     function approve1(address token, address spender) public {
@@ -111,11 +115,11 @@ contract OptionTest is Test {
     }
 
     function safeTransfer(address token, address to, uint256 amount) internal {
-        require(IERC20(token).transfer(to, amount), "Transfer failed");
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function safeTransferFrom(address token, address from, address to, uint256 amount) internal {
-        require(IERC20(token).transferFrom(from, to, amount), "TransferFrom failed");
+        IERC20(token).safeTransferFrom(from, to, amount);
     }
 
     function consoleBalances() public view {
@@ -126,15 +130,15 @@ contract OptionTest is Test {
     }
 
     modifier t1() {
-        approve1(shakyToken_, shortOption);
-        approve1(stableToken_, shortOption);
+        approve1(shakyToken_, address(factory));
+        approve1(stableToken_, address(factory));
         _;
         consoleBalances();
     }
 
     modifier t2() {
-        approve2(shakyToken_, shortOption);
-        approve2(stableToken_, shortOption);
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         _;
         consoleBalances();
     }
@@ -311,8 +315,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, shortOption);
-        approve1(stableToken_, shortOption);
+        approve1(shakyToken_, address(factory));
+        approve1(stableToken_, address(factory));
         option.exercise(3);
         vm.stopPrank();
 
@@ -389,8 +393,8 @@ contract OptionTest is Test {
     }
 
     function test_RedeemConsiderationInsufficientBalance() public {
-        approve1(shakyToken_, shortOption);
-        approve1(stableToken_, shortOption);
+        approve1(shakyToken_, address(factory));
+        approve1(stableToken_, address(factory));
 
         option.mint(10);
 
@@ -402,7 +406,7 @@ contract OptionTest is Test {
         shakyToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, shortOption);
+        approve1(shakyToken_, address(factory));
         option.mint(address(0x123), 5);
         vm.stopPrank();
 
@@ -491,8 +495,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, shortOption);
-        approve1(stableToken_, shortOption);
+        approve1(shakyToken_, address(factory));
+        approve1(stableToken_, address(factory));
         option.exercise(3);
         redemption.redeemConsideration(2);
         vm.stopPrank();
