@@ -66,7 +66,7 @@ contract OptionTest is Test {
         );
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
         // options[0] = OptionParameter({

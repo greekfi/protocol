@@ -55,9 +55,7 @@ contract SwapCallback is SafeCallback {
         uint160 sqrtPriceLimit = zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1;
 
         SwapParams memory params = SwapParams({
-            zeroForOne: zeroForOne,
-            amountSpecified: -int128(int256(amountIn)),
-            sqrtPriceLimitX96: sqrtPriceLimit
+            zeroForOne: zeroForOne, amountSpecified: -int128(int256(amountIn)), sqrtPriceLimitX96: sqrtPriceLimit
         });
 
         BalanceDelta delta = poolManager.swap(
@@ -122,7 +120,7 @@ abstract contract OpHookTestBase is Test {
         uint256 expiration = block.timestamp + 30 days;
         Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
         Option o = new Option("", "", weth_, usdc_, expiration, 1e22, false, address(r));
-        OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(r), address(o), permit2_, 0.0001e18);
 
         option1_ = factory.createOption(
             "OPT-WETH-USDC-3600-30D", "OPT-WETH-USDC-3600-30D", weth_, usdc_, expiration, 3600e18, false
@@ -163,28 +161,20 @@ abstract contract OpHookTestBase is Test {
         deal(usdc_, opHook_, 1000e18);
         deal(usdc_, poolManager_, 1000e18);
 
+        usdc.approve(address(factory), 1000e6);
         usdc.approve(opHook_, 1000e6);
         usdc.approve(poolManager_, 1000e6);
         usdc.approve(permit2_, 1000e6);
-        usdc.approve(option1_, 1000e6);
-        usdc.approve(option2_, 1000e6);
-        usdc.approve(option3_, 1000e6);
-        usdc.approve(option1.redemption_(), 1000e6);
-        usdc.approve(option2.redemption_(), 1000e6);
-        usdc.approve(option3.redemption_(), 1000e6);
-        weth.approve(option1.redemption_(), 1000e6);
-        weth.approve(option2.redemption_(), 1000e6);
-        weth.approve(option3.redemption_(), 1000e6);
+        weth.approve(address(factory), 1000e18);
+        weth.approve(address(permit2_), 1000e18);
 
         permit2.approve(usdc_, poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
         permit2.approve(usdc_, opHook_, type(uint160).max, uint48(block.timestamp + 1 days));
 
         // Hook needs to approve WETH to Permit2 and then to redemption contracts for minting
         vm.startPrank(opHook_);
-        weth.approve(address(permit2_), type(uint256).max);
-        permit2.approve(weth_, option1.redemption_(), type(uint160).max, type(uint48).max);
-        permit2.approve(weth_, option2.redemption_(), type(uint160).max, type(uint48).max);
-        permit2.approve(weth_, option3.redemption_(), type(uint160).max, type(uint48).max);
+        weth.approve(address(factory), 1000e18);
+        usdc.approve(address(factory), 1000e6);
         vm.stopPrank();
     }
 
@@ -272,11 +262,7 @@ abstract contract OpHookTestBase is Test {
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(
             IV4Router.ExactInputSingleParams({
-                poolKey: poolKey1,
-                zeroForOne: zeroForOne,
-                amountIn: 1e6,
-                amountOutMinimum: 0,
-                hookData: bytes("")
+                poolKey: poolKey1, zeroForOne: zeroForOne, amountIn: 1e6, amountOutMinimum: 0, hookData: bytes("")
             })
         );
         params[1] = abi.encode(inputCurrency, type(uint256).max);

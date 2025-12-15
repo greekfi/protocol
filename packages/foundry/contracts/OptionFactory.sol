@@ -59,9 +59,8 @@ contract OptionFactory is Ownable {
     AddressSet.Set private _optionsSet;
     AddressSet.Set private _redemptionsSet;
 
-
     constructor(address redemption_, address option_, address permit2_, uint256 fee_) Ownable(msg.sender) {
-        require(fee <= .01e18, "fee too high");
+        require(fee <= 0.01e18, "fee too high");
         redemptionClone = redemption_;
         optionClone = option_;
         permit2 = IPermit2(permit2_);
@@ -162,7 +161,8 @@ contract OptionFactory is Ownable {
      */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
         require(
-            _redemptionsSet.contains(msg.sender) || _optionsSet.contains(msg.sender), "Not an option-redemption contract"
+            _redemptionsSet.contains(msg.sender) || _optionsSet.contains(msg.sender),
+            "Not an option-redemption contract"
         );
 
         (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
