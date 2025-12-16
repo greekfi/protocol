@@ -7,10 +7,14 @@ const nextConfig: any = {
     ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
   },
   turbopack: {},
-  serverExternalPackages: ["pino-pretty", "lokijs", "encoding"],
+  serverExternalPackages: ["pino-pretty", "lokijs", "encoding", "thread-stream"],
   webpack: (config: any) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
-    config.externals.push("pino-pretty", "lokijs", "encoding");
+    config.externals.push("pino-pretty", "lokijs", "encoding", "thread-stream");
+    config.module.rules.push({
+      test: /\.test\.(js|ts|jsx|tsx)$/,
+      loader: "ignore-loader",
+    });
     return config;
   },
 };
