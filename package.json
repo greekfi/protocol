@@ -50,16 +50,16 @@
     "verify": "yarn foundry:verify"
   },
   "dependencies": {
-    "react": "~19.2.0",
-    "react-dom": "~19.2.0"
+    "react": "~19.2.3",
+    "react-dom": "~19.2.3"
   },
   "devDependencies": {
     "@types/fastestsmallesttextencoderdecoder": "^1.0.2",
-    "@types/react": "^19.2.2",
-    "eslint": "9.39.1",
+    "@types/react": "^19.2.7",
+    "eslint": "9.39.2",
     "husky": "~9.1.7",
-    "lint-staged": "~16.2.6",
-    "next": "16.0.10",
+    "lint-staged": "~16.2.7",
+    "next": "^16.0.10",
     "typescript": "~5.9.3"
   },
   "packageManager": "yarn@3.2.3",
