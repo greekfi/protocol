@@ -59,7 +59,7 @@
     "eslint": "9.39.2",
     "husky": "~9.1.7",
     "lint-staged": "~16.2.7",
-    "next": "^16.0.10",
+    "next": "16.0.10",
     "typescript": "~5.9.3"
   },
   "packageManager": "yarn@3.2.3",
@@ -67,7 +67,7 @@
     "node": ">=20.18.3"
   },
   "resolutions": {
-    "next": "latest",
+    "next": "16.0.10",
     "fast-redact": "3.5.0",
     "esbuild": "0.25.12",
     "path-to-regexp": "8.3.0",
