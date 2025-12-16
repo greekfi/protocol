@@ -30,17 +30,23 @@ interface IFactory {
 contract Redemption is OptionBase {
     address public option;
     AddressSet.Set private _accounts;
+    bool public locked = false;
 
     event Redeemed(address option, address token, address holder, uint256 amount);
 
+    modifier notLocked() {
+        if (locked) revert ContractLocked();
+        _;
+    }
+
     modifier sufficientCollateral(address account, uint256 amount) {
-        require(collateral.balanceOf(account) >= amount, "Insufficient Collateral");
+        if (collateral.balanceOf(account) < amount) revert InsufficientCollateral();
         _;
     }
 
     modifier sufficientConsideration(address account, uint256 amount) {
         uint256 consAmount = toConsideration(amount);
-        require(consideration.balanceOf(account) >= consAmount, "Insufficient Consideration");
+        if (consideration.balanceOf(account) < consAmount) revert InsufficientConsideration();
         _;
     }
 
@@ -87,31 +93,40 @@ contract Redemption is OptionBase {
         public
         onlyOwner
         notExpired
+        notLocked
         nonReentrant
         validAmount(amount)
         sufficientCollateral(account, amount)
         validAddress(account)
         saveAccount(account)
     {
+        // Check balance before transfer to detect fee-on-transfer tokens
+        uint256 balanceBefore = collateral.balanceOf(address(this));
+
         _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
+
+        // Verify full amount was received (fails for fee-on-transfer tokens)
+        uint256 balanceAfter = collateral.balanceOf(address(this));
+        if (balanceAfter - balanceBefore != amount) revert FeeOnTransferNotSupported();
+
         uint256 amountMinusFee = amount - toFee(amount);
         _mint(account, amountMinusFee);
     }
 
-    function redeem(address account) public {
+    function redeem(address account) public notLocked {
         redeem(account, balanceOf(account));
     }
 
-    function redeem(uint256 amount) public {
+    function redeem(uint256 amount) public notLocked {
         redeem(msg.sender, amount);
     }
 
-    function redeem(address account, uint256 amount) public expired nonReentrant {
+    function redeem(address account, uint256 amount) public expired notLocked nonReentrant {
         _redeem(account, amount);
     }
 
     /// only LongOption can call
-    function _redeemPair(address account, uint256 amount) public notExpired onlyOwner {
+    function _redeemPair(address account, uint256 amount) public notExpired notLocked onlyOwner {
         _redeem(account, amount);
     }
 
@@ -133,11 +148,11 @@ contract Redemption is OptionBase {
         emit Redeemed(address(option), address(collateral), account, amount);
     }
 
-    function redeemConsideration(uint256 amount) public {
+    function redeemConsideration(uint256 amount) public notLocked {
         redeemConsideration(msg.sender, amount);
     }
 
-    function redeemConsideration(address account, uint256 amount) public nonReentrant {
+    function redeemConsideration(address account, uint256 amount) public notLocked nonReentrant {
         _redeemConsideration(account, amount);
     }
 
@@ -156,6 +171,7 @@ contract Redemption is OptionBase {
     function exercise(address account, uint256 amount, address caller)
         public
         notExpired
+        notLocked
         onlyOwner
         nonReentrant
         sufficientConsideration(caller, amount)
@@ -166,11 +182,11 @@ contract Redemption is OptionBase {
         collateral.safeTransfer(account, amount);
     }
 
-    function sweep(address holder) public expired nonReentrant {
+    function sweep(address holder) public expired notLocked nonReentrant {
         _redeem(holder, balanceOf(holder));
     }
 
-    function sweep(uint256 start, uint256 stop) public expired nonReentrant {
+    function sweep(uint256 start, uint256 stop) public expired notLocked nonReentrant {
         for (uint256 i = start; i < stop; i++) {
             address holder = _accounts.at(i);
             if (balanceOf(holder) > 0) {
@@ -179,8 +195,12 @@ contract Redemption is OptionBase {
         }
     }
 
-    function sweep() public expired nonReentrant {
-        sweep(0, _accounts.length());
+    function lock() public onlyOwner {
+        locked = true;
+    }
+
+    function unlock() public onlyOwner {
+        locked = false;
     }
 
     /// @notice Get the number of accounts tracked

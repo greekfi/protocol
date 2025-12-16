@@ -7,6 +7,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
 // The Long Option contract is the owner of the Short Option contract
@@ -20,6 +21,12 @@ using SafeERC20 for IERC20;
 // to be any asset and collateral to be any asset as well. This can allow wETH to be used
 // as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
 // or even staked stable coins can be used as well for either consideration or collateral.
+
+// IMPORTANT: This protocol does NOT support fee-on-transfer or rebasing tokens.
+// - Fee-on-transfer tokens will fail during minting due to accounting mismatches
+// - Rebasing tokens will break the collateral accounting invariants
+// - Use wrapped versions for rebasing tokens (e.g., wstETH instead of stETH)
+// - The factory maintains a blocklist of known problematic tokens
 
 interface IFactory {
     function transferFrom(address from, address to, uint160 amount, address token) external;
@@ -72,7 +79,6 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     bool public initialized = false;
     string private _tokenName;
     string private _tokenSymbol;
-    bool public locked = false;
     address public factory;
     IFactory public _factory;
     uint256 public fee;
@@ -81,6 +87,12 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     error ContractExpired();
     error InsufficientBalance();
     error InvalidValue();
+    error InvalidAddress();
+    error ContractLocked();
+    error FeeOnTransferNotSupported();
+    error InsufficientCollateral();
+    error InsufficientConsideration();
+    error TokenBlocklisted();
 
     modifier expired() {
         if (block.timestamp < expirationDate) revert ContractNotExpired();
@@ -93,18 +105,13 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         _;
     }
 
-    modifier notLocked() {
-        require(!locked, "Contract is Locked");
-        _;
-    }
-
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert InvalidValue();
         _;
     }
 
     modifier validAddress(address addr) {
-        require(addr != address(0), "Invalid address");
+        if (addr == address(0)) revert InvalidAddress();
         _;
     }
 
@@ -137,15 +144,15 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        return (amount * strike * 10 ** consDecimals) / (STRIKE_DECIMALS * 10 ** collDecimals);
+        return Math.mulDiv(amount * (10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        return (consAmount * 10 ** collDecimals * STRIKE_DECIMALS) / (strike * 10 ** consDecimals);
+        return Math.mulDiv(consAmount * (10 ** collDecimals), STRIKE_DECIMALS, strike * (10 ** consDecimals));
     }
 
     function toFee(uint256 amount) public view returns (uint256) {
-        return (fee * amount) / 1e18;
+        return Math.mulDiv(fee, amount, 1e18);
     }
 
     function init(
@@ -214,14 +221,6 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
             considerationMetadata.symbol(),
             considerationMetadata.decimals()
         );
-    }
-
-    function lock() public onlyOwner {
-        locked = true;
-    }
-
-    function unlock() public onlyOwner {
-        locked = false;
     }
 
     function min(uint256 a, uint256 b) internal pure returns (uint256) {

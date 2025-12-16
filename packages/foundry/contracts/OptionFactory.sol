@@ -43,6 +43,9 @@ contract OptionFactory is Ownable {
     uint256 public fee;
     IPermit2 public permit2;
 
+    error BlocklistedToken();
+    error InvalidAddress();
+
     event OptionCreated(
         address option,
         address redemption,
@@ -53,11 +56,16 @@ contract OptionFactory is Ownable {
         bool isPut
     );
 
+    event TokenBlocklisted(address token, bool blocked);
+
     mapping(address => mapping(address => OptionInfo[])) public options;
     AddressSet.Set private _collaterals;
     AddressSet.Set private _considerations;
     AddressSet.Set private _optionsSet;
     AddressSet.Set private _redemptionsSet;
+
+    // Blocklist for fee-on-transfer and rebasing tokens
+    mapping(address => bool) public blocklist;
 
     constructor(address redemption_, address option_, address permit2_, uint256 fee_) Ownable(msg.sender) {
         require(fee <= 0.01e18, "fee too high");
@@ -76,6 +84,9 @@ contract OptionFactory is Ownable {
         uint256 strike,
         bool isPut
     ) public returns (address) {
+        // Check blocklist for fee-on-transfer and rebasing tokens
+        if (blocklist[collateral] || blocklist[consideration]) revert BlocklistedToken();
+
         address redemption_ = Clones.clone(redemptionClone);
         address option_ = Clones.clone(optionClone);
 
@@ -216,5 +227,27 @@ contract OptionFactory is Ownable {
 
     function isConsideration(address token) public view returns (bool) {
         return _considerations.contains(token);
+    }
+
+    /// @notice Add a token to the blocklist (e.g., fee-on-transfer or rebasing tokens)
+    /// @param token The token address to blocklist
+    function addToBlocklist(address token) external onlyOwner {
+        if (token == address(0)) revert InvalidAddress();
+        blocklist[token] = true;
+        emit TokenBlocklisted(token, true);
+    }
+
+    /// @notice Remove a token from the blocklist
+    /// @param token The token address to remove from blocklist
+    function removeFromBlocklist(address token) external onlyOwner {
+        blocklist[token] = false;
+        emit TokenBlocklisted(token, false);
+    }
+
+    /// @notice Check if a token is blocklisted
+    /// @param token The token address to check
+    /// @return bool True if the token is blocklisted
+    function isBlocklisted(address token) external view returns (bool) {
+        return blocklist[token];
     }
 }

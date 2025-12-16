@@ -22,7 +22,9 @@
       "Bash(git submodule:*)",
       "Bash(git fetch:*)",
       "Bash(git add:*)",
-      "Bash(git describe:*)"
+      "Bash(git describe:*)",
+      "Bash(yarn foundry:test:*)",
+      "Bash(forge clean:*)"
     ],
     "deny": [],
     "ask": []

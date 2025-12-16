@@ -38,6 +38,11 @@ contract Option is OptionBase {
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
 
+    modifier notLocked() {
+        if (redemption.locked()) revert ContractLocked();
+        _;
+    }
+
     constructor(
         string memory name,
         string memory symbol,
@@ -70,15 +75,15 @@ contract Option is OptionBase {
         redemption = Redemption(redemption_);
     }
 
-    function mint(uint256 amount) public {
+    function mint(uint256 amount) public notLocked {
         mint(msg.sender, amount);
     }
 
-    function mint(address account, uint256 amount) public nonReentrant {
+    function mint(address account, uint256 amount) public notLocked nonReentrant {
         mint_(account, amount);
     }
 
-    function mint_(address account, uint256 amount) internal notExpired notLocked validAmount(amount) {
+    function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
         redemption.mint(account, amount);
         uint256 amountMinusFees = amount - toFee(amount);
         _mint(account, amountMinusFees);
@@ -114,21 +119,21 @@ contract Option is OptionBase {
         }
     }
 
-    function exercise(uint256 amount) public {
+    function exercise(uint256 amount) public notLocked {
         exercise(msg.sender, amount);
     }
 
-    function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
+    function exercise(address account, uint256 amount) public notExpired notLocked nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
         redemption.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
-    function redeem(uint256 amount) public {
+    function redeem(uint256 amount) public notLocked {
         redeem(msg.sender, amount);
     }
 
-    function redeem(address account, uint256 amount) public nonReentrant {
+    function redeem(address account, uint256 amount) public notLocked nonReentrant {
         redeem_(account, amount);
     }
 
@@ -144,6 +149,14 @@ contract Option is OptionBase {
             option: balanceOf(account),
             redemption: redemption.balanceOf(account)
         });
+    }
+
+    function lock() public onlyOwner {
+        redemption.lock();
+    }
+
+    function unlock() public onlyOwner {
+        redemption.unlock();
     }
 
     function details() public view returns (OptionInfo memory) {
