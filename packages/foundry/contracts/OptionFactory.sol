@@ -11,7 +11,7 @@ import { Redemption } from "./Redemption.sol";
 
 using SafeERC20 for ERC20;
 
-
+/// @notice Parameters for creating an option contract
 struct OptionParameter {
     address collateral_;
     address consideration_;
@@ -20,15 +20,34 @@ struct OptionParameter {
     bool isPut;
 }
 
+/**
+ * @title OptionFactory
+ * @notice Factory contract for creating option pairs using minimal proxy clones (EIP-1167)
+ * @dev Deploys gas-efficient minimal proxy clones of Option and Redemption template contracts.
+ *      Maintains a blocklist for fee-on-transfer and rebasing tokens to prevent issues.
+ *      Provides centralized token transfer functionality via transferFrom to support dual approval systems.
+ */
 contract OptionFactory is Ownable {
+    // ============ STATE VARIABLES ============
+
+    /// @notice Address of the Redemption template contract for cloning
     address public redemptionClone;
+
+    /// @notice Address of the Option template contract for cloning
     address public optionClone;
+
+    /// @notice Protocol fee percentage (in 1e18 basis)
     uint64 public fee;
 
+    /// @notice Maximum allowed fee (1%)
     uint256 public constant MAX_FEE = 0.01e18; // 1%
+
+    // ============ ERRORS ============
 
     error BlocklistedToken();
     error InvalidAddress();
+
+    // ============ EVENTS ============
 
     event OptionCreated(
         address collateral,
@@ -42,12 +61,22 @@ contract OptionFactory is Ownable {
 
     event TokenBlocked(address token, bool blocked);
 
-    // Redemptions tracking - map used for security check in transferFrom()
+    // ============ STORAGE MAPPINGS ============
+
+    /// @notice Tracks valid redemption contracts for security in transferFrom()
     mapping(address => bool) private redemptions;
 
-    // Blocklist for fee-on-transfer and rebasing tokens
+    /// @notice Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
 
+    // ============ CONSTRUCTOR ============
+
+    /**
+     * @notice Constructs the OptionFactory with template contracts and fee
+     * @param redemption_ Address of the Redemption template contract
+     * @param option_ Address of the Option template contract
+     * @param fee_ Protocol fee percentage (must be <= MAX_FEE)
+     */
     constructor(address redemption_, address option_, uint64 fee_) Ownable(msg.sender) {
         require(fee_ <= MAX_FEE, "fee too high");
         redemptionClone = redemption_;
@@ -55,6 +84,19 @@ contract OptionFactory is Ownable {
         fee = fee_;
     }
 
+    // ============ OPTION CREATION FUNCTIONS ============
+
+    /**
+     * @notice Creates a new option pair (Option + Redemption contracts)
+     * @dev Clones template contracts, initializes them with parameters, and links them together.
+     *      Checks that tokens are not blocklisted before deployment.
+     * @param collateral Address of the collateral token (what backs the option)
+     * @param consideration Address of the consideration token (payment for exercise)
+     * @param expirationDate Unix timestamp when the option expires
+     * @param strike Strike price (18 decimal encoding)
+     * @param isPut True for put option, false for call option
+     * @return Address of the created Option contract
+     */
     function createOption(address collateral, address consideration, uint40 expirationDate, uint96 strike, bool isPut)
         public
         returns (address)
@@ -76,6 +118,11 @@ contract OptionFactory is Ownable {
         return option_;
     }
 
+    /**
+     * @notice Batch creates multiple option pairs from an array of parameters
+     * @dev Convenience function for deploying multiple options in a single transaction
+     * @param optionParams Array of OptionParameter structs defining each option to create
+     */
     function createOptions(OptionParameter[] memory optionParams) public {
         for (uint256 i = 0; i < optionParams.length; i++) {
             OptionParameter memory param = optionParams[i];
@@ -83,9 +130,17 @@ contract OptionFactory is Ownable {
         }
     }
 
+    // ============ TOKEN TRANSFER FUNCTION ============
+
     /**
-     * @notice External function to transfer tokens using Permit2 or ERC20 allowance
-     * @dev Only called by redemption contracts. Tries Permit2 first (modern UX), falls back to ERC20
+     * @notice Transfers tokens from one address to another using standard ERC20 approval
+     * @dev Only callable by registered Redemption contracts. Used during mint() and exercise().
+     *      Provides centralized transfer logic to support future dual approval systems.
+     * @param from Address to transfer tokens from
+     * @param to Address to transfer tokens to
+     * @param amount Amount of tokens to transfer
+     * @param token Address of the token to transfer
+     * @return success True if transfer succeeded
      */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
         // Only redemption contracts can call this (used in mint() and exercise())
@@ -94,24 +149,35 @@ contract OptionFactory is Ownable {
         return true;
     }
 
-    /// @notice Add a token to the blocklist (e.g., fee-on-transfer or rebasing tokens)
-    /// @param token The token address to blocklist
+    // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============
+
+    /**
+     * @notice Adds a token to the blocklist
+     * @dev Prevents creation of new options using this token. Use for fee-on-transfer or rebasing tokens.
+     *      Only callable by owner.
+     * @param token The token address to blocklist
+     */
     function blockToken(address token) external onlyOwner {
         if (token == address(0)) revert InvalidAddress();
         blocklist[token] = true;
         emit TokenBlocked(token, true);
     }
 
-    /// @notice Remove a token from the blocklist
-    /// @param token The token address to remove from blocklist
+    /**
+     * @notice Removes a token from the blocklist
+     * @dev Re-enables option creation using this token. Only callable by owner.
+     * @param token The token address to remove from blocklist
+     */
     function unblockToken(address token) external onlyOwner {
         blocklist[token] = false;
         emit TokenBlocked(token, false);
     }
 
-    /// @notice Check if a token is blocklisted
-    /// @param token The token address to check
-    /// @return bool True if the token is blocklisted
+    /**
+     * @notice Checks if a token is blocklisted
+     * @param token The token address to check
+     * @return True if the token is blocklisted, false otherwise
+     */
     function isBlocked(address token) external view returns (bool) {
         return blocklist[token];
     }
