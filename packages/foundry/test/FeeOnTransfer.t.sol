@@ -94,11 +94,6 @@ contract FeeOnTransferTest is Test {
         optionClone = new Option(
             "Option Template",
             "OPTT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            1e18,
-            false,
             address(redemptionClone)
         );
 
@@ -121,7 +116,7 @@ contract FeeOnTransferTest is Test {
             "FOT-REDEMPTION",
             address(fotToken), // Blocklisted collateral
             address(stableToken),
-            block.timestamp + 1 days,
+            uint40(block.timestamp + 1 days),
             1e18,
             false
         );
@@ -139,7 +134,7 @@ contract FeeOnTransferTest is Test {
             "FOT-REDEMPTION",
             address(stableToken),
             address(fotToken), // Blocklisted consideration
-            block.timestamp + 1 days,
+            uint40(block.timestamp + 1 days),
             1e18,
             false
         );
@@ -161,7 +156,7 @@ contract FeeOnTransferTest is Test {
             "FOT-REDEMPTION",
             address(fotToken),
             address(stableToken),
-            block.timestamp + 1 days,
+            uint40(block.timestamp + 1 days),
             1e18,
             false
         );
@@ -186,7 +181,7 @@ contract FeeOnTransferTest is Test {
             "FOT-REDEMPTION",
             address(fotToken),
             address(stableToken),
-            block.timestamp + 1 days,
+            uint40(block.timestamp + 1 days),
             1e18,
             false
         );
@@ -219,8 +214,8 @@ contract FeeOnTransferTest is Test {
             redemptionSymbol: "NORMAL-REDEMPTION",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
-            expiration: block.timestamp + 1 days,
-            strike: 1e18,
+            expiration: uint40(block.timestamp + 1 days),
+            strike: uint96(1e18),
             isPut: false
         });
 

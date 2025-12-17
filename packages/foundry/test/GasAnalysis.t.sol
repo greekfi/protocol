@@ -60,11 +60,6 @@ contract GasAnalysis is Test {
         optionTemplate = new Option(
             "Long Template",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            1e18,
-            false,
             address(redemptionTemplate)
         );
 
@@ -83,8 +78,8 @@ contract GasAnalysis is Test {
             redemptionSymbol: "SHORT-ETH",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
-            expiration: block.timestamp + 30 days,
-            strike: 1e18,
+            expiration: uint40(block.timestamp + 30 days),
+            strike: uint96(1e18),
             isPut: false
         });
 
@@ -101,12 +96,12 @@ contract GasAnalysis is Test {
 
     function _setupApprovals() internal {
         // Approve Permit2
-        IERC20(address(stableToken)).approve(PERMIT2, MAX256);
-        IERC20(address(shakyToken)).approve(PERMIT2, MAX256);
+        IERC20(address(stableToken)).approve(address(factory), MAX256);
+        IERC20(address(shakyToken)).approve(address(factory), MAX256);
 
         // Approve factory via Permit2
-        permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
-        permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
+        // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
+        // permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
     }
 
     // ============================================
@@ -120,8 +115,8 @@ contract GasAnalysis is Test {
             redemptionSymbol: "SHORT-BTC",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
-            expiration: block.timestamp + 60 days,
-            strike: 2e18,
+            expiration: uint40(block.timestamp + 60 days),
+            strike: uint96(2e18),
             isPut: false
         });
 
@@ -134,7 +129,7 @@ contract GasAnalysis is Test {
             "SHORT-DIRECT",
             address(shakyToken),
             address(stableToken),
-            block.timestamp + 60 days,
+            uint40(block.timestamp + 60 days),
             2e18,
             false
         );
@@ -149,8 +144,8 @@ contract GasAnalysis is Test {
                 redemptionSymbol: string(abi.encodePacked("SHORT-", i)),
                 collateral_: address(shakyToken),
                 consideration_: address(stableToken),
-                expiration: block.timestamp + 30 days + (i * 1 days),
-                strike: 1e18 + (i * 0.1e18),
+                expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
+                strike: uint96(1e18 + (i * 0.1e18)),
                 isPut: false
             });
         }
@@ -171,8 +166,8 @@ contract GasAnalysis is Test {
                 redemptionSymbol: redemptionSym,
                 collateral_: address(shakyToken),
                 consideration_: address(stableToken),
-                expiration: block.timestamp + 30 days + (i * 1 days),
-                strike: 1e18 + (i * 0.1e18),
+                expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
+                strike: uint96(1e18 + (i * 0.1e18)),
                 isPut: false
             });
         }
@@ -241,8 +236,8 @@ contract GasAnalysis is Test {
         shakyToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        IERC20(address(shakyToken)).approve(PERMIT2, MAX256);
-        permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
+        IERC20(address(shakyToken)).approve(address(factory), MAX256);
+        // permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
         option.mint(address(0x123), 10);
         vm.stopPrank();
     }
@@ -530,8 +525,8 @@ contract GasAnalysis is Test {
         // User 2 exercises
         stableToken.mint(address(0x123), 1000e18);
         vm.startPrank(address(0x123));
-        IERC20(address(stableToken)).approve(PERMIT2, MAX256);
-        permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
+        IERC20(address(stableToken)).approve(address(factory), MAX256);
+        // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
         option.exercise(25);
         vm.stopPrank();
 
@@ -575,11 +570,6 @@ contract GasAnalysis is Test {
         new Option(
             "Long Template",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            1e18,
-            false,
             address(redemptionTemplate)
         );
     }

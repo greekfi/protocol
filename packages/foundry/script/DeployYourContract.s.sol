@@ -38,11 +38,6 @@ contract DeployYourContract is ScaffoldETHDeploy {
         Option long = new Option(
             "Option",
             "OPT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
             address(short)
         );
 

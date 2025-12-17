@@ -125,11 +125,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
     constructor(
         string memory name_,
         string memory symbol_,
-        address collateral_,
-        address consideration_,
-        uint256 expirationDate_,
-        uint256 strike_,
-        bool isPut_,
         address redemption__
      ) ERC20(name_, symbol_) Ownable(msg.sender) {
         redemption = Redemption(redemption__);
@@ -138,25 +133,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
     function init(
         string memory name_,
         string memory symbol_,
-        address collateral_,
-        address consideration_,
-        uint256 expirationDate_,
-        uint256 strike_,
-        bool isPut_,
         address redemption__,
         address owner,
-        address factory_,
         uint64 fee_
     ) public initializer {
         
-        if (collateral_ == address(0)) revert InvalidAddress();
-        if (consideration_ == address(0)) revert InvalidAddress();
-        if (factory_ == address(0)) revert InvalidAddress();
-        if (strike_ == 0) revert InvalidValue();
-        if (expirationDate_ < block.timestamp) revert InvalidValue();
-
-        _tokenName = name_;
-        _tokenSymbol = symbol_;
         fee = fee_;
 
         // set owner so factory can call restricted functions
@@ -164,10 +145,10 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
         redemption = Redemption(redemption__);
     }
     function name() public view override returns (string memory) {
-        return _tokenName;
+        return "";
     }
     function symbol() public view override returns (string memory) {
-        return _tokenSymbol;
+        return "";
     }
     function collateral() public view returns (address) {
         return address(redemption.collateral());
@@ -195,9 +176,12 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
 
     function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
         redemption.mint(account, amount);
-        uint256 amountMinusFees = amount - toFee(amount);
-        _mint(account, amountMinusFees);
-        emit Mint(address(this), account, amountMinusFees);
+        // Inline fee calculation (safe: max fee is 1%, can't overflow)
+        unchecked {
+            uint256 amountMinusFees = amount - ((amount * fee) / 1e18);
+            _mint(account, amountMinusFees);
+            emit Mint(address(this), account, amountMinusFees);
+        }
     }
 
     function transferFrom(address from, address to, uint256 amount)

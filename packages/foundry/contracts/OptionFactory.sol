@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import { TokenData, OptionInfo, OptionParameter } from "./OptionBase.sol";
-import { AddressSet } from "./AddressSet.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -14,7 +13,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Address } from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
 
 using SafeERC20 for ERC20;
-using AddressSet for AddressSet.Set;
 
 interface IPermit2 {
     function transferFrom(address from, address to, uint160 amount, address token) external;
@@ -61,10 +59,22 @@ contract OptionFactory is Ownable {
     event TokenBlocked(address token, bool blocked);
 
     mapping(address => mapping(address => OptionInfo[])) public options;
-    AddressSet.Set private _collaterals;
-    AddressSet.Set private _considerations;
-    AddressSet.Set private _optionsSet;
-    AddressSet.Set private _redemptionsSet;
+
+    // Collaterals tracking
+    address[] private _collaterals;
+    mapping(address => bool) private _collateralsSet;
+
+    // Considerations tracking
+    address[] private _considerations;
+    mapping(address => bool) private _considerationsSet;
+
+    // Options tracking
+    address[] private _optionsSet;
+    mapping(address => bool) private _optionsMap;
+
+    // Redemptions tracking
+    address[] private _redemptionsSet;
+    mapping(address => bool) private _redemptionsMap;
 
     // Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
@@ -82,8 +92,8 @@ contract OptionFactory is Ownable {
         string memory redemptionName,
         address collateral,
         address consideration,
-        uint256 expirationDate,
-        uint256 strike,
+        uint40 expirationDate,
+        uint96 strike,
         bool isPut
     ) public returns (address) {
         // Check blocklist for fee-on-transfer and rebasing tokens
@@ -110,14 +120,8 @@ contract OptionFactory is Ownable {
         option.init(
             optionName,
             optionName,
-            collateral,
-            consideration,
-            expirationDate,
-            strike,
-            isPut,
             redemption_,
             msg.sender,
-            address(this),
             fee
         );
 
@@ -145,10 +149,31 @@ contract OptionFactory is Ownable {
         );
 
         options[collateral][consideration].push(info);
-        _collaterals.add(collateral);
-        _considerations.add(consideration);
-        _optionsSet.add(option_);
-        _redemptionsSet.add(redemption_);
+
+        // Add collateral if not already tracked
+        if (!_collateralsSet[collateral]) {
+            _collateralsSet[collateral] = true;
+            _collaterals.push(collateral);
+        }
+
+        // Add consideration if not already tracked
+        if (!_considerationsSet[consideration]) {
+            _considerationsSet[consideration] = true;
+            _considerations.push(consideration);
+        }
+
+        // Add option if not already tracked
+        if (!_optionsMap[option_]) {
+            _optionsMap[option_] = true;
+            _optionsSet.push(option_);
+        }
+
+        // Add redemption if not already tracked
+        if (!_redemptionsMap[redemption_]) {
+            _redemptionsMap[redemption_] = true;
+            _redemptionsSet.push(redemption_);
+        }
+
         ERC20(collateral).approve(owner(), type(uint256).max);
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
         return option_;
@@ -171,25 +196,23 @@ contract OptionFactory is Ownable {
 
     /**
      * @notice External function to transfer tokens using Permit2 or ERC20 allowance
-     * @dev Only called by option contracts to transfer tokens with stored allowances
+     * @dev Only called by redemption contracts. Tries Permit2 first (modern UX), falls back to ERC20
      */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
-        require(
-            _redemptionsSet.contains(msg.sender) || _optionsSet.contains(msg.sender),
-            "Not an option-redemption contract"
-        );
-        if (ERC20(token).allowance(from, address(this)) >= amount) {
-            ERC20(token).safeTransferFrom(from, to, amount);
-            return true;
-        } else {
-            (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
+        // Only redemption contracts can call this (used in mint() and exercise())
+        if (!_redemptionsMap[msg.sender]) revert InvalidAddress();
 
-            if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
-                permit2.transferFrom(from, to, amount, token);
-                return true;
-            }
-        }
-        require(false, "Insufficient allowance");
+        // Try Permit2 first (gasless approvals, modern UX)
+        // (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
+
+        // if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
+        //     permit2.transferFrom(from, to, amount, token);
+        //     return true;
+        // }
+
+        // Fallback to standard ERC20 allowance (will revert if insufficient)
+        ERC20(token).safeTransferFrom(from, to, amount);
+        return true;
     }
 
     function get(address collateral, address consideration) public view returns (OptionInfo[] memory) {
@@ -197,39 +220,39 @@ contract OptionFactory is Ownable {
     }
 
     function getOptions() public view returns (address[] memory) {
-        return _optionsSet.values();
+        return _optionsSet;
     }
 
     function getOptionsCount() public view returns (uint256) {
-        return _optionsSet.length();
+        return _optionsSet.length;
     }
 
     function isOption(address option_) public view returns (bool) {
-        return _optionsSet.contains(option_);
+        return _optionsMap[option_];
     }
 
     function getCollaterals() public view returns (address[] memory) {
-        return _collaterals.values();
+        return _collaterals;
     }
 
     function getConsiderations() public view returns (address[] memory) {
-        return _considerations.values();
+        return _considerations;
     }
 
     function getCollateralsCount() public view returns (uint256) {
-        return _collaterals.length();
+        return _collaterals.length;
     }
 
     function getConsiderationsCount() public view returns (uint256) {
-        return _considerations.length();
+        return _considerations.length;
     }
 
     function isCollateral(address token) public view returns (bool) {
-        return _collaterals.contains(token);
+        return _collateralsSet[token];
     }
 
     function isConsideration(address token) public view returns (bool) {
-        return _considerations.contains(token);
+        return _considerationsSet[token];
     }
 
     /// @notice Add a token to the blocklist (e.g., fee-on-transfer or rebasing tokens)

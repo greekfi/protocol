@@ -44,8 +44,8 @@ struct OptionParameter {
     string redemptionSymbol;
     address collateral_;
     address consideration_;
-    uint256 expiration;
-    uint256 strike;
+    uint40 expiration;
+    uint96 strike;
     bool isPut;
 }
 
@@ -63,27 +63,22 @@ struct OptionInfo {
 }
 
 contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
-    uint256 public expirationDate;
     uint256 public strike;
-    uint256 public constant STRIKE_DECIMALS = 10 ** 18;
+    uint40 public expirationDate;
+    uint8 public constant STRIKE_DECIMALS = 18;
     // The strike price includes the ratio of the consideration to the collateral
     // and the decimal difference between the consideration and collateral along
     // with the strike decimals of 18.
     bool public isPut;
     IERC20 public collateral;
     IERC20 public consideration;
-    IERC20Metadata consMeta;
-    IERC20Metadata collMeta;
     uint8 consDecimals;
     uint8 collDecimals;
-    bool public initialized = false;
+    
     string private _tokenName;
     string private _tokenSymbol;
-    address public factory;
     IFactory public _factory;
-    uint256 public fee;
-    uint256 public consMultiple; // to convert option amount to consideration amount
-    uint256 public collMultiple; // to convert option amount to collateral amount
+    uint64 public fee;
 
     error ContractNotExpired();
     error ContractExpired();
@@ -135,29 +130,12 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 strike_,
         bool isPut_
     ) ERC20(name_, symbol_) Ownable(msg.sender) {
-        if (collateral_ == address(0)) revert InvalidValue();
-        if (consideration_ == address(0)) revert InvalidValue();
-        if (strike_ == 0) revert InvalidValue();
-        if (expirationDate_ < block.timestamp) revert InvalidValue();
-
-        expirationDate = expirationDate_;
-        strike = strike_;
-        isPut = isPut_;
-        collateral = IERC20(collateral_);
-        consideration = IERC20(consideration_);
-        _tokenName = name_;
-        _tokenSymbol = symbol_;
-
-        consMeta = IERC20Metadata(consideration_);
-        collMeta = IERC20Metadata(collateral_);
-        consDecimals = consMeta.decimals();
-        collDecimals = collMeta.decimals();
-
-        consMultiple = Math.mulDiv((10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
-        collMultiple = Math.mulDiv((10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
+        // Placeholder. Never really used.
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
+        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10**STRIKE_DECIMALS) * (10 ** collDecimals));
+
         (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
         if (high != 0) {
             revert ArithmeticOverflow();
@@ -166,6 +144,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
+        uint256 collMultiple = Math.mulDiv((10 ** collDecimals) * (10**STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
+
         (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
         if (high != 0) {
             revert ArithmeticOverflow();
@@ -182,12 +162,12 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         string memory symbol_,
         address collateral_,
         address consideration_,
-        uint256 expirationDate_,
+        uint40 expirationDate_,
         uint256 strike_,
         bool isPut_,
         address owner,
         address factory_,
-        uint256 fee_
+        uint64 fee_
     ) public virtual initializer {
         if (collateral_ == address(0)) revert InvalidAddress();
         if (consideration_ == address(0)) revert InvalidAddress();
@@ -202,17 +182,11 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         expirationDate = expirationDate_;
         strike = strike_;
         isPut = isPut_;
-        factory = factory_;
         _factory = IFactory(factory_);
         fee = fee_;
 
-        consMeta = IERC20Metadata(consideration_);
-        collMeta = IERC20Metadata(collateral_);
-        consDecimals = consMeta.decimals();
-        collDecimals = collMeta.decimals();
-
-        consMultiple = Math.mulDiv((10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
-        collMultiple = Math.mulDiv((10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
+        consDecimals = IERC20Metadata(consideration_).decimals();
+        collDecimals = IERC20Metadata(collateral_).decimals();
 
         // set owner so factory can call restricted functions
         _transferOwnership(owner);

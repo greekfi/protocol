@@ -58,11 +58,6 @@ contract OptionTest is Test {
         optionClone = new Option(
             "Long Option",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
             address(redemptionClone)
         );
 
@@ -89,7 +84,7 @@ contract OptionTest is Test {
             redemptionSymbol: "SHORT",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
-            expiration: block.timestamp + 1 days,
+            expiration: uint40(block.timestamp + 1 days),
             strike: 1e18,
             isPut: false
         });
@@ -132,6 +127,8 @@ contract OptionTest is Test {
     modifier t1() {
         approve1(shakyToken_, address(factory));
         approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         _;
         consoleBalances();
     }
@@ -315,8 +312,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         option.exercise(3);
         vm.stopPrank();
 
@@ -393,8 +390,8 @@ contract OptionTest is Test {
     }
 
     function test_RedeemConsiderationInsufficientBalance() public {
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
 
         option.mint(10);
 
@@ -406,7 +403,7 @@ contract OptionTest is Test {
         shakyToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
+        approve2(shakyToken_, address(factory));
         option.mint(address(0x123), 5);
         vm.stopPrank();
 
@@ -460,8 +457,8 @@ contract OptionTest is Test {
     }
 
     function test_ExerciseWithInsufficientConsideration() public {
-        approve1(shakyToken_, factory_);
-        approve1(stableToken_, factory_);
+        approve2(shakyToken_, factory_);
+        approve2(stableToken_, factory_);
 
         option.mint(100);
 
@@ -495,8 +492,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         option.exercise(3);
         redemption.redeemConsideration(2);
         vm.stopPrank();
@@ -608,11 +605,6 @@ contract OptionFunctionsTest is Test {
         optionClone = new Option(
             "Long Option",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
             address(redemptionClone)
         );
 
@@ -639,7 +631,7 @@ contract OptionFunctionsTest is Test {
             redemptionSymbol: "SHORT",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
-            expiration: block.timestamp + 1 days,
+            expiration: uint40(block.timestamp + 1 days),
             strike: 1e18,
             isPut: false
         });
@@ -651,8 +643,9 @@ contract OptionFunctionsTest is Test {
 
         redemption = option.redemption();
 
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        // Use standard ERC20 approvals since factory.transferFrom uses safeTransferFrom
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
     }
 
     function approve1(address token, address spender) public {
@@ -865,8 +858,8 @@ contract OptionFunctionsTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         option.exercise(3);
         vm.stopPrank();
 
@@ -943,8 +936,8 @@ contract OptionFunctionsTest is Test {
     }
 
     function test_RedeemConsiderationInsufficientBalance() public {
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
 
         option.mint(10);
 
@@ -956,7 +949,7 @@ contract OptionFunctionsTest is Test {
         shakyToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
+        approve2(shakyToken_, address(factory));
         option.mint(address(0x123), 5);
         vm.stopPrank();
 
@@ -1010,8 +1003,8 @@ contract OptionFunctionsTest is Test {
     }
 
     function test_ExerciseWithInsufficientConsideration() public {
-        approve1(shakyToken_, factory_);
-        approve1(stableToken_, factory_);
+        approve2(shakyToken_, factory_);
+        approve2(stableToken_, factory_);
 
         option.mint(100);
 
@@ -1045,8 +1038,8 @@ contract OptionFunctionsTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_, address(factory));
-        approve1(stableToken_, address(factory));
+        approve2(shakyToken_, address(factory));
+        approve2(stableToken_, address(factory));
         option.exercise(3);
         redemption.redeemConsideration(2);
         vm.stopPrank();
@@ -1234,11 +1227,6 @@ contract OptionTestLimited is Test {
         optionClone = new Option(
             "Long Option",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
             address(redemptionClone)
         );
     }
@@ -1263,11 +1251,6 @@ contract OptionTestLimited is Test {
         optionClone = new Option(
             "Long Option",
             "LONG",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
             address(redemptionClone)
         );
 

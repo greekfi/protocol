@@ -119,9 +119,9 @@ abstract contract OpHookTestBase is Test {
         permit2 = IPermit2(permit2_);
         poolManager = IPoolManager(poolManager_);
 
-        uint256 expiration = block.timestamp + 30 days;
+        uint40 expiration = uint40(block.timestamp + 30 days);
         Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
-        Option o = new Option("", "", weth_, usdc_, expiration, 1e22, false, address(r));
+        Option o = new Option("", "", address(r));
         OptionFactory factory = new OptionFactory(address(r), address(o), permit2_, 0.0001e18);
 
         option1_ = factory.createOption(
