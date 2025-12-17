@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { TokenData, OptionInfo, OptionParameter } from "./OptionBase.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Option } from "./Option.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Redemption } from "./Redemption.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Address } from "../lib/openzeppelin-contracts/contracts/utils/Address.sol";
+import { Redemption, TokenData, OptionInfo, OptionParameter  } from "./Redemption.sol";
 
 using SafeERC20 for ERC20;
 
@@ -106,8 +103,6 @@ contract OptionFactory is Ownable {
         Option option = Option(option_);
 
         redemption.init(
-            redemptionName,
-            redemptionName,
             collateral,
             consideration,
             expirationDate,
@@ -117,7 +112,7 @@ contract OptionFactory is Ownable {
             address(this),
             fee
         );
-        option.init(optionName, optionName, redemption_, msg.sender, fee);
+        option.init(redemption_, msg.sender, fee);
 
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, option.decimals()),

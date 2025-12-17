@@ -5,7 +5,6 @@ import { Test, console } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
-import { OptionBase } from "../contracts/OptionBase.sol";
 import { StableToken } from "../contracts/StableToken.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
@@ -197,7 +196,7 @@ contract FeeOnTransferTest is Test {
         uint256 mintAmount = 1000 * 10 ** 18;
 
         // Try to mint - should fail because FOT token transfers less than requested
-        vm.expectRevert(OptionBase.FeeOnTransferNotSupported.selector);
+        vm.expectRevert(Redemption.FeeOnTransferNotSupported.selector);
         option.mint(mintAmount);
     }
 

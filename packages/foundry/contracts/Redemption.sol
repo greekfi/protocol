@@ -174,8 +174,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     ) ERC20(name_, symbol_) Ownable(msg.sender) Initializable() { }
 
     function init(
-        string memory name_,
-        string memory symbol_,
         address collateral_,
         address consideration_,
         uint40 expirationDate_,

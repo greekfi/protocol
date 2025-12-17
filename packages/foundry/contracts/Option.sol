@@ -123,7 +123,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         redemption = Redemption(redemption__);
     }
 
-    function init(string memory name_, string memory symbol_, address redemption__, address owner, uint64 fee_)
+    function init(address redemption__, address owner, uint64 fee_)
         public
         initializer
     {

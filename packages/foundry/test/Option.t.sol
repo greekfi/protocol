@@ -5,7 +5,6 @@ import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
-import { OptionBase } from "../contracts/OptionBase.sol";
 import { Balances } from "../contracts/Option.sol";
 import { StableToken } from "../contracts/StableToken.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
@@ -391,7 +390,7 @@ contract OptionTest is Test {
 
         option.mint(10);
 
-        vm.expectRevert(OptionBase.InsufficientConsideration.selector);
+        vm.expectRevert(Redemption.InsufficientConsideration.selector);
         redemption.redeemConsideration(10);
     }
 
@@ -933,7 +932,7 @@ contract OptionFunctionsTest is Test {
 
         option.mint(10);
 
-        vm.expectRevert(OptionBase.InsufficientConsideration.selector);
+        vm.expectRevert(Redemption.InsufficientConsideration.selector);
         redemption.redeemConsideration(10);
     }
 
@@ -1489,7 +1488,7 @@ contract OptionTestLimited is Test {
 
     //     option.mint(10);
 
-    //     vm.expectRevert(OptionBase.InsufficientConsideration.selector);
+    //     vm.expectRevert(Redemption.InsufficientConsideration.selector);
     //     redemption.redeemConsideration(10);
     // }
 
