@@ -57,7 +57,7 @@ contract OptionTest is Test {
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone),  0.0001e18);
         factory_ = address(factory);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
@@ -75,8 +75,6 @@ contract OptionTest is Test {
 
         OptionParameter[] memory options = new OptionParameter[](1);
         options[0] = OptionParameter({
-            optionSymbol: "LONG",
-            redemptionSymbol: "SHORT",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
             expiration: uint40(block.timestamp + 1 days),
@@ -84,10 +82,14 @@ contract OptionTest is Test {
             isPut: false
         });
 
-        factory.createOptions(options);
-
-        address[] memory options1 = factory.getOptions();
-        option = Option(options1[0]);
+        address optionAddress = factory.createOption(
+            options[0].collateral_,
+            options[0].consideration_,
+            options[0].expiration,
+            options[0].strike,
+            options[0].isPut
+        );
+        option = Option(optionAddress);
 
         redemption = option.redemption();
 
@@ -600,7 +602,7 @@ contract OptionFunctionsTest is Test {
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
         factory_ = address(factory);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
@@ -618,8 +620,6 @@ contract OptionFunctionsTest is Test {
 
         OptionParameter[] memory options = new OptionParameter[](1);
         options[0] = OptionParameter({
-            optionSymbol: "LONG",
-            redemptionSymbol: "SHORT",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
             expiration: uint40(block.timestamp + 1 days),
@@ -627,10 +627,14 @@ contract OptionFunctionsTest is Test {
             isPut: false
         });
 
-        factory.createOptions(options);
-
-        address[] memory options1 = factory.getOptions();
-        option = Option(options1[0]);
+        address optionAddress = factory.createOption(
+            options[0].collateral_,
+            options[0].consideration_,
+            options[0].expiration,
+            options[0].strike,
+            options[0].isPut
+        );
+        option = Option(optionAddress);
 
         redemption = option.redemption();
 
@@ -1237,7 +1241,7 @@ contract OptionTestLimited is Test {
         // Deploy LongOption
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone),  0.0001e18);
         factory_ = address(factory);
     }
 

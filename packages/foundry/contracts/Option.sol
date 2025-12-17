@@ -49,23 +49,10 @@ struct Balances {
 }
 
 struct OptionInfo {
-    TokenData option;
-    TokenData redemption;
+    address option;
+    address redemption;
     TokenData collateral;
     TokenData consideration;
-    OptionParameter p;
-    address coll; //shortcut
-    address cons; //shortcut
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
-}
-
-struct OptionParameter {
-    string optionSymbol;
-    string redemptionSymbol;
-    address collateral_;
-    address consideration_;
     uint256 expiration;
     uint256 strike;
     bool isPut;
@@ -123,15 +110,10 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         redemption = Redemption(redemption__);
     }
 
-    function init(address redemption__, address owner, uint64 fee_)
-        public
-        initializer
-    {
-        fee = fee_;
-
-        // set owner so factory can call restricted functions
+    function init(address redemption_, address owner, uint64 fee_) public initializer {
         _transferOwnership(owner);
-        redemption = Redemption(redemption__);
+        redemption = Redemption(redemption_);
+        fee = fee_;
     }
 
     function name() public view override returns (string memory) {
@@ -268,24 +250,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 stk = strike();
         bool put = isPut();
 
-        OptionParameter memory opParam = OptionParameter({
-            optionSymbol: optName,
-            redemptionSymbol: redName,
-            collateral_: coll,
-            consideration_: cons,
-            expiration: exp,
-            strike: stk,
-            isPut: put
-        });
-
         return OptionInfo({
-            option: TokenData(address(this), optName, optSymbol, optDecimals),
-            redemption: TokenData(address(redemption), redName, redSymbol, optDecimals),
+            option: address(this),
+            redemption: address(redemption),
             collateral: TokenData(coll, collMeta.name(), collMeta.symbol(), collMeta.decimals()),
             consideration: TokenData(cons, consMeta.name(), consMeta.symbol(), consMeta.decimals()),
-            p: opParam,
-            coll: coll,
-            cons: cons,
             expiration: exp,
             strike: stk,
             isPut: put
@@ -298,9 +267,5 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
-    }
-
-    function toFee(uint256 amount) public view returns (uint256) {
-        return Math.mulDiv(fee, amount, 1e18);
     }
 }

@@ -122,18 +122,18 @@ abstract contract OpHookTestBase is Test {
         uint40 expiration = uint40(block.timestamp + 30 days);
         Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
         Option o = new Option("", "", address(r));
-        OptionFactory factory = new OptionFactory(address(r), address(o), permit2_, 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
 
         option1_ = factory.createOption(
-            "OPT-WETH-USDC-3600-30D", "OPT-WETH-USDC-3600-30D", weth_, usdc_, expiration, 3600e18, false
+			weth_, usdc_, expiration, 3600e18, false
         );
 
         option2_ = factory.createOption(
-            "OPT-WETH-USDC-4000-30D", "OPT-WETH-USDC-4000-30D", weth_, usdc_, expiration, 4000e18, false
+            weth_, usdc_, expiration, 4000e18, false
         );
 
         option3_ = factory.createOption(
-            "OPT-WETH-USDC-5000-30D", "OPT-WETH-USDC-5000-30D", weth_, usdc_, expiration, 5000e18, false
+            weth_, usdc_, expiration, 5000e18, false
         );
 
         option1 = IOption(option1_);
