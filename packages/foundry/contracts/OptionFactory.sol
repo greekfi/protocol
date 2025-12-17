@@ -117,23 +117,12 @@ contract OptionFactory is Ownable {
             address(this),
             fee
         );
-        option.init(
-            optionName,
-            optionName,
-            redemption_,
-            msg.sender,
-            fee
-        );
+        option.init(optionName, optionName, redemption_, msg.sender, fee);
 
         OptionInfo memory info = OptionInfo(
             TokenData(option_, optionName, optionName, option.decimals()),
             TokenData(redemption_, redemptionName, redemptionName, redemption.decimals()),
-            TokenData(
-                collateral,
-                option.name(),
-                option.symbol(),
-                option.decimals()
-            ),
+            TokenData(collateral, option.name(), option.symbol(), option.decimals()),
             TokenData(
                 consideration,
                 redemption.considerationData().name,

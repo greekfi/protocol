@@ -34,7 +34,6 @@ or even staked stable coins can be used as well for either consideration or coll
 
 */
 
-
 struct TokenData {
     address address_;
     string name;
@@ -42,14 +41,12 @@ struct TokenData {
     uint8 decimals;
 }
 
-
 struct Balances {
     uint256 collateral;
     uint256 consideration;
     uint256 option;
     uint256 redemption;
 }
-
 
 struct OptionInfo {
     TokenData option;
@@ -64,7 +61,6 @@ struct OptionInfo {
     bool isPut;
 }
 
-
 struct OptionParameter {
     string optionSymbol;
     string redemptionSymbol;
@@ -75,8 +71,7 @@ struct OptionParameter {
     bool isPut;
 }
 
-
-contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
+contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     Redemption public redemption;
     uint64 public fee;
     string private _tokenName;
@@ -121,47 +116,48 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
         _;
     }
 
-
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address redemption__
-     ) ERC20(name_, symbol_) Ownable(msg.sender) {
+    constructor(string memory name_, string memory symbol_, address redemption__)
+        ERC20(name_, symbol_)
+        Ownable(msg.sender)
+    {
         redemption = Redemption(redemption__);
     }
 
-    function init(
-        string memory name_,
-        string memory symbol_,
-        address redemption__,
-        address owner,
-        uint64 fee_
-    ) public initializer {
-        
+    function init(string memory name_, string memory symbol_, address redemption__, address owner, uint64 fee_)
+        public
+        initializer
+    {
         fee = fee_;
 
         // set owner so factory can call restricted functions
         _transferOwnership(owner);
         redemption = Redemption(redemption__);
     }
+
     function name() public view override returns (string memory) {
         return "";
     }
+
     function symbol() public view override returns (string memory) {
         return "";
     }
+
     function collateral() public view returns (address) {
         return address(redemption.collateral());
     }
+
     function consideration() public view returns (address) {
         return address(redemption.consideration());
     }
+
     function expirationDate() public view returns (uint256) {
         return redemption.expirationDate();
     }
+
     function strike() public view returns (uint256) {
         return redemption.strike();
     }
+
     function isPut() public view returns (bool) {
         return redemption.isPut();
     }
@@ -303,7 +299,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
     }
-
 
     function toFee(uint256 amount) public view returns (uint256) {
         return Math.mulDiv(fee, amount, 1e18);

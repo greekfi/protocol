@@ -91,11 +91,7 @@ contract FeeOnTransferTest is Test {
         );
 
         // Deploy Option template
-        optionClone = new Option(
-            "Option Template",
-            "OPTT",
-            address(redemptionClone)
-        );
+        optionClone = new Option("Option Template", "OPTT", address(redemptionClone));
 
         // Deploy OptionFactory
         factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);

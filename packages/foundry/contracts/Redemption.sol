@@ -63,8 +63,7 @@ struct OptionInfo {
     bool isPut;
 }
 
-
-contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  {
+contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ STORAGE LAYOUT (OPTIMIZED FOR PACKING) ============
 
     // Account tracking removed for gas optimization
@@ -80,24 +79,24 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
     // Better: Pack addresses together, then small types together
 
     // Slot N+2: collateral (20 bytes) + consideration (20 bytes) - WAIT, 40 bytes total, needs 2 slots
-    IERC20 public collateral;          // 20 bytes - Slot N+2
+    IERC20 public collateral; // 20 bytes - Slot N+2
 
     // Slot N+3: consideration (20 bytes) + _factory (20 bytes) - 40 bytes, needs 2 slots
-    IERC20 public consideration;       // 20 bytes - Slot N+3
+    IERC20 public consideration; // 20 bytes - Slot N+3
 
     // Slot N+4: _factory (20 bytes) + fee (8 bytes) + expirationDate (5 bytes) = 33 bytes - SPLIT
-    IFactory public _factory;          // 20 bytes - Slot N+4
-    uint64 public fee;                 // 8 bytes - Same slot as _factory
+    IFactory public _factory; // 20 bytes - Slot N+4
+    uint64 public fee; // 8 bytes - Same slot as _factory
 
     // Slot N+5: expirationDate (5 bytes) + isPut (1 byte) + locked (1 byte) + consDecimals (1 byte) + collDecimals (1 byte) = 9 bytes - FITS!
-    uint40 public expirationDate;      // 5 bytes - New slot N+5
-    bool public isPut;                 // 1 byte - Same slot
-    bool public locked;                // 1 byte - Same slot (defaults to false)
-    uint8 consDecimals;                // 1 byte - Same slot
-    uint8 collDecimals;                // 1 byte - Same slot
+    uint40 public expirationDate; // 5 bytes - New slot N+5
+    bool public isPut; // 1 byte - Same slot
+    bool public locked; // 1 byte - Same slot (defaults to false)
+    uint8 consDecimals; // 1 byte - Same slot
+    uint8 collDecimals; // 1 byte - Same slot
     // 23 bytes remaining in this slot
 
-    uint8 public constant STRIKE_DECIMALS = 18;  // Not stored (constant)
+    uint8 public constant STRIKE_DECIMALS = 18; // Not stored (constant)
 
     // ============ END STORAGE LAYOUT ============
 
@@ -186,7 +185,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
         address factory_,
         uint64 fee_
     ) public initializer {
-        
         if (collateral_ == address(0)) revert InvalidAddress();
         if (consideration_ == address(0)) revert InvalidAddress();
         if (factory_ == address(0)) revert InvalidAddress();
@@ -228,7 +226,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
 
         // Calculate fee and mint (safe: max fee is 1%, can't overflow with unchecked)
         unchecked {
-            uint256 fee_ = (amount * fee) / 1e18;  // Inline fee calculation
+            uint256 fee_ = (amount * fee) / 1e18; // Inline fee calculation
             fees += fee_;
             _mint(account, amount - fee_);
         }
@@ -338,9 +336,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
     // Account tracking functions removed for gas optimization
     // Use off-chain indexing (graph protocol, event logs) to track holders
 
-
     function toConsideration(uint256 amount) public view returns (uint256) {
-        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10**STRIKE_DECIMALS) * (10 ** collDecimals));
+        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10 ** STRIKE_DECIMALS) * (10 ** collDecimals));
 
         (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
         if (high != 0) {
@@ -350,7 +347,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        uint256 collMultiple = Math.mulDiv((10 ** collDecimals) * (10**STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
+        uint256 collMultiple =
+            Math.mulDiv((10 ** collDecimals) * (10 ** STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
 
         (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
         if (high != 0) {
@@ -363,14 +361,10 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable  
         return Math.mulDiv(fee, amount, 1e18);
     }
 
-
-function name() public view override returns (string memory) {
-    return string(abi.encodePacked(
-        IERC20Metadata(address(collateral)).symbol(),
-        "-REDEM-",
-        uint2str(expirationDate)
-    ));
-}
+    function name() public view override returns (string memory) {
+        return
+            string(abi.encodePacked(IERC20Metadata(address(collateral)).symbol(), "-REDEM-", uint2str(expirationDate)));
+    }
 
     function symbol() public view override returns (string memory) {
         return name();

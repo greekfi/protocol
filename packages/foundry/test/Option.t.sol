@@ -55,11 +55,7 @@ contract OptionTest is Test {
         );
 
         // Deploy LongOption
-        optionClone = new Option(
-            "Long Option",
-            "LONG",
-            address(redemptionClone)
-        );
+        optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
         factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
@@ -602,11 +598,7 @@ contract OptionFunctionsTest is Test {
         );
 
         // Deploy LongOption
-        optionClone = new Option(
-            "Long Option",
-            "LONG",
-            address(redemptionClone)
-        );
+        optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
         factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
@@ -1224,11 +1216,7 @@ contract OptionTestLimited is Test {
         );
 
         // Deploy LongOption
-        optionClone = new Option(
-            "Long Option",
-            "LONG",
-            address(redemptionClone)
-        );
+        optionClone = new Option("Long Option", "LONG", address(redemptionClone));
     }
 
     function test_CreateFactory() public {
@@ -1248,11 +1236,7 @@ contract OptionTestLimited is Test {
         );
 
         // Deploy LongOption
-        optionClone = new Option(
-            "Long Option",
-            "LONG",
-            address(redemptionClone)
-        );
+        optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         factory = new OptionFactory(address(redemptionClone), address(optionClone), PERMIT2, 0.0001e18);
         factory_ = address(factory);

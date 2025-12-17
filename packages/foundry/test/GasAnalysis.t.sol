@@ -57,11 +57,7 @@ contract GasAnalysis is Test {
             "Short Template", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 1e18, false
         );
 
-        optionTemplate = new Option(
-            "Long Template",
-            "LONG",
-            address(redemptionTemplate)
-        );
+        optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy factory
         factory = new OptionFactory(
@@ -567,11 +563,7 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_OptionTemplate() public {
-        new Option(
-            "Long Template",
-            "LONG",
-            address(redemptionTemplate)
-        );
+        new Option("Long Template", "LONG", address(redemptionTemplate));
     }
 
     function test_Gas_Deploy_Factory() public {

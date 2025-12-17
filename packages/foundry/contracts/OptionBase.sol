@@ -74,7 +74,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     IERC20 public consideration;
     uint8 consDecimals;
     uint8 collDecimals;
-    
+
     string private _tokenName;
     string private _tokenSymbol;
     IFactory public _factory;
@@ -134,7 +134,7 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10**STRIKE_DECIMALS) * (10 ** collDecimals));
+        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10 ** STRIKE_DECIMALS) * (10 ** collDecimals));
 
         (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
         if (high != 0) {
@@ -144,7 +144,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        uint256 collMultiple = Math.mulDiv((10 ** collDecimals) * (10**STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
+        uint256 collMultiple =
+            Math.mulDiv((10 ** collDecimals) * (10 ** STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
 
         (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
         if (high != 0) {
