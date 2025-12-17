@@ -224,7 +224,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
         transferCash(cashToken, p.cashAmount);
         option.mint(p.optionAmount);
-        option.safeTransfer(to, p.optionAmount);
+        option.transfer(to, p.optionAmount);
 
         emit Swap(msg.sender, to, amount, p.price);
     }
@@ -259,7 +259,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
             option.mint(a.optionAmount);
             poolManager.take(cashCurrency, address(this), a.cashAmount);
             poolManager.sync(optionCurrency);
-            option.safeTransfer(pm, a.optionAmount);
+            option.transfer(pm, a.optionAmount);
             poolManager.settle();
             delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(a.optionAmount));
         } else {

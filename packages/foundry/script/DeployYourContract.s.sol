@@ -36,6 +36,6 @@ contract DeployYourContract is ScaffoldETHDeploy {
 
         Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long),  0.0001e18);
+        new OptionFactory(address(short), address(long), 0.0001e18);
     }
 }

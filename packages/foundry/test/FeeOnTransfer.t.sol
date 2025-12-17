@@ -92,7 +92,7 @@ contract FeeOnTransferTest is Test {
         optionClone = new Option("Option Template", "OPTT", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone),  0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted collateral

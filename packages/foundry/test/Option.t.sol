@@ -56,7 +56,7 @@ contract OptionTest is Test {
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone),  0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
         factory_ = address(factory);
 
         // OptionParameter[] memory options = new OptionParameter[](1);
@@ -1240,7 +1240,7 @@ contract OptionTestLimited is Test {
         // Deploy LongOption
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
-        factory = new OptionFactory(address(redemptionClone), address(optionClone),  0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
         factory_ = address(factory);
     }
 

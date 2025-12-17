@@ -31,13 +31,9 @@ interface IOptionFactory {
     function MAX_FEE() external view returns (uint256);
     function blocklist(address token) external view returns (bool);
 
-    function createOption(
-        address collateral,
-        address consideration,
-        uint40 expirationDate,
-        uint96 strike,
-        bool isPut
-    ) external returns (address);
+    function createOption(address collateral, address consideration, uint40 expirationDate, uint96 strike, bool isPut)
+        external
+        returns (address);
 
     function createOptions(OptionParameter[] memory optionParams) external;
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success);

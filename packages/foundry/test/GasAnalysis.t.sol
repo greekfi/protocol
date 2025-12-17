@@ -529,6 +529,6 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate),  0.0001e18);
+        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
     }
 }

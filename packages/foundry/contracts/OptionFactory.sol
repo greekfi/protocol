@@ -181,4 +181,14 @@ contract OptionFactory is Ownable {
     function isBlocked(address token) external view returns (bool) {
         return blocklist[token];
     }
+
+    /**
+     * @notice Transfers fees to the owner
+     * @param token The token address to transfer
+     */
+    function claimFees(address token) public onlyOwner {
+        ERC20 token_ = ERC20(token);
+        uint256 amount = token_.balanceOf(address(this));
+        token_.safeTransferFrom(address(this), owner(), amount);
+    }
 }

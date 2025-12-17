@@ -323,11 +323,13 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
         _burn(account, collateralToSend);
 
-        if (balance < amount) { // fulfill with consideration because not enough collateral
+        if (balance < amount) {
+            // fulfill with consideration because not enough collateral
             _redeemConsideration(account, amount - balance);
         }
 
-        if (collateralToSend > 0) { // Transfer remaining collateral afterwards
+        if (collateralToSend > 0) {
+            // Transfer remaining collateral afterwards
             collateral.safeTransfer(account, collateralToSend);
         }
         emit Redeemed(address(owner()), address(collateral), account, amount);
@@ -429,10 +431,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Only callable by the factory. Transfers all accumulated fees to factory.
      */
     function claimFees() public onlyOwner nonReentrant {
-        if (msg.sender != address(_factory)) {
-            revert InvalidAddress();
-        }
-        collateral.safeTransfer(msg.sender, fees);
+        collateral.safeTransfer(address(_factory), fees);
         fees = 0;
     }
 

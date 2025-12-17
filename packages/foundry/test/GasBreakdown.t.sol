@@ -33,7 +33,7 @@ contract GasBreakdown is Test {
 
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate),  0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
 
         IERC20(address(stableToken)).approve(address(factory), type(uint256).max);
         IERC20(address(shakyToken)).approve(address(factory), type(uint256).max);
