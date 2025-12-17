@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -62,7 +62,7 @@ struct OptionInfo {
     bool isPut;
 }
 
-contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
+contract OptionBase is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint256 public expirationDate;
     uint256 public strike;
     uint256 public constant STRIKE_DECIMALS = 10 ** 18;
@@ -72,8 +72,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     bool public isPut;
     IERC20 public collateral;
     IERC20 public consideration;
-    IERC20Metadata cons;
-    IERC20Metadata coll;
+    IERC20Metadata consMeta;
+    IERC20Metadata collMeta;
     uint8 consDecimals;
     uint8 collDecimals;
     bool public initialized = false;
@@ -90,11 +90,15 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     error InsufficientBalance();
     error InvalidValue();
     error InvalidAddress();
-    error ContractLocked();
+    error LockedContract();
     error FeeOnTransferNotSupported();
     error InsufficientCollateral();
     error InsufficientConsideration();
     error TokenBlocklisted();
+    error ArithmeticOverflow();
+
+    event ContractLocked();
+    event ContractUnlocked();
 
     modifier expired() {
         if (block.timestamp < expirationDate) revert ContractNotExpired();
@@ -143,15 +147,20 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         consideration = IERC20(consideration_);
         _tokenName = name_;
         _tokenSymbol = symbol_;
-        consMultiple = Math.mulDiv( (10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
-        collMultiple = Math.mulDiv( (10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
 
+        consMeta = IERC20Metadata(consideration_);
+        collMeta = IERC20Metadata(collateral_);
+        consDecimals = consMeta.decimals();
+        collDecimals = collMeta.decimals();
+
+        consMultiple = Math.mulDiv((10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
+        collMultiple = Math.mulDiv((10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
         (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
         if (high != 0) {
-            revert InvalidValue();
+            revert ArithmeticOverflow();
         }
         return low;
     }
@@ -159,9 +168,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     function toCollateral(uint256 consAmount) public view returns (uint256) {
         (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
         if (high != 0) {
-            revert InvalidValue();
+            revert ArithmeticOverflow();
         }
-        return low; 
+        return low;
     }
 
     function toFee(uint256 amount) public view returns (uint256) {
@@ -180,10 +189,9 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         address factory_,
         uint256 fee_
     ) public virtual initializer {
-        require(!initialized, "already init");
-        initialized = true;
-        if (collateral_ == address(0)) revert InvalidValue();
-        if (consideration_ == address(0)) revert InvalidValue();
+        if (collateral_ == address(0)) revert InvalidAddress();
+        if (consideration_ == address(0)) revert InvalidAddress();
+        if (factory_ == address(0)) revert InvalidAddress();
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
 
@@ -198,10 +206,13 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         _factory = IFactory(factory_);
         fee = fee_;
 
-        cons = IERC20Metadata(consideration_);
-        coll = IERC20Metadata(collateral_);
-        consDecimals = cons.decimals();
-        collDecimals = coll.decimals();
+        consMeta = IERC20Metadata(consideration_);
+        collMeta = IERC20Metadata(collateral_);
+        consDecimals = consMeta.decimals();
+        collDecimals = collMeta.decimals();
+
+        consMultiple = Math.mulDiv((10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
+        collMultiple = Math.mulDiv((10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
 
         // set owner so factory can call restricted functions
         _transferOwnership(owner);

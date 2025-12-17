@@ -192,7 +192,7 @@ contract FeeOnTransferTest is Test {
         );
 
         option = Option(optionAddress);
-        redemption = Redemption(option.redemption_());
+        redemption = Redemption(option.redemption());
 
         // Approve tokens
         fotToken.approve(address(factory), MAX160);
@@ -228,7 +228,7 @@ contract FeeOnTransferTest is Test {
 
         address[] memory optionAddresses = factory.getOptions();
         option = Option(optionAddresses[0]);
-        redemption = Redemption(option.redemption_());
+        redemption = Redemption(option.redemption());
 
         // Approve tokens
         shakyToken.approve(address(factory), MAX160);
@@ -255,12 +255,12 @@ contract FeeOnTransferTest is Test {
     function test_BlocklistEventEmission() public {
         // Test add event
         vm.expectEmit(true, true, false, false);
-        emit OptionFactory.TokenBlocklisted(address(fotToken), true);
+        emit OptionFactory.TokenBlocked(address(fotToken), true);
         factory.addToBlocklist(address(fotToken));
 
         // Test remove event
         vm.expectEmit(true, true, false, false);
-        emit OptionFactory.TokenBlocklisted(address(fotToken), false);
+        emit OptionFactory.TokenBlocked(address(fotToken), false);
         factory.removeFromBlocklist(address(fotToken));
     }
 

@@ -24,7 +24,8 @@
       "Bash(git add:*)",
       "Bash(git describe:*)",
       "Bash(yarn foundry:test:*)",
-      "Bash(forge clean:*)"
+      "Bash(forge clean:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

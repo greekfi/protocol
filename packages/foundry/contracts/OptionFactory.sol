@@ -40,8 +40,10 @@ interface IPermit2 {
 contract OptionFactory is Ownable {
     address public redemptionClone;
     address public optionClone;
-    uint256 public fee;
+    uint64 public fee;
     IPermit2 public permit2;
+
+    uint256 constant MAX_FEE = 0.01e18; // 1%
 
     error BlocklistedToken();
     error InvalidAddress();
@@ -56,7 +58,7 @@ contract OptionFactory is Ownable {
         bool isPut
     );
 
-    event TokenBlocklisted(address token, bool blocked);
+    event TokenBlocked(address token, bool blocked);
 
     mapping(address => mapping(address => OptionInfo[])) public options;
     AddressSet.Set private _collaterals;
@@ -67,8 +69,8 @@ contract OptionFactory is Ownable {
     // Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
 
-    constructor(address redemption_, address option_, address permit2_, uint256 fee_) Ownable(msg.sender) {
-        require(fee <= 0.01e18, "fee too high");
+    constructor(address redemption_, address option_, address permit2_, uint64 fee_) Ownable(msg.sender) {
+        require(fee_ <= MAX_FEE, "fee too high");
         redemptionClone = redemption_;
         optionClone = option_;
         permit2 = IPermit2(permit2_);
@@ -124,15 +126,15 @@ contract OptionFactory is Ownable {
             TokenData(redemption_, redemptionName, redemptionName, redemption.decimals()),
             TokenData(
                 collateral,
-                option.collateralData().name,
-                option.collateralData().symbol,
-                option.collateralData().decimals
+                option.name(),
+                option.symbol(),
+                option.decimals()
             ),
             TokenData(
                 consideration,
-                option.considerationData().name,
-                option.considerationData().symbol,
-                option.considerationData().decimals
+                redemption.considerationData().name,
+                redemption.considerationData().symbol,
+                redemption.considerationData().decimals
             ),
             OptionParameter(optionName, redemptionName, collateral, consideration, expirationDate, strike, isPut),
             collateral,
@@ -147,6 +149,7 @@ contract OptionFactory is Ownable {
         _considerations.add(consideration);
         _optionsSet.add(option_);
         _redemptionsSet.add(redemption_);
+        ERC20(collateral).approve(owner(), type(uint256).max);
         emit OptionCreated(option_, redemption_, collateral, consideration, expirationDate, strike, isPut);
         return option_;
     }
@@ -175,18 +178,18 @@ contract OptionFactory is Ownable {
             _redemptionsSet.contains(msg.sender) || _optionsSet.contains(msg.sender),
             "Not an option-redemption contract"
         );
-
-        (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
-
-        if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
-            permit2.transferFrom(from, to, amount, token);
-            return true;
-        } else if (ERC20(token).allowance(from, address(this)) >= amount) {
+        if (ERC20(token).allowance(from, address(this)) >= amount) {
             ERC20(token).safeTransferFrom(from, to, amount);
             return true;
         } else {
-            require(false, "Insufficient allowance");
+            (uint160 allowAmount, uint48 expiration,) = permit2.allowance(from, token, address(this));
+
+            if (allowAmount >= amount && expiration > uint48(block.timestamp)) {
+                permit2.transferFrom(from, to, amount, token);
+                return true;
+            }
         }
+        require(false, "Insufficient allowance");
     }
 
     function get(address collateral, address consideration) public view returns (OptionInfo[] memory) {
@@ -234,14 +237,14 @@ contract OptionFactory is Ownable {
     function addToBlocklist(address token) external onlyOwner {
         if (token == address(0)) revert InvalidAddress();
         blocklist[token] = true;
-        emit TokenBlocklisted(token, true);
+        emit TokenBlocked(token, true);
     }
 
     /// @notice Remove a token from the blocklist
     /// @param token The token address to remove from blocklist
     function removeFromBlocklist(address token) external onlyOwner {
         blocklist[token] = false;
-        emit TokenBlocklisted(token, false);
+        emit TokenBlocked(token, false);
     }
 
     /// @notice Check if a token is blocklisted

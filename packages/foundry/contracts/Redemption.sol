@@ -5,10 +5,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { OptionBase } from "./OptionBase.sol";
-import { AddressSet } from "./AddressSet.sol";
+// import { AddressSet } from "./AddressSet.sol";
 
 using SafeERC20 for IERC20;
-using AddressSet for AddressSet.Set;
+// using AddressSet for AddressSet.Set;
 /*
 The Option contract is the owner of the Redemption contract
 The Option contract is the only one that can mint new mint
@@ -29,13 +29,16 @@ interface IFactory {
 
 contract Redemption is OptionBase {
     address public option;
-    AddressSet.Set private _accounts;
+    address[] private _accounts;
+    mapping(address => bool) private accountsSet;
     bool public locked = false;
+
+    uint256 fees;
 
     event Redeemed(address option, address token, address holder, uint256 amount);
 
     modifier notLocked() {
-        if (locked) revert ContractLocked();
+        if (locked) revert LockedContract();
         _;
     }
 
@@ -50,14 +53,14 @@ contract Redemption is OptionBase {
         _;
     }
 
-    modifier saveAccount(address account) {
-        _accounts.add(account);
-        _;
-    }
+    // saveAccount modifier removed - _update already handles adding to _accounts
 
     function _update(address from, address to, uint256 value) internal override {
         super._update(from, to, value);
-        _accounts.add(to);
+        if(!accountsSet[to]) {
+            accountsSet[to] = true;
+            _accounts.push(to);
+        }
     }
 
     constructor(
@@ -98,7 +101,6 @@ contract Redemption is OptionBase {
         validAmount(amount)
         sufficientCollateral(account, amount)
         validAddress(account)
-        saveAccount(account)
     {
         // Check balance before transfer to detect fee-on-transfer tokens
         uint256 balanceBefore = collateral.balanceOf(address(this));
@@ -109,8 +111,10 @@ contract Redemption is OptionBase {
         uint256 balanceAfter = collateral.balanceOf(address(this));
         if (balanceAfter - balanceBefore != amount) revert FeeOnTransferNotSupported();
 
-        uint256 amountMinusFee = amount - toFee(amount);
+        uint256 fee = toFee(amount);
+        uint256 amountMinusFee = amount - fee;
         _mint(account, amountMinusFee);
+        fees += fee;
     }
 
     function redeem(address account) public notLocked {
@@ -188,11 +192,19 @@ contract Redemption is OptionBase {
 
     function sweep(uint256 start, uint256 stop) public expired notLocked nonReentrant {
         for (uint256 i = start; i < stop; i++) {
-            address holder = _accounts.at(i);
+            address holder = _accounts[i];
             if (balanceOf(holder) > 0) {
                 _redeem(holder, balanceOf(holder));
             }
         }
+    }
+
+    function claimFees() public onlyOwner nonReentrant {
+        if (msg.sender != address(_factory)) {
+            revert InvalidAddress();
+        }
+        collateral.safeTransfer(msg.sender, fees);
+        fees = 0;
     }
 
     function lock() public onlyOwner {
@@ -205,11 +217,11 @@ contract Redemption is OptionBase {
 
     /// @notice Get the number of accounts tracked
     function accountsLength() external view returns (uint256) {
-        return _accounts.length();
+        return _accounts.length;
     }
 
     /// @notice Get account at index
     function getAccount(uint256 index) external view returns (address) {
-        return _accounts.at(index);
+        return _accounts[index];
     }
 }
