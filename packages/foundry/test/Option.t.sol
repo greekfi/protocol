@@ -6,8 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances } from "../contracts/Option.sol";
-import { StableToken } from "../contracts/StableToken.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 contract OptionTest is Test {

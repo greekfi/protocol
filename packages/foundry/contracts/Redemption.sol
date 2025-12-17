@@ -10,25 +10,8 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
-// import { OptionBase } from "./OptionBase.sol";
-// import { AddressSet } from "./AddressSet.sol";
 
 using SafeERC20 for IERC20;
-// using AddressSet for AddressSet.Set;
-/*
-The Option contract is the owner of the Redemption contract
-The Option contract is the only one that can mint new mint
-The Option contract is the only one that can exercise mint
-The redemption is only possible if you own both the Option and
-Redemption contracts but performed by the Option contract
-
-In mint traditionally a Consideration is cash and a Collateral is an asset
-Here, we do not distinguish between the Cash and Asset concept and allow consideration
-to be any asset and collateral to be any asset as well. This can allow wETH to be used
-as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-or even staked stable coins can be used as well for either consideration or collateral.
-*/
-
 interface IFactory {
     function transferFrom(address from, address to, uint160 amount, address token) external;
 }
@@ -56,8 +39,8 @@ struct OptionInfo {
     TokenData collateral;
     TokenData consideration;
     OptionParameter p;
-    address coll; //shortcut
-    address cons; //shortcut
+    address coll;
+    address cons;
     uint256 expiration;
     uint256 strike;
     bool isPut;
@@ -72,7 +55,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // mapping(address => bool) private accountsSet;  // REMOVED
 
     // Slot N: uint256 values (32 bytes each, separate slots)
-    uint256 fees;
+    uint256 public fees;
     uint256 public strike;
 
     // Slot N+2: Packed slot (20 + 8 + 5 + 1 + 1 + 1 = 36 bytes - EXCEEDS 32, split needed)
@@ -159,10 +142,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    // saveAccount modifier removed - _update already handles adding to _accounts
-
-    // _update override removed - no longer tracking accounts for gas optimization
-
     constructor(
         string memory name_,
         string memory symbol_,
@@ -189,8 +168,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
 
-        // _tokenName = name_;
-        // _tokenSymbol = symbol_;
         collateral = IERC20(collateral_);
         consideration = IERC20(consideration_);
         expirationDate = expirationDate_;
@@ -253,13 +230,11 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
         _burn(account, collateralToSend);
 
-        if (balance < amount) {
-            // fulfill with consideration because not enough collateral
+        if (balance < amount) { // fulfill with consideration because not enough collateral
             _redeemConsideration(account, amount - balance);
         }
 
-        if (collateralToSend > 0) {
-            // Transfer remaining collateral afterwards
+        if (collateralToSend > 0) { // Transfer remaining collateral afterwards
             collateral.safeTransfer(account, collateralToSend);
         }
         emit Redeemed(address(owner()), address(collateral), account, amount);

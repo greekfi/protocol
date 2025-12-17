@@ -5,8 +5,7 @@ import { Test, console } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
-import { StableToken } from "../contracts/StableToken.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 /// @notice Mock fee-on-transfer token for testing

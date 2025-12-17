@@ -11,8 +11,7 @@ import { OpHook } from "../contracts/OpHook.sol";
 import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
-import { StableToken } from "../contracts/StableToken.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
 /// @notice Mines the address and deploys the PointsHook.sol Hook contract
 contract DeployOp is Script, ScaffoldETHDeploy {

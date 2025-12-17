@@ -13,26 +13,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
-/*
-The Option contract is the owner of the Redemption contract
-The Option contract is the only one that can mint new mint
-The Option contract is the only one that can exercise mint
-The redemption is only possible if you own both the Option and
-Redemption contracts but performed by the Option contract
 
-In mint traditionally a Consideration is cash and a Collateral is an asset
-Here, we do not distinguish between the Cash and Asset concept and allow consideration
-to be any asset and collateral to be any asset as well. This can allow wETH to be used
-as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-or even staked stable coins can be used as well for either consideration or collateral.
-
-In minting, traditionally a Consideration is cash and a Collateral is an asset
-Here, we do not distinguish between the Cash and Asset concept and allow consideration
-to be any asset and collateral to be any asset as well. This can allow wETH to be used
-as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-or even staked stable coins can be used as well for either consideration or collateral.
-
-*/
 
 struct TokenData {
     address address_;
@@ -241,11 +222,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         IERC20Metadata collMeta = IERC20Metadata(coll);
 
         // Cache frequently accessed values
-        string memory optName = name();
-        string memory optSymbol = symbol();
-        string memory redName = redemption.name();
-        string memory redSymbol = redemption.symbol();
-        uint8 optDecimals = decimals();
         uint256 exp = expirationDate();
         uint256 stk = strike();
         bool put = isPut();

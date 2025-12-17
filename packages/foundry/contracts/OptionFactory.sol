@@ -11,17 +11,6 @@ import { Redemption } from "./Redemption.sol";
 
 using SafeERC20 for ERC20;
 
-// The Long OptionParameter contract is the owner of the Short OptionParameter contract
-// The Long OptionParameter contract is the only one that can mint new mint
-// The Long OptionParameter contract is the only one that can exercise mint
-// The redemption is only possible if you own both the Long and Short OptionParameter contracts but
-// performed by the Long OptionParameter contract
-
-// In mint traditionally a Consideration is cash and a Collateral is an asset
-// Here, we do not distinguish between the Cash and Asset concept and allow consideration
-// to be any asset and collateral to be any asset as well. This can allow wETH to be used
-// as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-// or even staked stable coins can be used as well for either consideration or collateral.
 
 struct OptionParameter {
     address collateral_;
@@ -36,7 +25,7 @@ contract OptionFactory is Ownable {
     address public optionClone;
     uint64 public fee;
 
-    uint256 constant MAX_FEE = 0.01e18; // 1%
+    uint256 public constant MAX_FEE = 0.01e18; // 1%
 
     error BlocklistedToken();
     error InvalidAddress();
@@ -54,7 +43,7 @@ contract OptionFactory is Ownable {
     event TokenBlocked(address token, bool blocked);
 
     // Redemptions tracking - map used for security check in transferFrom()
-    mapping(address => bool) private _redemptionsMap;
+    mapping(address => bool) private redemptions;
 
     // Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
@@ -81,7 +70,7 @@ contract OptionFactory is Ownable {
 
         redemption.init(collateral, consideration, expirationDate, strike, isPut, option_, address(this), fee);
         option.init(redemption_, msg.sender, fee);
-        _redemptionsMap[redemption_] = true;
+        redemptions[redemption_] = true;
 
         emit OptionCreated(collateral, consideration, expirationDate, strike, isPut, option_, redemption_);
         return option_;
@@ -100,7 +89,7 @@ contract OptionFactory is Ownable {
      */
     function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
         // Only redemption contracts can call this (used in mint() and exercise())
-        if (!_redemptionsMap[msg.sender]) revert InvalidAddress();
+        if (!redemptions[msg.sender]) revert InvalidAddress();
         ERC20(token).safeTransferFrom(from, to, amount);
         return true;
     }

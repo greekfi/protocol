@@ -3,8 +3,7 @@ pragma solidity ^0.8.19;
 
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
-import { StableToken } from "../contracts/StableToken.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
 /**
