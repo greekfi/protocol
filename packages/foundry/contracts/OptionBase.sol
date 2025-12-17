@@ -82,6 +82,8 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
     address public factory;
     IFactory public _factory;
     uint256 public fee;
+    uint256 public consMultiple; // to convert option amount to consideration amount
+    uint256 public collMultiple; // to convert option amount to collateral amount
 
     error ContractNotExpired();
     error ContractExpired();
@@ -141,14 +143,25 @@ contract OptionBase is ERC20, Ownable, ReentrancyGuard, Initializable {
         consideration = IERC20(consideration_);
         _tokenName = name_;
         _tokenSymbol = symbol_;
+        consMultiple = Math.mulDiv( (10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
+        collMultiple = Math.mulDiv( (10 ** collDecimals) * STRIKE_DECIMALS, 1, strike * (10 ** consDecimals));
+
     }
 
     function toConsideration(uint256 amount) public view returns (uint256) {
-        return Math.mulDiv(amount * (10 ** consDecimals), strike, STRIKE_DECIMALS * (10 ** collDecimals));
+        (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
+        if (high != 0) {
+            revert InvalidValue();
+        }
+        return low;
     }
 
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        return Math.mulDiv(consAmount * (10 ** collDecimals), STRIKE_DECIMALS, strike * (10 ** consDecimals));
+        (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
+        if (high != 0) {
+            revert InvalidValue();
+        }
+        return low; 
     }
 
     function toFee(uint256 amount) public view returns (uint256) {
