@@ -26,18 +26,9 @@ contract DeployOp is Script, ScaffoldETHDeploy {
             "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
 
-        Option long = new Option(
-            "Option",
-            "OPT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
-            address(short)
-        );
+        Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long), 0.0001e18);
+        new OptionFactory(address(short), address(long), address(ConstantsUnichain.PERMIT2), 0.0001e18);
 
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // Deploy OpHook using HookMiner to get correct address

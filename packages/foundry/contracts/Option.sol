@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { OptionBase, OptionInfo, OptionParameter, TokenData } from "./OptionBase.sol";
+// import { OptionBase, OptionInfo, TokenData } from "./OptionBase.sol";
 import { Redemption } from "./Redemption.sol";
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
+using SafeERC20 for IERC20;
 /*
 The Option contract is the owner of the Redemption contract
 The Option contract is the only one that can mint new mint
@@ -24,6 +34,13 @@ or even staked stable coins can be used as well for either consideration or coll
 
 */
 
+struct TokenData {
+    address address_;
+    string name;
+    string symbol;
+    uint8 decimals;
+}
+
 struct Balances {
     uint256 collateral;
     uint256 consideration;
@@ -31,58 +48,136 @@ struct Balances {
     uint256 redemption;
 }
 
-contract Option is OptionBase {
-    address public redemption_;
+struct OptionInfo {
+    TokenData option;
+    TokenData redemption;
+    TokenData collateral;
+    TokenData consideration;
+    OptionParameter p;
+    address coll; //shortcut
+    address cons; //shortcut
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
+}
+
+struct OptionParameter {
+    string optionSymbol;
+    string redemptionSymbol;
+    address collateral_;
+    address consideration_;
+    uint256 expiration;
+    uint256 strike;
+    bool isPut;
+}
+
+contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     Redemption public redemption;
+    uint64 public fee;
+    string private _tokenName;
+    string private _tokenSymbol;
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
 
-    constructor(
-        string memory name,
-        string memory symbol,
-        address collateral,
-        address consideration,
-        uint256 expirationDate,
-        uint256 strike,
-        bool isPut,
-        address redemption__
-    ) OptionBase(name, symbol, collateral, consideration, expirationDate, strike, isPut) {
-        redemption_ = redemption__;
+    error ContractNotExpired();
+    error ContractExpired();
+    error InsufficientBalance();
+    error InvalidValue();
+    error InvalidAddress();
+    error LockedContract();
+    error FeeOnTransferNotSupported();
+    error InsufficientCollateral();
+    error InsufficientConsideration();
+    error TokenBlocklisted();
+    error ArithmeticOverflow();
+
+    event ContractLocked();
+    event ContractUnlocked();
+
+    modifier notLocked() {
+        if (redemption.locked()) revert LockedContract();
+        _;
+    }
+
+    modifier notExpired() {
+        if (block.timestamp >= expirationDate()) revert ContractExpired();
+
+        _;
+    }
+
+    modifier validAmount(uint256 amount) {
+        if (amount == 0) revert InvalidValue();
+        _;
+    }
+
+    modifier sufficientBalance(address contractHolder, uint256 amount) {
+        if (balanceOf(contractHolder) < amount) revert InsufficientBalance();
+        _;
+    }
+
+    constructor(string memory name_, string memory symbol_, address redemption__)
+        ERC20(name_, symbol_)
+        Ownable(msg.sender)
+    {
         redemption = Redemption(redemption__);
     }
 
-    function init(
-        string memory name_,
-        string memory symbol_,
-        address collateral_,
-        address consideration_,
-        uint256 expirationDate_,
-        uint256 strike_,
-        bool isPut_,
-        address redemption__,
-        address owner,
-        address factory_,
-        uint256 fee_
-    ) public {
-        super.init(name_, symbol_, collateral_, consideration_, expirationDate_, strike_, isPut_, owner, factory_, fee_);
-        redemption_ = redemption__;
-        redemption = Redemption(redemption_);
+    function init(address redemption__, address owner, uint64 fee_)
+        public
+        initializer
+    {
+        fee = fee_;
+
+        // set owner so factory can call restricted functions
+        _transferOwnership(owner);
+        redemption = Redemption(redemption__);
     }
 
-    function mint(uint256 amount) public {
+    function name() public view override returns (string memory) {
+        return "";
+    }
+
+    function symbol() public view override returns (string memory) {
+        return "";
+    }
+
+    function collateral() public view returns (address) {
+        return address(redemption.collateral());
+    }
+
+    function consideration() public view returns (address) {
+        return address(redemption.consideration());
+    }
+
+    function expirationDate() public view returns (uint256) {
+        return redemption.expirationDate();
+    }
+
+    function strike() public view returns (uint256) {
+        return redemption.strike();
+    }
+
+    function isPut() public view returns (bool) {
+        return redemption.isPut();
+    }
+
+    function mint(uint256 amount) public notLocked {
         mint(msg.sender, amount);
     }
 
-    function mint(address account, uint256 amount) public nonReentrant {
+    function mint(address account, uint256 amount) public notLocked nonReentrant {
         mint_(account, amount);
     }
 
-    function mint_(address account, uint256 amount) internal notExpired notLocked validAmount(amount) {
+    function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
         redemption.mint(account, amount);
-        uint256 amountMinusFees = amount - toFee(amount);
-        _mint(account, amountMinusFees);
-        emit Mint(address(this), account, amountMinusFees);
+        // Inline fee calculation (safe: max fee is 1%, can't overflow)
+        unchecked {
+            uint256 amountMinusFees = amount - ((amount * fee) / 1e18);
+            _mint(account, amountMinusFees);
+            emit Mint(address(this), account, amountMinusFees);
+        }
     }
 
     function transferFrom(address from, address to, uint256 amount)
@@ -100,7 +195,7 @@ contract Option is OptionBase {
     }
 
     function transfer(address to, uint256 amount) public override notLocked nonReentrant returns (bool success) {
-        uint256 balance = this.balanceOf(msg.sender);
+        uint256 balance = balanceOf(msg.sender);
         if (balance < amount) {
             mint_(msg.sender, amount - balance);
         }
@@ -114,21 +209,21 @@ contract Option is OptionBase {
         }
     }
 
-    function exercise(uint256 amount) public {
+    function exercise(uint256 amount) public notLocked {
         exercise(msg.sender, amount);
     }
 
-    function exercise(address account, uint256 amount) public notExpired nonReentrant validAmount(amount) {
+    function exercise(address account, uint256 amount) public notExpired notLocked nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
         redemption.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
-    function redeem(uint256 amount) public {
+    function redeem(uint256 amount) public notLocked {
         redeem(msg.sender, amount);
     }
 
-    function redeem(address account, uint256 amount) public nonReentrant {
+    function redeem(address account, uint256 amount) public notLocked nonReentrant {
         redeem_(account, amount);
     }
 
@@ -137,40 +232,75 @@ contract Option is OptionBase {
         redemption._redeemPair(account, amount);
     }
 
-    function setRedemption(address shortOptionAddress) public onlyOwner {
-        redemption_ = shortOptionAddress;
-        redemption = Redemption(redemption_);
-    }
-
     function balancesOf(address account) public view returns (Balances memory) {
         return Balances({
-            collateral: collateral.balanceOf(account),
-            consideration: consideration.balanceOf(account),
+            collateral: IERC20(collateral()).balanceOf(account),
+            consideration: IERC20(consideration()).balanceOf(account),
             option: balanceOf(account),
             redemption: redemption.balanceOf(account)
         });
     }
 
+    function lock() public onlyOwner {
+        redemption.lock();
+    }
+
+    function unlock() public onlyOwner {
+        redemption.unlock();
+    }
+
     function details() public view returns (OptionInfo memory) {
-        return OptionInfo({
-            option: TokenData(address(this), name(), symbol(), decimals()),
-            redemption: TokenData(redemption_, redemption.name(), redemption.symbol(), decimals()),
-            collateral: TokenData(address(collateral), coll.name(), coll.symbol(), coll.decimals()),
-            consideration: TokenData(address(consideration), cons.name(), cons.symbol(), cons.decimals()),
-            p: OptionParameter({
-                optionSymbol: name(),
-                redemptionSymbol: redemption.name(),
-                collateral_: address(collateral),
-                consideration_: address(consideration),
-                expiration: expirationDate,
-                strike: strike,
-                isPut: isPut
-            }),
-            coll: address(collateral),
-            cons: address(consideration),
-            expiration: expirationDate,
-            strike: strike,
-            isPut: isPut
+        // Cache addresses to avoid multiple delegatecalls
+        address coll = collateral();
+        address cons = consideration();
+
+        // Cache metadata objects
+        IERC20Metadata consMeta = IERC20Metadata(cons);
+        IERC20Metadata collMeta = IERC20Metadata(coll);
+
+        // Cache frequently accessed values
+        string memory optName = name();
+        string memory optSymbol = symbol();
+        string memory redName = redemption.name();
+        string memory redSymbol = redemption.symbol();
+        uint8 optDecimals = decimals();
+        uint256 exp = expirationDate();
+        uint256 stk = strike();
+        bool put = isPut();
+
+        OptionParameter memory opParam = OptionParameter({
+            optionSymbol: optName,
+            redemptionSymbol: redName,
+            collateral_: coll,
+            consideration_: cons,
+            expiration: exp,
+            strike: stk,
+            isPut: put
         });
+
+        return OptionInfo({
+            option: TokenData(address(this), optName, optSymbol, optDecimals),
+            redemption: TokenData(address(redemption), redName, redSymbol, optDecimals),
+            collateral: TokenData(coll, collMeta.name(), collMeta.symbol(), collMeta.decimals()),
+            consideration: TokenData(cons, consMeta.name(), consMeta.symbol(), consMeta.decimals()),
+            p: opParam,
+            coll: coll,
+            cons: cons,
+            expiration: exp,
+            strike: stk,
+            isPut: put
+        });
+    }
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+
+    function toFee(uint256 amount) public view returns (uint256) {
+        return Math.mulDiv(fee, amount, 1e18);
     }
 }

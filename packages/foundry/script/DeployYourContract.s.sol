@@ -5,6 +5,7 @@ import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { StableToken } from "../contracts/StableToken.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
 /**
  * @notice Deploy script for YourContract contract
@@ -34,17 +35,8 @@ contract DeployYourContract is ScaffoldETHDeploy {
             "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
 
-        Option long = new Option(
-            "Option",
-            "OPT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false,
-            address(short)
-        );
+        Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long), 0.0001e18);
+        new OptionFactory(address(short), address(long), address(ConstantsUnichain.PERMIT2), 0.0001e18);
     }
 }
