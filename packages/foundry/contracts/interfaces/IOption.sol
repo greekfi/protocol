@@ -62,8 +62,8 @@ interface IOption {
     function exercise(address account, uint256 amount) external;
     function redeem(uint256 amount) external;
     function redeem(address account, uint256 amount) external;
-	function balanceOf(address account) external view returns (uint256);
-	function balancesOf(address account) external view returns (Balances memory);
+    function balanceOf(address account) external view returns (uint256);
+    function balancesOf(address account) external view returns (Balances memory);
     function lock() external;
     function unlock() external;
     function details() external view returns (OptionInfo memory);
