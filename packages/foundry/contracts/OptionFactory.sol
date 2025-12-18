@@ -79,6 +79,7 @@ contract OptionFactory is Ownable {
      */
     constructor(address redemption_, address option_, uint64 fee_) Ownable(msg.sender) {
         require(fee_ <= MAX_FEE, "fee too high");
+        if (redemption_ == address(0) || option_ == address(0)) revert InvalidAddress();
         redemptionClone = redemption_;
         optionClone = option_;
         fee = fee_;
@@ -90,6 +91,7 @@ contract OptionFactory is Ownable {
      * @notice Creates a new option pair (Option + Redemption contracts)
      * @dev Clones template contracts, initializes them with parameters, and links them together.
      *      Checks that tokens are not blocklisted before deployment.
+     *      Additional validation performed in the Option/Redemption init()
      * @param collateral Address of the collateral token (what backs the option)
      * @param consideration Address of the consideration token (payment for exercise)
      * @param expirationDate Unix timestamp when the option expires
@@ -152,7 +154,7 @@ contract OptionFactory is Ownable {
     // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============
 
     /**
-     * @notice Adds a token to the blocklist
+     * @notice Adds a token to the blocklist. Cannot be used as collateral nor consideration.
      * @dev Prevents creation of new options using this token. Use for fee-on-transfer or rebasing tokens.
      *      Only callable by owner.
      * @param token The token address to blocklist
@@ -189,6 +191,6 @@ contract OptionFactory is Ownable {
     function claimFees(address token) public onlyOwner {
         ERC20 token_ = ERC20(token);
         uint256 amount = token_.balanceOf(address(this));
-        token_.safeTransferFrom(address(this), owner(), amount);
+        token_.transfer(owner(), amount);
     }
 }

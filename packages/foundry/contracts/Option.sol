@@ -95,6 +95,13 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
+    /// @notice Validates that amount is non-zero
+    /// @param amount The amount to validate
+    modifier validAddress(address account) {
+        if (account == address(0)) revert InvalidAddress();
+        _;
+    }
+
     /// @notice Ensures account has sufficient balance
     /// @param contractHolder The account to check
     /// @param amount The required balance
@@ -126,6 +133,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param fee_ Fee percentage (in 1e18 basis, max 1%)
      */
     function init(address redemption_, address owner, uint64 fee_) public initializer {
+        if (redemption_ == address(0) || owner == address(0)) revert InvalidAddress();
+
         _transferOwnership(owner);
         redemption = Redemption(redemption_);
         fee = fee_;
@@ -139,7 +148,18 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @return Empty string
      */
     function name() public view override returns (string memory) {
-        return "";
+        return string(
+            abi.encodePacked(
+                "OPT-",
+                IERC20Metadata(address(collateral())).symbol(),
+                "-",
+                IERC20Metadata(address(consideration())).symbol(),
+                "-",
+                strike2str(strike()),
+                "-",
+                epoch2str(expirationDate())
+            )
+        );
     }
 
     /**
@@ -148,7 +168,146 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @return Empty string
      */
     function symbol() public view override returns (string memory) {
-        return "";
+        return name();
+    }
+
+    /**
+     * @notice Converts a uint256 to its string representation
+     * @dev Used for generating token names with expiration timestamps
+     * @param _i The number to convert
+     * @return str The string representation of the number
+     */
+    function uint2str(uint256 _i) internal pure returns (string memory str) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 length;
+        while (j != 0) {
+            length++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(length);
+        uint256 k = length;
+        j = _i;
+        while (j != 0) {
+            bstr[--k] = bytes1(uint8(48 + j % 10));
+            j /= 10;
+        }
+        str = string(bstr);
+    }
+
+    /**
+     * @notice Converts a uint96 10**18 based strike to its string representation
+     * @dev Used for generating token names with strike prices
+     *      The ideally we check for the largest digit and represent accordingly
+     *      i.e. 1000e18 -> "1000", .01e18 -> "0.01"
+     * @param _i The number to convert (in 18 decimal format)
+     * @return str The string representation of the number
+     */
+    function strike2str(uint256 _i) internal pure returns (string memory str) {
+        uint256 whole = _i / 1e18;
+        uint256 fractional = _i % 1e18;
+
+        // If no fractional part, return just the whole number
+        if (fractional == 0) {
+            return uint2str(whole);
+        }
+
+        // Convert fractional part to 18-digit string (with leading zeros)
+        bytes memory fracBytes = new bytes(18);
+        for (uint256 i = 18; i > 0; i--) {
+            fracBytes[i - 1] = bytes1(uint8(48 + fractional % 10));
+            fractional /= 10;
+        }
+
+        // Remove trailing zeros from fractional part
+        uint256 len = 18;
+        while (len > 0 && fracBytes[len - 1] == "0") {
+            len--;
+        }
+
+        // If all fractional digits were zeros (shouldn't happen due to check above)
+        if (len == 0) {
+            return uint2str(whole);
+        }
+
+        // Copy non-zero fractional digits to result
+        bytes memory fracResult = new bytes(len);
+        for (uint256 i = 0; i < len; i++) {
+            fracResult[i] = fracBytes[i];
+        }
+
+        // Concatenate whole part + decimal point + fractional part
+        return string(abi.encodePacked(uint2str(whole), ".", string(fracResult)));
+    }
+
+    /**
+     * @notice Converts a uint40 epoch time to ISO representation YYYY-MM-DD
+     * @dev Used for generating token names with expiration timestamps
+     * @param _i The number/time to convert
+     * @return str The string representation of the number
+     */
+    function epoch2str(uint256 _i) internal pure returns (string memory str) {
+        // Convert timestamp to days since epoch
+        uint256 daysSinceEpoch = _i / 86400; // 86400 seconds per day
+
+        // Calculate year
+        uint256 year = 1970;
+        uint256 daysInYear;
+
+        while (true) {
+            daysInYear = isLeapYear(year) ? 366 : 365;
+            if (daysSinceEpoch >= daysInYear) {
+                daysSinceEpoch -= daysInYear;
+                year++;
+            } else {
+                break;
+            }
+        }
+
+        // Calculate month and day
+        uint256 month = 1;
+        uint256[12] memory daysInMonth = [uint256(31), 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+        // Adjust February for leap year
+        if (isLeapYear(year)) {
+            daysInMonth[1] = 29;
+        }
+
+        for (uint256 i = 0; i < 12; i++) {
+            if (daysSinceEpoch >= daysInMonth[i]) {
+                daysSinceEpoch -= daysInMonth[i];
+                month++;
+            } else {
+                break;
+            }
+        }
+
+        uint256 day = daysSinceEpoch + 1; // Days are 1-indexed
+
+        // Format as YYYY-MM-DD
+        return string(
+            abi.encodePacked(
+                uint2str(year),
+                "-",
+                month < 10 ? string(abi.encodePacked("0", uint2str(month))) : uint2str(month),
+                "-",
+                day < 10 ? string(abi.encodePacked("0", uint2str(day))) : uint2str(day)
+            )
+        );
+    }
+
+    /**
+     * @notice Checks if a year is a leap year
+     * @param year The year to check
+     * @return True if the year is a leap year
+     */
+    function isLeapYear(uint256 year) internal pure returns (bool) {
+        if (year % 4 != 0) return false;
+        if (year % 100 != 0) return true;
+        if (year % 400 != 0) return false;
+        return true;
     }
 
     /**
@@ -260,12 +419,25 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /**
      * @notice Transfers option tokens with auto-mint and auto-redeem
      * @dev If sender lacks sufficient balance, auto-mints the difference.
+     *      This should be treated like sending Collateral. The UX is
+     *      designed like this to make the operation seamless when swapping
+     *      Options in a single transfer/swap call.
      *      After transfer, auto-redeems any matching pairs the recipient holds.
+     *      Auto-redemption is for the fact that you should always cancel out the
+     *      "short" position in the option with the "long" and return back to
+     *      just the collateral.
      * @param to Address to transfer to
      * @param amount Amount to transfer
      * @return success True if transfer succeeded
      */
-    function transfer(address to, uint256 amount) public override notLocked nonReentrant returns (bool success) {
+    function transfer(address to, uint256 amount)
+        public
+        override
+        notLocked
+        nonReentrant
+        validAddress(to)
+        returns (bool success)
+    {
         uint256 balance = balanceOf(msg.sender);
         if (balance < amount) {
             mint_(msg.sender, amount - balance);
@@ -390,6 +562,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function lock() public onlyOwner {
         redemption.lock();
+        emit ContractLocked();
     }
 
     /**
@@ -398,12 +571,22 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function unlock() public onlyOwner {
         redemption.unlock();
+        emit ContractUnlocked();
     }
+
+    /**
+     * @notice adjusts fee for protocol
+     * @dev Only Owner can adjust via Option. Fee is calculated as (amount * fee) / 1e18
+     * @param fee_ Fee amount in 1e18 basis
+     */
+    function adjustFee(uint256 fee_) public onlyOwner {
+        redemption.adjustFee(fee_);
+    }
+
     /**
      * @notice Claims accumulated protocol fees
      * @dev Only callable by the factory. Transfers all accumulated fees to factory.
      */
-
     function claimFees() public onlyOwner nonReentrant {
         redemption.claimFees();
     }
