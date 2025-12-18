@@ -500,7 +500,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Only Owner can adjust via Option. Fee is calculated as (amount * fee) / 1e18
      * @param fee_ Fee amount in 1e18 basis
      */
-    function adjustFee(uint256 fee_) public onlyOwner {
+    function adjustFee(uint64 fee_) public onlyOwner {
         fee = fee_;
     }
 

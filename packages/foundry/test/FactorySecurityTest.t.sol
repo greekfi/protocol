@@ -34,41 +34,77 @@ contract FactorySecurityTest is Test {
     }
 
     /**
-     * CRITICAL-01: claimFees() will always revert
-     * This test demonstrates the critical bug where claimFees uses
-     * safeTransferFrom instead of safeTransfer
+     * CRITICAL-01: claimFees() - NOW FIXED
+     * This test verifies the fix where claimFees now uses transfer() instead of safeTransferFrom()
      */
-    function testCRITICAL_ClaimFeesAlwaysReverts() public {
+    function testFIXED_ClaimFeesNowWorks() public {
         // Simulate some tokens in the factory (e.g., from fees)
         collateralToken.mint(address(factory), 100e18);
 
         // Verify factory has tokens
         assertEq(collateralToken.balanceOf(address(factory)), 100e18);
 
-        // Try to claim fees - THIS WILL REVERT
-        vm.expectRevert(); // Expecting revert due to missing approval
+        // Claim fees - THIS NOW WORKS
         factory.claimFees(address(collateralToken));
 
-        // Fees remain locked in factory
-        assertEq(collateralToken.balanceOf(address(factory)), 100e18);
-        console.log("CRITICAL BUG CONFIRMED: Fees are locked in factory contract");
+        // Verify fees transferred to owner
+        assertEq(collateralToken.balanceOf(address(factory)), 0);
+        assertEq(collateralToken.balanceOf(owner), 100e18);
+        console.log("FIXED: claimFees() now works correctly!");
     }
 
     /**
-     * HIGH-01: No validation of template addresses in constructor
-     * This test shows factory can be deployed with invalid templates
+     * HIGH-01: Template validation - NOW FIXED (both zero)
+     * This test verifies factory now rejects zero address templates
      */
-    function testHIGH_InvalidTemplateAddresses() public {
-        // Can deploy with zero addresses (should fail but doesn't)
-        OptionFactory brokenFactory = new OptionFactory(
+    function testFIXED_TemplateValidation_BothZero() public {
+        // Now REVERTS when deployed with zero addresses
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new OptionFactory(
             address(0), // Invalid redemption template
             address(0), // Invalid option template
             0.001e18
         );
 
-        assertEq(brokenFactory.redemptionClone(), address(0));
-        assertEq(brokenFactory.optionClone(), address(0));
-        console.log("HIGH SEVERITY: Factory deployed with zero address templates");
+        console.log("FIXED: Constructor rejects both zero addresses!");
+    }
+
+    /**
+     * HIGH-01: Template validation - NOW FIXED (one zero)
+     * This test verifies factory rejects if either template is zero
+     */
+    function testFIXED_TemplateValidation_OneZero() public {
+        // Create valid template first
+        address validTemplate = address(new MockContract());
+
+        // Reverts with only redemption as zero
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new OptionFactory(
+            address(0), // Invalid redemption template
+            validTemplate, // Valid option template
+            0.001e18
+        );
+
+        console.log("FIXED: Constructor rejects redemption zero address!");
+    }
+
+    /**
+     * HIGH-01: Template validation - NOW FIXED (option zero)
+     * This test verifies factory rejects if option template is zero
+     */
+    function testFIXED_TemplateValidation_OptionZero() public {
+        // Create valid template first
+        address validTemplate = address(new MockContract());
+
+        // Reverts with only option as zero
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new OptionFactory(
+            validTemplate, // Valid redemption
+            address(0), // Invalid option template
+            0.001e18
+        );
+
+        console.log("FIXED: Constructor rejects option zero address!");
     }
 
     /**
@@ -76,6 +112,7 @@ contract FactorySecurityTest is Test {
      */
     function testLOW_UnblockTokenNoValidation() public {
         // Can unblock zero address (should fail but doesn't)
+		vm.expectRevert(OptionFactory.InvalidAddress.selector);
         factory.unblockToken(address(0));
 
         // No error, no event (if we checked blocklist[address(0)] it's now false)

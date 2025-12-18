@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 import { Option } from "./Option.sol";
 import { Redemption } from "./Redemption.sol";
+import { ReentrancyGuardTransient } from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 using SafeERC20 for ERC20;
 
@@ -27,7 +28,7 @@ struct OptionParameter {
  *      Maintains a blocklist for fee-on-transfer and rebasing tokens to prevent issues.
  *      Provides centralized token transfer functionality via transferFrom to support dual approval systems.
  */
-contract OptionFactory is Ownable {
+contract OptionFactory is Ownable, ReentrancyGuardTransient {
     // ============ STATE VARIABLES ============
 
     /// @notice Address of the Redemption template contract for cloning
@@ -46,6 +47,7 @@ contract OptionFactory is Ownable {
 
     error BlocklistedToken();
     error InvalidAddress();
+    error InvalidTokens();
 
     // ============ EVENTS ============
 
@@ -60,6 +62,8 @@ contract OptionFactory is Ownable {
     );
 
     event TokenBlocked(address token, bool blocked);
+    event FeeUpdated(uint64 oldFee, uint64 newFee);
+    event TemplateUpdated();
 
     // ============ STORAGE MAPPINGS ============
 
@@ -101,10 +105,12 @@ contract OptionFactory is Ownable {
      */
     function createOption(address collateral, address consideration, uint40 expirationDate, uint96 strike, bool isPut)
         public
+        nonReentrant
         returns (address)
     {
         // Check blocklist for fee-on-transfer and rebasing tokens
         if (blocklist[collateral] || blocklist[consideration]) revert BlocklistedToken();
+        if (collateral == consideration) revert InvalidTokens();
 
         address redemption_ = Clones.clone(redemptionClone);
         address option_ = Clones.clone(optionClone);
@@ -144,7 +150,11 @@ contract OptionFactory is Ownable {
      * @param token Address of the token to transfer
      * @return success True if transfer succeeded
      */
-    function transferFrom(address from, address to, uint160 amount, address token) external returns (bool success) {
+    function transferFrom(address from, address to, uint160 amount, address token)
+        external
+        nonReentrant
+        returns (bool success)
+    {
         // Only redemption contracts can call this (used in mint() and exercise())
         if (!redemptions[msg.sender]) revert InvalidAddress();
         ERC20(token).safeTransferFrom(from, to, amount);
@@ -159,7 +169,7 @@ contract OptionFactory is Ownable {
      *      Only callable by owner.
      * @param token The token address to blocklist
      */
-    function blockToken(address token) external onlyOwner {
+    function blockToken(address token) external onlyOwner nonReentrant {
         if (token == address(0)) revert InvalidAddress();
         blocklist[token] = true;
         emit TokenBlocked(token, true);
@@ -170,7 +180,8 @@ contract OptionFactory is Ownable {
      * @dev Re-enables option creation using this token. Only callable by owner.
      * @param token The token address to remove from blocklist
      */
-    function unblockToken(address token) external onlyOwner {
+    function unblockToken(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) revert InvalidAddress();
         blocklist[token] = false;
         emit TokenBlocked(token, false);
     }
@@ -188,9 +199,31 @@ contract OptionFactory is Ownable {
      * @notice Transfers fees to the owner
      * @param token The token address to transfer
      */
-    function claimFees(address token) public onlyOwner {
+    function claimFees(address token) public onlyOwner nonReentrant {
         ERC20 token_ = ERC20(token);
         uint256 amount = token_.balanceOf(address(this));
         token_.transfer(owner(), amount);
     }
+    /**
+     * @notice Adjust protocol fee
+     * @param fee_ Fee amount
+     */
+
+    function adjustFee(uint64 fee_) public onlyOwner nonReentrant {
+        require(fee_ <= MAX_FEE, "fee exceeds maximum");
+        uint64 oldFee = fee;
+        fee = fee_;
+        emit FeeUpdated(oldFee, fee_);
+    }
+    //	/**
+    //	 * @notice Update Templates
+    //     * @param option_ address of Option Contract
+    //     * @param redemption_ address of Redemption Contract
+    //     */
+    //	function adjustTemplates(address option_, address redemption_) public onlyOwner {
+    //		if (option_ == address(0) || redemption_ == address(0)) revert InvalidAddress();
+    //		optionClone = option_;
+    //		redemptionClone = redemption_;
+    //		emit TemplateUpdated();
+    //	}
 }

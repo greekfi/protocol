@@ -95,8 +95,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    /// @notice Validates that amount is non-zero
-    /// @param amount The amount to validate
+    /// @notice Validates that address is not zero
+    /// @param account The address to validate
     modifier validAddress(address account) {
         if (account == address(0)) revert InvalidAddress();
         _;
@@ -579,7 +579,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Only Owner can adjust via Option. Fee is calculated as (amount * fee) / 1e18
      * @param fee_ Fee amount in 1e18 basis
      */
-    function adjustFee(uint256 fee_) public onlyOwner {
+    function adjustFee(uint64 fee_) public onlyOwner {
         redemption.adjustFee(fee_);
     }
 
