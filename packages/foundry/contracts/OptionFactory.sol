@@ -73,6 +73,9 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     /// @notice Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
 
+    /// @notice Allowances mapping for token transfers; token => owner => amount
+    mapping(address => mapping(address => uint256)) private _allowances; 
+
     // ============ CONSTRUCTOR ============
 
     /**
@@ -157,8 +160,28 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     {
         // Only redemption contracts can call this (used in mint() and exercise())
         if (!redemptions[msg.sender]) revert InvalidAddress();
+        if (allowance(token, from) < amount) revert InvalidAddress();
         ERC20(token).safeTransferFrom(from, to, amount);
         return true;
+    }
+
+    /**
+     * @notice Checks the allowance of a token for a given owner
+     * @param token The ERC20 token to check
+     * @param owner The address of the token owner
+     * @return The allowance amount
+     */
+    function allowance(address token, address owner) internal view returns (uint256) {
+        return _allowances[token][owner];
+    }
+
+    /**
+     * @notice Sets the allowance of a token for a given owner
+     * @param token The ERC20 token to set allowance for
+     * @param amount The allowance amount to set
+     */
+    function approve(address token, uint256 amount) internal {
+        _allowances[token][msg.sender] = amount;
     }
 
     // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============
