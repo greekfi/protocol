@@ -90,6 +90,7 @@ abstract contract OpHookTestBase is Test {
     IWETH9 public weth;
     IPermit2 public permit2;
     IPoolManager public poolManager;
+    UniversalRouter public router;
 
     address public weth_;
     address public usdc_;
@@ -143,6 +144,7 @@ abstract contract OpHookTestBase is Test {
             HookMiner.find(address(this), flags, type(OpHook).creationCode, constructorArgs);
 
         opHook = new OpHook{ salt: salt }(poolManager_, permit2_);
+        // Use OptionPrice with 64-bit CLZ optimization
         opHook.setOptionPrice(address(new OptionPrice()));
 
         poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000);
@@ -172,6 +174,15 @@ abstract contract OpHookTestBase is Test {
         weth.approve(address(factory), 1000e18);
         usdc.approve(address(factory), 1000e6);
         vm.stopPrank();
+
+
+        router = UniversalRouter(payable(universalRouter_));
+        deal(usdc_, address(this), 1000e6);
+
+        // Approve router and permit2
+        usdc.approve(address(router), 1000e6);
+        permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
+
     }
 
     function testPrices() public {
@@ -238,13 +249,6 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testRouterSwap() public virtual {
-        UniversalRouter router = UniversalRouter(payable(universalRouter_));
-        deal(usdc_, address(this), 1000e6);
-
-        // Approve router and permit2
-        usdc.approve(address(router), 1000e6);
-        permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
-
         // Dynamically determine swap direction based on pool currency ordering
         bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
         bool zeroForOne = usdcIsZero; // If USDC is currency0, we swap 0->1 (USDC for options)
@@ -273,13 +277,175 @@ abstract contract OpHookTestBase is Test {
 
         router.execute(commands, inputs, block.timestamp + 20);
 
-        console.log("option1 balance (this)", option1.balanceOf(address(this)));
-        console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
-        console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
-        console.log("USDC balance (this)", usdc.balanceOf(address(this)));
-        console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
-        console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
+        // console.log("option1 balance (this)", option1.balanceOf(address(this)));
+        // console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
+        // console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
+        // console.log("USDC balance (this)", usdc.balanceOf(address(this)));
+        // console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
+        // console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
     }
+
+    /* Removed - using OptionPrice (64-bit) only
+    function testGasComparison() public {
+        OptionPrice optionPriceOriginal = new OptionPrice();
+        OptionPriceMath optionPriceMath = new OptionPriceMath();
+        OptionPriceMathAssm optionPriceMathAssm = new OptionPriceMathAssm();
+
+        console.log("=== Gas Comparison: Original vs 32-bit vs 64-bit Assembly ===");
+        console.log("");
+
+        // Test scenario 1: ATM call (at the money)
+        {
+            uint256 collateralPrice = 3600e18;
+            uint256 strike = 3600e18;
+            uint256 expiration = block.timestamp + 30 days;
+
+            uint256 gasBefore = gasleft();
+            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasOriginal = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasMath = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 priceAssm = optionPriceMathAssm.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasAssm = gasBefore - gasleft();
+
+            console.log("Scenario 1: ATM Call");
+            console.log("  Original:  ", gasOriginal);
+            console.log("  32-bit:    ", gasMath, "saved:", gasOriginal - gasMath);
+            console.log("  64-bit asm:", gasAssm, "saved:", gasOriginal - gasAssm);
+            console.log("");
+        }
+
+        // Test scenario 2: OTM call (out of the money)
+        {
+            uint256 collateralPrice = 3600e18;
+            uint256 strike = 4000e18;
+            uint256 expiration = block.timestamp + 30 days;
+
+            uint256 gasBefore = gasleft();
+            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasOriginal = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasMath = gasBefore - gasleft();
+
+            console.log("Scenario 2: OTM Call (spot = $3600, strike = $4000)");
+            console.log("  Original gas:", gasOriginal);
+            console.log("  Math gas:    ", gasMath);
+            console.log("  Gas saved:   ", gasOriginal - gasMath);
+            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
+            console.log("  Original price:", priceOriginal / 1e16, "cents");
+            console.log("  Math price:    ", priceMath / 1e16, "cents");
+            console.log("");
+        }
+
+        // Test scenario 3: ITM call (in the money)
+        {
+            uint256 collateralPrice = 4200e18;
+            uint256 strike = 4000e18;
+            uint256 expiration = block.timestamp + 30 days;
+
+            uint256 gasBefore = gasleft();
+            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasOriginal = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
+            uint256 gasMath = gasBefore - gasleft();
+
+            console.log("Scenario 3: ITM Call (spot = $4200, strike = $4000)");
+            console.log("  Original gas:", gasOriginal);
+            console.log("  Math gas:    ", gasMath);
+            console.log("  Gas saved:   ", gasOriginal - gasMath);
+            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
+            console.log("  Original price:", priceOriginal / 1e18);
+            console.log("  Math price:    ", priceMath / 1e18);
+            console.log("");
+        }
+
+        // Test scenario 4: Put option
+        {
+            uint256 collateralPrice = 3600e18;
+            uint256 strike = 4000e18;
+            uint256 expiration = block.timestamp + 30 days;
+
+            uint256 gasBefore = gasleft();
+            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, true, false);
+            uint256 gasOriginal = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, true, false);
+            uint256 gasMath = gasBefore - gasleft();
+
+            console.log("Scenario 4: ITM Put (spot = $3600, strike = $4000)");
+            console.log("  Original gas:", gasOriginal);
+            console.log("  Math gas:    ", gasMath);
+            console.log("  Gas saved:   ", gasOriginal - gasMath);
+            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
+            console.log("  Original price:", priceOriginal / 1e18);
+            console.log("  Math price:    ", priceMath / 1e18);
+            console.log("");
+        }
+
+        console.log("=== Summary ===");
+        console.log("Using OpenZeppelin-style optimizations (sqrt + unchecked log2) saves ~10,600 gas (~31%) per getPrice() call");
+        console.log("Optimizations: OZ Math.sqrt() + unchecked blocks in log2");
+    }
+    */
+
+    /* Removed - using OptionPrice (64-bit) only
+    function testLog2GasComparison() public {
+        OptionPrice optionPriceOriginal = new OptionPrice();
+        OptionPriceMath32 optionPriceMath32 = new OptionPriceMath32();
+        OptionPriceMath64 optionPriceMath64 = new OptionPriceMath64();
+        OptionPriceMathAssm optionPriceMathAssm = new OptionPriceMathAssm();
+
+        console.log("=== log2() Gas Comparison ===");
+        console.log("");
+
+        uint256[5] memory testValues = [
+            uint256(1e18),      // 1.0
+            uint256(2e18),      // 2.0
+            uint256(1536e15),   // 1.536
+            uint256(3600e18),   // 3600
+            uint256(1e24)       // 1,000,000
+        ];
+
+        for (uint256 j = 0; j < testValues.length; j++) {
+            uint256 x = testValues[j];
+
+            uint256 gasBefore = gasleft();
+            uint256 resultOriginal = optionPriceOriginal.log2(x);
+            uint256 gasOriginal = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 resultMath32 = optionPriceMath32.log2(x);
+            uint256 gasMath32 = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 resultMath64 = optionPriceMath64.log2(x);
+            uint256 gasMath64 = gasBefore - gasleft();
+
+            gasBefore = gasleft();
+            uint256 resultAssm = optionPriceMathAssm.log2(x);
+            uint256 gasAssm = gasBefore - gasleft();
+
+            console.log("Test value:", x / 1e18);
+            console.log("  Original:       ", gasOriginal, "gas");
+            console.log("  32-bit Solidity:", gasMath32, "gas, saved:", gasOriginal - gasMath32);
+            console.log("  64-bit Solidity:", gasMath64, "gas, saved:", gasOriginal - gasMath64);
+            console.log("  64-bit Assembly:", gasAssm, "gas, saved:", gasOriginal - gasAssm);
+            console.log("");
+        }
+
+        console.log("=== Summary ===");
+        console.log("32-bit provides best gas/precision tradeoff for Black-Scholes");
+    }
+    */
 }
 
 contract Mainnet is OpHookTestBase {

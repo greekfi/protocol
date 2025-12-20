@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { console } from "forge-std/console.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IUniswapV3Pool {
     function token0() external view returns (address);
@@ -21,9 +22,6 @@ interface IUniswapV3Pool {
 }
 
 contract OptionPrice {
-    // For demonstration, we use a simple mapping to store prices for each token address.
-    // In production, this would be replaced by a real oracle or pricing logic.
-
     // Black-Scholes option pricing formula (returns price with 18 decimals)
     // underlying: price of the underlying asset (18 decimals)
     // strike: strike price (18 decimals)
@@ -53,7 +51,9 @@ contract OptionPrice {
         uint256 t = (timeToExpiration * 1e18) / 31536000; // t in years, 1e18 fixed point
 
         // sigma * sqrt(t)
-        int256 sigmaSqrtT = int256(mul18(volatility, sqrt(t) * 1e9));
+        // OpenZeppelin's sqrt: sqrt(a*1e18) = sqrt(a)*1e9
+        uint256 sqrtT = Math.sqrt(t); // Returns sqrt with half decimals (1e9)
+        int256 sigmaSqrtT = int256(mul18(volatility, sqrtT * 1e9)); // Restore to 1e18
 
         if (underlying == 0) underlying = 1;
         uint256 ks = div18(underlying, strike);
@@ -81,25 +81,10 @@ contract OptionPrice {
         // exp(-r*t)
         uint256 expRt = expNeg(mul18(r, t));
 
-        console.log("left", sigmaSqrtT);
-        console.log("lnUS", lnks);
-        console.log("mu", mu);
-        console.log("d1", d1);
-        console.log("d2", d2);
-        console.log("Nd1", nd1);
-        console.log("Nd2", nd2);
-        console.log("Nd1n", nd1n);
-        console.log("Nd2n", nd2n);
-        console.log("exp(-r*t)", expRt);
-        console.log("halfSigma2", halfSigma2);
         if (!isPut) {
-            console.log("left", mul18(underlying, nd1));
-            console.log("right", mul18(mul18(strike, expRt), nd2));
             // C = U * N(d1) - S * exp(-r*t) * N(d2)
             price = mul18(underlying, nd1) - mul18(mul18(strike, expRt), nd2);
         } else {
-            console.log("right", mul18(underlying, nd1n));
-            console.log("left", mul18(mul18(strike, expRt), nd2n));
             // P = S * exp(-r*t) * N(-d2) - U * N(-d1)
             price = mul18(mul18(strike, expRt), nd2n) - mul18(underlying, nd1n);
         }
@@ -122,34 +107,99 @@ contract OptionPrice {
     }
 
     // --- Math helpers ---
+    // Optimized logarithm functions using CLZ (Count Leading Zeros) opcode
 
-    function ln_(uint256 x) public pure returns (int256 y) {
-        y = (int256(log2(x) - 59.794705707972522261e18) * 0.693147180655945309e18) / 1e18;
-    }
     // Natural logarithm (ln) for 1e18 fixed point, returns 1e18 fixed point
-
+    // Handles both x >= 1e18 and x < 1e18 using ln(1/x) = -ln(x) identity
     function ln(uint256 x) public pure returns (int256 y) {
-        if (x < 1e18) return -ln_(1e36 / x);
-        return ln_(x);
+        require(x > 0, "ln undefined for 0");
 
-        // Precomputed ln(x) values for x in [1.0, 2.0] in 0.05 increments, x in 1e18 fixed point
-        // x is 1e18 fixed point, valid for x in [1e18, 2e18]
-        // grid: x = 1.00, 1.05, 1.10, ..., 2.00 (21 values)
-        // require(x >= 1e18 && x <= 2e18, "ln: x out of grid range");
-        // int256[21] memory lnGrid = [
-        //     int256(0),
-        //      48790164169432048,  95310179804324928, 139761942375158816,
-        //     182321556793954784, 223143551314209920, 262364264467491296,
-        //     300104592450338304, 336472236621213184, 371563556432483264,
-        //     405465108108164672, 438254930931155584, 470003629245735936,
-        //     500775287912489600, 530628251062170688, 559615787935423104,
-        //     587786664902119424, 615185639090233856, 641853886172395264,
-        //     667829372575655936, 693147180559945728];
-        // // Compute index: round((x - 1e18) / 5e16)
-        // // (x - 1e18) is in [0, 1e18], so divide by 5e16 to get [0,20]
-        // uint256 idx = uint256((x - 1e18 + 25e15) / 5e16); // +0.025 for rounding
-        // if (idx > 20) idx = 20;
-        // return lnGrid[idx];
+        if (x < 1e18) {
+            // For x < 1: ln(x) = -ln(1/x)
+            // 1/x in 1e18 fixed point = 1e36 / x
+            return -ln_(1e36 / x);
+        }
+        return ln_(x);
+    }
+
+    // Internal helper for ln() - converts log2 to natural log
+    // Formula: ln(x) = log2(x) * ln(2)
+    // ln(2) ≈ 0.693147180559945309417232121458 (in 1e18: 693147180559945309)
+    // log2(1e18) ≈ 59.794705707972522261 (in 1e18: 59794705707972522261)
+    // This adjusts log2 result from base 1e18 to actual ln value
+    function ln_(uint256 x) internal pure returns (int256 y) {
+        unchecked {
+            // Convert log2(x) to ln(x):
+            // ln(x) = (log2(x) - log2(1e18)) * ln(2)
+            // This accounts for our 1e18 fixed-point representation
+            uint256 log2x = log2(x);
+
+            // Constant: log2(1e18) in 1e18 fixed point
+            uint256 LOG2_1E18 = 59794705707972522261;
+
+            // Constant: ln(2) in 1e18 fixed point (0.693147180559945309...)
+            uint256 LN_2 = 693147180559945309;
+
+            // Calculate: (log2(x) - log2(1e18)) * ln(2) / 1e18
+            if (log2x >= LOG2_1E18) {
+                y = int256((log2x - LOG2_1E18) * LN_2 / 1e18);
+            } else {
+                y = -int256((LOG2_1E18 - log2x) * LN_2 / 1e18);
+            }
+        }
+    }
+
+    // Optimized log2 with fractional precision using CLZ opcode
+    // Uses CLZ (Count Leading Zeros) from Fusaka/Pectra (Solidity 0.8.33+)
+    // Returns log2(x) in 1e18 fixed point
+    //
+    // Algorithm:
+    // 1. Use CLZ to find MSB (integer part of log2)
+    // 2. Normalize x to range [1, 2)
+    // 3. Iteratively refine fractional bits using bit-by-bit algorithm (32 bits)
+    // 4. Convert from Q32.32 to 1e18 fixed point
+    function log2(uint256 x) public pure returns (uint256) {
+        require(x > 0, "log2 undefined for 0");
+
+        // 1) Integer part using CLZ opcode
+        // CLZ counts leading zeros from MSB, so: msb_position = 255 - clz(x)
+        uint256 msb;
+        assembly {
+            msb := sub(255, clz(x))
+        }
+
+        // 2) Start result as Q32.32 fixed point with integer part
+        // Q32.32 means 32 bits for integer, 32 bits for fraction
+        uint256 resultQ32;
+        unchecked {
+            resultQ32 = msb << 32; // Integer part in upper 32 bits
+        }
+
+        // 3) Normalize x to r in [1, 2) as Q128 fixed point
+        // Shift x left so MSB is at position 127 (Q128 representation)
+        uint256 r;
+        unchecked {
+            r = x << (127 - msb);
+        }
+
+        // 4) Compute 32 fractional bits using bit-by-bit refinement
+        // For each bit: square r, if r >= 2, set bit and divide by 2
+        unchecked {
+            for (uint256 i; i < 32; ++i) {
+                r = (r * r) >> 127; // Square and maintain Q128
+
+                if (r >= (1 << 128)) {
+                    r >>= 1;
+                    resultQ32 |= uint256(1) << (31 - i);
+                }
+            }
+        }
+
+        // 5) Convert from Q32.32 to 1e18 fixed point
+        // Q32.32 to decimal: multiply by 1e18 and shift right 32 bits
+        unchecked {
+            return (resultQ32 * 1e18) >> 32;
+        }
     }
 
     // Exponential function e^{-x}, x >= 0 in 1e18 fixed point, returns 1e18 fixed point
@@ -288,27 +338,6 @@ contract OptionPrice {
         }
     }
 
-    function normCdfOld(int256 x) public pure returns (uint256) {
-        uint256 x_ = abs(x);
-        // rate = 1.67 in 1e18 fixed point
-        uint256 rate = 1670000000000000000;
-        // Compute -rate * x / 1e18 to keep fixed point math
-        uint256 negExponent = ((rate * x_) / 1e18);
-        uint256 expVal = expNeg(negExponent); // exp returns 1e18 fixed point
-
-        // 1e18 / (1e18 + expVal)
-        uint256 rightside = (1e18 * 1e18) / (1e18 + expVal);
-        return x > 0 ? rightside : 1e18 - rightside;
-    }
-
-    function normCdfPositiveUse(int256 x) public pure returns (uint256) {
-        if (x >= 0) {
-            return normCdfPositive(x);
-        } else {
-            return 1e18 - normCdfPositive(-x);
-        }
-    }
-
     function normCdfPositive(int256 x) internal pure returns (uint256) {
         uint64[101] memory table = [
             500000000000000000,
@@ -419,17 +448,6 @@ contract OptionPrice {
         return uint256(table[index]);
     }
 
-    // Square root for 1e18 fixed point, returns 1e18 fixed point
-    function sqrt(uint256 x) public pure returns (uint256 y) {
-        if (x == 0) return 0;
-        uint256 z = (x + 1) / 2;
-        y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
-        }
-    }
-
     // Returns the price of the token (18 decimals)
     function getPrice(uint256 collateralPrice, uint256 strike, uint256 expiration, bool isPut, bool inverse)
         external
@@ -444,65 +462,5 @@ contract OptionPrice {
             return 1e36 / price;
         }
         return price;
-    }
-
-    function log2(uint256 x) public pure returns (uint256) {
-        require(x > 0, "log2 undefined for 0");
-
-        // 1) Integer part: msb = floor(log2(x))
-        uint256 msb;
-        {
-            uint256 t = x;
-            if (t >= 1 << 128) {
-                t >>= 128;
-                msb += 128;
-            }
-            if (t >= 1 << 64) {
-                t >>= 64;
-                msb += 64;
-            }
-            if (t >= 1 << 32) {
-                t >>= 32;
-                msb += 32;
-            }
-            if (t >= 1 << 16) {
-                t >>= 16;
-                msb += 16;
-            }
-            if (t >= 1 << 8) {
-                t >>= 8;
-                msb += 8;
-            }
-            if (t >= 1 << 4) {
-                t >>= 4;
-                msb += 4;
-            }
-            if (t >= 1 << 2) {
-                t >>= 2;
-                msb += 2;
-            }
-            if (t >= 1 << 1) msb += 1;
-        }
-
-        // 2) Start result as Q64.64 with integer part
-        uint256 resultQ64 = msb << 64;
-
-        // 3) Normalize to r in [1,2) but carried as Q128 (i.e., 1<<127 is "1.0")
-        //    Note: shift count is safe because x > 0 and msb ≤ 255.
-        uint256 r = x << (127 - msb); // Q128
-
-        // 64 fractional bits
-        for (uint256 i = 0; i < 64; ++i) {
-            // r = r^2 in Q128: (Q128 * Q128) >> 127 keeps it as Q128 in [1,4)
-            r = (r * r) >> 127;
-            if (r >= (1 << 128)) {
-                // set this fractional bit
-                r >>= 1; // bring r back to [1,2)
-                resultQ64 |= uint256(1) << (63 - i);
-            }
-        }
-
-        // 4) Convert Q64.64 -> 1e18
-        return (resultQ64 * 1e18) >> 64;
     }
 }
