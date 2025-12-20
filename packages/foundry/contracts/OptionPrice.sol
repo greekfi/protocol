@@ -156,23 +156,23 @@ contract OptionPrice {
     // Algorithm:
     // 1. Use CLZ to find MSB (integer part of log2)
     // 2. Normalize x to range [1, 2)
-    // 3. Iteratively refine fractional bits using bit-by-bit algorithm (32 bits)
-    // 4. Convert from Q32.32 to 1e18 fixed point
+    // 3. Iteratively refine fractional bits using bit-by-bit algorithm (64 bits)
+    // 4. Convert from Q64.64 to 1e18 fixed point
     function log2(uint256 x) public pure returns (uint256) {
         require(x > 0, "log2 undefined for 0");
 
         // 1) Integer part using CLZ opcode
         // CLZ counts leading zeros from MSB, so: msb_position = 255 - clz(x)
         uint256 msb;
-        assembly {
+        assembly ("memory-safe") {
             msb := sub(255, clz(x))
         }
 
-        // 2) Start result as Q32.32 fixed point with integer part
-        // Q32.32 means 32 bits for integer, 32 bits for fraction
-        uint256 resultQ32;
+        // 2) Start result as Q64.64 fixed point with integer part
+        // Q64.64 means 64 bits for integer, 64 bits for fraction
+        uint256 resultQ64;
         unchecked {
-            resultQ32 = msb << 32; // Integer part in upper 32 bits
+            resultQ64 = msb << 64; // Integer part in upper 64 bits
         }
 
         // 3) Normalize x to r in [1, 2) as Q128 fixed point
@@ -182,23 +182,23 @@ contract OptionPrice {
             r = x << (127 - msb);
         }
 
-        // 4) Compute 32 fractional bits using bit-by-bit refinement
+        // 4) Compute 64 fractional bits using bit-by-bit refinement
         // For each bit: square r, if r >= 2, set bit and divide by 2
         unchecked {
-            for (uint256 i; i < 32; ++i) {
+            for (uint256 i; i < 64; ++i) {
                 r = (r * r) >> 127; // Square and maintain Q128
 
                 if (r >= (1 << 128)) {
                     r >>= 1;
-                    resultQ32 |= uint256(1) << (31 - i);
+                    resultQ64 |= uint256(1) << (63 - i);
                 }
             }
         }
 
-        // 5) Convert from Q32.32 to 1e18 fixed point
-        // Q32.32 to decimal: multiply by 1e18 and shift right 32 bits
+        // 5) Convert from Q64.64 to 1e18 fixed point
+        // Q64.64 to decimal: multiply by 1e18 and shift right 64 bits
         unchecked {
-            return (resultQ32 * 1e18) >> 32;
+            return (resultQ64 * 1e18) >> 64;
         }
     }
 

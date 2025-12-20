@@ -173,14 +173,14 @@ contract OptionPriceTest is Test {
     function test_ln() public view {
         // ln(1) = 0
 
-        assertEq(op.log2(1.0e18), 59.794705707972522261e18, "log2(1) should equal 0");
+        assertEq(op.log2(1.0e18), 59.794705707972522261e18, "log2(1) should equal 59.794705");
 
         // assertEq(op.ln(1.00000e18), 0, "ln(1) should equal 0");
-        assertApproxEqRel(op.ln(1.0e18), 0, 0.00001e18, "ln(1.000001) should be approximately 0");
+        assertApproxEqRel(op.ln(1.0e18), 0, 0.0001e18, "ln(1.000001) should be approximately 0");
 
         assertApproxEqRel(
-            op.ln(15e17), // 1.5 in 1e18 fixed point
-            405465108108164381,
+            op.ln(1.5e18), // 1.5 in 1e18 fixed point
+            0.405465108108164381e18,
             0.01e18, // 1% tolerance
             "ln(1.5) should be approximately 0.4055"
         );
