@@ -86,19 +86,34 @@ function getDeploymentHistory(broadcastPath) {
 }
 
 function getArtifactOfContract(contractName) {
-  const current_path_to_artifacts = join(
+  // First try the standard path where contract name matches file name
+  const standard_path = join(
     __dirname,
     "..",
     `out/${contractName}.sol`,
   );
 
-  if (!existsSync(current_path_to_artifacts)) return null;
+  if (existsSync(standard_path)) {
+    const artifactPath = `${standard_path}/${contractName}.json`;
+    if (existsSync(artifactPath)) {
+      return JSON.parse(readFileSync(artifactPath));
+    }
+  }
 
-  const artifactJson = JSON.parse(
-    readFileSync(`${current_path_to_artifacts}/${contractName}.json`),
-  );
+  // If not found, search all .sol directories for this contract's artifact
+  // This handles cases where multiple contracts are in one .sol file
+  const outDir = join(__dirname, "..", "out");
+  if (existsSync(outDir)) {
+    const solDirs = getDirectories(outDir);
+    for (const solDir of solDirs) {
+      const artifactPath = join(outDir, solDir, `${contractName}.json`);
+      if (existsSync(artifactPath)) {
+        return JSON.parse(readFileSync(artifactPath));
+      }
+    }
+  }
 
-  return artifactJson;
+  return null;
 }
 
 function getInheritedFromContracts(artifact) {
