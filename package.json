@@ -16,6 +16,7 @@
     "compile": "yarn foundry:compile",
     "deploy": "yarn foundry:deploy",
     "flatten": "yarn foundry:flatten",
+    "faucet": "yarn workspace @se-2/foundry faucet",
     "fork": "yarn foundry:fork",
     "format": "yarn next:format && yarn foundry:format",
     "foundry:account": "yarn workspace @se-2/foundry account",
