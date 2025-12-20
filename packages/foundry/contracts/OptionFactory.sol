@@ -181,6 +181,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @param amount The allowance amount to set
      */
     function approve(address token, uint256 amount) internal {
+        if (token == address(0)) revert InvalidAddress();
         _allowances[token][msg.sender] = amount;
     }
 
