@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import TokenFaucet from "./TokenFaucet";
 import logo from "~~/public/helmet-white.svg";
 
 const Navbar: React.FC = () => (
@@ -26,6 +27,9 @@ const Navbar: React.FC = () => (
         <Link href="mailto:hello@greek.fi" className="hover:text-blue-500 text-blue-300">
           Contact
         </Link>
+      </li>
+      <li>
+        <TokenFaucet />
       </li>
       <li>
         <ConnectButton />

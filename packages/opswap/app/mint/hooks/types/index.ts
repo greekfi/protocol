@@ -3,7 +3,7 @@ import { Address } from "viem";
 // ============ Token Types ============
 
 export interface TokenData {
-  address: Address;
+  address_: Address; // Note: Solidity uses address_ (with underscore)
   name: string;
   symbol: string;
   decimals: number;

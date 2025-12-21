@@ -24,7 +24,7 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
   const factoryAddress = useContracts()?.OptionFactory?.address as Address | undefined;
   const amountWei = amount ? parseUnits(amount, 18) : 0n; // Options are always 18 decimals
-  const allowances = useAllowances(option?.consideration.address, amountWei);
+  const allowances = useAllowances(option?.consideration.address_, amountWei);
 
   // Transaction executors (pure writes)
   const approveERC20 = useApproveERC20();
@@ -67,7 +67,7 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
 
       // Step 1: Approve consideration token if needed
       if (allowances.needsErc20Approval) {
-        const hash = await approveERC20.approve(option.consideration.address, factoryAddress);
+        const hash = await approveERC20.approve(option.consideration.address_, factoryAddress);
         setTxHash(hash);
         return;
       }

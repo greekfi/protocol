@@ -25,7 +25,7 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
   const factoryAddress = useContracts()?.OptionFactory?.address;
   const amountWei = amount ? parseUnits(amount, option?.collateral.decimals ?? 18) : 0n;
-  const allowances = useAllowances(option?.collateral.address, amountWei);
+  const allowances = useAllowances(option?.collateral.address_, amountWei);
 
   // Transaction executors (pure writes)
   const approveERC20 = useApproveERC20();
@@ -69,15 +69,27 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
 
       // Step 1: Approve ERC20 if needed
       if (allowances.needsErc20Approval) {
-        const hash = await approveERC20.approve(option.collateral.address, factoryAddress);
-        setTxHash(hash);
-        // Wait for this component to re-render when txConfirmed updates
-        return;
+        console.log("=== ERC20 Approve Debug ===");
+        console.log("Token address:", option.collateral.address_);
+        console.log("Factory address:", factoryAddress);
+        console.log("Token symbol:", option.collateral.symbol);
+        console.log("Amount needed:", wei.toString());
+
+        try {
+          const hash = await approveERC20.approve(option.collateral.address_, factoryAddress);
+          console.log("Approval tx hash:", hash);
+          setTxHash(hash);
+          // Wait for this component to re-render when txConfirmed updates
+          return;
+        } catch (err: any) {
+          console.error("ERC20 Approve failed:", err);
+          throw err;
+        }
       }
 
       // Step 2: Approve factory if needed
       if (allowances.needsFactoryApproval) {
-        const hash = await approveFactory.approve(option.collateral.address);
+        const hash = await approveFactory.approve(option.collateral.address_);
         setTxHash(hash);
         return;
       }
@@ -120,6 +132,9 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
       if (allowances.needsFactoryApproval) return "Approving factory...";
       return "Minting...";
     }
+    // Idle state - show what action will be taken
+    if (allowances.needsErc20Approval) return "Approve Token";
+    if (allowances.needsFactoryApproval) return "Approve Factory";
     return "Mint Options";
   };
 
