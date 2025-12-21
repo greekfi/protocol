@@ -15,7 +15,7 @@ export default function OptionsPage() {
               {/* Logo and Title */}
               <div className="flex items-center gap-3 sm:gap-4">
                 <Image src={Helmet} alt="Greek.fi Logo" className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24" />
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl text-blue-300 font-[var(--font-martel-sans)]">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl text-blue-300 font-(--font-martel-sans)">
                   GreekFi
                 </h1>
               </div>
@@ -41,10 +41,10 @@ export default function OptionsPage() {
         {/* Hero Section */}
         <section className="relative py-32 px-6">
           <div className="max-w-7xl mx-auto">
-            {/* <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-3xl"></div> */}
+            {/* <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 to-purple-500/10 blur-3xl"></div> */}
             <h2 className="text-[clamp(2.5rem,8vw,6rem)] font-bold text-white leading-tight">
               The only options protocol <br />
-              <span className="bg-gradient-to-r from-blue-400 to-blue-600 text-transparent bg-clip-text">
+              <span className="bg-linear-to-r from-blue-400 to-blue-600 text-transparent bg-clip-text">
                 built for defi
               </span>
             </h2>
@@ -71,7 +71,7 @@ export default function OptionsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Collateral Card */}
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-400/20 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-500/20 to-blue-400/20 border border-blue-500/20 hover:border-blue-500/40 transition-all">
                 <div className="h-12 w-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">💎</span>
                 </div>
@@ -82,7 +82,7 @@ export default function OptionsPage() {
               </div>
 
               {/* Token System Card */}
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-400/20 to-blue-300/20 border border-blue-400/20 hover:border-blue-400/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-400/20 to-blue-300/20 border border-blue-400/20 hover:border-blue-400/40 transition-all">
                 <div className="h-12 w-12 bg-blue-400/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">🎯</span>
                 </div>
@@ -93,7 +93,7 @@ export default function OptionsPage() {
               </div>
 
               {/* Trading Card */}
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-300/20 to-blue-200/20 border border-blue-300/20 hover:border-blue-300/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-300/20 to-blue-200/20 border border-blue-300/20 hover:border-blue-300/40 transition-all">
                 <div className="h-12 w-12 bg-blue-300/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">📈</span>
                 </div>
@@ -104,7 +104,7 @@ export default function OptionsPage() {
 
             {/* Additional Benefits */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-400/20 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-500/20 to-blue-400/20 border border-blue-500/20 hover:border-blue-500/40 transition-all">
                 <div className="h-12 w-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">🛡️</span>
                 </div>
@@ -112,7 +112,7 @@ export default function OptionsPage() {
                 <p className="text-gray-400">No oracle needed. No margin. No counterparty risk.</p>
               </div>
 
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-400/20 to-blue-300/20 border border-blue-400/20 hover:border-blue-400/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-400/20 to-blue-300/20 border border-blue-400/20 hover:border-blue-400/40 transition-all">
                 <div className="h-12 w-12 bg-blue-400/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">⚡</span>
                 </div>
@@ -122,7 +122,7 @@ export default function OptionsPage() {
                 </p>
               </div>
 
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-300/20 to-blue-200/20 border border-blue-300/20 hover:border-blue-300/40 transition-all">
+              <div className="p-8 rounded-2xl bg-linear-to-br from-blue-300/20 to-blue-200/20 border border-blue-300/20 hover:border-blue-300/40 transition-all">
                 <div className="h-12 w-12 bg-blue-300/20 rounded-full flex items-center justify-center mb-6">
                   <span className="text-2xl">📊</span>
                 </div>

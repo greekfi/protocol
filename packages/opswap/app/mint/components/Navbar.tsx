@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import logo from "../../public/helmet-white.svg";
+import logo from "~~/public/helmet-white.svg";
 
 const Navbar: React.FC = () => (
   <nav className="flex justify-between w-full">

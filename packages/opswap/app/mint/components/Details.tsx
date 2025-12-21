@@ -1,4 +1,4 @@
-import type { OptionDetails } from "./hooks/types";
+import type { OptionDetails } from "../hooks/types";
 
 const ContractDetails = ({ details }: { details: OptionDetails | null }) => {
   const isValidOptionAddress = Boolean(details?.option && details.option !== "0x0");

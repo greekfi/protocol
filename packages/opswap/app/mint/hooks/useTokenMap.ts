@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import tokenList from "../tokenList.json";
+import tokenList from "../data/tokenList.json";
 import { useContract } from "./useContract";
 import { useChainId } from "wagmi";
 

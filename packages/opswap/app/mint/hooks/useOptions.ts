@@ -101,8 +101,15 @@ export function useOptions() {
     });
   }, [queryClient, factoryAddress]);
 
+  // Convert options to the format expected by SelectOptionAddress
+  const optionList = options.map((opt) => ({
+    name: opt.name,
+    address: opt.address,
+  }));
+
   return {
     options,
+    optionList,
     isLoading: isLoadingEvents || isLoadingNames,
     error: eventsError,
     refetch,

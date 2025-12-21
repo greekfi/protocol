@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { Address } from "viem";
-import CreateMany from "./CreateMany";
-import ContractDetails from "./Details";
-import Navbar from "./Navbar";
-import SelectOptionAddress from "./Selector";
-import Action from "./action";
-import MintActionSimple from "./components/MintActionSimple";
+import CreateMany from "./components/CreateMany";
+import ContractDetails from "./components/Details";
+import Navbar from "./components/Navbar";
+import SelectOptionAddress from "./components/Selector";
+import MintActionClean from "./components/MintAction";
+import ExerciseAction from "./components/ExerciseAction";
+import RedeemAction from "./components/RedeemAction";
 import { useOption } from "./hooks/useOption";
 import { useOptions } from "./hooks/useOptions";
 
@@ -15,14 +16,9 @@ function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address | undefined>(undefined);
 
   // Use new hooks
-  const { options } = useOptions();
+  const { optionList } = useOptions();
   const { data: optionDetails } = useOption(optionAddress);
 
-  // Convert options to the format expected by SelectOptionAddress
-  const optionList = options.map((opt) => ({
-    name: opt.name,
-    address: opt.address,
-  }));
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
@@ -40,11 +36,10 @@ function OptionsApp() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
-                {/* Keep existing action components for exercise/redeem until Phase 2 */}
-                <Action details={optionDetails} action="exercise" />
-                {/* Simple Mint with auto-approvals */}
-                <MintActionSimple optionAddress={optionAddress} />
-                <Action details={optionDetails} action="redeem" />
+                {/* Clean components - logic in component, hooks are just data/transactions */}
+                <ExerciseAction optionAddress={optionAddress} />
+                <MintActionClean optionAddress={optionAddress} />
+                <RedeemAction optionAddress={optionAddress} />
               </div>
             </div>
 

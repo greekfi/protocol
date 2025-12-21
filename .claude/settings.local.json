@@ -26,7 +26,8 @@
       "Bash(curl:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
-      "Bash(cast:*)"
+      "Bash(cast:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

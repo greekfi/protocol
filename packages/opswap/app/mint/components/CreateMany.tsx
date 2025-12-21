@@ -1,11 +1,43 @@
 import { useState, useCallback } from "react";
 import { Address } from "viem";
 import { useAccount } from "wagmi";
-import DesignHeader from "./components/DesignHeader";
-import { Token, useTokenMap } from "./hooks/useTokenMap";
-import { useCreateOption, CreateOptionParams } from "./hooks/useCreateOption";
-import { toStrikePrice } from "./hooks/constants";
-import { getStepLabel } from "./hooks/useTransactionFlow";
+import DesignHeader from "./DesignHeader";
+import { Token, useTokenMap } from "../hooks/useTokenMap";
+import { useCreateOption, CreateOptionParams } from "../hooks/useCreateOption";
+import { toStrikePrice } from "../hooks/constants";
+// import { getStepLabel } from "../hooks/useTransactionFlow";
+
+
+/**
+ * Helper to get a human-readable label for a transaction step
+ */
+export function getStepLabel(step: any): string {
+  switch (step) {
+    case "idle":
+      return "Ready";
+    case "checking-allowance":
+      return "Checking allowances...";
+    case "approving-erc20":
+      return "Approving token...";
+    case "waiting-erc20":
+      return "Confirming token approval...";
+    case "approving-factory":
+      return "Approving factory...";
+    case "waiting-factory":
+      return "Confirming factory approval...";
+    case "executing":
+      return "Executing...";
+    case "waiting-execution":
+      return "Confirming transaction...";
+    case "success":
+      return "Success!";
+    case "error":
+      return "Error";
+    default:
+      return step;
+  }
+}
+
 
 interface TokenSelectProps {
   label: string;

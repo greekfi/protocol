@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Address } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
 import { useOptionContract } from "./useContracts";
@@ -50,10 +49,10 @@ export function useOption(optionAddress: Address | undefined) {
   );
 
   // Build contracts array for multicall
-  const contracts = useMemo(() => {
-    if (!enabled || !optionContract?.abi) return [];
+  let contracts: any[] = [];
 
-    const baseContracts = [
+  if (enabled && optionContract?.abi) {
+    contracts = [
       {
         address: optionAddress as Address,
         abi: optionContract.abi as readonly unknown[],
@@ -68,16 +67,14 @@ export function useOption(optionAddress: Address | undefined) {
 
     // Only add balancesOf if user is connected
     if (userAddress) {
-      baseContracts.push({
+      contracts.push({
         address: optionAddress as Address,
         abi: optionContract.abi as readonly unknown[],
         functionName: "balancesOf" as const,
         args: [userAddress],
-      } as any);
+      });
     }
-
-    return baseContracts;
-  }, [optionAddress, optionContract?.abi, userAddress, enabled]);
+  }
 
   const { data, isLoading, error, refetch } = useReadContracts({
     contracts: contracts as any,
@@ -87,57 +84,53 @@ export function useOption(optionAddress: Address | undefined) {
   });
 
   // Parse results
-  const result = useMemo(() => {
-    if (!data || data.length === 0) {
-      return {
-        data: null,
-        isLoading,
-        error,
-        refetch,
-      };
-    }
-
-    const [detailsResult, nameResult, balancesResult] = data;
-
-    // Check for errors in individual calls
-    if (detailsResult?.status === "failure") {
-      return {
-        data: null,
-        isLoading,
-        error: new Error("Failed to fetch option details"),
-        refetch,
-      };
-    }
-
-    const details = detailsResult?.result as OptionInfo | undefined;
-    const name = nameResult?.result as string | undefined;
-    const balances = balancesResult?.result as Balances | undefined;
-
-    if (!details) {
-      return {
-        data: null,
-        isLoading,
-        error,
-        refetch,
-      };
-    }
-
-    const optionDetails: OptionDetails = {
-      ...details,
-      isExpired: isExpired(details.expiration),
-      balances: balances ?? null,
-      formattedName: formatOptionName(name ?? ""),
-    };
-
+  if (!data || data.length === 0) {
     return {
-      data: optionDetails,
+      data: null,
       isLoading,
       error,
       refetch,
     };
-  }, [data, isLoading, error, refetch]);
+  }
 
-  return result;
+  const [detailsResult, nameResult, balancesResult] = data;
+
+  // Check for errors in individual calls
+  if (detailsResult?.status === "failure") {
+    return {
+      data: null,
+      isLoading,
+      error: new Error("Failed to fetch option details"),
+      refetch,
+    };
+  }
+
+  const details = detailsResult?.result as OptionInfo | undefined;
+  const name = nameResult?.result as string | undefined;
+  const balances = balancesResult?.result as Balances | undefined;
+
+  if (!details) {
+    return {
+      data: null,
+      isLoading,
+      error,
+      refetch,
+    };
+  }
+
+  const optionDetails: OptionDetails = {
+    ...details,
+    isExpired: isExpired(details.expiration),
+    balances: balances ?? null,
+    formattedName: formatOptionName(name ?? ""),
+  };
+
+  return {
+    data: optionDetails,
+    isLoading,
+    error,
+    refetch,
+  };
 }
 
 export default useOption;
