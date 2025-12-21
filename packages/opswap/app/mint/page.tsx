@@ -9,6 +9,9 @@ import SelectOptionAddress from "./components/Selector";
 import Mint from "./components/Mint";
 import Exercise from "./components/Exercise";
 import Redeem from "./components/Redeem";
+import RedeemRedemption from "./components/RedeemRedemption";
+import TransferOption from "./components/TransferOption";
+import TransferRedemption from "./components/TransferRedemption";
 import { useOption } from "./hooks/useOption";
 import { useOptions } from "./hooks/useOptions";
 
@@ -40,6 +43,14 @@ function OptionsApp() {
                 <Exercise optionAddress={optionAddress} />
                 <Mint optionAddress={optionAddress} />
                 <Redeem optionAddress={optionAddress} />
+              </div>
+            </div>
+
+            <div className="border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
+                <TransferOption optionAddress={optionAddress} />
+                <TransferRedemption optionAddress={optionAddress} />
+                <RedeemRedemption optionAddress={optionAddress} />
               </div>
             </div>
 

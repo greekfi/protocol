@@ -56,14 +56,24 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
 
       const wei = parseUnits(amount, 18); // Options are 18 decimals
 
+      console.log("=== Redeem Debug ===");
+      console.log("Amount entered:", amount);
+      console.log("Amount in wei:", wei.toString());
+      console.log("Option balance:", option.balances?.option?.toString());
+      console.log("Redemption balance:", option.balances?.redemption?.toString());
+      console.log("Option balance check:", option.balances?.option ? option.balances.option < wei : "no balance");
+      console.log("Redemption balance check:", option.balances?.redemption ? option.balances.redemption < wei : "no balance");
+
       // Check if user has enough of both tokens
       if (option.balances?.option && option.balances.option < wei) {
+        console.error("Failed: Insufficient Option balance");
         setError("Insufficient Option token balance");
         setStatus("error");
         return;
       }
 
       if (option.balances?.redemption && option.balances.redemption < wei) {
+        console.error("Failed: Insufficient Redemption balance");
         setError("Insufficient Redemption token balance");
         setStatus("error");
         return;
@@ -144,7 +154,16 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
 
       {/* Amount Input */}
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-1">Amount (Pairs)</label>
+        <div className="flex justify-between items-center mb-1">
+          <label className="block text-sm text-gray-400">Amount (Pairs)</label>
+          <button
+            onClick={() => setAmount(formatUnits(maxRedeemable, 18))}
+            className="text-xs text-purple-400 hover:text-purple-300 underline"
+            disabled={status === "working" || maxRedeemable === 0n}
+          >
+            Max
+          </button>
+        </div>
         <input
           type="number"
           value={amount}
