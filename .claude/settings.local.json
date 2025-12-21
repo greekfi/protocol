@@ -25,7 +25,8 @@
       "Bash(foundryup:*)",
       "Bash(curl:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cast:*)"
     ],
     "deny": [],
     "ask": []

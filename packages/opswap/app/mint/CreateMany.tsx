@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { Address } from "viem";
+import { useAccount } from "wagmi";
 import DesignHeader from "./components/DesignHeader";
-import { useContract } from "./hooks/useContract";
 import { Token, useTokenMap } from "./hooks/useTokenMap";
-import moment from "moment-timezone";
-import { useAccount, useWriteContract } from "wagmi";
+import { useCreateOption, CreateOptionParams } from "./hooks/useCreateOption";
+import { toStrikePrice } from "./hooks/constants";
+import { getStepLabel } from "./hooks/useTransactionFlow";
 
 interface TokenSelectProps {
   label: string;
@@ -14,14 +16,14 @@ interface TokenSelectProps {
 
 const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) => (
   <div className="flex-1">
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
     <select
       className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2"
       value={value?.symbol || ""}
-      onChange={e => onChange(tokensMap[e.target.value])}
+      onChange={(e) => onChange(tokensMap[e.target.value])}
     >
       <option value="">Select token</option>
-      {Object.keys(tokensMap).map(symbol => (
+      {Object.keys(tokensMap).map((symbol) => (
         <option key={symbol} value={symbol}>
           {symbol}
         </option>
@@ -30,147 +32,89 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
   </div>
 );
 
-const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
+const CreateMany = () => {
   const { isConnected } = useAccount();
-  const { writeContract, isPending, isSuccess, data: hash } = useWriteContract();
   const { allTokensMap } = useTokenMap();
-  console.log("allTokensMap", allTokensMap);
 
-  const contract = useContract();
-  const abi = contract?.OptionFactory?.abi;
-  const contractAddress = contract?.OptionFactory?.address;
+  // Use the new create option hook
+  const { createOptions, step, isLoading, isSuccess, error, txHash, reset } = useCreateOption();
 
-  // Individual state variables
+  // Form state
   const [collateralToken, setCollateralToken] = useState<Token | undefined>(undefined);
   const [considerationToken, setConsiderationToken] = useState<Token | undefined>(undefined);
-  const [strikePrices, setStrikePrices] = useState<number[]>([0]);
+  const [strikePrices, setStrikePrices] = useState<number[]>([]);
   const [isPut, setIsPut] = useState(false);
   const [expirationDates, setExpirationDates] = useState<Date[]>([new Date()]);
 
-  const addExpirationDate = () => {
-    setExpirationDates([...expirationDates, new Date()]);
-  };
+  const addExpirationDate = useCallback(() => {
+    setExpirationDates((prev) => [...prev, new Date()]);
+  }, []);
 
-  const removeExpirationDate = (index: number) => {
-    if (expirationDates.length > 1) {
-      setExpirationDates(expirationDates.filter((_, i) => i !== index));
-    }
-  };
+  const removeExpirationDate = useCallback((index: number) => {
+    setExpirationDates((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  }, []);
 
-  const updateExpirationDate = (index: number, date: Date) => {
-    const newDates = [...expirationDates];
-    newDates[index] = date;
-    setExpirationDates(newDates);
-  };
+  const updateExpirationDate = useCallback((index: number, date: Date) => {
+    setExpirationDates((prev) => {
+      const newDates = [...prev];
+      newDates[index] = date;
+      return newDates;
+    });
+  }, []);
 
-  const calculateStrikeRatio = (strikePrice: number) => {
-    if (!strikePrice || !considerationToken || !collateralToken) return { strikeInteger: BigInt(0) };
-    // For PUT mint, we need to invert the strike price in the calculation
-    // This is because puts are really just call mint but with the strike price inverted
-    if (isPut) {
-      // For PUT mint: 1/strikePrice * 10^(18 + considerationDecimals - collateralDecimals)
-      const invertedStrike = strikePrice === 0 ? 0 : 1 / strikePrice;
-      return {
-        strikeInteger: BigInt(Math.floor(invertedStrike * Math.pow(10, 18))),
-      };
-    }
-    return {
-      strikeInteger: BigInt(strikePrice * Math.pow(10, 18)),
-    };
-  };
+  const handleStrikePricesChange = useCallback((value: string) => {
+    const strikes = value
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map(Number)
+      .filter((n) => !isNaN(n) && n > 0);
+    setStrikePrices(strikes);
+  }, []);
 
-  const handleCreateOption = async () => {
-    // Prevent multiple submissions
-    if (isPending) return;
+  const calculateStrike = useCallback(
+    (price: number): bigint => {
+      if (isPut && price > 0) {
+        // For PUT: invert the strike price
+        return toStrikePrice(1 / price);
+      }
+      return toStrikePrice(price);
+    },
+    [isPut]
+  );
 
-    if (!collateralToken || !considerationToken || !strikePrices || !expirationDates.length) {
-      alert("Please fill in all fields");
+  const handleCreateOption = useCallback(async () => {
+    if (!collateralToken || !considerationToken || strikePrices.length === 0 || expirationDates.length === 0) {
       return;
     }
 
-    const strikeIntegers = strikePrices.map(strikePrice => calculateStrikeRatio(strikePrice).strikeInteger);
-    console.log("strikeIntegers", strikeIntegers);
-
-    // Create options for each expiration date
-    const allOptions = [];
+    // Build all option params
+    const allParams: CreateOptionParams[] = [];
 
     for (const expirationDate of expirationDates) {
       const expTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
-      // Get the next 10 Fridays after the current date
-      const nextFridays = Array.from({ length: 10 }, (_, i) => {
-        const today = new Date();
-        const day = today.getDay();
-        const diff = ((5 - day + 7) % 7) + i * 7;
-        const nextFriday = new Date(today);
-        nextFriday.setDate(today.getDate() + diff);
-        nextFriday.setHours(0, 0, 0, 0);
-        return nextFriday.getTime();
-      });
 
-      const nextTenFridayTimestamps = nextFridays.map(d => Math.floor(d / 1000));
-      console.log("nextTenFridayTimestamps", nextTenFridayTimestamps);
-      console.log("expTimestamp", expTimestamp);
-      const fmtDate = moment(expirationDate).format("YYYYMMDD");
-      console.log("fmtDate", fmtDate);
-
-      const optionType = isPut ? "P" : "C";
-      const baseNameSymbol = `OPT${optionType}-${collateralToken.symbol}-${considerationToken.symbol}-${fmtDate}`;
-      const longNames = strikeIntegers.map(strikeInteger => `L${baseNameSymbol}-${strikeInteger}`);
-      const shortNames = strikeIntegers.map(strikeInteger => `S${baseNameSymbol}-${strikeInteger}`);
-      console.log("longNames", longNames);
-      console.log("shortNames", shortNames);
-      console.log("collateralToken.address", collateralToken.address);
-      console.log("considerationToken.address", considerationToken.address);
-      console.log("expTimestamp", expTimestamp);
-      console.log("strikeIntegers", strikeIntegers);
-      console.log("isPut", isPut);
-
-      const options = longNames.map((longName, i) => ({
-        optionSymbol: longName,
-        redemptionSymbol: shortNames[i],
-        collateral_: collateralToken.address,
-        consideration_: considerationToken.address,
-        expiration: BigInt(expTimestamp),
-        strike: strikeIntegers[i],
-        isPut,
-      }));
-
-      allOptions.push(...options);
+      for (const price of strikePrices) {
+        allParams.push({
+          collateral: collateralToken.address as Address,
+          consideration: considerationToken.address as Address,
+          expiration: expTimestamp,
+          strike: calculateStrike(price),
+          isPut,
+        });
+      }
     }
 
-    try {
-      writeContract(
-        {
-          address: contractAddress,
-          abi,
-          functionName: "createOptions",
-          args: [allOptions],
-        },
-        {
-          onSuccess: () => {
-            console.log("committed transaction", hash);
-            refetchOptions();
-          },
-        },
-      );
-    } catch (error) {
-      console.error("Error creating option:", error);
-      alert("Failed to create option. Check console for details.");
-    }
-  };
+    await createOptions(allParams);
+  }, [collateralToken, considerationToken, strikePrices, expirationDates, isPut, calculateStrike, createOptions]);
 
-  const handleStrikePricesChange = (value: string) => {
-    // Split by comma or newline, filter out empty, and parse to number
-    const strikes = value
-      .split(/[\n,]+/)
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter(n => !isNaN(n));
-    setStrikePrices(strikes);
-  };
+  const isFormValid = isConnected && collateralToken && considerationToken && strikePrices.length > 0 && expirationDates.length > 0;
 
-  moment.tz.setDefault("Europe/London");
+  const getButtonText = () => {
+    if (isLoading) return getStepLabel(step);
+    if (isSuccess) return "Created!";
+    return "Create Option";
+  };
 
   return (
     <div className="max-w-2xl mx-auto bg-black/80 border border-gray-800 rounded-lg shadow-lg p-6 text-lg">
@@ -183,7 +127,7 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
           <div className="flex flex-col space-y-6 w-1/2">
             {/* Option Type Selector */}
             <div className="flex flex-col space-y-2">
-              <label className=" text-blue-100">Option Type:</label>
+              <label className="text-blue-100">Option Type:</label>
               <div className="flex space-x-2">
                 <button
                   type="button"
@@ -225,7 +169,7 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
                       type="date"
                       className="flex-1 rounded-lg border border-gray-800 bg-black/60 text-blue-300 p-2"
                       value={date.toISOString().split("T")[0]}
-                      onChange={e => updateExpirationDate(index, new Date(e.target.value))}
+                      onChange={(e) => updateExpirationDate(index, new Date(e.target.value))}
                     />
                     {expirationDates.length > 1 && (
                       <button
@@ -255,12 +199,7 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
                     1
                   </div>
                   <div className="w-32">
-                    <TokenSelect
-                      label=""
-                      value={considerationToken}
-                      onChange={setConsiderationToken}
-                      tokensMap={allTokensMap}
-                    />
+                    <TokenSelect label="" value={considerationToken} onChange={setConsiderationToken} tokensMap={allTokensMap} />
                   </div>
                 </div>
 
@@ -271,16 +210,11 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
                   <textarea
                     className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2 resize-none"
                     rows={3}
-                    onChange={e => handleStrikePricesChange(e.target.value)}
+                    onChange={(e) => handleStrikePricesChange(e.target.value)}
                     placeholder="e.g. 100, 200, 300"
                   />
                   <div className="w-32">
-                    <TokenSelect
-                      label=""
-                      value={collateralToken}
-                      onChange={setCollateralToken}
-                      tokensMap={allTokensMap}
-                    />
+                    <TokenSelect label="" value={collateralToken} onChange={setCollateralToken} tokensMap={allTokensMap} />
                   </div>
                 </div>
               </>
@@ -289,7 +223,7 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
               <>
                 <div className="flex flex-col space-y-2 w-64">
                   <div className="flex items-center">
-                    <span className="text-blue-100">{isPut ? "Put" : "Call"} Option Holder swaps</span>
+                    <span className="text-blue-100">Call Option Holder swaps</span>
                   </div>
 
                   <div className="flex flex-col space-y-2 w-64">
@@ -297,18 +231,13 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
                     <textarea
                       className="w-full rounded-lg border border-gray-200 bg-black/60 text-blue-300 p-2 resize-none"
                       rows={3}
-                      onChange={e => handleStrikePricesChange(e.target.value)}
+                      onChange={(e) => handleStrikePricesChange(e.target.value)}
                       placeholder="e.g. 100, 200, 300"
                     />
                   </div>
 
                   <div className="w-32">
-                    <TokenSelect
-                      label=""
-                      value={considerationToken}
-                      onChange={setConsiderationToken}
-                      tokensMap={allTokensMap}
-                    />
+                    <TokenSelect label="" value={considerationToken} onChange={setConsiderationToken} tokensMap={allTokensMap} />
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -319,12 +248,7 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
                     1
                   </div>
                   <div className="w-32">
-                    <TokenSelect
-                      label=""
-                      value={collateralToken}
-                      onChange={setCollateralToken}
-                      tokensMap={allTokensMap}
-                    />
+                    <TokenSelect label="" value={collateralToken} onChange={setCollateralToken} tokensMap={allTokensMap} />
                   </div>
                 </div>
               </>
@@ -333,36 +257,28 @@ const Create = ({ refetchOptions }: { refetchOptions: () => void }) => {
             <button
               type="button"
               className={`px-4 py-2 rounded-lg text-black transition-transform hover:scale-105 ${
-                !isConnected ||
-                !collateralToken ||
-                !considerationToken ||
-                !strikePrices ||
-                !expirationDates ||
-                isPending
-                  ? "bg-blue-300 cursor-not-allowed"
-                  : "bg-blue-500 hover:bg-blue-600"
+                !isFormValid || isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
               }`}
-              onClick={handleCreateOption}
-              disabled={
-                !isConnected ||
-                !collateralToken ||
-                !considerationToken ||
-                !strikePrices ||
-                !expirationDates ||
-                isPending
-              }
+              onClick={isSuccess ? reset : handleCreateOption}
+              disabled={!isFormValid || isLoading}
             >
-              {isPending ? "Creating..." : isSuccess ? "Created!" : "Create Option"}
+              {getButtonText()}
             </button>
           </div>
         </div>
 
-        {isSuccess && (
-          <div className="text-green-500 text-sm">Option creation submitted successfully! Transaction hash: {hash}</div>
+        {/* Status messages */}
+        {error && <div className="text-red-500 text-sm">Error: {error.message}</div>}
+        {isSuccess && txHash && (
+          <div className="text-green-500 text-sm">
+            Option creation successful!
+            <br />
+            <span className="text-gray-400 text-xs">Tx: {txHash}</span>
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-export default Create;
+export default CreateMany;

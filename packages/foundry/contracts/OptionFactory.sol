@@ -171,7 +171,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @param owner The address of the token owner
      * @return The allowance amount
      */
-    function allowance(address token, address owner) internal view returns (uint256) {
+    function allowance(address token, address owner) public view returns (uint256) {
         return _allowances[token][owner];
     }
 
@@ -180,7 +180,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @param token The ERC20 token to set allowance for
      * @param amount The allowance amount to set
      */
-    function approve(address token, uint256 amount) internal {
+    function approve(address token, uint256 amount) public {
         if (token == address(0)) revert InvalidAddress();
         _allowances[token][msg.sender] = amount;
     }

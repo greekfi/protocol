@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import tokenList from "../tokenList.json";
 import { useContract } from "./useContract";
 import { useChainId } from "wagmi";
@@ -11,36 +12,39 @@ export interface Token {
 export const useTokenMap = () => {
   const chainId = useChainId();
   const contract = useContract();
-  const stableToken = contract?.StableToken;
-  const shakyToken = contract?.ShakyToken;
+  console.log("useTokenMap - chainId:", chainId);
 
-  // Create a map of all tokens for easy lookup
-  const chainKey = String(chainId) as keyof typeof tokenList;
-  const allTokensMap = (tokenList[chainKey] ?? []).reduce(
-    (acc, token) => {
-      acc[token.symbol] = token;
-      return acc;
-    },
-    {} as Record<string, Token>,
-  );
-  console.log("chainId", chainId);
+  // Extract addresses to use as stable dependencies
+  const stableTokenAddress = contract?.StableToken?.address;
+  const shakyTokenAddress = contract?.ShakyToken?.address;
 
-  // If we have stable and shaky tokens, override the token list
-  if (chainId != 1 && stableToken && shakyToken) {
-    // Object.keys(allTokensMap).forEach(key => {
-    //   delete allTokensMap[key];
-    // });
-    allTokensMap["STK"] = {
-      address: stableToken.address,
-      symbol: "STK",
-      decimals: 18,
-    };
-    allTokensMap["SHK"] = {
-      address: shakyToken.address,
-      symbol: "SHK",
-      decimals: 18,
-    };
-  }
+  // Memoize the token map to prevent recreation on every render
+  const allTokensMap = useMemo(() => {
+    const chainKey = String(chainId) as keyof typeof tokenList;
+    const baseTokensMap = (tokenList[chainKey] ?? []).reduce(
+      (acc, token) => {
+        acc[token.symbol] = token;
+        return acc;
+      },
+      {} as Record<string, Token>,
+    );
+
+    // If we have stable and shaky tokens, add them to the map
+    if (chainId != 1 && stableTokenAddress && shakyTokenAddress) {
+      baseTokensMap["STK"] = {
+        address: stableTokenAddress,
+        symbol: "STK",
+        decimals: 18,
+      };
+      baseTokensMap["SHK"] = {
+        address: shakyTokenAddress,
+        symbol: "SHK",
+        decimals: 18,
+      };
+    }
+
+    return baseTokensMap;
+  }, [chainId, stableTokenAddress, shakyTokenAddress]);
 
   return {
     allTokensMap,

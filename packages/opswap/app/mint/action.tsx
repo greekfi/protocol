@@ -1,37 +1,34 @@
 import { useState } from "react";
 import TokenBalanceNow from "./components/TokenBalanceNow";
 import TooltipButton from "./components/TooltipButton";
-import { useAllowanceCheck } from "./hooks/useAllowanceCheck";
 import { useContract } from "./hooks/useContract";
-import { useOptionDetails } from "./hooks/useGetOption";
-import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
+import type { OptionDetails } from "./hooks/types";
 import { Abi, Address, erc20Abi, parseUnits } from "viem";
 import { useWriteContract } from "wagmi";
+import { useFactoryAddress } from "./hooks/useContracts";
 
 const STRIKE_DECIMALS = 10n ** 18n;
 const MAX_UINT256 = 2n ** 256n - 1n;
 
-const toConsideration = (amount: bigint, details: any): bigint => {
-  const { strike, collDecimals, consDecimals } = details;
+const toConsideration = (amount: bigint, details: OptionDetails): bigint => {
+  const { strike, collateral, consideration } = details;
+  const collDecimals = collateral.decimals;
+  const consDecimals = consideration.decimals;
   return (amount * strike * 10n ** BigInt(consDecimals)) / (STRIKE_DECIMALS * 10n ** BigInt(collDecimals));
 };
 
 interface ActionInterfaceProps {
-  details: ReturnType<typeof useOptionDetails>;
-  action: "redeem" | "exercise" | "mint";
+  details: OptionDetails | null;
+  action: "redeem" | "exercise";
 }
 
 const Action = ({ details, action }: ActionInterfaceProps) => {
   const [amount, setAmount] = useState<number>(0);
   const { writeContract, isPending } = useWriteContract();
   const optionAbi = useContract()?.Option?.abi;
-  const collateralWei = parseUnits(amount.toString(), Number(details?.collateral.decimals));
-  const amountWei = parseUnits(amount.toString(), Number(details?.option.decimals));
-
-  const { considerationAllowance, collateralAllowance } = useAllowanceCheck(
-    details?.consideration.address_ as Address,
-    details?.collateral.address_ as Address,
-  );
+  const factoryAddress = useFactoryAddress();
+  // Option tokens have same decimals as collateral (standard ERC20 18 decimals)
+  const amountWei = parseUnits(amount.toString(), 18);
 
   const redeem = async () => {
     if (!details) return;
@@ -45,44 +42,24 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
   };
 
   const exercise = async () => {
-    if (!amount || !details) return;
+    if (!amount || !details || !factoryAddress) return;
 
     const considerationWei = toConsideration(amountWei, details);
 
-    if (!considerationAllowance || considerationAllowance < considerationWei) {
-      writeContract({
-        address: details.consideration,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [PERMIT2_ADDRESS, MAX_UINT256],
-      } as any);
-    }
+    // NOTE: This is the OLD approval system. Should use new two-layer approval from useApproval hook
+    // This is kept for backward compatibility until Phase 2 refactor
+    writeContract({
+      address: details.consideration.address as Address,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [factoryAddress, MAX_UINT256],
+    } as any);
 
     writeContract({
-      address: details.option.address_,
+      address: details.option as Address,
       abi: optionAbi as Abi,
       functionName: "exercise",
       args: [amountWei],
-    });
-  };
-
-  const mint = async () => {
-    if (!details) return;
-
-    if (!collateralAllowance || collateralAllowance < collateralWei) {
-      writeContract({
-        address: details.collateral,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [PERMIT2_ADDRESS, MAX_UINT256],
-      } as any);
-    }
-
-    writeContract({
-      address: details.option.address_,
-      abi: optionAbi as Abi,
-      functionName: "mint",
-      args: [collateralWei],
     });
   };
 
@@ -91,20 +68,16 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
       await redeem();
     } else if (action === "exercise") {
       await exercise();
-    } else if (action === "mint") {
-      await mint();
     }
   };
 
   const title = {
     redeem: "Redeem Options",
     exercise: "Exercise Options",
-    mint: "Mint Options",
   }[action];
   const tooltipText = {
     redeem: "Redeem your options (before or after expiry)",
     exercise: "Exercise your options to receive the underlying asset",
-    mint: "Mint options to receive the underlying asset",
   }[action];
 
   const buttonColor = { notAllowed: "bg-blue-300 cursor-not-allowed", allowed: "bg-blue-500 hover:bg-blue-600" };
@@ -127,15 +100,15 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
         {action === "redeem" && (
           <>
             <TokenBalanceNow
-              symbol={details?.option.symbol}
+              symbol="OPT"
               balance={details?.balances?.option}
-              decimals={details?.option.decimals}
+              decimals={18}
               label="Long Option Balance"
             />
             <TokenBalanceNow
-              symbol={details?.redemption.symbol}
+              symbol="RED"
               balance={details?.balances?.redemption}
-              decimals={details?.redemption.decimals}
+              decimals={18}
               label="Short Option Balance"
             />
           </>
@@ -149,25 +122,9 @@ const Action = ({ details, action }: ActionInterfaceProps) => {
               label="Consideration Balance"
             />
             <TokenBalanceNow
-              symbol={details?.option.symbol}
+              symbol="OPT"
               balance={details?.balances?.option}
-              decimals={details?.option.decimals}
-              label="Long Option Balance"
-            />
-          </>
-        )}
-        {action === "mint" && (
-          <>
-            <TokenBalanceNow
-              symbol={details?.collateral.symbol}
-              balance={details?.balances?.collateral}
-              decimals={details?.collateral.decimals}
-              label="Collateral Balance"
-            />
-            <TokenBalanceNow
-              symbol={details?.option.symbol}
-              balance={details?.balances?.option}
-              decimals={details?.option.decimals}
+              decimals={18}
               label="Long Option Balance"
             />
           </>

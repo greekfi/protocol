@@ -1,0 +1,143 @@
+import { useMemo } from "react";
+import { Address } from "viem";
+import { useAccount, useReadContracts } from "wagmi";
+import { useOptionContract } from "./useContracts";
+import type { OptionDetails, OptionInfo, Balances } from "./types";
+
+/**
+ * Check if an option has expired
+ */
+function isExpired(expiration: bigint | undefined): boolean {
+  if (!expiration) return false;
+  return BigInt(Math.floor(Date.now() / 1000)) >= expiration;
+}
+
+/**
+ * Format option name for display
+ * Input: "OPT-COLL-CONS-STRIKE-YYYY-MM-DD" or similar
+ */
+function formatOptionName(name: string): string {
+  if (!name) return "";
+
+  const parts = name.split("-");
+  if (parts.length < 4) return name;
+
+  // Parse the name format: OPT-COLL-CONS-STRIKE-DATE
+  const [prefix, collateral, consideration, strike, ...dateParts] = parts;
+  const isPut = prefix?.includes("P") ?? false;
+  const optionType = isPut ? "PUT" : "CALL";
+  const date = dateParts.join("-");
+
+  return `${optionType} ${collateral}/${consideration} @ ${strike} (${date})`;
+}
+
+/**
+ * Hook to fetch all data for a single option contract
+ * Combines details(), balancesOf(), and name() in one multicall
+ *
+ * @param optionAddress - The deployed option contract address
+ * @returns Option details with balances, expiry status, and formatted name
+ */
+export function useOption(optionAddress: Address | undefined) {
+  const { address: userAddress } = useAccount();
+  const optionContract = useOptionContract();
+
+  const enabled = Boolean(
+    optionAddress &&
+      optionAddress !== "0x0" &&
+      optionAddress !== "0x0000000000000000000000000000000000000000" &&
+      optionContract?.abi
+  );
+
+  // Build contracts array for multicall
+  const contracts = useMemo(() => {
+    if (!enabled || !optionContract?.abi) return [];
+
+    const baseContracts = [
+      {
+        address: optionAddress as Address,
+        abi: optionContract.abi as readonly unknown[],
+        functionName: "details" as const,
+      },
+      {
+        address: optionAddress as Address,
+        abi: optionContract.abi as readonly unknown[],
+        functionName: "name" as const,
+      },
+    ];
+
+    // Only add balancesOf if user is connected
+    if (userAddress) {
+      baseContracts.push({
+        address: optionAddress as Address,
+        abi: optionContract.abi as readonly unknown[],
+        functionName: "balancesOf" as const,
+        args: [userAddress],
+      } as any);
+    }
+
+    return baseContracts;
+  }, [optionAddress, optionContract?.abi, userAddress, enabled]);
+
+  const { data, isLoading, error, refetch } = useReadContracts({
+    contracts: contracts as any,
+    query: {
+      enabled: contracts.length > 0,
+    },
+  });
+
+  // Parse results
+  const result = useMemo(() => {
+    if (!data || data.length === 0) {
+      return {
+        data: null,
+        isLoading,
+        error,
+        refetch,
+      };
+    }
+
+    const [detailsResult, nameResult, balancesResult] = data;
+
+    // Check for errors in individual calls
+    if (detailsResult?.status === "failure") {
+      return {
+        data: null,
+        isLoading,
+        error: new Error("Failed to fetch option details"),
+        refetch,
+      };
+    }
+
+    const details = detailsResult?.result as OptionInfo | undefined;
+    const name = nameResult?.result as string | undefined;
+    const balances = balancesResult?.result as Balances | undefined;
+
+    if (!details) {
+      return {
+        data: null,
+        isLoading,
+        error,
+        refetch,
+      };
+    }
+
+    const optionDetails: OptionDetails = {
+      ...details,
+      isExpired: isExpired(details.expiration),
+      balances: balances ?? null,
+      formattedName: formatOptionName(name ?? ""),
+    };
+
+    return {
+      data: optionDetails,
+      isLoading,
+      error,
+      refetch,
+    };
+  }, [data, isLoading, error, refetch]);
+
+  return result;
+}
+
+export default useOption;

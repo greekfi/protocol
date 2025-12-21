@@ -3,6 +3,7 @@ import { useContract } from "./useContract";
 import { Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useIsExpired } from "./useIsExpired";
+import { useMemo } from "react";
 
 export const useOptionDetails = (option: Address) => {
   const userAccount = useAccount();
@@ -27,9 +28,17 @@ export const useOptionDetails = (option: Address) => {
     },
   });
 
-  const isExpired = useIsExpired(data?.expiration);
+  // Query the option token's name separately (it's an ERC20)
+  const { data: optionName } = useReadContract({
+    address: option as Address,
+    functionName: "name",
+    abi,
+    query: {
+      enabled: !!option,
+    },
+  });
 
-  console.log("data", data);
+  const isExpired = useIsExpired(data?.expiration);
 
   // Format option name for display
   const formatOptionName = (name: string) => {
@@ -55,13 +64,16 @@ export const useOptionDetails = (option: Address) => {
     }
   };
 
-  if (!data) return null;
-  return {
-    ...data,
-    formatOptionName: formatOptionName(data.option.name || ""),
-    isExpired,
-    balances,
-  };
+  // Memoize the return value to prevent new object on every render
+  return useMemo(() => {
+    if (!data) return null;
+    return {
+      ...data,
+      formatOptionName: formatOptionName((optionName as string) || ""),
+      isExpired,
+      balances,
+    };
+  }, [data, optionName, isExpired, balances]);
 };
 
 export default useOptionDetails;

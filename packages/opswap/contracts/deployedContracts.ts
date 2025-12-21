@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     StableToken: {
-      address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
+      address: "0x82c6d3ed4cd33d8ec1e51d0b5cc1d822eaa0c3dc",
       abi: [
         {
           type: "constructor",
@@ -429,11 +429,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
+      address: "0x05b4cb126885fb10464fdd12666feb25e2563b76",
       abi: [
         {
           type: "constructor",
@@ -855,11 +855,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
-      address: "0xb19b36b1456e65e3a6d514d3f715f204bd59f431",
+      address: "0x2a264f26859166c5bf3868a54593ee716aebc848",
       abi: [
         {
           type: "constructor",
@@ -1942,11 +1942,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
-      address: "0x8ce361602b935680e8dec218b820ff5056beb7af",
+      address: "0xd04ff4a75edd737a73e92b2f2274cb887d96e110",
       abi: [
         {
           type: "constructor",
@@ -2874,11 +2874,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
+      address: "0xc6b8fbf96cf7bbe45576417ec2163acecfa88ecc",
       abi: [
         {
           type: "constructor",
@@ -2922,6 +2922,48 @@ const deployedContracts = {
               name: "fee_",
               type: "uint64",
               internalType: "uint64",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "allowance",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "approve",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           outputs: [],
@@ -3377,11 +3419,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
     OpHook: {
-      address: "0x42bff3e3ab0be0824b6aa4c48d44ac87c1a788a8",
+      address: "0xc37d9a8d9be3b8478cea21ae2d51fbe6e0e908a8",
       abi: [
         {
           type: "constructor",
@@ -5378,7 +5420,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766219131689.json",
+      deploymentFile: "run-1766265316548.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
