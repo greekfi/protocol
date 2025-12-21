@@ -1,4 +1,4 @@
-const DesignHeader = () => {
+const ActionHeader = () => {
   return (
     <h2 className="text-lg font-light text-blue-300">
       <div className="flex items-center gap-1">
@@ -39,4 +39,4 @@ const DesignHeader = () => {
   );
 };
 
-export default DesignHeader;
+export default ActionHeader;

@@ -6,7 +6,7 @@ interface TooltipButtonProps {
   className?: string;
 }
 
-const TooltipButton: React.FC<TooltipButtonProps> = ({
+const Tooltip: React.FC<TooltipButtonProps> = ({
   tooltipText,
   title,
   className = "text-sm text-blue-200 hover:text-blue-300 flex items-center gap-1",
@@ -44,4 +44,4 @@ const TooltipButton: React.FC<TooltipButtonProps> = ({
   );
 };
 
-export default TooltipButton;
+export default Tooltip;

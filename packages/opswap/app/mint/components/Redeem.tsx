@@ -13,7 +13,7 @@ interface RedeemActionProps {
  * Redeem burns matching Option + Redemption token pairs to get collateral back
  * No approvals needed - you already own both tokens
  */
-export function RedeemAction({ optionAddress }: RedeemActionProps) {
+export function Redeem({ optionAddress }: RedeemActionProps) {
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [status, setStatus] = useState<"idle" | "working" | "success" | "error">("idle");
@@ -201,4 +201,4 @@ export function RedeemAction({ optionAddress }: RedeemActionProps) {
   );
 }
 
-export default RedeemAction;
+export default Redeem;

@@ -14,7 +14,7 @@ interface ExerciseActionProps {
 /**
  * Clean exercise component - all logic lives here, hooks are just data/transactions
  */
-export function ExerciseAction({ optionAddress }: ExerciseActionProps) {
+export function Exercise({ optionAddress }: ExerciseActionProps) {
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [status, setStatus] = useState<"idle" | "working" | "success" | "error">("idle");
@@ -199,4 +199,4 @@ export function ExerciseAction({ optionAddress }: ExerciseActionProps) {
   );
 }
 
-export default ExerciseAction;
+export default Exercise;

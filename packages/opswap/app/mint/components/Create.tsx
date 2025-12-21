@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Address } from "viem";
 import { useAccount } from "wagmi";
-import DesignHeader from "./DesignHeader";
+import ActionHeader from "./ActionHeader";
 import { Token, useTokenMap } from "../hooks/useTokenMap";
 import { useCreateOption, CreateOptionParams } from "../hooks/useCreateOption";
 import { toStrikePrice } from "../hooks/constants";
@@ -64,7 +64,7 @@ const TokenSelect = ({ label, value, onChange, tokensMap }: TokenSelectProps) =>
   </div>
 );
 
-const CreateMany = () => {
+const Create = () => {
   const { isConnected } = useAccount();
   const { allTokensMap } = useTokenMap();
 
@@ -178,7 +178,7 @@ const CreateMany = () => {
   return (
     <div className="max-w-2xl mx-auto bg-black/80 border border-gray-800 rounded-lg shadow-lg p-6 text-lg">
       <div className="flex flex-col space-y-6">
-        <DesignHeader />
+        <ActionHeader />
 
         {/* Main Layout */}
         <div className="flex gap-8">
@@ -340,4 +340,4 @@ const CreateMany = () => {
   );
 };
 
-export default CreateMany;
+export default Create;

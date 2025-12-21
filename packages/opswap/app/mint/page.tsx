@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Address } from "viem";
-import CreateMany from "./components/CreateMany";
+import Create from "./components/Create";
 import ContractDetails from "./components/Details";
 import Navbar from "./components/Navbar";
 import SelectOptionAddress from "./components/Selector";
-import MintActionClean from "./components/MintAction";
-import ExerciseAction from "./components/ExerciseAction";
-import RedeemAction from "./components/RedeemAction";
+import Mint from "./components/Mint";
+import Exercise from "./components/Exercise";
+import Redeem from "./components/Redeem";
 import { useOption } from "./hooks/useOption";
 import { useOptions } from "./hooks/useOptions";
 
@@ -37,15 +37,15 @@ function OptionsApp() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
                 {/* Clean components - logic in component, hooks are just data/transactions */}
-                <ExerciseAction optionAddress={optionAddress} />
-                <MintActionClean optionAddress={optionAddress} />
-                <RedeemAction optionAddress={optionAddress} />
+                <Exercise optionAddress={optionAddress} />
+                <Mint optionAddress={optionAddress} />
+                <Redeem optionAddress={optionAddress} />
               </div>
             </div>
 
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
-                <CreateMany />
+                <Create />
               </div>
             </div>
           </div>

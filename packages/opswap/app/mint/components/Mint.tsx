@@ -15,7 +15,7 @@ interface MintActionCleanProps {
 /**
  * Clean mint component - all logic lives here, hooks are just data/transactions
  */
-export function MintActionClean({ optionAddress }: MintActionCleanProps) {
+export function Mint({ optionAddress }: MintActionCleanProps) {
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [status, setStatus] = useState<"idle" | "working" | "success" | "error">("idle");
@@ -216,4 +216,4 @@ export function MintActionClean({ optionAddress }: MintActionCleanProps) {
   );
 }
 
-export default MintActionClean;
+export default Mint;
