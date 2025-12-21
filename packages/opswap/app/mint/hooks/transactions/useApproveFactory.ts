@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { useWriteContract } from "wagmi";
-import { useFactoryAddress, useOptionFactoryContract } from "../useContracts";
+import { useContracts } from "../useContracts";
 import { MAX_UINT256 } from "../constants";
 
 /**
@@ -9,8 +9,9 @@ import { MAX_UINT256 } from "../constants";
  */
 export function useApproveFactory() {
   const { writeContractAsync, isPending, error } = useWriteContract();
-  const factoryAddress = useFactoryAddress();
-  const factoryContract = useOptionFactoryContract();
+  const contracts = useContracts();
+  const factoryAddress = contracts?.OptionFactory?.address;
+  const factoryContract = contracts?.OptionFactory;
 
   const approve = async (tokenAddress: Address) => {
     if (!factoryAddress || !factoryContract?.abi) {

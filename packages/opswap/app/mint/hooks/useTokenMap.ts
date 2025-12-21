@@ -1,6 +1,5 @@
-import { useMemo } from "react";
 import tokenList from "../data/tokenList.json";
-import { useContract } from "./useContract";
+import { useContracts } from "./useContracts";
 import { useChainId } from "wagmi";
 
 export interface Token {
@@ -11,42 +10,38 @@ export interface Token {
 
 export const useTokenMap = () => {
   const chainId = useChainId();
-  const contract = useContract();
-  console.log("useTokenMap - chainId:", chainId);
+  const contract = useContracts();
 
-  // Extract addresses to use as stable dependencies
   const stableTokenAddress = contract?.StableToken?.address;
   const shakyTokenAddress = contract?.ShakyToken?.address;
 
-  // Memoize the token map to prevent recreation on every render
-  const allTokensMap = useMemo(() => {
-    const chainKey = String(chainId) as keyof typeof tokenList;
-    const baseTokensMap = (tokenList[chainKey] ?? []).reduce(
-      (acc, token) => {
-        acc[token.symbol] = token;
-        return acc;
-      },
-      {} as Record<string, Token>,
-    );
+  const chainKey = String(chainId) as keyof typeof tokenList;
+  const baseTokensMap = (tokenList[chainKey] ?? []).reduce(
+    (acc, token) => {
+      acc[token.symbol] = token;
+      return acc;
+    },
+    {} as Record<string, Token>,
+  );
 
-    // If we have stable and shaky tokens, add them to the map
-    if (chainId != 1 && stableTokenAddress && shakyTokenAddress) {
-      baseTokensMap["STK"] = {
-        address: stableTokenAddress,
-        symbol: "STK",
-        decimals: 18,
-      };
-      baseTokensMap["SHK"] = {
-        address: shakyTokenAddress,
-        symbol: "SHK",
-        decimals: 18,
-      };
-    }
+  // If we have stable and shaky tokens, add them to the map
+  if (chainId != 1 && stableTokenAddress && shakyTokenAddress) {
+    baseTokensMap["STK"] = {
+      address: stableTokenAddress,
+      symbol: "STK",
+      decimals: 18,
+    };
+    baseTokensMap["SHK"] = {
+      address: shakyTokenAddress,
+      symbol: "SHK",
+      decimals: 18,
+    };
+  }
 
-    return baseTokensMap;
-  }, [chainId, stableTokenAddress, shakyTokenAddress]);
+  // console.log("useTokenMap - allTokensMap:", baseTokensMap);
+  // console.log("useTokenMap - chainId:", chainId, "STK:", stableTokenAddress, "SHK:", shakyTokenAddress);
 
   return {
-    allTokensMap,
+    allTokensMap: baseTokensMap,
   };
 };

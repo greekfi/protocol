@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { useWriteContract } from "wagmi";
-import { useOptionContract } from "../useContracts";
+import { useContracts } from "../useContracts";
 
 /**
  * Simple redeem transaction executor
@@ -8,7 +8,7 @@ import { useOptionContract } from "../useContracts";
  */
 export function useRedeemTransaction() {
   const { writeContractAsync, isPending, error } = useWriteContract();
-  const optionContract = useOptionContract();
+  const optionContract = useContracts()?.Option;
 
   const redeem = async (optionAddress: Address, amount: bigint) => {
     if (!optionContract?.abi) {

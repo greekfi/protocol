@@ -2,7 +2,7 @@ import { useMemo, useCallback } from "react";
 import { Address, parseAbiItem } from "viem";
 import { usePublicClient, useReadContracts } from "wagmi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useOptionFactoryContract } from "./useContracts";
+import { useContracts } from "./useContracts";
 import type { OptionListItem } from "./types";
 
 // Event signature for OptionCreated
@@ -29,10 +29,10 @@ const NAME_ABI = [
  */
 export function useOptions() {
   const publicClient = usePublicClient();
-  const factory = useOptionFactoryContract();
+  const contracts = useContracts();
   const queryClient = useQueryClient();
 
-  const factoryAddress = factory?.address as Address | undefined;
+  const factoryAddress = contracts?.OptionFactory?.address as Address | undefined;
 
   // Fetch OptionCreated events using TanStack Query
   const {

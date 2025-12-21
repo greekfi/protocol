@@ -5,7 +5,7 @@ import { useOption } from "../hooks/useOption";
 import { useAllowances } from "../hooks/useAllowances";
 import { useApproveERC20 } from "../hooks/transactions/useApproveERC20";
 import { useExerciseTransaction } from "../hooks/transactions/useExerciseTransaction";
-import { useFactoryAddress } from "../hooks/useContracts";
+import { useContracts } from "../hooks/useContracts";
 
 interface ExerciseActionProps {
   optionAddress: Address | undefined;
@@ -22,7 +22,7 @@ export function ExerciseAction({ optionAddress }: ExerciseActionProps) {
 
   // Data fetching (pure reads)
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
-  const factoryAddress = useFactoryAddress();
+  const factoryAddress = useContracts()?.OptionFactory?.address as Address | undefined;
   const amountWei = amount ? parseUnits(amount, 18) : 0n; // Options are always 18 decimals
   const allowances = useAllowances(option?.consideration.address, amountWei);
 

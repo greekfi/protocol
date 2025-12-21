@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Address, erc20Abi } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
-import { useFactoryAddress, useOptionFactoryContract } from "./useContracts";
+import { useContracts } from "./useContracts";
 import type { AllowanceState } from "./types";
 
 /**
@@ -25,8 +25,9 @@ export function useAllowances(
   refetch: () => void;
 } {
   const { address: userAddress } = useAccount();
-  const factoryAddress = useFactoryAddress();
-  const factoryContract = useOptionFactoryContract();
+  const deployedContracts = useContracts();
+  const factoryAddress = deployedContracts?.OptionFactory?.address;
+  const factoryContract = deployedContracts?.OptionFactory;
 
   const enabled = Boolean(tokenAddress && userAddress && factoryAddress && factoryContract?.abi);
 

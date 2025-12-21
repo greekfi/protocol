@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from "react";
 import { Address } from "viem";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import { useOptionFactoryContract, useFactoryAddress } from "./useContracts";
+import { useContracts } from "./useContracts";
 import type { TransactionStep } from "./types";
 
 type CreateOptionStep = Extract<TransactionStep, "idle" | "executing" | "waiting-execution" | "success" | "error">;
@@ -55,8 +55,9 @@ export function useCreateOption(): UseCreateOptionReturn {
   const [error, setError] = useState<Error | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
-  const factoryAddress = useFactoryAddress();
-  const factoryContract = useOptionFactoryContract();
+  const contracts = useContracts();
+  const factoryAddress = contracts?.OptionFactory?.address;
+  const factoryContract = contracts?.OptionFactory;
   const queryClient = useQueryClient();
 
   const { writeContractAsync } = useWriteContract();
@@ -122,8 +123,14 @@ export function useCreateOption(): UseCreateOptionReturn {
 
   const createOptions = useCallback(
     async (params: CreateOptionParams[]) => {
+      console.log("=== useCreateOption.createOptions START ===");
+      console.log("factoryAddress:", factoryAddress);
+      console.log("factoryContract available:", !!factoryContract);
+      console.log("params received:", params);
+
       if (!factoryAddress || !factoryContract?.abi) {
         const err = new Error("Factory contract not available");
+        console.error("Factory not available:", { factoryAddress, hasAbi: !!factoryContract?.abi });
         setError(err);
         setStep("error");
         return;
@@ -131,6 +138,7 @@ export function useCreateOption(): UseCreateOptionReturn {
 
       if (params.length === 0) {
         const err = new Error("No options to create");
+        console.error("No options to create");
         setError(err);
         setStep("error");
         return;
@@ -150,20 +158,42 @@ export function useCreateOption(): UseCreateOptionReturn {
           isPut: p.isPut,
         }));
 
-        console.log("Creating options with params:", optionParams);
+        console.log("=== Converted params to struct format ===");
+        optionParams.forEach((p, idx) => {
+          console.log(`Option ${idx}:`, {
+            collateral: p.collateral_,
+            consideration: p.consideration_,
+            expiration: p.expiration.toString(),
+            expirationDate: new Date(Number(p.expiration) * 1000).toISOString(),
+            strike: p.strike.toString(),
+            strikeHex: "0x" + p.strike.toString(16),
+            isPut: p.isPut,
+          });
+        });
+
         console.log("Factory address:", factoryAddress);
         console.log("Number of options:", optionParams.length);
 
         // Validate params before sending
+        console.log("=== Validating params ===");
         for (const param of optionParams) {
           if (param.strike === 0n) {
             throw new Error("Strike price cannot be 0");
           }
           const expirationSeconds = Number(param.expiration);
-          if (expirationSeconds < Math.floor(Date.now() / 1000)) {
+          const now = Math.floor(Date.now() / 1000);
+          console.log(`Expiration validation: ${expirationSeconds} vs now ${now}`);
+          if (expirationSeconds < now) {
             throw new Error(`Expiration date ${new Date(expirationSeconds * 1000).toISOString()} is in the past`);
           }
         }
+
+        console.log("=== Calling writeContractAsync ===");
+        console.log("Contract call details:", {
+          address: factoryAddress,
+          functionName: "createOptions",
+          argsCount: optionParams.length,
+        });
 
         const hash = await writeContractAsync({
           address: factoryAddress,
@@ -172,11 +202,21 @@ export function useCreateOption(): UseCreateOptionReturn {
           args: [optionParams],
         });
 
-        console.log("Transaction sent, hash:", hash);
+        console.log("=== Transaction sent successfully ===");
+        console.log("Transaction hash:", hash);
         setTxHash(hash);
         setStep("waiting-execution");
       } catch (err) {
-        console.error("Error creating options:", err);
+        console.error("=== Error in createOptions ===");
+        console.error("Error type:", typeof err);
+        console.error("Error:", err);
+        console.error("Error details:", {
+          message: (err as any)?.message,
+          code: (err as any)?.code,
+          data: (err as any)?.data,
+          cause: (err as any)?.cause,
+          stack: (err as any)?.stack,
+        });
         setError(err as Error);
         setStep("error");
       }

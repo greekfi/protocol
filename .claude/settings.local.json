@@ -27,7 +27,9 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(cast:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(lsof:*)",
+      "Bash(jq:*)"
     ],
     "deny": [],
     "ask": []

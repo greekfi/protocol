@@ -6,7 +6,7 @@ import { useAllowances } from "../hooks/useAllowances";
 import { useApproveERC20 } from "../hooks/transactions/useApproveERC20";
 import { useApproveFactory } from "../hooks/transactions/useApproveFactory";
 import { useMintTransaction } from "../hooks/transactions/useMintTransaction";
-import { useFactoryAddress } from "../hooks/useContracts";
+import { useContracts } from "../hooks/useContracts";
 
 interface MintActionCleanProps {
   optionAddress: Address | undefined;
@@ -23,7 +23,7 @@ export function MintActionClean({ optionAddress }: MintActionCleanProps) {
 
   // Data fetching (pure reads)
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
-  const factoryAddress = useFactoryAddress();
+  const factoryAddress = useContracts()?.OptionFactory?.address;
   const amountWei = amount ? parseUnits(amount, option?.collateral.decimals ?? 18) : 0n;
   const allowances = useAllowances(option?.collateral.address, amountWei);
 

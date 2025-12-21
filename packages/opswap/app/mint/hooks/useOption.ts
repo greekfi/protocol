@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
-import { useOptionContract } from "./useContracts";
+import { useContracts } from "./useContracts";
 import type { OptionDetails, OptionInfo, Balances } from "./types";
 
 /**
@@ -39,7 +39,7 @@ function formatOptionName(name: string): string {
  */
 export function useOption(optionAddress: Address | undefined) {
   const { address: userAddress } = useAccount();
-  const optionContract = useOptionContract();
+  const optionContract = useContracts()?.Option;
 
   const enabled = Boolean(
     optionAddress &&

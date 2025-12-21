@@ -116,7 +116,15 @@ const CreateMany = () => {
   );
 
   const handleCreateOption = useCallback(async () => {
+    console.log("=== handleCreateOption START ===");
+    console.log("collateralToken:", collateralToken);
+    console.log("considerationToken:", considerationToken);
+    console.log("strikePrices:", strikePrices);
+    console.log("expirationDates:", expirationDates);
+    console.log("isPut:", isPut);
+
     if (!collateralToken || !considerationToken || strikePrices.length === 0 || expirationDates.length === 0) {
+      console.error("Missing required fields");
       return;
     }
 
@@ -127,17 +135,36 @@ const CreateMany = () => {
       const expTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
 
       for (const price of strikePrices) {
+        const strikeValue = calculateStrike(price);
+        console.log(`Building option param for price ${price}:`, {
+          collateral: collateralToken.address,
+          consideration: considerationToken.address,
+          expiration: expTimestamp,
+          expirationDate: new Date(expTimestamp * 1000).toISOString(),
+          strike: strikeValue.toString(),
+          strikeHex: "0x" + strikeValue.toString(16),
+          isPut,
+        });
+
         allParams.push({
           collateral: collateralToken.address as Address,
           consideration: considerationToken.address as Address,
           expiration: expTimestamp,
-          strike: calculateStrike(price),
+          strike: strikeValue,
           isPut,
         });
       }
     }
 
-    await createOptions(allParams);
+    console.log("Final allParams:", allParams);
+    console.log("Calling createOptions with", allParams.length, "options");
+
+    try {
+      await createOptions(allParams);
+      console.log("createOptions completed successfully");
+    } catch (err) {
+      console.error("createOptions failed:", err);
+    }
   }, [collateralToken, considerationToken, strikePrices, expirationDates, isPut, calculateStrike, createOptions]);
 
   const isFormValid = isConnected && collateralToken && considerationToken && strikePrices.length > 0 && expirationDates.length > 0;
