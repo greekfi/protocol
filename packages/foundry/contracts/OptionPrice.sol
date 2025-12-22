@@ -48,7 +48,7 @@ contract OptionPrice {
             }
         }
         uint256 t = (timeToExpiration * 1e18) / 31536000; // t in years, 1e18 fixed point
-            // console.log("Time to expiration (years):", t);
+        // console.log("Time to expiration (years):", t);
 
         // sigma * sqrt(t)
         // OpenZeppelin's sqrt: sqrt(a*1e18) = sqrt(a)*1e9

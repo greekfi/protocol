@@ -7,7 +7,7 @@ import type { OptionListItem } from "./types";
 
 // Event signature for OptionCreated
 const OPTION_CREATED_EVENT = parseAbiItem(
-  "event OptionCreated(address collateral, address consideration, uint256 expirationDate, uint256 strike, bool isPut, address option, address redemption)"
+  "event OptionCreated(address indexed collateral, address indexed consideration, uint40 expirationDate, uint96 strike, bool isPut, address indexed option, address redemption)"
 );
 
 // Simple ERC20 name ABI
@@ -55,8 +55,8 @@ export function useOptions() {
         address: log.args.option as Address,
         collateral: log.args.collateral as Address,
         consideration: log.args.consideration as Address,
-        expiration: log.args.expirationDate as bigint,
-        strike: log.args.strike as bigint,
+        expiration: BigInt(log.args.expirationDate ?? 0),
+        strike: BigInt(log.args.strike ?? 0),
         isPut: log.args.isPut as boolean,
       }));
     },

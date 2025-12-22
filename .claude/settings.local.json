@@ -29,7 +29,10 @@
       "Bash(cast:*)",
       "Bash(xargs:*)",
       "Bash(lsof:*)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(for err in \"ContractNotExpired\" \"ContractExpired\" \"InsufficientBalance\" \"InvalidValue\" \"LockedContract\" \"FeeOnTransferNotSupported\" \"InsufficientCollateral\" \"InsufficientConsideration\" \"TokenBlocklisted\" \"ArithmeticOverflow\")",
+      "Bash(do echo -n \"$err: \")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

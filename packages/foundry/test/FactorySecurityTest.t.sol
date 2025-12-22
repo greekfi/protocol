@@ -112,7 +112,7 @@ contract FactorySecurityTest is Test {
      */
     function testLOW_UnblockTokenNoValidation() public {
         // Can unblock zero address (should fail but doesn't)
-		vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
         factory.unblockToken(address(0));
 
         // No error, no event (if we checked blocklist[address(0)] it's now false)
@@ -140,8 +140,9 @@ contract FactorySecurityTest is Test {
  * Mock contract for testing
  */
 contract MockContract {
-// Empty contract to use as template address
-}
+    // Empty contract to use as template address
+
+    }
 
 /**
  * Mock ERC20 token for testing

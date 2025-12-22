@@ -587,7 +587,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @notice Claims accumulated protocol fees
      * @dev Only callable by the factory. Transfers all accumulated fees to factory.
      */
-    function claimFees() public onlyOwner nonReentrant {
+    function claimFees() public nonReentrant {
         redemption.claimFees();
     }
 

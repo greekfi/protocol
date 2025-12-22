@@ -52,12 +52,12 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     // ============ EVENTS ============
 
     event OptionCreated(
-        address collateral,
-        address consideration,
-        uint256 expirationDate,
-        uint256 strike,
+        address indexed collateral,
+        address indexed consideration,
+        uint40 expirationDate,
+        uint96 strike,
         bool isPut,
-        address option,
+        address indexed option,
         address redemption
     );
 
@@ -74,7 +74,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     mapping(address => bool) public blocklist;
 
     /// @notice Allowances mapping for token transfers; token => owner => amount
-    mapping(address => mapping(address => uint256)) private _allowances; 
+    mapping(address => mapping(address => uint256)) private _allowances;
 
     // ============ CONSTRUCTOR ============
 
@@ -221,12 +221,33 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
 
     /**
      * @notice Transfers fees to the owner
-     * @param token The token address to transfer
+     * @param tokens The token addresses to transfer
      */
-    function claimFees(address token) public onlyOwner nonReentrant {
-        ERC20 token_ = ERC20(token);
-        uint256 amount = token_.balanceOf(address(this));
-        token_.transfer(owner(), amount);
+    function claimFees(address[] memory options, address[] memory tokens) public {
+        optionsClaimFees(options);
+        claimFees(tokens);
+    }
+
+    /**
+     * @notice Transfers fees to the owner
+     * @param tokens The token addresses to transfer
+     */
+    function claimFees(address[] memory tokens) public nonReentrant {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            ERC20 token_ = ERC20(tokens[i]);
+            uint256 amount = token_.balanceOf(address(this));
+            token_.transfer(owner(), amount);
+        }
+    }
+
+    /**
+     * @notice Claims fees from multiple option contracts
+     * @param options The options addresses to claim fees from
+     */
+    function optionsClaimFees(address[] memory options) public nonReentrant {
+        for (uint256 i = 0; i < options.length; i++) {
+            Option(options[i]).claimFees();
+        }
     }
     /**
      * @notice Adjust protocol fee

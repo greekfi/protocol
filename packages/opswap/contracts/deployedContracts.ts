@@ -429,7 +429,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
@@ -855,7 +855,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
@@ -1942,7 +1942,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
@@ -2874,7 +2874,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
@@ -3006,9 +3006,27 @@ const deployedContracts = {
           name: "claimFees",
           inputs: [
             {
-              name: "token",
-              type: "address",
-              internalType: "address",
+              name: "options",
+              type: "address[]",
+              internalType: "address[]",
+            },
+            {
+              name: "tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "claimFees",
+          inputs: [
+            {
+              name: "tokens",
+              type: "address[]",
+              internalType: "address[]",
             },
           ],
           outputs: [],
@@ -3140,6 +3158,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "optionsClaimFees",
+          inputs: [
+            {
+              name: "options",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "owner",
           inputs: [],
           outputs: [
@@ -3257,26 +3288,26 @@ const deployedContracts = {
             {
               name: "collateral",
               type: "address",
-              indexed: false,
+              indexed: true,
               internalType: "address",
             },
             {
               name: "consideration",
               type: "address",
-              indexed: false,
+              indexed: true,
               internalType: "address",
             },
             {
               name: "expirationDate",
-              type: "uint256",
+              type: "uint40",
               indexed: false,
-              internalType: "uint256",
+              internalType: "uint40",
             },
             {
               name: "strike",
-              type: "uint256",
+              type: "uint96",
               indexed: false,
-              internalType: "uint256",
+              internalType: "uint96",
             },
             {
               name: "isPut",
@@ -3287,7 +3318,7 @@ const deployedContracts = {
             {
               name: "option",
               type: "address",
-              indexed: false,
+              indexed: true,
               internalType: "address",
             },
             {
@@ -3419,11 +3450,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     OpHook: {
-      address: "0xa9ab59cd6e0b51c1d9332a7a2b0b19ea729788a8",
+      address: "0x42bff3e3ab0be0824b6aa4c48d44ac87c1a788a8",
       abi: [
         {
           type: "constructor",
@@ -5420,7 +5451,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766302896845.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import TokenFaucet from "./TokenFaucet";
+import ClaimFeesButton from "./ClaimFeesButton";
 import logo from "~~/public/helmet-white.svg";
 
 const Navbar: React.FC = () => (
@@ -30,6 +31,9 @@ const Navbar: React.FC = () => (
       </li>
       <li>
         <TokenFaucet />
+      </li>
+      <li>
+        <ClaimFeesButton />
       </li>
       <li>
         <ConnectButton />

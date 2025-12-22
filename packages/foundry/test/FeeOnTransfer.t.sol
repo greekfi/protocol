@@ -141,8 +141,9 @@ contract FeeOnTransferTest is Test {
         assertFalse(factory.isBlocked(address(fotToken)));
 
         // Should now be able to create option (will fail at mint time though)
-        address optionAddress =
-            factory.createOption(address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false);
+        address optionAddress = factory.createOption(
+            address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
+        );
 
         assertTrue(optionAddress != address(0));
     }
@@ -159,8 +160,9 @@ contract FeeOnTransferTest is Test {
     /// @notice Test that FOT token fails at mint time due to balance check
     function test_FeeOnTransferFailsAtMint() public {
         // Create option with FOT token as collateral (not blocklisted)
-        address optionAddress =
-            factory.createOption(address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false);
+        address optionAddress = factory.createOption(
+            address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
+        );
 
         option = Option(optionAddress);
         redemption = Redemption(option.redemption());
