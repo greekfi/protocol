@@ -1,5 +1,16 @@
-# Unused packages (not needed for frontend build)
-packages/foundry
+# Foundry artifacts (keep package.json for workspace resolution)
+packages/foundry/out
+packages/foundry/cache
+packages/foundry/lib
+packages/foundry/broadcast
+packages/foundry/contracts
+packages/foundry/test
+packages/foundry/script
+packages/foundry/deployments
+packages/foundry/bin
+packages/foundry/.env
+
+# Unused packages
 packages/qserver
 packages/quotes
 
