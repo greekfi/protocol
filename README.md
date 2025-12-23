@@ -1,94 +1,92 @@
 # GreekFi Options Protocol
 
+A dual-token options protocol where both long (Option) and short (Redemption) positions are fully transferable ERC20 tokens. Create options between any ERC20 token pairs with gas-efficient deployment using minimal proxy clones.
 
 <h4 align="center">
   <a href="./SECURITY_AUDIT.md">🔒 Security Audit</a>
 </h4>
 
-## About
+## Core Mechanics
 
-A dual-token options protocol where both long (Option) and short (Redemption) positions are fully transferable ERC20 tokens.
-The protocol supports any ERC20 tokens as collateral or consideration, enabling flexible options trading beyond traditional cash/asset distinctions.
+**Option Lifecycle:**
+1. **Mint**: Deposit collateral → receive Option + Redemption tokens (1:1 minus fees)
+2. **Exercise**: Burn Option + pay consideration → receive collateral (before expiration)
+3. **Redeem Pair**: Burn Option + Redemption → receive collateral back (before expiration)
+4. **Redeem Post-Expiration**: Burn Redemption → receive remaining collateral or equivalent consideration
 
-The Option contract is the owner of the Redemption contract
-The Option contract is the only one that can mint new mint
-The Option contract is the only one that can exercise mint
-The redemption is only possible if you own both the Option and
-Redemption contracts but performed by the Option contract
+**Key Features:**
+- Both option sides are tradable ERC20 tokens
+- Works with any ERC20 pair (WETH/USDC, WBTC/DAI, etc.)
+- Strike prices encoded with 18 decimals for precision across token pairs
+- Auto-settling transfers: sending Options to a Redemption holder auto-redeems matching pairs
+- Gas-efficient deployment: ~95% savings via EIP-1167 minimal proxy clones
 
-In mint traditionally a Consideration is cash and a Collateral is an asset
-Here, we do not distinguish between the Cash and Asset concept and allow consideration
-to be any asset and collateral to be any asset as well. This can allow wETH to be used
-as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-or even staked stable coins can be used as well for either consideration or collateral.
+## Core Contracts
 
-In minting, traditionally a Consideration is cash and a Collateral is an asset
-Here, we do not distinguish between the Cash and Asset concept and allow consideration
-to be any asset and collateral to be any asset as well. This can allow wETH to be used
-as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
-or even staked stable coins can be used as well for either consideration or collateral.
+```
+packages/foundry/contracts/
+├── OptionFactory.sol      # Factory contract, creates option pairs via clones
+├── Option.sol             # Long position (call/right side)
+├── Redemption.sol         # Short position (put/obligation side)
+└── interfaces/
+    ├── IOptionFactory.sol
+    ├── IOption.sol
+    └── IRedemption.sol
+```
 
+**Contract Responsibilities:**
+- **OptionFactory**: Deploys option pairs, manages token blocklist, handles protocol fees
+- **Option**: Coordinates lifecycle (mint/exercise/redeem), owns paired Redemption contract
+- **Redemption**: Holds collateral, receives consideration, manages decimal normalization
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+## Quick Start
 
-## ⚠️ Security Notice
-
-**This protocol is under active development.** Before mainnet deployment:
-
-- ✅ Review the [Security Audit Report](./SECURITY_AUDIT.md)
-- ⚠️ **3 critical issues** identified that must be fixed
-- ⚠️ Non-standard ERC20 behavior (auto-mint on transfer, auto-redeem on receipt)
-- 🔍 Additional third-party audit recommended
-
-See [SECURITY_AUDIT.md](./SECURITY_AUDIT.md) for complete findings and recommendations.
-
-
-## Requirements
-
-Before you begin, you need to install the following tools:
-
-- [Node (>= v22)](https://nodejs.org/en/download/)
-- Yarn [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+**Prerequisites:**
+- [Node.js v22+](https://nodejs.org)
+- [Yarn v2+](https://yarnpkg.com)
 - [Foundry](https://foundry.sh)
 
-## Quickstart
-
-To get started with Scaffold-ETH 2, follow the steps below:
-
-1. Install dependencies if it was skipped in CLI:
-
-```
-cd my-dapp-example
+**Setup:**
+```bash
+# Install dependencies
 yarn install
-```
 
-2. Run a local network in the first terminal:
-
-```
+# Terminal 1: Start local blockchain
 yarn chain
-```
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
-
-3. On a second terminal, deploy the test contract:
-
-```
+# Terminal 2: Deploy contracts
 yarn deploy
-```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
+# Terminal 3: Start frontend
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+Visit `http://localhost:3000`
 
-Run smart contract test with `yarn foundry:test`
+## Development
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/opswap/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+**Smart Contracts:**
+```bash
+forge build              # Compile contracts
+forge test               # Run tests
+forge test -vvv          # Run with detailed output
+```
+
+**Frontend:**
+- Built with Next.js, RainbowKit, Wagmi, Viem
+- Auto-updates when contracts change
+- Debug UI at `http://localhost:3000/debug`
+
+**Key Directories:**
+- Contracts: `packages/foundry/contracts/`
+- Tests: `packages/foundry/test/`
+- Deployment: `packages/foundry/script/`
+- Frontend: `packages/opswap/`
+
+## Security Notice
+
+This protocol is under active development. See [SECURITY_AUDIT.md](./SECURITY_AUDIT.md) for complete findings.
+
+## Documentation
+
+For detailed architecture and implementation guide, see [CLAUDE.md](./CLAUDE.md)

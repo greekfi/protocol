@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     StableToken: {
-      address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
+      address: "0x723d24e2c35e67fda15380bbf63306e6d37fb55e",
       abi: [
         {
           type: "constructor",
@@ -429,11 +429,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
+      address: "0x378616f5d172fcdece5feba9bf085faf24811066",
       abi: [
         {
           type: "constructor",
@@ -855,11 +855,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
-      address: "0xb19b36b1456e65e3a6d514d3f715f204bd59f431",
+      address: "0x3dc3387caeb0aa4358e7de6ffdc570d66650db8a",
       abi: [
         {
           type: "constructor",
@@ -1200,6 +1200,19 @@ const deployedContracts = {
               name: "",
               type: "uint40",
               internalType: "uint40",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "factory",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
             },
           ],
           stateMutability: "view",
@@ -1942,11 +1955,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
-      address: "0x8ce361602b935680e8dec218b820ff5056beb7af",
+      address: "0x077ab76e6e4e90777bc465d661b7a2e3088bcd77",
       abi: [
         {
           type: "constructor",
@@ -2270,6 +2283,19 @@ const deployedContracts = {
               name: "",
               type: "uint256",
               internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "factory",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
             },
           ],
           stateMutability: "view",
@@ -2874,11 +2900,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
+      address: "0x55a0acf6d9511ce3719ff8274ff8e30f3e35c543",
       abi: [
         {
           type: "constructor",
@@ -3450,11 +3476,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
     OpHook: {
-      address: "0x42bff3e3ab0be0824b6aa4c48d44ac87c1a788a8",
+      address: "0x7cbe32d4515f3dad77c82a1d60b8485936eb88a8",
       abi: [
         {
           type: "constructor",
@@ -5451,7 +5477,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1766396377865.json",
+      deploymentFile: "run-1766473032731.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
