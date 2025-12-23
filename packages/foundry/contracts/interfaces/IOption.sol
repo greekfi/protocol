@@ -26,10 +26,14 @@ struct OptionInfo {
 }
 
 interface IOption {
+    // ============ EVENTS ============
+
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
     event ContractLocked();
     event ContractUnlocked();
+
+    // ============ ERRORS ============
 
     error ContractNotExpired();
     error ContractExpired();
@@ -43,10 +47,17 @@ interface IOption {
     error TokenBlocklisted();
     error ArithmeticOverflow();
 
+    // ============ STATE VARIABLES ============
+
     function redemption() external view returns (address);
     function fee() external view returns (uint64);
 
+    // ============ INITIALIZATION ============
+
     function init(address redemption_, address owner, uint64 fee_) external;
+
+    // ============ VIEW FUNCTIONS ============
+
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function factory() external view returns (address);
@@ -55,6 +66,12 @@ interface IOption {
     function expirationDate() external view returns (uint256);
     function strike() external view returns (uint256);
     function isPut() external view returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+    function balancesOf(address account) external view returns (Balances memory);
+    function details() external view returns (OptionInfo memory);
+
+    // ============ STATE-CHANGING FUNCTIONS ============
+
     function mint(uint256 amount) external;
     function mint(address account, uint256 amount) external;
     function transferFrom(address from, address to, uint256 amount) external returns (bool success);
@@ -63,9 +80,8 @@ interface IOption {
     function exercise(address account, uint256 amount) external;
     function redeem(uint256 amount) external;
     function redeem(address account, uint256 amount) external;
-    function balanceOf(address account) external view returns (uint256);
-    function balancesOf(address account) external view returns (Balances memory);
     function lock() external;
     function unlock() external;
-    function details() external view returns (OptionInfo memory);
+    function adjustFee(uint64 fee_) external;
+    function claimFees() external;
 }

@@ -11,9 +11,13 @@ struct TokenData {
 }
 
 interface IRedemption {
+    // ============ EVENTS ============
+
     event Redeemed(address option, address token, address holder, uint256 amount);
     event ContractLocked();
     event ContractUnlocked();
+
+    // ============ ERRORS ============
 
     error ContractNotExpired();
     error ContractExpired();
@@ -27,6 +31,8 @@ interface IRedemption {
     error TokenBlocklisted();
     error ArithmeticOverflow();
 
+    // ============ STATE VARIABLES ============
+
     function fees() external view returns (uint256);
     function strike() external view returns (uint256);
     function collateral() external view returns (IERC20);
@@ -36,6 +42,11 @@ interface IRedemption {
     function expirationDate() external view returns (uint40);
     function isPut() external view returns (bool);
     function locked() external view returns (bool);
+    function consDecimals() external view returns (uint8);
+    function collDecimals() external view returns (uint8);
+    function STRIKE_DECIMALS() external view returns (uint8);
+
+    // ============ INITIALIZATION ============
 
     function init(
         address collateral_,
@@ -47,6 +58,20 @@ interface IRedemption {
         address factory_,
         uint64 fee_
     ) external;
+
+    // ============ VIEW FUNCTIONS ============
+
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
+    function collateralData() external view returns (TokenData memory);
+    function considerationData() external view returns (TokenData memory);
+    function option() external view returns (address);
+    function factory() external view returns (address);
+    function toConsideration(uint256 amount) external view returns (uint256);
+    function toCollateral(uint256 consAmount) external view returns (uint256);
+
+    // ============ STATE-CHANGING FUNCTIONS ============
 
     function mint(address account, uint256 amount) external;
     function redeem(address account) external;
@@ -61,13 +86,5 @@ interface IRedemption {
     function claimFees() external;
     function lock() external;
     function unlock() external;
-    function toConsideration(uint256 amount) external view returns (uint256);
-    function toCollateral(uint256 consAmount) external view returns (uint256);
-    function toFee(uint256 amount) external view returns (uint256);
-    function name() external view returns (string memory);
-    function symbol() external view returns (string memory);
-    function decimals() external view returns (uint8);
-    function collateralData() external view returns (TokenData memory);
-    function considerationData() external view returns (TokenData memory);
-    function option() external view returns (address);
+    function adjustFee(uint64 fee_) external;
 }
