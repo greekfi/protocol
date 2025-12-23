@@ -13,7 +13,7 @@ export const wagmiConfig = createConfig({
   ssr: true,
   client: ({ chain }) => {
     // Use RPC override if available, otherwise use default
-    const rpcUrl = rpcOverrides?.[chain.id];
+    const rpcUrl = rpcOverrides?.[chain.id as keyof typeof rpcOverrides];
 
     return createClient({
       chain,
