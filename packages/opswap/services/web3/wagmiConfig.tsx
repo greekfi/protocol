@@ -3,7 +3,7 @@ import { createClient, fallback, http } from "viem";
 import { createConfig } from "wagmi";
 import scaffoldConfig from "~~/scaffold.config";
 
-const { targetNetworks } = scaffoldConfig;
+const { targetNetworks, rpcOverrides } = scaffoldConfig;
 
 export const enabledChains = targetNetworks;
 
@@ -12,9 +12,12 @@ export const wagmiConfig = createConfig({
   // connectors: wagmiConnectors,
   ssr: true,
   client: ({ chain }) => {
+    // Use RPC override if available, otherwise use default
+    const rpcUrl = rpcOverrides?.[chain.id];
+
     return createClient({
       chain,
-      transport: fallback([http()]),
+      transport: fallback([http(rpcUrl)]),
       pollingInterval: scaffoldConfig.pollingInterval,
     });
   },

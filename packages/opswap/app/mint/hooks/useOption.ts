@@ -95,8 +95,16 @@ export function useOption(optionAddress: Address | undefined) {
 
   const [detailsResult, nameResult, balancesResult] = data;
 
+  console.log("=== useOption Debug ===");
+  console.log("optionAddress:", optionAddress);
+  console.log("userAddress:", userAddress);
+  console.log("detailsResult:", detailsResult);
+  console.log("nameResult:", nameResult);
+  console.log("balancesResult:", balancesResult);
+
   // Check for errors in individual calls
   if (detailsResult?.status === "failure") {
+    console.error("Details call failed:", detailsResult);
     return {
       data: null,
       isLoading,
@@ -108,6 +116,8 @@ export function useOption(optionAddress: Address | undefined) {
   const details = detailsResult?.result as OptionInfo | undefined;
   const name = nameResult?.result as string | undefined;
   const balances = balancesResult?.result as Balances | undefined;
+
+  console.log("Parsed balances:", balances);
 
   if (!details) {
     return {

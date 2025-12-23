@@ -131,15 +131,15 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Option Balance</span>
-          <span className="text-purple-300">{formatBalance(option.balances?.option, 18)}</span>
+          <span className="text-purple-300">{formatBalance(option.balances?.option, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Redemption Balance</span>
-          <span className="text-purple-300">{formatBalance(option.balances?.redemption, 18)}</span>
+          <span className="text-purple-300">{formatBalance(option.balances?.redemption, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm font-semibold">
           <span className="text-gray-400">Max Redeemable</span>
-          <span className="text-purple-300">{formatBalance(maxRedeemable, 18)}</span>
+          <span className="text-purple-300">{formatBalance(maxRedeemable, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Collateral ({option.collateral.symbol})</span>

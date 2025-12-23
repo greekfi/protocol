@@ -168,7 +168,7 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Option Balance</span>
-          <span className="text-green-300">{formatBalance(option.balances?.option, 18)}</span>
+          <span className="text-green-300">{formatBalance(option.balances?.option, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Collateral ({option.collateral.symbol})</span>

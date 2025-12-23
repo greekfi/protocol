@@ -44,12 +44,25 @@ export function useOptions() {
     queryFn: async () => {
       if (!publicClient || !factoryAddress) return [];
 
+      // Get current block to calculate safe fromBlock
+      const currentBlock = await publicClient.getBlockNumber();
+      // Query last 100k blocks (safe for most RPC providers)
+      const fromBlock = currentBlock > 100_000n ? currentBlock - 100_000n : 0n;
+
+      console.log("Fetching OptionCreated events:", {
+        factoryAddress,
+        fromBlock: fromBlock.toString(),
+        currentBlock: currentBlock.toString(),
+      });
+
       const logs = await publicClient.getLogs({
         address: factoryAddress,
         event: OPTION_CREATED_EVENT,
-        fromBlock: 0n,
+        fromBlock,
         toBlock: "latest",
       });
+
+      console.log(`Found ${logs.length} OptionCreated events`);
 
       return logs.map((log) => ({
         address: log.args.option as Address,

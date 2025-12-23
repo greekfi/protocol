@@ -115,7 +115,7 @@ export function TransferRedemption({ optionAddress }: TransferRedemptionProps) {
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Your Redemption Balance</span>
-          <span className="text-purple-300">{formatBalance(option.balances?.redemption, 18)}</span>
+          <span className="text-purple-300">{formatBalance(option.balances?.redemption, option.collateral.decimals)}</span>
         </div>
       </div>
 
