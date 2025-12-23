@@ -132,5 +132,62 @@
     "symbol": "BONK",
     "decimals": 5
   }
+],
+"8453":[
+  {
+    "address": "0xfb3CB973B2a9e2E09746393C59e7FB0d5189d290",
+    "symbol": "UNI",
+    "decimals": 18
+  },
+  {
+    "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "symbol": "USDC",
+    "decimals": 6
+  },
+  {
+    "address": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+    "symbol": "USDT",
+    "decimals": 6
+  },
+  {
+    "address": "0x3128a0F7f0ea68E7B7c9B00AFa7E41045828e858",
+    "symbol": "sUSDC",
+    "decimals": 6
+  },
+  {
+    "address": "0xa06b10db9f390990364a3984c04fadf1c13691b5",
+    "symbol": "sUSDS",
+    "decimals": 6
+  },
+  {
+    "address": "0x5875eEE11Cf8398102FdAd704C9E96607675467a",
+    "symbol": "USDS",
+    "decimals": 6
+  },
+  {
+    "address": "0x4200000000000000000000000000000000000006",
+    "symbol": "WETH",
+    "decimals": 18
+  },
+  {
+    "address": "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
+    "symbol": "wstETH",
+    "decimals": 18
+  },
+  {
+    "address": "0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
+    "symbol": "weETH",
+    "decimals": 18
+  },
+  {
+    "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+    "symbol": "ezETH",
+    "decimals": 18
+  },
+  {
+    "address": "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c",
+    "symbol": "wBTC",
+    "decimals": 8
+  }
 ]
 }
