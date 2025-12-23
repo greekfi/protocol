@@ -115,7 +115,7 @@ export function TransferOption({ optionAddress }: TransferOptionProps) {
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Your Option Balance</span>
-          <span className="text-blue-300">{formatBalance(option.balances?.option, 18)}</span>
+          <span className="text-blue-300">{formatBalance(option.balances?.option, option.collateral.decimals)}</span>
         </div>
       </div>
 
