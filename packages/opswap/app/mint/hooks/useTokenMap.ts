@@ -1,5 +1,5 @@
-import tokenList from "../tokenList.json";
-import { useContract } from "./useContract";
+import tokenList from "../data/tokenList.json";
+import { useContracts } from "./useContracts";
 import { useChainId } from "wagmi";
 
 export interface Token {
@@ -10,39 +10,38 @@ export interface Token {
 
 export const useTokenMap = () => {
   const chainId = useChainId();
-  const contract = useContract();
-  const stableToken = contract?.StableToken;
-  const shakyToken = contract?.ShakyToken;
+  const contract = useContracts();
 
-  // Create a map of all tokens for easy lookup
+  const stableTokenAddress = contract?.StableToken?.address;
+  const shakyTokenAddress = contract?.ShakyToken?.address;
+
   const chainKey = String(chainId) as keyof typeof tokenList;
-  const allTokensMap = (tokenList[chainKey] ?? []).reduce(
+  const baseTokensMap = (tokenList[chainKey] ?? []).reduce(
     (acc, token) => {
       acc[token.symbol] = token;
       return acc;
     },
     {} as Record<string, Token>,
   );
-  console.log("chainId", chainId);
 
-  // If we have stable and shaky tokens, override the token list
-  if (chainId != 1 && stableToken && shakyToken) {
-    // Object.keys(allTokensMap).forEach(key => {
-    //   delete allTokensMap[key];
-    // });
-    allTokensMap["STK"] = {
-      address: stableToken.address,
+  // If we have stable and shaky tokens, add them to the map
+  if (chainId != 1 && stableTokenAddress && shakyTokenAddress) {
+    baseTokensMap["STK"] = {
+      address: stableTokenAddress,
       symbol: "STK",
       decimals: 18,
     };
-    allTokensMap["SHK"] = {
-      address: shakyToken.address,
+    baseTokensMap["SHK"] = {
+      address: shakyTokenAddress,
       symbol: "SHK",
       decimals: 18,
     };
   }
 
+  // console.log("useTokenMap - allTokensMap:", baseTokensMap);
+  // console.log("useTokenMap - chainId:", chainId, "STK:", stableTokenAddress, "SHK:", shakyTokenAddress);
+
   return {
-    allTokensMap,
+    allTokensMap: baseTokensMap,
   };
 };

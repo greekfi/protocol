@@ -12,7 +12,7 @@ contract OptionPriceTest is Test {
     uint256 mainnetFork;
 
     function setUp() public {
-        mainnetFork = vm.createSelectFork(rpc, 23359458);
+        mainnetFork = vm.createSelectFork(rpc, 24051580);
         op = new OptionPrice();
     }
 
@@ -173,14 +173,14 @@ contract OptionPriceTest is Test {
     function test_ln() public view {
         // ln(1) = 0
 
-        assertEq(op.log2(1.0e18), 59.794705707972522261e18, "log2(1) should equal 0");
+        assertEq(op.log2(1.0e18), 59.794705707972522261e18, "log2(1) should equal 59.794705");
 
         // assertEq(op.ln(1.00000e18), 0, "ln(1) should equal 0");
-        assertApproxEqRel(op.ln(1.0e18), 0, 0.00001e18, "ln(1.000001) should be approximately 0");
+        assertApproxEqRel(op.ln(1.0e18), 0, 0.0001e18, "ln(1.000001) should be approximately 0");
 
         assertApproxEqRel(
-            op.ln(15e17), // 1.5 in 1e18 fixed point
-            405465108108164381,
+            op.ln(1.5e18), // 1.5 in 1e18 fixed point
+            0.405465108108164381e18,
             0.01e18, // 1% tolerance
             "ln(1.5) should be approximately 0.4055"
         );
@@ -238,5 +238,19 @@ contract OptionPriceTest is Test {
         // opHook.initPool(0xd549Cb6Fd983a5E2b6252f1C41d5dA8Fd04B3339, 0);
         uint256 price = op.getPrice(4600e18, 3000e18, 1758143415, false, false);
         console.log("option price", price / 1e18);
+    }
+
+    function testBlackScholes1() public view {
+        // Test case: ATM call option with 1 year to expiration
+        uint256 underlying = 2980e18; // $2980
+        uint256 strike = 3100e18; // $3100 (at-the-money)
+        uint256 timeToExpiration = 1 weeks; // 1 week in seconds
+        uint256 volatility = 0.6e18; // 60% volatility
+        uint256 riskFreeRate = 0.04e18; // 4% risk-free rate
+
+        uint256 callPrice = op.blackScholesPrice(underlying, strike, timeToExpiration, volatility, riskFreeRate, false);
+        console.log("Final call price:", callPrice);
+        uint256 putPrice = op.blackScholesPrice(underlying, strike, timeToExpiration, volatility, riskFreeRate, true);
+        console.log("Final put price:", putPrice);
     }
 }

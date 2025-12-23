@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     StableToken: {
-      address: "0x29ea756b18c8714a0da70ea617ca90044198fad1",
+      address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
       abi: [
         {
           type: "constructor",
@@ -429,11 +429,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     ShakyToken: {
-      address: "0xb11632a56608bad85562fae6f1af269d1fe9e8e6",
+      address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
       abi: [
         {
           type: "constructor",
@@ -855,65 +855,52 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     Redemption: {
-      address: "0xb8c3d6cf4297202c45f61673804409b060400705",
+      address: "0xb19b36b1456e65e3a6d514d3f715f204bd59f431",
       abi: [
         {
           type: "constructor",
           inputs: [
             {
-              name: "name",
+              name: "name_",
               type: "string",
               internalType: "string",
             },
             {
-              name: "symbol",
+              name: "symbol_",
               type: "string",
               internalType: "string",
             },
             {
-              name: "collateral",
+              name: "collateral_",
               type: "address",
               internalType: "address",
             },
             {
-              name: "consideration",
+              name: "consideration_",
               type: "address",
               internalType: "address",
             },
             {
-              name: "expirationDate",
+              name: "expirationDate_",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "strike",
+              name: "strike_",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "isPut",
+              name: "isPut_",
               type: "bool",
               internalType: "bool",
             },
           ],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "PERMIT2",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPermit2",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -922,8 +909,21 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
-              type: "uint256",
-              internalType: "uint256",
+              type: "uint8",
+              internalType: "uint8",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "_factory",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IFactory",
             },
           ],
           stateMutability: "view",
@@ -948,22 +948,16 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "accounts",
+          name: "adjustFee",
           inputs: [
             {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
             },
           ],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -1028,6 +1022,26 @@ const deployedContracts = {
               name: "",
               type: "uint256",
               internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "claimFees",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "collDecimals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint8",
+              internalType: "uint8",
             },
           ],
           stateMutability: "view",
@@ -1076,6 +1090,19 @@ const deployedContracts = {
                   internalType: "uint8",
                 },
               ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "consDecimals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint8",
+              internalType: "uint8",
             },
           ],
           stateMutability: "view",
@@ -1171,6 +1198,32 @@ const deployedContracts = {
           outputs: [
             {
               name: "",
+              type: "uint40",
+              internalType: "uint40",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "fee",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint64",
+              internalType: "uint64",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "fees",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
@@ -1181,16 +1234,6 @@ const deployedContracts = {
           type: "function",
           name: "init",
           inputs: [
-            {
-              name: "name_",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "symbol_",
-              type: "string",
-              internalType: "string",
-            },
             {
               name: "collateral_",
               type: "address",
@@ -1203,8 +1246,8 @@ const deployedContracts = {
             },
             {
               name: "expirationDate_",
-              type: "uint256",
-              internalType: "uint256",
+              type: "uint40",
+              internalType: "uint40",
             },
             {
               name: "strike_",
@@ -1221,22 +1264,19 @@ const deployedContracts = {
               type: "address",
               internalType: "address",
             },
+            {
+              name: "factory_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
+            },
           ],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "initialized",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -1412,19 +1452,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "setOption",
-          inputs: [
-            {
-              name: "option_",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "strike",
           inputs: [],
           outputs: [
@@ -1452,7 +1479,13 @@ const deployedContracts = {
         {
           type: "function",
           name: "sweep",
-          inputs: [],
+          inputs: [
+            {
+              name: "holders",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -1620,6 +1653,18 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "ContractLocked",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "ContractUnlocked",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Initialized",
           inputs: [
             {
@@ -1705,6 +1750,11 @@ const deployedContracts = {
             },
           ],
           anonymous: false,
+        },
+        {
+          type: "error",
+          name: "ArithmeticOverflow",
+          inputs: [],
         },
         {
           type: "error",
@@ -1804,7 +1854,27 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "FeeOnTransferNotSupported",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InsufficientBalance",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientCollateral",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientConsideration",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidAddress",
           inputs: [],
         },
         {
@@ -1815,6 +1885,11 @@ const deployedContracts = {
         {
           type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "LockedContract",
           inputs: [],
         },
         {
@@ -1860,51 +1935,31 @@ const deployedContracts = {
             },
           ],
         },
+        {
+          type: "error",
+          name: "TokenBlocklisted",
+          inputs: [],
+        },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     Option: {
-      address: "0x067b18909ccab20bd44b18102528901f69b8ea71",
+      address: "0x8ce361602b935680e8dec218b820ff5056beb7af",
       abi: [
         {
           type: "constructor",
           inputs: [
             {
-              name: "name",
+              name: "name_",
               type: "string",
               internalType: "string",
             },
             {
-              name: "symbol",
+              name: "symbol_",
               type: "string",
               internalType: "string",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
             },
             {
               name: "redemption__",
@@ -1916,29 +1971,16 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "PERMIT2",
-          inputs: [],
-          outputs: [
+          name: "adjustFee",
+          inputs: [
             {
-              name: "",
-              type: "address",
-              internalType: "contract IPermit2",
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
             },
           ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "STRIKE_DECIMALS",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -2050,48 +2092,20 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "claimFees",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "collateral",
           inputs: [],
           outputs: [
             {
               name: "",
               type: "address",
-              internalType: "contract IERC20",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "collateralData",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
+              internalType: "address",
             },
           ],
           stateMutability: "view",
@@ -2104,42 +2118,7 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
-              internalType: "contract IERC20",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "considerationData",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
+              internalType: "address",
             },
           ],
           stateMutability: "view",
@@ -2169,57 +2148,13 @@ const deployedContracts = {
               components: [
                 {
                   name: "option",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
+                  type: "address",
+                  internalType: "address",
                 },
                 {
                   name: "redemption",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
+                  type: "address",
+                  internalType: "address",
                 },
                 {
                   name: "collateral",
@@ -2274,58 +2209,6 @@ const deployedContracts = {
                       internalType: "uint8",
                     },
                   ],
-                },
-                {
-                  name: "p",
-                  type: "tuple",
-                  internalType: "struct OptionParameter",
-                  components: [
-                    {
-                      name: "optionSymbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "redemptionSymbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "collateral_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "consideration_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                    {
-                      name: "strike",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                    {
-                      name: "isPut",
-                      type: "bool",
-                      internalType: "bool",
-                    },
-                  ],
-                },
-                {
-                  name: "coll",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "cons",
-                  type: "address",
-                  internalType: "address",
                 },
                 {
                   name: "expiration",
@@ -2393,117 +2276,39 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "init",
-          inputs: [
-            {
-              name: "name_",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "symbol_",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateral_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expirationDate_",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike_",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut_",
-              type: "bool",
-              internalType: "bool",
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "init",
-          inputs: [
-            {
-              name: "name_",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "symbol_",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "collateral_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration_",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expirationDate_",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike_",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut_",
-              type: "bool",
-              internalType: "bool",
-            },
-            {
-              name: "redemption__",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "initialized",
+          name: "fee",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "bool",
-              internalType: "bool",
+              type: "uint64",
+              internalType: "uint64",
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "init",
+          inputs: [
+            {
+              name: "redemption_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -2524,19 +2329,6 @@ const deployedContracts = {
           inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "locked",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -2641,34 +2433,8 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "redemption_",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "renounceOwnership",
           inputs: [],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setRedemption",
-          inputs: [
-            {
-              name: "shortOptionAddress",
-              type: "address",
-              internalType: "address",
-            },
-          ],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -2694,44 +2460,6 @@ const deployedContracts = {
               name: "",
               type: "string",
               internalType: "string",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "toCollateral",
-          inputs: [
-            {
-              name: "consAmount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "toConsideration",
-          inputs: [
-            {
-              name: "amount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -2849,6 +2577,18 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "ContractLocked",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "ContractUnlocked",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Exercise",
           inputs: [
             {
@@ -2956,6 +2696,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "ArithmeticOverflow",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "ContractExpired",
           inputs: [],
         },
@@ -3052,7 +2797,27 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "FeeOnTransferNotSupported",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InsufficientBalance",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientCollateral",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InsufficientConsideration",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidAddress",
           inputs: [],
         },
         {
@@ -3063,6 +2828,11 @@ const deployedContracts = {
         {
           type: "error",
           name: "InvalidValue",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "LockedContract",
           inputs: [],
         },
         {
@@ -3097,13 +2867,18 @@ const deployedContracts = {
           name: "ReentrancyGuardReentrantCall",
           inputs: [],
         },
+        {
+          type: "error",
+          name: "TokenBlocklisted",
+          inputs: [],
+        },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     OptionFactory: {
-      address: "0x287e8b17ce85b451a906ea8a179212e5a24680a3",
+      address: "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
       abi: [
         {
           type: "constructor",
@@ -3118,49 +2893,149 @@ const deployedContracts = {
               type: "address",
               internalType: "address",
             },
+            {
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
+            },
           ],
           stateMutability: "nonpayable",
         },
         {
           type: "function",
-          name: "collaterals",
+          name: "MAX_FEE",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "contract AddressSet",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
         },
         {
           type: "function",
-          name: "considerations",
-          inputs: [],
+          name: "adjustFee",
+          inputs: [
+            {
+              name: "fee_",
+              type: "uint64",
+              internalType: "uint64",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "allowance",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "contract AddressSet",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "approve",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "blockToken",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "blocklist",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "claimFees",
+          inputs: [
+            {
+              name: "options",
+              type: "address[]",
+              internalType: "address[]",
+            },
+            {
+              name: "tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "claimFees",
+          inputs: [
+            {
+              name: "tokens",
+              type: "address[]",
+              internalType: "address[]",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
           name: "createOption",
           inputs: [
-            {
-              name: "optionName",
-              type: "string",
-              internalType: "string",
-            },
-            {
-              name: "redemptionName",
-              type: "string",
-              internalType: "string",
-            },
             {
               name: "collateral",
               type: "address",
@@ -3173,13 +3048,13 @@ const deployedContracts = {
             },
             {
               name: "expirationDate",
-              type: "uint256",
-              internalType: "uint256",
+              type: "uint40",
+              internalType: "uint40",
             },
             {
               name: "strike",
-              type: "uint256",
-              internalType: "uint256",
+              type: "uint96",
+              internalType: "uint96",
             },
             {
               name: "isPut",
@@ -3206,16 +3081,6 @@ const deployedContracts = {
               internalType: "struct OptionParameter[]",
               components: [
                 {
-                  name: "optionSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "redemptionSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
                   name: "collateral_",
                   type: "address",
                   internalType: "address",
@@ -3227,13 +3092,13 @@ const deployedContracts = {
                 },
                 {
                   name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
+                  type: "uint40",
+                  internalType: "uint40",
                 },
                 {
                   name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
+                  type: "uint96",
+                  internalType: "uint96",
                 },
                 {
                   name: "isPut",
@@ -3248,327 +3113,23 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "get",
-          inputs: [
-            {
-              name: "collateral",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "tuple[]",
-              internalType: "struct OptionInfo[]",
-              components: [
-                {
-                  name: "option",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
-                },
-                {
-                  name: "redemption",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
-                },
-                {
-                  name: "collateral",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
-                },
-                {
-                  name: "consideration",
-                  type: "tuple",
-                  internalType: "struct TokenData",
-                  components: [
-                    {
-                      name: "address_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "name",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "symbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "decimals",
-                      type: "uint8",
-                      internalType: "uint8",
-                    },
-                  ],
-                },
-                {
-                  name: "p",
-                  type: "tuple",
-                  internalType: "struct OptionParameter",
-                  components: [
-                    {
-                      name: "optionSymbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "redemptionSymbol",
-                      type: "string",
-                      internalType: "string",
-                    },
-                    {
-                      name: "collateral_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "consideration_",
-                      type: "address",
-                      internalType: "address",
-                    },
-                    {
-                      name: "expiration",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                    {
-                      name: "strike",
-                      type: "uint256",
-                      internalType: "uint256",
-                    },
-                    {
-                      name: "isPut",
-                      type: "bool",
-                      internalType: "bool",
-                    },
-                  ],
-                },
-                {
-                  name: "coll",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "cons",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getCollaterals",
+          name: "fee",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address[]",
-              internalType: "address[]",
+              type: "uint64",
+              internalType: "uint64",
             },
           ],
           stateMutability: "view",
         },
         {
           type: "function",
-          name: "getCollateralsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderations",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getConsiderationsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getOptions",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address[]",
-              internalType: "address[]",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "getOptionsCount",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isCollateral",
+          name: "isBlocked",
           inputs: [
             {
               name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isConsideration",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "isOption",
-          inputs: [
-            {
-              name: "option_",
               type: "address",
               internalType: "address",
             },
@@ -3597,215 +3158,16 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "options",
+          name: "optionsClaimFees",
           inputs: [
             {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
+              name: "options",
+              type: "address[]",
+              internalType: "address[]",
             },
           ],
-          outputs: [
-            {
-              name: "option",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
-            },
-            {
-              name: "redemption",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
-            },
-            {
-              name: "collateral",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
-            },
-            {
-              name: "consideration",
-              type: "tuple",
-              internalType: "struct TokenData",
-              components: [
-                {
-                  name: "address_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "name",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "symbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "decimals",
-                  type: "uint8",
-                  internalType: "uint8",
-                },
-              ],
-            },
-            {
-              name: "p",
-              type: "tuple",
-              internalType: "struct OptionParameter",
-              components: [
-                {
-                  name: "optionSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "redemptionSymbol",
-                  type: "string",
-                  internalType: "string",
-                },
-                {
-                  name: "collateral_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "consideration_",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "expiration",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "strike",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "isPut",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-            {
-              name: "coll",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "cons",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "expiration",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "optionsSet",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract AddressSet",
-            },
-          ],
-          stateMutability: "view",
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -3842,6 +3204,40 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "transferFrom",
+          inputs: [
+            {
+              name: "from",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "to",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint160",
+              internalType: "uint160",
+            },
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "success",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "transferOwnership",
           inputs: [
             {
@@ -3854,13 +3250,75 @@ const deployedContracts = {
           stateMutability: "nonpayable",
         },
         {
+          type: "function",
+          name: "unblockToken",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "event",
+          name: "FeeUpdated",
+          inputs: [
+            {
+              name: "oldFee",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+            {
+              name: "newFee",
+              type: "uint64",
+              indexed: false,
+              internalType: "uint64",
+            },
+          ],
+          anonymous: false,
+        },
+        {
           type: "event",
           name: "OptionCreated",
           inputs: [
             {
+              name: "collateral",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "consideration",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "expirationDate",
+              type: "uint40",
+              indexed: false,
+              internalType: "uint40",
+            },
+            {
+              name: "strike",
+              type: "uint96",
+              indexed: false,
+              internalType: "uint96",
+            },
+            {
+              name: "isPut",
+              type: "bool",
+              indexed: false,
+              internalType: "bool",
+            },
+            {
               name: "option",
               type: "address",
-              indexed: false,
+              indexed: true,
               internalType: "address",
             },
             {
@@ -3868,36 +3326,6 @@ const deployedContracts = {
               type: "address",
               indexed: false,
               internalType: "address",
-            },
-            {
-              name: "collateral",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "consideration",
-              type: "address",
-              indexed: false,
-              internalType: "address",
-            },
-            {
-              name: "expirationDate",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "strike",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "isPut",
-              type: "bool",
-              indexed: false,
-              internalType: "bool",
             },
           ],
           anonymous: false,
@@ -3922,6 +3350,36 @@ const deployedContracts = {
           anonymous: false,
         },
         {
+          type: "event",
+          name: "TemplateUpdated",
+          inputs: [],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "TokenBlocked",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "blocked",
+              type: "bool",
+              indexed: false,
+              internalType: "bool",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "BlocklistedToken",
+          inputs: [],
+        },
+        {
           type: "error",
           name: "FailedDeployment",
           inputs: [],
@@ -3941,6 +3399,16 @@ const deployedContracts = {
               internalType: "uint256",
             },
           ],
+        },
+        {
+          type: "error",
+          name: "InvalidAddress",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "InvalidTokens",
+          inputs: [],
         },
         {
           type: "error",
@@ -3964,13 +3432,29 @@ const deployedContracts = {
             },
           ],
         },
+        {
+          type: "error",
+          name: "ReentrancyGuardReentrantCall",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "SafeERC20FailedOperation",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
     OpHook: {
-      address: "0xad0a4296fde33340f1e603c18408bb77211488a8",
+      address: "0x42bff3e3ab0be0824b6aa4c48d44ac87c1a788a8",
       abi: [
         {
           type: "constructor",
@@ -5967,7 +5451,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1762585788.json",
+      deploymentFile: "run-1766396377865.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

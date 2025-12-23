@@ -25,6 +25,7 @@ import { OptionPrice, IUniswapV3Pool } from "./OptionPrice.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { IOption } from "./interfaces/IOption.sol";
+import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import { console } from "forge-std/console.sol";
@@ -224,7 +225,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
         transferCash(cashToken, p.cashAmount);
         option.mint(p.optionAmount);
-        option.safeTransfer(to, p.optionAmount);
+        option.transfer(to, p.optionAmount);
 
         emit Swap(msg.sender, to, amount, p.price);
     }
@@ -256,19 +257,18 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
         if (cashForOption) {
             // Here we JIT create option tokens and let the flash accounting handle transfers
-            option.mint(a.optionAmount);
             poolManager.take(cashCurrency, address(this), a.cashAmount);
             poolManager.sync(optionCurrency);
-            option.safeTransfer(pm, a.optionAmount);
+            option.mint(a.optionAmount); // this line is optional
+            option.transfer(pm, a.optionAmount);
             poolManager.settle();
             delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(a.optionAmount));
         } else {
-            // Here we have to take the option tokens from the caller and burn them
+            // Here we have to take the option tokens from the caller and auto burn them
             poolManager.take(optionCurrency, address(this), a.optionAmount);
             poolManager.sync(cashCurrency);
             IERC20(pool.cashToken).safeTransfer(pm, a.cashAmount);
             poolManager.settle();
-            option.redeem(a.optionAmount);
             delta = toBeforeSwapDelta(to128(a.optionAmount), -to128(a.cashAmount));
         }
     }
@@ -382,6 +382,9 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         collateralPools[collateral].push(optionPool);
         optionPoolList[optionToken].push(optionPool);
         collateralPricePool[collateral] = IUniswapV3Pool(pricePool);
+
+        IERC20(option.collateral()).approve(option.factory(), type(uint256).max);
+        IOptionFactory(option.factory()).approve(option.collateral(), type(uint160).max);
         return poolKey;
     }
 }

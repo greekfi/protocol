@@ -6,8 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances } from "../contracts/Option.sol";
-import { StableToken } from "../contracts/StableToken.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 /**
@@ -33,11 +32,11 @@ contract GasAnalysis is Test {
     IPermit2 public permit2 = IPermit2(PERMIT2);
 
     // Constants
-    string constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
-    address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-    uint160 constant MAX160 = type(uint160).max;
-    uint48 constant MAX48 = type(uint48).max;
-    uint256 constant MAX256 = type(uint256).max;
+    string public constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
+    address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+    uint160 public constant MAX160 = type(uint160).max;
+    uint48 public constant MAX48 = type(uint48).max;
+    uint256 public constant MAX256 = type(uint256).max;
 
     function setUp() public {
         // Fork Unichain
@@ -62,15 +61,12 @@ contract GasAnalysis is Test {
         factory = new OptionFactory(
             address(redemptionTemplate),
             address(optionTemplate),
-            PERMIT2,
             0.0001e18 // 0.01% fee
         );
 
         // Create an option pair via factory (required for testing Option/Redemption)
         OptionParameter[] memory params = new OptionParameter[](1);
         params[0] = OptionParameter({
-            optionSymbol: "CALL-ETH",
-            redemptionSymbol: "SHORT-ETH",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
             expiration: uint40(block.timestamp + 30 days),
@@ -78,11 +74,12 @@ contract GasAnalysis is Test {
             isPut: false
         });
 
-        factory.createOptions(params);
+        address optionAddress = factory.createOption(
+            params[0].collateral_, params[0].consideration_, params[0].expiration, params[0].strike, params[0].isPut
+        );
 
         // Get the deployed option and redemption
-        address[] memory options = factory.getOptions();
-        option = Option(options[0]);
+        option = Option(optionAddress);
         redemption = option.redemption();
 
         // Setup approvals for testing
@@ -93,6 +90,8 @@ contract GasAnalysis is Test {
         // Approve Permit2
         IERC20(address(stableToken)).approve(address(factory), MAX256);
         IERC20(address(shakyToken)).approve(address(factory), MAX256);
+        factory.approve(address(stableToken), MAX160);
+        factory.approve(address(shakyToken), MAX160);
 
         // Approve factory via Permit2
         // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
@@ -106,8 +105,6 @@ contract GasAnalysis is Test {
     function test_Gas_Factory_CreateOption() public {
         OptionParameter[] memory params = new OptionParameter[](1);
         params[0] = OptionParameter({
-            optionSymbol: "CALL-BTC",
-            redemptionSymbol: "SHORT-BTC",
             collateral_: address(shakyToken),
             consideration_: address(stableToken),
             expiration: uint40(block.timestamp + 60 days),
@@ -119,15 +116,7 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Factory_CreateOption_DirectCall() public {
-        factory.createOption(
-            "CALL-DIRECT",
-            "SHORT-DIRECT",
-            address(shakyToken),
-            address(stableToken),
-            uint40(block.timestamp + 60 days),
-            2e18,
-            false
-        );
+        factory.createOption(address(shakyToken), address(stableToken), uint40(block.timestamp + 60 days), 2e18, false);
     }
 
     function test_Gas_Factory_CreateMultipleOptions_3() public {
@@ -135,8 +124,6 @@ contract GasAnalysis is Test {
 
         for (uint256 i = 0; i < 3; i++) {
             params[i] = OptionParameter({
-                optionSymbol: string(abi.encodePacked("CALL-", i)),
-                redemptionSymbol: string(abi.encodePacked("SHORT-", i)),
                 collateral_: address(shakyToken),
                 consideration_: address(stableToken),
                 expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
@@ -152,13 +139,7 @@ contract GasAnalysis is Test {
         OptionParameter[] memory params = new OptionParameter[](16);
 
         for (uint256 i = 0; i < 16; i++) {
-            // Create unique symbols by including index in name
-            string memory optionSym = string(abi.encodePacked("CALL16-", _toString(i)));
-            string memory redemptionSym = string(abi.encodePacked("SHORT16-", _toString(i)));
-
             params[i] = OptionParameter({
-                optionSymbol: optionSym,
-                redemptionSymbol: redemptionSym,
                 collateral_: address(shakyToken),
                 consideration_: address(stableToken),
                 expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
@@ -190,22 +171,6 @@ contract GasAnalysis is Test {
         return string(buffer);
     }
 
-    function test_Gas_Factory_GetOptions() public view {
-        factory.getOptions();
-    }
-
-    function test_Gas_Factory_GetCollaterals() public view {
-        factory.getCollaterals();
-    }
-
-    function test_Gas_Factory_GetConsiderations() public view {
-        factory.getConsiderations();
-    }
-
-    function test_Gas_Factory_IsOption() public view {
-        factory.isOption(address(option));
-    }
-
     // ============================================
     // OPTION GAS TESTS - CORE FUNCTIONS
     // ============================================
@@ -232,6 +197,7 @@ contract GasAnalysis is Test {
 
         vm.startPrank(address(0x123));
         IERC20(address(shakyToken)).approve(address(factory), MAX256);
+        factory.approve(address(shakyToken), MAX160);
         // permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
         option.mint(address(0x123), 10);
         vm.stopPrank();
@@ -521,6 +487,7 @@ contract GasAnalysis is Test {
         stableToken.mint(address(0x123), 1000e18);
         vm.startPrank(address(0x123));
         IERC20(address(stableToken)).approve(address(factory), MAX256);
+        factory.approve(address(stableToken), MAX160);
         // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
         option.exercise(25);
         vm.stopPrank();
@@ -566,6 +533,6 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate), PERMIT2, 0.0001e18);
+        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
     }
 }

@@ -7,8 +7,27 @@
 
 ## About
 
-A dual-token options protocol where both long (Option) and short (Redemption) positions are fully transferable ERC20 tokens. 
+A dual-token options protocol where both long (Option) and short (Redemption) positions are fully transferable ERC20 tokens.
 The protocol supports any ERC20 tokens as collateral or consideration, enabling flexible options trading beyond traditional cash/asset distinctions.
+
+The Option contract is the owner of the Redemption contract
+The Option contract is the only one that can mint new mint
+The Option contract is the only one that can exercise mint
+The redemption is only possible if you own both the Option and
+Redemption contracts but performed by the Option contract
+
+In mint traditionally a Consideration is cash and a Collateral is an asset
+Here, we do not distinguish between the Cash and Asset concept and allow consideration
+to be any asset and collateral to be any asset as well. This can allow wETH to be used
+as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
+or even staked stable coins can be used as well for either consideration or collateral.
+
+In minting, traditionally a Consideration is cash and a Collateral is an asset
+Here, we do not distinguish between the Cash and Asset concept and allow consideration
+to be any asset and collateral to be any asset as well. This can allow wETH to be used
+as collateral and wBTC to be used as consideration. Similarly, staked ETH can be used
+or even staked stable coins can be used as well for either consideration or collateral.
+
 
 ⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
 
