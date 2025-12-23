@@ -1,0 +1,33 @@
+# Unused packages (not needed for frontend build)
+packages/foundry
+packages/qserver
+packages/quotes
+
+# Node modules (handled separately)
+node_modules
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Development files
+.env.local
+.env.development
+
+# Git
+.git
+.gitignore
+.gitattributes
+.gitmodules
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
