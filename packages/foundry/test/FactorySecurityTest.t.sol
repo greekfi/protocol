@@ -33,7 +33,6 @@ contract FactorySecurityTest is Test {
         considerationToken = new MockERC20("Consideration", "CONS", 18);
     }
 
-
     /**
      * HIGH-01: Template validation - NOW FIXED (both zero)
      * This test verifies factory now rejects zero address templates

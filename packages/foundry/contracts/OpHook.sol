@@ -25,7 +25,7 @@ import { OptionPrice, IUniswapV3Pool } from "./OptionPrice.sol";
 
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { IOption } from "./interfaces/IOption.sol";
-import { IOptionFactory  } from "./interfaces/IOptionFactory.sol";
+import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import { console } from "forge-std/console.sol";

@@ -86,7 +86,6 @@ contract OptionTest is Test {
         factory.approve(token, MAX160);
     }
 
-
     function safeTransfer(address token, address to, uint256 amount) internal {
         IERC20(token).safeTransfer(to, amount);
     }
@@ -119,7 +118,6 @@ contract OptionTest is Test {
     function test_Transfer1() public t1 {
         safeTransfer(address(option), address(0x123), 1);
     }
-
 
     function test_TransferTransfer() public t1 {
         safeTransfer(address(option), address(0x123), 1);
