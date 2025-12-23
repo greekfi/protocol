@@ -169,12 +169,7 @@ contract FeeOnTransferTest is Test {
 
         // Approve tokens
         fotToken.approve(address(factory), MAX160);
-        fotToken.approve(PERMIT2, type(uint256).max);
-        vm.prank(PERMIT2);
-        fotToken.approve(address(factory), MAX160);
-
-        // Approve Permit2
-        permit2.approve(address(fotToken), address(factory), MAX160, MAX48);
+        factory.approve(address(fotToken), MAX160);
 
         uint256 mintAmount = 1000 * 10 ** 18;
 
@@ -207,13 +202,9 @@ contract FeeOnTransferTest is Test {
 
         // Approve tokens
         shakyToken.approve(address(factory), MAX160);
-        shakyToken.approve(PERMIT2, type(uint256).max);
+        factory.approve(address(shakyToken), MAX160);
         stableToken.approve(address(factory), MAX160);
-        stableToken.approve(PERMIT2, type(uint256).max);
-
-        // Approve Permit2
-        permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
-        permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
+        factory.approve(address(stableToken), MAX160);
 
         uint256 mintAmount = 1000 * 10 ** 18;
 

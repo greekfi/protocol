@@ -580,6 +580,15 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return owner();
     }
 
+    /**
+     * @notice Returns the address of the factory contract
+     * @dev The factory contract created this Redemption contract
+     * @return Address of the factory contract
+     */
+    function factory() public view returns (address) {
+        return address(_factory);
+    }
+
     // ============ UTILITY FUNCTIONS ============
 
     /**

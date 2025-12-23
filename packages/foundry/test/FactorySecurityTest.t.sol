@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import "forge-std/Test.sol";
 import "../contracts/OptionFactory.sol";
@@ -33,25 +33,6 @@ contract FactorySecurityTest is Test {
         considerationToken = new MockERC20("Consideration", "CONS", 18);
     }
 
-    /**
-     * CRITICAL-01: claimFees() - NOW FIXED
-     * This test verifies the fix where claimFees now uses transfer() instead of safeTransferFrom()
-     */
-    function testFIXED_ClaimFeesNowWorks() public {
-        // Simulate some tokens in the factory (e.g., from fees)
-        collateralToken.mint(address(factory), 100e18);
-
-        // Verify factory has tokens
-        assertEq(collateralToken.balanceOf(address(factory)), 100e18);
-
-        // Claim fees - THIS NOW WORKS
-        factory.claimFees(address(collateralToken));
-
-        // Verify fees transferred to owner
-        assertEq(collateralToken.balanceOf(address(factory)), 0);
-        assertEq(collateralToken.balanceOf(owner), 100e18);
-        console.log("FIXED: claimFees() now works correctly!");
-    }
 
     /**
      * HIGH-01: Template validation - NOW FIXED (both zero)

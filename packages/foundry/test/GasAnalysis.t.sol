@@ -90,6 +90,8 @@ contract GasAnalysis is Test {
         // Approve Permit2
         IERC20(address(stableToken)).approve(address(factory), MAX256);
         IERC20(address(shakyToken)).approve(address(factory), MAX256);
+        factory.approve(address(stableToken), MAX160);
+        factory.approve(address(shakyToken), MAX160);
 
         // Approve factory via Permit2
         // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
@@ -195,6 +197,7 @@ contract GasAnalysis is Test {
 
         vm.startPrank(address(0x123));
         IERC20(address(shakyToken)).approve(address(factory), MAX256);
+        factory.approve(address(shakyToken), MAX160);
         // permit2.approve(address(shakyToken), address(factory), MAX160, MAX48);
         option.mint(address(0x123), 10);
         vm.stopPrank();
@@ -484,6 +487,7 @@ contract GasAnalysis is Test {
         stableToken.mint(address(0x123), 1000e18);
         vm.startPrank(address(0x123));
         IERC20(address(stableToken)).approve(address(factory), MAX256);
+        factory.approve(address(stableToken), MAX160);
         // permit2.approve(address(stableToken), address(factory), MAX160, MAX48);
         option.exercise(25);
         vm.stopPrank();

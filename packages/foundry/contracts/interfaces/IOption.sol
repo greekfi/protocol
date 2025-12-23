@@ -49,6 +49,7 @@ interface IOption {
     function init(address redemption_, address owner, uint64 fee_) external;
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
+    function factory() external view returns (address);
     function collateral() external view returns (address);
     function consideration() external view returns (address);
     function expirationDate() external view returns (uint256);
