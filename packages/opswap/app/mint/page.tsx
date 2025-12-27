@@ -19,7 +19,7 @@ function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address | undefined>(undefined);
 
   // Use new hooks
-  const { optionList } = useOptions();
+  const { options } = useOptions();
   const { data: optionDetails } = useOption(optionAddress);
 
 
@@ -34,7 +34,7 @@ function OptionsApp() {
               <div className="p-4 bg-gray-800">
                 <SelectOptionAddress
                   setOptionAddress={(addr) => setOptionAddress(addr as Address)}
-                  optionList={optionList}
+                  optionList={options}
                 />
               </div>
 
