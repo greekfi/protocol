@@ -2,6 +2,7 @@
 pragma solidity ^0.8.33;
 
 import "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../contracts/OptionFactory.sol";
 
 /**
@@ -25,8 +26,11 @@ contract FactorySecurityTest is Test {
         redemptionTemplate = address(new MockContract());
         optionTemplate = address(new MockContract());
 
-        // Deploy factory with 0.1% fee
-        factory = new OptionFactory(redemptionTemplate, optionTemplate, 0.001e18);
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (redemptionTemplate, optionTemplate, 0.001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        factory = OptionFactory(address(proxy));
 
         // Deploy mock tokens
         collateralToken = new MockERC20("Collateral", "COLL", 18);
@@ -38,15 +42,15 @@ contract FactorySecurityTest is Test {
      * This test verifies factory now rejects zero address templates
      */
     function testFIXED_TemplateValidation_BothZero() public {
-        // Now REVERTS when deployed with zero addresses
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(
-            address(0), // Invalid redemption template
-            address(0), // Invalid option template
-            0.001e18
-        );
+        // Now REVERTS when initialized with zero addresses
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(0), address(0), 0.001e18));
 
-        console.log("FIXED: Constructor rejects both zero addresses!");
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new ERC1967Proxy(address(implementation), initData);
+
+        console.log("FIXED: Initialize rejects both zero addresses!");
     }
 
     /**
@@ -58,14 +62,13 @@ contract FactorySecurityTest is Test {
         address validTemplate = address(new MockContract());
 
         // Reverts with only redemption as zero
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(
-            address(0), // Invalid redemption template
-            validTemplate, // Valid option template
-            0.001e18
-        );
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(0), validTemplate, 0.001e18));
 
-        console.log("FIXED: Constructor rejects redemption zero address!");
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new ERC1967Proxy(address(implementation), initData);
+
+        console.log("FIXED: Initialize rejects redemption zero address!");
     }
 
     /**
@@ -77,14 +80,13 @@ contract FactorySecurityTest is Test {
         address validTemplate = address(new MockContract());
 
         // Reverts with only option as zero
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(
-            validTemplate, // Valid redemption
-            address(0), // Invalid option template
-            0.001e18
-        );
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (validTemplate, address(0), 0.001e18));
 
-        console.log("FIXED: Constructor rejects option zero address!");
+        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        new ERC1967Proxy(address(implementation), initData);
+
+        console.log("FIXED: Initialize rejects option zero address!");
     }
 
     /**

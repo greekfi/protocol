@@ -1,4 +1,5 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 @openzeppelin/uniswap-hooks/=lib/uniswap-hooks/
 @uniswap/v4-periphery/=lib/uniswap-hooks/lib/v4-periphery/
 @uniswap/universal-router/=lib/universal-router/

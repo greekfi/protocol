@@ -3,8 +3,10 @@ pragma solidity ^0.8.30;
 
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import { Option } from "./Option.sol";
 import { Redemption } from "./Redemption.sol";
@@ -27,8 +29,9 @@ struct OptionParameter {
  * @dev Deploys gas-efficient minimal proxy clones of Option and Redemption template contracts.
  *      Maintains a blocklist for fee-on-transfer and rebasing tokens to prevent issues.
  *      Provides centralized token transfer functionality via transferFrom to support dual approval systems.
+ *      Uses UUPS (ERC-1967) upgradeability pattern for factory logic upgrades.
  */
-contract OptionFactory is Ownable, ReentrancyGuardTransient {
+contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardTransient {
     // ============ STATE VARIABLES ============
 
     /// @notice Address of the Redemption template contract for cloning
@@ -76,17 +79,30 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     /// @notice Allowances mapping for token transfers; token => owner => amount
     mapping(address => mapping(address => uint256)) private _allowances;
 
-    // ============ CONSTRUCTOR ============
+    // ============ CONSTRUCTOR & INITIALIZER ============
 
     /**
-     * @notice Constructs the OptionFactory with template contracts and fee
+     * @notice Constructor that disables initializers for the implementation contract
+     * @dev Prevents the implementation contract from being initialized
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the OptionFactory with template contracts and fee
+     * @dev Replaces constructor for upgradeable pattern. Can only be called once.
      * @param redemption_ Address of the Redemption template contract
      * @param option_ Address of the Option template contract
      * @param fee_ Protocol fee percentage (must be <= MAX_FEE)
      */
-    constructor(address redemption_, address option_, uint64 fee_) Ownable(msg.sender) {
+    function initialize(address redemption_, address option_, uint64 fee_) public initializer {
         require(fee_ <= MAX_FEE, "fee too high");
         if (redemption_ == address(0) || option_ == address(0)) revert InvalidAddress();
+
+        __Ownable_init(msg.sender);
+
         redemptionClone = redemption_;
         optionClone = option_;
         fee = fee_;
@@ -260,6 +276,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
         fee = fee_;
         emit FeeUpdated(oldFee, fee_);
     }
+
     //	/**
     //	 * @notice Update Templates
     //     * @param option_ address of Option Contract
@@ -271,4 +288,23 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     //		redemptionClone = redemption_;
     //		emit TemplateUpdated();
     //	}
+
+    // ============ UPGRADE AUTHORIZATION ============
+
+    /**
+     * @notice Authorizes an upgrade to a new implementation
+     * @dev Required by UUPSUpgradeable. Only the owner can authorize upgrades.
+     * @param newImplementation Address of the new implementation contract
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // ============ STORAGE GAP ============
+
+    /**
+     * @notice Storage gap for future upgrades
+     * @dev Reserves 50 storage slots for adding new state variables in future upgrades
+     *      without affecting the storage layout of child contracts. When adding new
+     *      variables, reduce the gap size accordingly (e.g., add 3 vars = reduce to [47]).
+     */
+    uint256[50] private __gap;
 }

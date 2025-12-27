@@ -32,7 +32,10 @@
       "Bash(jq:*)",
       "Bash(for err in \"ContractNotExpired\" \"ContractExpired\" \"InsufficientBalance\" \"InvalidValue\" \"LockedContract\" \"FeeOnTransferNotSupported\" \"InsufficientCollateral\" \"InsufficientConsideration\" \"TokenBlocklisted\" \"ArithmeticOverflow\")",
       "Bash(do echo -n \"$err: \")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(forge build:*)",
+      "Bash(forge install:*)",
+      "Bash(forge test:*)"
     ],
     "deny": [],
     "ask": []

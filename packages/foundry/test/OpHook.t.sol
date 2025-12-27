@@ -30,6 +30,7 @@ import { OptionPrice } from "../contracts/OptionPrice.sol";
 
 import { IOption } from "../contracts/interfaces/IOption.sol";
 import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract SwapCallback is SafeCallback {
     OpHook public opHook;
@@ -121,7 +122,12 @@ abstract contract OpHookTestBase is Test {
         uint40 expiration = uint40(block.timestamp + 30 days);
         Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
         Option o = new Option("", "", address(r));
-        OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
+
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(r), address(o), 0.0001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        OptionFactory factory = OptionFactory(address(proxy));
 
         option1_ = factory.createOption(weth_, usdc_, expiration, 3600e18, false);
 

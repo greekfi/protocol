@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
@@ -27,7 +28,13 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 
         Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long), 0.0001e18);
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(short), address(long), 0.0001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        OptionFactory factory = OptionFactory(address(proxy));
+
+        console.log("OptionFactory (proxy) deployed at:", address(factory));
 
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // Deploy OpHook using HookMiner to get correct address

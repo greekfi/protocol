@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
@@ -57,12 +58,14 @@ contract GasAnalysis is Test {
 
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
-        // Deploy factory
-        factory = new OptionFactory(
-            address(redemptionTemplate),
-            address(optionTemplate),
-            0.0001e18 // 0.01% fee
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(
+            OptionFactory.initialize,
+            (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
         );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        factory = OptionFactory(address(proxy));
 
         // Create an option pair via factory (required for testing Option/Redemption)
         OptionParameter[] memory params = new OptionParameter[](1);
@@ -533,6 +536,10 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(
+            OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
+        );
+        new ERC1967Proxy(address(implementation), initData);
     }
 }
