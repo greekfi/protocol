@@ -512,6 +512,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @return Token name
      */
     function name() public view override returns (string memory) {
+        // For put options, display inverted price (1/strike)
+        uint256 displayStrike = isPut ? (1e36 / strike) : strike;
+
         return string(
             abi.encodePacked(
                 "ROPT-",
@@ -519,7 +522,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
                 "-",
                 IERC20Metadata(address(consideration)).symbol(),
                 "-",
-                strike2str(strike),
+                strike2str(displayStrike),
                 "-",
                 epoch2str(expirationDate)
             )

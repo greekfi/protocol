@@ -47,7 +47,7 @@ export function useOptions() {
       // Get current block to calculate safe fromBlock
       const currentBlock = await publicClient.getBlockNumber();
       // Query last 100k blocks (safe for most RPC providers)
-      const fromBlock = currentBlock > 100_000n ? currentBlock - 100_000n : 0n;
+      const fromBlock = currentBlock > 100_000n ? 388_000n : 0n;
 
       console.log("Fetching OptionCreated events:", {
         factoryAddress,
