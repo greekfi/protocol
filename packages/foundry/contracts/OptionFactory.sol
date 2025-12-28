@@ -150,11 +150,13 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @dev Convenience function for deploying multiple options in a single transaction
      * @param optionParams Array of OptionParameter structs defining each option to create
      */
-    function createOptions(OptionParameter[] memory optionParams) public {
+    function createOptions(OptionParameter[] memory optionParams) public returns (address[] memory options) {
+        options = new address[](optionParams.length);
         for (uint256 i = 0; i < optionParams.length; i++) {
             OptionParameter memory param = optionParams[i];
-            createOption(param.collateral_, param.consideration_, param.expiration, param.strike, param.isPut);
+            options[i] = createOption(param.collateral_, param.consideration_, param.expiration, param.strike, param.isPut);
         }
+        return options;
     }
 
     // ============ TOKEN TRANSFER FUNCTION ============
