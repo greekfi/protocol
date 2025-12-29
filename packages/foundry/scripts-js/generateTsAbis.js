@@ -20,11 +20,15 @@ const generatedContractComment = `
 
 function getDirectories(path) {
   if (!existsSync(path)) return [];
-  return readdirSync(path).filter(file => statSync(join(path, file)).isDirectory());
+  return readdirSync(path).filter((file) =>
+    statSync(join(path, file)).isDirectory(),
+  );
 }
 
 function getFiles(path) {
-  return readdirSync(path).filter(file => statSync(join(path, file)).isFile());
+  return readdirSync(path).filter((file) =>
+    statSync(join(path, file)).isFile(),
+  );
 }
 
 function parseTransactionRun(filePath) {
@@ -60,7 +64,12 @@ function getDeploymentHistory(broadcastPath) {
   let chainMinBlock = null;
 
   const runFiles = files
-    .filter(file => file.startsWith("run-") && file.endsWith(".json") && !file.includes("run-latest"))
+    .filter(
+      (file) =>
+        file.startsWith("run-") &&
+        file.endsWith(".json") &&
+        !file.includes("run-latest"),
+    )
     .sort((a, b) => {
       const runA = parseInt(a.match(/run-(\d+)/)?.[1] || "0");
       const runB = parseInt(b.match(/run-(\d+)/)?.[1] || "0");
@@ -68,7 +77,9 @@ function getDeploymentHistory(broadcastPath) {
     });
 
   for (const file of runFiles) {
-    const { transactions, minBlockNumber } = parseTransactionRun(join(broadcastPath, file));
+    const { transactions, minBlockNumber } = parseTransactionRun(
+      join(broadcastPath, file),
+    );
 
     // Track the minimum block number across all runs
     if (minBlockNumber !== null) {
@@ -102,7 +113,9 @@ function getDeploymentHistory(broadcastPath) {
     for (const tx of proxyDeployments) {
       // First argument to ERC1967Proxy is the implementation address
       const implAddress = tx.arguments?.[0]?.toLowerCase();
-      const implContractName = implAddress ? implementationAddresses.get(implAddress) : null;
+      const implContractName = implAddress
+        ? implementationAddresses.get(implAddress)
+        : null;
 
       if (implContractName) {
         // This proxy wraps an implementation - use proxy address but implementation name
@@ -112,7 +125,7 @@ function getDeploymentHistory(broadcastPath) {
         }
         deploymentHistory.set(tx.contractAddress.toLowerCase(), {
           contractName: implContractName, // Use implementation's name
-          address: tx.contractAddress,     // But proxy's address
+          address: tx.contractAddress, // But proxy's address
           deploymentFile: file,
           transaction: tx,
           isProxy: true,
@@ -168,7 +181,10 @@ function minParam(p) {
 function minimalAbi(entry) {
   const m = { type: entry.type };
 
-  if (entry.name && !['constructor', 'fallback', 'receive'].includes(entry.type)) {
+  if (
+    entry.name &&
+    !["constructor", "fallback", "receive"].includes(entry.type)
+  ) {
     m.name = entry.name;
   }
 
@@ -177,7 +193,7 @@ function minimalAbi(entry) {
   }
 
   if (entry.outputs?.length > 0) {
-    m.outputs = entry.outputs.map(o => {
+    m.outputs = entry.outputs.map((o) => {
       const out = { type: o.type };
       if (o.name) out.name = o.name;
       if (o.components) out.components = o.components.map(minParam);
@@ -185,12 +201,12 @@ function minimalAbi(entry) {
     });
   }
 
-  if (entry.type === 'function' && entry.stateMutability) {
+  if (entry.type === "function" && entry.stateMutability) {
     m.stateMutability = entry.stateMutability;
   }
 
-  if (entry.type === 'constructor' && entry.stateMutability === 'payable') {
-    m.stateMutability = 'payable';
+  if (entry.type === "constructor" && entry.stateMutability === "payable") {
+    m.stateMutability = "payable";
   }
 
   if (entry.anonymous) m.anonymous = true;
@@ -200,28 +216,40 @@ function minimalAbi(entry) {
 
 function filterAbi(abi) {
   const seen = new Set();
-  const ozErrors = ['ERC20InsufficientBalance', 'ERC20InvalidSender', 'ERC20InvalidReceiver',
-                    'ERC20InsufficientAllowance', 'ERC20InvalidApprover', 'ERC20InvalidSpender',
-                    'OwnableUnauthorizedAccount', 'OwnableInvalidOwner'];
-  const skipEvents = ['OwnershipTransferred'];
-  const skipFuncs = ['supportsInterface', '_msgSender', '_msgData', '_contextSuffixLength'];
+  const ozErrors = [
+    "ERC20InsufficientBalance",
+    "ERC20InvalidSender",
+    "ERC20InvalidReceiver",
+    "ERC20InsufficientAllowance",
+    "ERC20InvalidApprover",
+    "ERC20InvalidSpender",
+    "OwnableUnauthorizedAccount",
+    "OwnableInvalidOwner",
+  ];
+  const skipEvents = ["OwnershipTransferred"];
+  const skipFuncs = [
+    "supportsInterface",
+    "_msgSender",
+    "_msgData",
+    "_contextSuffixLength",
+  ];
 
-  return abi.filter(e => {
-    if (['constructor', 'fallback', 'receive'].includes(e.type)) return true;
+  return abi.filter((e) => {
+    if (["constructor", "fallback", "receive"].includes(e.type)) return true;
 
-    if (e.type === 'event') {
-      if (['Transfer', 'Approval'].includes(e.name)) return true;
+    if (e.type === "event") {
+      if (["Transfer", "Approval"].includes(e.name)) return true;
       if (skipEvents.includes(e.name)) return false;
       return true;
     }
 
-    if (e.type === 'error') {
+    if (e.type === "error") {
       if (ozErrors.includes(e.name)) return false;
       return true;
     }
 
-    if (e.type === 'function') {
-      const sig = `${e.name}(${(e.inputs || []).map(i => i.type).join(',')})`;
+    if (e.type === "function") {
+      const sig = `${e.name}(${(e.inputs || []).map((i) => i.type).join(",")})`;
       if (seen.has(sig)) return false;
       seen.add(sig);
       if (skipFuncs.includes(e.name)) return false;
@@ -236,8 +264,13 @@ function getInheritedFromContracts(artifact) {
   let inheritedFromContracts = [];
   if (artifact?.ast) {
     for (const astNode of artifact.ast.nodes) {
-      if (astNode.nodeType == "ContractDefinition" && astNode.baseContracts.length > 0) {
-        inheritedFromContracts = astNode.baseContracts.map(({ baseName }) => baseName.name);
+      if (
+        astNode.nodeType == "ContractDefinition" &&
+        astNode.baseContracts.length > 0
+      ) {
+        inheritedFromContracts = astNode.baseContracts.map(
+          ({ baseName }) => baseName.name,
+        );
       }
     }
   }
@@ -250,7 +283,10 @@ function getInheritedFunctions(mainArtifact) {
   for (const inheritanceContractName of inheritedFromContracts) {
     const artifact = getArtifactOfContract(inheritanceContractName);
     if (artifact) {
-      const { abi, ast: { absolutePath } } = artifact;
+      const {
+        abi,
+        ast: { absolutePath },
+      } = artifact;
       for (const abiEntry of abi) {
         if (abiEntry.type == "function") {
           inheritedFunctions[abiEntry.name] = absolutePath;
@@ -283,10 +319,15 @@ function processAllDeployments(broadcastPath) {
       }
 
       deployments.forEach((deployment) => {
-        const timestamp = parseInt(deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0");
+        const timestamp = parseInt(
+          deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0",
+        );
         const key = `${chainId}-${deployment.contractName}`;
 
-        if (!allDeployments.has(key) || timestamp > allDeployments.get(key).timestamp) {
+        if (
+          !allDeployments.has(key) ||
+          timestamp > allDeployments.get(key).timestamp
+        ) {
           allDeployments.set(key, {
             ...deployment,
             timestamp,
@@ -326,12 +367,12 @@ function processAllDeployments(broadcastPath) {
 
 // Chain ID to name mapping
 const CHAIN_NAMES = {
-  '1': 'mainnet',
-  '8453': 'base',
-  '31337': 'foundry',
-  '11155111': 'sepolia',
-  '84532': 'baseSepolia',
-  '1301': 'unichain',
+  1: "mainnet",
+  8453: "base",
+  31337: "foundry",
+  11155111: "sepolia",
+  84532: "baseSepolia",
+  1301: "unichain",
 };
 
 function main() {
@@ -344,11 +385,14 @@ function main() {
   Deploymentchains.forEach((chain) => {
     if (!chain.endsWith(".json")) return;
     chain = chain.slice(0, -5);
-    var deploymentObject = JSON.parse(readFileSync(`${current_path_to_deployments}/${chain}.json`));
+    var deploymentObject = JSON.parse(
+      readFileSync(`${current_path_to_deployments}/${chain}.json`),
+    );
     deployments[chain] = deploymentObject;
   });
 
-  const { contracts: allGeneratedContracts, chainMinBlocks } = processAllDeployments(current_path_to_broadcast);
+  const { contracts: allGeneratedContracts, chainMinBlocks } =
+    processAllDeployments(current_path_to_broadcast);
 
   Object.entries(allGeneratedContracts).forEach(([chainId, contracts]) => {
     Object.entries(contracts).forEach(([contractName, contractData]) => {
@@ -375,7 +419,7 @@ function main() {
   let totalLines = 0;
 
   // Write individual chain files
-  const chainFilePromises = chainIds.map(chainId => {
+  const chainFilePromises = chainIds.map((chainId) => {
     const chainConfig = allGeneratedContracts[chainId];
     const chainName = CHAIN_NAMES[chainId] || `chain${chainId}`;
     const contractCount = Object.keys(chainConfig).length;
@@ -401,7 +445,7 @@ function main() {
     return format(fileContent, { parser: "typescript" }).then((result) => {
       const filename = `${chainName}.ts`;
       writeFileSync(join(CHAINS_DIR, filename), result);
-      const lines = result.split('\n').length;
+      const lines = result.split("\n").length;
       totalLines += lines;
       return { chainId, chainName, filename, lines, contractCount };
     });
@@ -413,14 +457,20 @@ function main() {
       ${generatedContractComment}
       import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
-      ${chainFiles.map(({ chainName }) =>
-        `import ${chainName}Contracts from "./chains/${chainName}";`
-      ).join('\n')}
+      ${chainFiles
+        .map(
+          ({ chainName }) =>
+            `import ${chainName}Contracts from "./chains/${chainName}";`,
+        )
+        .join("\n")}
 
       const deployedContracts = {
-        ${chainFiles.map(({ chainId, chainName }) =>
-          `${parseInt(chainId).toFixed(0)}: ${chainName}Contracts`
-        ).join(',\n  ')}
+        ${chainFiles
+          .map(
+            ({ chainId, chainName }) =>
+              `${parseInt(chainId).toFixed(0)}: ${chainName}Contracts`,
+          )
+          .join(",\n  ")}
       } as const;
 
       export default deployedContracts satisfies GenericContractsDeclaration;
@@ -429,21 +479,34 @@ function main() {
     return format(indexContent, { parser: "typescript" }).then((result) => {
       writeFileSync(join(NEXTJS_TARGET_DIR, "deployedContracts.ts"), result);
 
-      const indexLines = result.split('\n').length;
+      const indexLines = result.split("\n").length;
       const originalLines = 10962;
-      const reduction = (((originalLines - totalLines) / originalLines) * 100).toFixed(1);
+      const reduction = (
+        ((originalLines - totalLines) / originalLines) *
+        100
+      ).toFixed(1);
 
       console.log(`\n✨ SPLIT BY CHAIN - Individual files per chain!`);
       console.log(`\n📁 Generated files:`);
-      chainFiles.forEach(({ chainId, chainName, filename, lines, contractCount }) => {
-        console.log(`   ${filename.padEnd(20)} ${lines.toString().padStart(4)} lines, ${contractCount} contracts (Chain ${chainId})`);
-      });
-      console.log(`   ${'deployedContracts.ts'.padEnd(20)} ${indexLines.toString().padStart(4)} lines (index)`);
+      chainFiles.forEach(
+        ({ chainId, chainName, filename, lines, contractCount }) => {
+          console.log(
+            `   ${filename.padEnd(20)} ${lines.toString().padStart(4)} lines, ${contractCount} contracts (Chain ${chainId})`,
+          );
+        },
+      );
+      console.log(
+        `   ${"deployedContracts.ts".padEnd(20)} ${indexLines.toString().padStart(4)} lines (index)`,
+      );
 
       console.log(`\n📊 Summary:`);
       console.log(`   Total contracts: ${totalContracts}`);
-      console.log(`   Total lines: ${totalLines} (${reduction}% reduction from ${originalLines})`);
-      console.log(`   Average lines/chain: ${Math.round(totalLines / chainFiles.length)}`);
+      console.log(
+        `   Total lines: ${totalLines} (${reduction}% reduction from ${originalLines})`,
+      );
+      console.log(
+        `   Average lines/chain: ${Math.round(totalLines / chainFiles.length)}`,
+      );
 
       console.log(`\n💾 Saved to: ${NEXTJS_TARGET_DIR}`);
       console.log(`   ├── deployedContracts.ts (index file)`);
