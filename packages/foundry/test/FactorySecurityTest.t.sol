@@ -44,8 +44,7 @@ contract FactorySecurityTest is Test {
     function testFIXED_TemplateValidation_BothZero() public {
         // Now REVERTS when initialized with zero addresses
         OptionFactory implementation = new OptionFactory();
-        bytes memory initData =
-            abi.encodeCall(OptionFactory.initialize, (address(0), address(0), 0.001e18));
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(0), address(0), 0.001e18));
 
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
         new ERC1967Proxy(address(implementation), initData);

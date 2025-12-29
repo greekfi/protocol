@@ -94,9 +94,8 @@ contract FeeOnTransferTest is Test {
 
         // Deploy OptionFactory with proxy pattern
         OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18)
-        );
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18));
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         factory = OptionFactory(address(proxy));
     }

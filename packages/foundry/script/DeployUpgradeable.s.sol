@@ -25,13 +25,7 @@ contract DeployUpgradeable is Script, ScaffoldETHDeploy {
 
         // Deploy template contracts (these are used for cloning, not upgraded)
         Redemption redemptionTemplate = new Redemption(
-            "Redemption",
-            "RDM",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            100,
-            false
+            "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
 
         Option optionTemplate = new Option("Option", "OPT", address(redemptionTemplate));
@@ -43,8 +37,7 @@ contract DeployUpgradeable is Script, ScaffoldETHDeploy {
 
         // Encode the initialize function call
         bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize,
-            (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
+            OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
         );
 
         // Deploy ERC1967Proxy with implementation and initialization data

@@ -58,9 +58,8 @@ contract OptionTest is Test {
         OptionFactory implementation = new OptionFactory();
 
         // Encode initialize call
-        bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18)
-        );
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18));
 
         // Deploy proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);

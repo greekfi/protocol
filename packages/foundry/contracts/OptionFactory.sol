@@ -154,7 +154,8 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         options = new address[](optionParams.length);
         for (uint256 i = 0; i < optionParams.length; i++) {
             OptionParameter memory param = optionParams[i];
-            options[i] = createOption(param.collateral_, param.consideration_, param.expiration, param.strike, param.isPut);
+            options[i] =
+                createOption(param.collateral_, param.consideration_, param.expiration, param.strike, param.isPut);
         }
         return options;
     }
@@ -298,7 +299,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @dev Required by UUPSUpgradeable. Only the owner can authorize upgrades.
      * @param newImplementation Address of the new implementation contract
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
 
     // ============ STORAGE GAP ============
 
