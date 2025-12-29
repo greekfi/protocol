@@ -32,7 +32,8 @@
       "Bash(jq:*)",
       "Bash(for err in \"ContractNotExpired\" \"ContractExpired\" \"InsufficientBalance\" \"InvalidValue\" \"LockedContract\" \"FeeOnTransferNotSupported\" \"InsufficientCollateral\" \"InsufficientConsideration\" \"TokenBlocklisted\" \"ArithmeticOverflow\")",
       "Bash(do echo -n \"$err: \")",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:etherscan.io)"
     ],
     "deny": [],
     "ask": []

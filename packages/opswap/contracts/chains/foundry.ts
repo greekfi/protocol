@@ -4,6 +4,7 @@
  */
 const foundryContracts = {
   chainId: 31337,
+  deploymentBlock: 1,
   StableToken: {
     address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
     abi: [

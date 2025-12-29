@@ -14,7 +14,7 @@ evm_version = "osaka"
 default_network = "http://127.0.0.1:8545"
 
 unichain = "https://unichain.drpc.org"
-mainnet = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+mainnet = "https://ethereum-rpc.publicnode.com"
 sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 arbitrumSepolia = "https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"

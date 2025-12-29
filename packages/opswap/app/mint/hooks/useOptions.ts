@@ -33,6 +33,8 @@ export function useOptions() {
   const queryClient = useQueryClient();
 
   const factoryAddress = contracts?.OptionFactory?.address as Address | undefined;
+  const deploymentBlock = (contracts as { deploymentBlock?: number })?.deploymentBlock ?? 0;
+  const chainId = (contracts as { chainId?: number })?.chainId;
 
   // Fetch OptionCreated events using TanStack Query
   const {
@@ -40,19 +42,18 @@ export function useOptions() {
     isLoading: isLoadingEvents,
     error: eventsError,
   } = useQuery({
-    queryKey: ["optionCreatedEvents", factoryAddress],
+    queryKey: ["optionCreatedEvents", factoryAddress, chainId, deploymentBlock],
     queryFn: async () => {
       if (!publicClient || !factoryAddress) return [];
 
-      // Get current block to calculate safe fromBlock
-      const currentBlock = await publicClient.getBlockNumber();
-      // Query last 100k blocks (safe for most RPC providers)
-      const fromBlock = currentBlock > 100_000n ? 388_000n : 0n;
+      // Use deployment block from contracts config (extracted from broadcast receipts)
+      const fromBlock = BigInt(deploymentBlock);
 
       console.log("Fetching OptionCreated events:", {
+        chainId,
         factoryAddress,
+        deploymentBlock,
         fromBlock: fromBlock.toString(),
-        currentBlock: currentBlock.toString(),
       });
 
       const logs = await publicClient.getLogs({

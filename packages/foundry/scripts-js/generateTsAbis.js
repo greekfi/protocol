@@ -31,15 +31,33 @@ function parseTransactionRun(filePath) {
   try {
     const content = readFileSync(filePath, "utf8");
     const broadcastData = JSON.parse(content);
-    return broadcastData.transactions || [];
+
+    // Extract minimum block number from receipts
+    let minBlockNumber = null;
+    if (broadcastData.receipts) {
+      for (const receipt of broadcastData.receipts) {
+        if (receipt.blockNumber) {
+          const blockNum = parseInt(receipt.blockNumber, 16);
+          if (minBlockNumber === null || blockNum < minBlockNumber) {
+            minBlockNumber = blockNum;
+          }
+        }
+      }
+    }
+
+    return {
+      transactions: broadcastData.transactions || [],
+      minBlockNumber,
+    };
   } catch (error) {
-    return [];
+    return { transactions: [], minBlockNumber: null };
   }
 }
 
 function getDeploymentHistory(broadcastPath) {
   const files = getFiles(broadcastPath);
   const deploymentHistory = new Map();
+  let chainMinBlock = null;
 
   const runFiles = files
     .filter(file => file.startsWith("run-") && file.endsWith(".json") && !file.includes("run-latest"))
@@ -50,7 +68,14 @@ function getDeploymentHistory(broadcastPath) {
     });
 
   for (const file of runFiles) {
-    const transactions = parseTransactionRun(join(broadcastPath, file));
+    const { transactions, minBlockNumber } = parseTransactionRun(join(broadcastPath, file));
+
+    // Track the minimum block number across all runs
+    if (minBlockNumber !== null) {
+      if (chainMinBlock === null || minBlockNumber < chainMinBlock) {
+        chainMinBlock = minBlockNumber;
+      }
+    }
 
     // First pass: collect all deployments and track implementation addresses
     const implementationAddresses = new Map(); // address -> contractName
@@ -105,7 +130,10 @@ function getDeploymentHistory(broadcastPath) {
     }
   }
 
-  return Array.from(deploymentHistory.values());
+  return {
+    deployments: Array.from(deploymentHistory.values()),
+    minBlockNumber: chainMinBlock,
+  };
 }
 
 function getArtifactOfContract(contractName) {
@@ -236,6 +264,7 @@ function getInheritedFunctions(mainArtifact) {
 function processAllDeployments(broadcastPath) {
   const scriptFolders = getDirectories(broadcastPath);
   const allDeployments = new Map();
+  const chainMinBlocks = new Map(); // Track min block per chain
 
   scriptFolders.forEach((scriptFolder) => {
     const scriptPath = join(broadcastPath, scriptFolder);
@@ -243,9 +272,17 @@ function processAllDeployments(broadcastPath) {
 
     chainFolders.forEach((chainId) => {
       const chainPath = join(scriptPath, chainId);
-      const deploymentHistory = getDeploymentHistory(chainPath);
+      const { deployments, minBlockNumber } = getDeploymentHistory(chainPath);
 
-      deploymentHistory.forEach((deployment) => {
+      // Track minimum block number per chain
+      if (minBlockNumber !== null) {
+        const currentMin = chainMinBlocks.get(chainId);
+        if (currentMin === undefined || minBlockNumber < currentMin) {
+          chainMinBlocks.set(chainId, minBlockNumber);
+        }
+      }
+
+      deployments.forEach((deployment) => {
         const timestamp = parseInt(deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0");
         const key = `${chainId}-${deployment.contractName}`;
 
@@ -281,7 +318,10 @@ function processAllDeployments(broadcastPath) {
     }
   });
 
-  return allContracts;
+  return {
+    contracts: allContracts,
+    chainMinBlocks: Object.fromEntries(chainMinBlocks),
+  };
 }
 
 // Chain ID to name mapping
@@ -308,7 +348,7 @@ function main() {
     deployments[chain] = deploymentObject;
   });
 
-  const allGeneratedContracts = processAllDeployments(current_path_to_broadcast);
+  const { contracts: allGeneratedContracts, chainMinBlocks } = processAllDeployments(current_path_to_broadcast);
 
   Object.entries(allGeneratedContracts).forEach(([chainId, contracts]) => {
     Object.entries(contracts).forEach(([contractName, contractData]) => {
@@ -341,9 +381,13 @@ function main() {
     const contractCount = Object.keys(chainConfig).length;
     totalContracts += contractCount;
 
-    // Add chainId at the top of the config object
+    // Get deployment block for this chain (default to 0 if not found)
+    const deploymentBlock = chainMinBlocks[chainId] || 0;
+
+    // Add chainId and deploymentBlock at the top of the config object
     const chainConfigWithId = {
       chainId: parseInt(chainId),
+      deploymentBlock,
       ...chainConfig,
     };
 
