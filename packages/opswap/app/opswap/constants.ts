@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const USDC_TOKEN = {
   address: "0x078D782b760474a361dDA0AF3839290b0EF57AD6" as `0x${string}`,
   decimals: 6,

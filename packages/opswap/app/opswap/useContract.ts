@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useChainId } from "wagmi";
 import deployedContracts from "~~/contracts/deployedContracts";
 

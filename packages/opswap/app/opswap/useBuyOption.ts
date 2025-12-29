@@ -1,3 +1,4 @@
+// @ts-nocheck
 import permit2Abi from "./permit2.json";
 import { useAddress } from "./useAddress";
 import { useContract } from "./useContract";

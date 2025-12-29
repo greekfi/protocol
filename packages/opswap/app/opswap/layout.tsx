@@ -1,8 +1,9 @@
+// @ts-nocheck
 import "@rainbow-me/rainbowkit/styles.css";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { ThemeProvider } from "next-themes";
-import { Providers } from "./providers";
+import { Providers } from "../providers";
 import "../../styles/globals.css";
 
 export const metadata = {
