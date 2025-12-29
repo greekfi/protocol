@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
@@ -27,24 +28,30 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 
         Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long), 0.0001e18);
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(short), address(long), 0.0001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        OptionFactory factory = OptionFactory(address(proxy));
 
-        address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
-        // Deploy OpHook using HookMiner to get correct address
-        uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG
-            | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
-        bytes memory constructorArgs = abi.encode(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
+        console.log("OptionFactory (proxy) deployed at:", address(factory));
 
-        (address hookAddress, bytes32 salt) =
-            HookMiner.find(deployer, flags, type(OpHook).creationCode, constructorArgs);
+        // address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
+        // // Deploy OpHook using HookMiner to get correct address
+        // uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG
+        //     | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
+        // bytes memory constructorArgs = abi.encode(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
 
-        console.log("Address", hookAddress);
+        // (address hookAddress, bytes32 salt) =
+        //     HookMiner.find(deployer, flags, type(OpHook).creationCode, constructorArgs);
 
-        OpHook opHook = new OpHook{ salt: salt }(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
+        // console.log("Address", hookAddress);
 
-        console.log("Address", hookAddress);
-        console.log("Address", address(opHook));
+        // OpHook opHook = new OpHook{ salt: salt }(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
 
-        require(address(opHook) == hookAddress, " hook address mismatch");
+        // console.log("Address", hookAddress);
+        // console.log("Address", address(opHook));
+
+        // require(address(opHook) == hookAddress, " hook address mismatch");
     }
 }

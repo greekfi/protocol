@@ -273,12 +273,12 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
       {/* Warnings */}
       {!canRedeem && (
         <div className="mt-2 text-yellow-500 text-sm text-center p-2 bg-yellow-900/20 rounded border border-yellow-800">
-          ⚠️ Option has not expired yet and has no consideration balance. Use 'Redeem Pairs' component.
+          Option has not expired yet and has no consideration balance. Use Redeem Pairs component.
         </div>
       )}
       {canRedeem && (option.balances?.redemption ?? 0n) === 0n && (
         <div className="mt-2 text-yellow-500 text-sm text-center p-2 bg-yellow-900/20 rounded border border-yellow-800">
-          ⚠️ You don't have any Redemption tokens to redeem
+          You have no Redemption tokens to redeem
         </div>
       )}
     </div>

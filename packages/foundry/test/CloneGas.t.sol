@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
@@ -28,7 +29,12 @@ contract CloneGas is Test {
 
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        // Deploy OptionFactory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        factory = OptionFactory(address(proxy));
     }
 
     function test_CloneGas() public {

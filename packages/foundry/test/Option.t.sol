@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
@@ -53,8 +54,18 @@ contract OptionTest is Test {
         // Deploy LongOption
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
-        // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        // Deploy OptionFactory implementation
+        OptionFactory implementation = new OptionFactory();
+
+        // Encode initialize call
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18));
+
+        // Deploy proxy
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+
+        // Cast proxy to OptionFactory interface
+        factory = OptionFactory(address(proxy));
         factory_ = address(factory);
 
         OptionParameter[] memory options = new OptionParameter[](1);

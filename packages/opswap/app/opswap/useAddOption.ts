@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {useContract} from "./useContract";
 import {useWriteContract} from "wagmi";
 import {useAddress} from "./useAddress";

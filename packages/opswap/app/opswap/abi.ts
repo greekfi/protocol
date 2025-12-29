@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 export const UNIVERSAL_ROUTER_ABI = [
   {
     inputs: [

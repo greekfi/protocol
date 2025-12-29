@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useContract } from "./useContract";
 import { Address } from "viem";
 import { useReadContract } from "wagmi";

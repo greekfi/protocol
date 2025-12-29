@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
@@ -36,6 +37,9 @@ contract DeployYourContract is ScaffoldETHDeploy {
 
         Option long = new Option("Option", "OPT", address(short));
 
-        new OptionFactory(address(short), address(long), 0.0001e18);
+        // Deploy factory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(short), address(long), 0.0001e18));
+        new ERC1967Proxy(address(implementation), initData);
     }
 }

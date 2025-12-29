@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
@@ -91,8 +92,12 @@ contract FeeOnTransferTest is Test {
         // Deploy Option template
         optionClone = new Option("Option Template", "OPTT", address(redemptionClone));
 
-        // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        // Deploy OptionFactory with proxy pattern
+        OptionFactory implementation = new OptionFactory();
+        bytes memory initData =
+            abi.encodeCall(OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        factory = OptionFactory(address(proxy));
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted collateral
