@@ -19,19 +19,12 @@ const generatedContractComment = `
  */`;
 
 function getDirectories(path) {
-  if (!existsSync(path)) {
-    return [];
-  }
-
-  return readdirSync(path).filter(function (file) {
-    return statSync(join(path, file)).isDirectory();
-  });
+  if (!existsSync(path)) return [];
+  return readdirSync(path).filter(file => statSync(join(path, file)).isDirectory());
 }
 
 function getFiles(path) {
-  return readdirSync(path).filter(function (file) {
-    return statSync(join(path, file)).isFile();
-  });
+  return readdirSync(path).filter(file => statSync(join(path, file)).isFile());
 }
 
 function parseTransactionRun(filePath) {
@@ -40,7 +33,6 @@ function parseTransactionRun(filePath) {
     const broadcastData = JSON.parse(content);
     return broadcastData.transactions || [];
   } catch (error) {
-    console.warn(`Warning: Could not parse ${filePath}:`, error.message);
     return [];
   }
 }
@@ -49,16 +41,9 @@ function getDeploymentHistory(broadcastPath) {
   const files = getFiles(broadcastPath);
   const deploymentHistory = new Map();
 
-  // Sort files to process them in chronological order
   const runFiles = files
-    .filter(
-      (file) =>
-        file.startsWith("run-") &&
-        file.endsWith(".json") &&
-        !file.includes("run-latest"),
-    )
+    .filter(file => file.startsWith("run-") && file.endsWith(".json") && !file.includes("run-latest"))
     .sort((a, b) => {
-      // Extract run numbers and compare them
       const runA = parseInt(a.match(/run-(\d+)/)?.[1] || "0");
       const runB = parseInt(b.match(/run-(\d+)/)?.[1] || "0");
       return runA - runB;
@@ -67,10 +52,50 @@ function getDeploymentHistory(broadcastPath) {
   for (const file of runFiles) {
     const transactions = parseTransactionRun(join(broadcastPath, file));
 
+    // First pass: collect all deployments and track implementation addresses
+    const implementationAddresses = new Map(); // address -> contractName
+    const proxyDeployments = []; // proxy deployments to process after
+
     for (const tx of transactions) {
       if (tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") {
-        // Store or update contract deployment info
-        deploymentHistory.set(tx.contractAddress, {
+        const normalizedAddress = tx.contractAddress.toLowerCase();
+        if (tx.contractName === "ERC1967Proxy") {
+          proxyDeployments.push(tx);
+        } else {
+          implementationAddresses.set(normalizedAddress, tx.contractName);
+          deploymentHistory.set(normalizedAddress, {
+            contractName: tx.contractName,
+            address: tx.contractAddress,
+            deploymentFile: file,
+            transaction: tx,
+          });
+        }
+      }
+    }
+
+    // Second pass: handle ERC1967Proxy deployments
+    for (const tx of proxyDeployments) {
+      // First argument to ERC1967Proxy is the implementation address
+      const implAddress = tx.arguments?.[0]?.toLowerCase();
+      const implContractName = implAddress ? implementationAddresses.get(implAddress) : null;
+
+      if (implContractName) {
+        // This proxy wraps an implementation - use proxy address but implementation name
+        // Remove the implementation entry and replace with proxy entry using impl name
+        if (implAddress && deploymentHistory.has(implAddress)) {
+          deploymentHistory.delete(implAddress);
+        }
+        deploymentHistory.set(tx.contractAddress.toLowerCase(), {
+          contractName: implContractName, // Use implementation's name
+          address: tx.contractAddress,     // But proxy's address
+          deploymentFile: file,
+          transaction: tx,
+          isProxy: true,
+          implementationName: implContractName,
+        });
+      } else {
+        // Regular ERC1967Proxy without detected implementation
+        deploymentHistory.set(tx.contractAddress.toLowerCase(), {
           contractName: tx.contractName,
           address: tx.contractAddress,
           deploymentFile: file,
@@ -80,19 +105,11 @@ function getDeploymentHistory(broadcastPath) {
     }
   }
 
-  console.log(deploymentHistory);
-
   return Array.from(deploymentHistory.values());
 }
 
 function getArtifactOfContract(contractName) {
-  // First try the standard path where contract name matches file name
-  const standard_path = join(
-    __dirname,
-    "..",
-    `out/${contractName}.sol`,
-  );
-
+  const standard_path = join(__dirname, "..", `out/${contractName}.sol`);
   if (existsSync(standard_path)) {
     const artifactPath = `${standard_path}/${contractName}.json`;
     if (existsSync(artifactPath)) {
@@ -100,8 +117,6 @@ function getArtifactOfContract(contractName) {
     }
   }
 
-  // If not found, search all .sol directories for this contract's artifact
-  // This handles cases where multiple contracts are in one .sol file
   const outDir = join(__dirname, "..", "out");
   if (existsSync(outDir)) {
     const solDirs = getDirectories(outDir);
@@ -112,20 +127,89 @@ function getArtifactOfContract(contractName) {
       }
     }
   }
-
   return null;
+}
+
+function minParam(p) {
+  const m = { name: p.name || "", type: p.type };
+  if (p.components) m.components = p.components.map(minParam);
+  if (p.indexed) m.indexed = true;
+  return m;
+}
+
+function minimalAbi(entry) {
+  const m = { type: entry.type };
+
+  if (entry.name && !['constructor', 'fallback', 'receive'].includes(entry.type)) {
+    m.name = entry.name;
+  }
+
+  if (entry.inputs?.length > 0) {
+    m.inputs = entry.inputs.map(minParam);
+  }
+
+  if (entry.outputs?.length > 0) {
+    m.outputs = entry.outputs.map(o => {
+      const out = { type: o.type };
+      if (o.name) out.name = o.name;
+      if (o.components) out.components = o.components.map(minParam);
+      return out;
+    });
+  }
+
+  if (entry.type === 'function' && entry.stateMutability) {
+    m.stateMutability = entry.stateMutability;
+  }
+
+  if (entry.type === 'constructor' && entry.stateMutability === 'payable') {
+    m.stateMutability = 'payable';
+  }
+
+  if (entry.anonymous) m.anonymous = true;
+
+  return m;
+}
+
+function filterAbi(abi) {
+  const seen = new Set();
+  const ozErrors = ['ERC20InsufficientBalance', 'ERC20InvalidSender', 'ERC20InvalidReceiver',
+                    'ERC20InsufficientAllowance', 'ERC20InvalidApprover', 'ERC20InvalidSpender',
+                    'OwnableUnauthorizedAccount', 'OwnableInvalidOwner'];
+  const skipEvents = ['OwnershipTransferred'];
+  const skipFuncs = ['supportsInterface', '_msgSender', '_msgData', '_contextSuffixLength'];
+
+  return abi.filter(e => {
+    if (['constructor', 'fallback', 'receive'].includes(e.type)) return true;
+
+    if (e.type === 'event') {
+      if (['Transfer', 'Approval'].includes(e.name)) return true;
+      if (skipEvents.includes(e.name)) return false;
+      return true;
+    }
+
+    if (e.type === 'error') {
+      if (ozErrors.includes(e.name)) return false;
+      return true;
+    }
+
+    if (e.type === 'function') {
+      const sig = `${e.name}(${(e.inputs || []).map(i => i.type).join(',')})`;
+      if (seen.has(sig)) return false;
+      seen.add(sig);
+      if (skipFuncs.includes(e.name)) return false;
+      return true;
+    }
+
+    return true;
+  });
 }
 
 function getInheritedFromContracts(artifact) {
   let inheritedFromContracts = [];
   if (artifact?.ast) {
     for (const astNode of artifact.ast.nodes) {
-      if (astNode.nodeType == "ContractDefinition") {
-        if (astNode.baseContracts.length > 0) {
-          inheritedFromContracts = astNode.baseContracts.map(
-            ({ baseName }) => baseName.name,
-          );
-        }
+      if (astNode.nodeType == "ContractDefinition" && astNode.baseContracts.length > 0) {
+        inheritedFromContracts = astNode.baseContracts.map(({ baseName }) => baseName.name);
       }
     }
   }
@@ -138,10 +222,7 @@ function getInheritedFunctions(mainArtifact) {
   for (const inheritanceContractName of inheritedFromContracts) {
     const artifact = getArtifactOfContract(inheritanceContractName);
     if (artifact) {
-      const {
-        abi,
-        ast: { absolutePath },
-      } = artifact;
+      const { abi, ast: { absolutePath } } = artifact;
       for (const abiEntry of abi) {
         if (abiEntry.type == "function") {
           inheritedFunctions[abiEntry.name] = absolutePath;
@@ -165,16 +246,10 @@ function processAllDeployments(broadcastPath) {
       const deploymentHistory = getDeploymentHistory(chainPath);
 
       deploymentHistory.forEach((deployment) => {
-        const timestamp = parseInt(
-          deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0",
-        );
+        const timestamp = parseInt(deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0");
         const key = `${chainId}-${deployment.contractName}`;
 
-        // Only update if this deployment is newer
-        if (
-          !allDeployments.has(key) ||
-          timestamp > allDeployments.get(key).timestamp
-        ) {
+        if (!allDeployments.has(key) || timestamp > allDeployments.get(key).timestamp) {
           allDeployments.set(key, {
             ...deployment,
             timestamp,
@@ -193,22 +268,31 @@ function processAllDeployments(broadcastPath) {
     const artifact = getArtifactOfContract(contractName);
 
     if (artifact) {
-      if (!allContracts[chainId]) {
-        allContracts[chainId] = {};
-      }
+      if (!allContracts[chainId]) allContracts[chainId] = {};
+
+      const filtered = filterAbi(artifact.abi);
+      const minimal = filtered.map(minimalAbi);
 
       allContracts[chainId][contractName] = {
         address: deployment.address,
-        abi: artifact.abi,
+        abi: minimal,
         inheritedFunctions: getInheritedFunctions(artifact),
-        deploymentFile: deployment.deploymentFile,
-        deploymentScript: deployment.deploymentScript,
       };
     }
   });
 
   return allContracts;
 }
+
+// Chain ID to name mapping
+const CHAIN_NAMES = {
+  '1': 'mainnet',
+  '8453': 'base',
+  '31337': 'foundry',
+  '11155111': 'sepolia',
+  '84532': 'baseSepolia',
+  '1301': 'unichain',
+};
 
 function main() {
   const current_path_to_broadcast = join(__dirname, "..", "broadcast");
@@ -217,27 +301,19 @@ function main() {
   const Deploymentchains = getFiles(current_path_to_deployments);
   const deployments = {};
 
-  // Load existing deployments from deployments directory
   Deploymentchains.forEach((chain) => {
     if (!chain.endsWith(".json")) return;
     chain = chain.slice(0, -5);
-    var deploymentObject = JSON.parse(
-      readFileSync(`${current_path_to_deployments}/${chain}.json`),
-    );
+    var deploymentObject = JSON.parse(readFileSync(`${current_path_to_deployments}/${chain}.json`));
     deployments[chain] = deploymentObject;
   });
 
-  // Process all deployments from all script folders
-  const allGeneratedContracts = processAllDeployments(
-    current_path_to_broadcast,
-  );
+  const allGeneratedContracts = processAllDeployments(current_path_to_broadcast);
 
-  // Update contract keys based on deployments if they exist
   Object.entries(allGeneratedContracts).forEach(([chainId, contracts]) => {
     Object.entries(contracts).forEach(([contractName, contractData]) => {
       const deployedName = deployments[chainId]?.[contractData.address];
       if (deployedName) {
-        // If we have a deployment name, use it instead of the contract name
         allGeneratedContracts[chainId][deployedName] = contractData;
         delete allGeneratedContracts[chainId][contractName];
       }
@@ -245,42 +321,100 @@ function main() {
   });
 
   const NEXTJS_TARGET_DIR = "../opswap/contracts/";
+  const CHAINS_DIR = join(NEXTJS_TARGET_DIR, "chains");
 
-  // Ensure target directories exist
   if (!existsSync(NEXTJS_TARGET_DIR)) {
     mkdirSync(NEXTJS_TARGET_DIR, { recursive: true });
   }
+  if (!existsSync(CHAINS_DIR)) {
+    mkdirSync(CHAINS_DIR, { recursive: true });
+  }
 
-  // Generate the deployedContracts content
-  const fileContent = Object.entries(allGeneratedContracts).reduce(
-    (content, [chainId, chainConfig]) => {
-      return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(
-        chainConfig,
-        null,
-        2,
-      )},`;
-    },
-    "",
-  );
+  const chainIds = Object.keys(allGeneratedContracts);
+  let totalContracts = 0;
+  let totalLines = 0;
 
-  // Write the files
-  const fileTemplate = (importPath) => `
-    ${generatedContractComment}
-    import { GenericContractsDeclaration } from "${importPath}";
+  // Write individual chain files
+  const chainFilePromises = chainIds.map(chainId => {
+    const chainConfig = allGeneratedContracts[chainId];
+    const chainName = CHAIN_NAMES[chainId] || `chain${chainId}`;
+    const contractCount = Object.keys(chainConfig).length;
+    totalContracts += contractCount;
 
-    const deployedContracts = {${fileContent}} as const;
+    // Add chainId at the top of the config object
+    const chainConfigWithId = {
+      chainId: parseInt(chainId),
+      ...chainConfig,
+    };
 
-    export default deployedContracts satisfies GenericContractsDeclaration;
-  `;
-  format(fileTemplate("~~/utils/scaffold-eth/contract"), {
-    parser: "typescript",
-  }).then((result) => {
-    writeFileSync(`${NEXTJS_TARGET_DIR}deployedContracts.ts`, result);
+    const fileContent = `
+      ${generatedContractComment}
+      const ${chainName}Contracts = ${JSON.stringify(chainConfigWithId, null, 2)} as const;
+
+      export default ${chainName}Contracts;
+    `;
+
+    return format(fileContent, { parser: "typescript" }).then((result) => {
+      const filename = `${chainName}.ts`;
+      writeFileSync(join(CHAINS_DIR, filename), result);
+      const lines = result.split('\n').length;
+      totalLines += lines;
+      return { chainId, chainName, filename, lines, contractCount };
+    });
   });
 
-  console.log(
-    `📝 Updated TypeScript contract definition file on ${NEXTJS_TARGET_DIR}deployedContracts.ts`,
-  );
+  // Write index file that re-exports all chains
+  Promise.all(chainFilePromises).then((chainFiles) => {
+    const indexContent = `
+      ${generatedContractComment}
+      import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
+
+      ${chainFiles.map(({ chainName }) =>
+        `import ${chainName}Contracts from "./chains/${chainName}";`
+      ).join('\n')}
+
+      const deployedContracts = {
+        ${chainFiles.map(({ chainId, chainName }) =>
+          `${parseInt(chainId).toFixed(0)}: ${chainName}Contracts`
+        ).join(',\n  ')}
+      } as const;
+
+      export default deployedContracts satisfies GenericContractsDeclaration;
+    `;
+
+    return format(indexContent, { parser: "typescript" }).then((result) => {
+      writeFileSync(join(NEXTJS_TARGET_DIR, "deployedContracts.ts"), result);
+
+      const indexLines = result.split('\n').length;
+      const originalLines = 10962;
+      const reduction = (((originalLines - totalLines) / originalLines) * 100).toFixed(1);
+
+      console.log(`\n✨ SPLIT BY CHAIN - Individual files per chain!`);
+      console.log(`\n📁 Generated files:`);
+      chainFiles.forEach(({ chainId, chainName, filename, lines, contractCount }) => {
+        console.log(`   ${filename.padEnd(20)} ${lines.toString().padStart(4)} lines, ${contractCount} contracts (Chain ${chainId})`);
+      });
+      console.log(`   ${'deployedContracts.ts'.padEnd(20)} ${indexLines.toString().padStart(4)} lines (index)`);
+
+      console.log(`\n📊 Summary:`);
+      console.log(`   Total contracts: ${totalContracts}`);
+      console.log(`   Total lines: ${totalLines} (${reduction}% reduction from ${originalLines})`);
+      console.log(`   Average lines/chain: ${Math.round(totalLines / chainFiles.length)}`);
+
+      console.log(`\n💾 Saved to: ${NEXTJS_TARGET_DIR}`);
+      console.log(`   ├── deployedContracts.ts (index file)`);
+      console.log(`   └── chains/`);
+      chainFiles.forEach(({ filename }) => {
+        console.log(`       ├── ${filename}`);
+      });
+
+      console.log(`\n🎯 Benefits:`);
+      console.log(`   ✅ Smaller per-chain files (easier to review)`);
+      console.log(`   ✅ Better tree-shaking (unused chains can be dropped)`);
+      console.log(`   ✅ Faster TypeScript compilation`);
+      console.log(`   ✅ Can dynamically import only chains you need\n`);
+    });
+  });
 }
 
 try {

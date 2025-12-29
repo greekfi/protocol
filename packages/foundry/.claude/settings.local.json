@@ -35,7 +35,11 @@
       "Bash(done)",
       "Bash(forge build:*)",
       "Bash(forge install:*)",
-      "Bash(forge test:*)"
+      "Bash(forge test:*)",
+      "WebFetch(domain:*)",
+      "WebFetch(domain:wagmi.sh)",
+      "WebFetch(domain:viem.sh)",
+      "WebFetch(domain:docs.soliditylang.org)"
     ],
     "deny": [],
     "ask": []
