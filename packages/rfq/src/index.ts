@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+dotenv.config();
 import { BebopClient } from "./client";
 import type { Chain, RFQRequest } from "./types";
 
