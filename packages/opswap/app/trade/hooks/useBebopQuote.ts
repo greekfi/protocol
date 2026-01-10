@@ -24,11 +24,8 @@ interface UseBebopQuoteParams {
   enabled?: boolean;
 }
 
-const CHAIN_NAMES: Record<number, string> = {
-  1: "ethereum",
-  1301: "unichain", // You may need to verify Bebop's chain name for Unichain
-  11155111: "sepolia",
-};
+// Use our aggregator instead of Bebop
+const AGGREGATOR_URL = process.env.NEXT_PUBLIC_AGGREGATOR_URL || "http://localhost:3002";
 
 export function useBebopQuote({ buyToken, sellToken, sellAmount, enabled = true }: UseBebopQuoteParams) {
   const { address: takerAddress } = useAccount();
@@ -41,32 +38,29 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, enabled = true 
         return null;
       }
 
-      const chainName = CHAIN_NAMES[chainId] || "ethereum";
-
       const params = new URLSearchParams({
         buy_tokens: buyToken,
         sell_tokens: sellToken,
         sell_amounts: sellAmount,
         taker_address: takerAddress,
-        gasless: "false",
-        approval_type: "Standard",
-        skip_validation: "true",
       });
 
-      console.log("Bebop quote params:", params.toString());
+      console.log("📞 Requesting quote from aggregator");
+      console.log("   Params:", params.toString());
 
-      const url = `https://api.bebop.xyz/router/${chainName}/v1/quote?${params.toString()}`;
+      const url = `${AGGREGATOR_URL}/quote?${params.toString()}`;
+      console.log("   URL:", url);
 
       const response = await fetch(url);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Bebop API error:", response.status, errorText);
-        throw new Error(`Bebop API error: ${response.statusText}`);
+        console.error("❌ Aggregator API error:", response.status, errorText);
+        throw new Error(`Aggregator API error: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("Bebop API raw response:", data);
+      console.log("✅ Aggregator response:", data);
       return data;
     },
     enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && !!sellAmount,
