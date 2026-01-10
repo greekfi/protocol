@@ -23,7 +23,8 @@ export function useTradableOptions(underlyingToken: string | null) {
 
   const contracts = deployedContracts[chainId as keyof typeof deployedContracts];
   const factoryAddress = contracts?.OptionFactory?.address;
-  const deploymentBlock = contracts?.OptionFactory?.deploymentBlock || 0n;
+  // Use earliest block to fetch all events
+  const deploymentBlock = 0n;
 
   return useQuery({
     queryKey: ["tradableOptions", underlyingToken, factoryAddress, chainId],
@@ -55,8 +56,8 @@ export function useTradableOptions(underlyingToken: string | null) {
           optionAddress: log.args.option as string,
           collateralAddress: log.args.collateral as string,
           considerationAddress: log.args.consideration as string,
-          expiration: log.args.expirationDate as bigint,
-          strike: log.args.strike as bigint,
+          expiration: BigInt(log.args.expirationDate || 0),
+          strike: BigInt(log.args.strike || 0),
           isPut: log.args.isPut as boolean,
           redemptionAddress: log.args.redemption as string,
         }));

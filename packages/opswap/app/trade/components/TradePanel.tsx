@@ -110,11 +110,12 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
 
   // Check if approval is needed
   const sellAmountBigInt = amount ? parseUnits(amount, 18) : 0n;
-  const needsApproval =
+  const needsApproval = Boolean(
     tradeType === "sell" &&
     bebopRouter &&
     currentAllowance !== undefined &&
-    currentAllowance < sellAmountBigInt;
+    currentAllowance < sellAmountBigInt
+  );
 
   // Handle approval
   const handleApprove = async () => {
