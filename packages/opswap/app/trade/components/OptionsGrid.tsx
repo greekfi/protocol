@@ -29,7 +29,21 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
     const gridMap = new Map<string, GridCell>();
 
     options.forEach(option => {
-      const strikeKey = option.strike.toString();
+      // For puts, invert the strike price to align with calls
+      // Put strike is stored as "USDC per WETH", we want "WETH per USDC"
+      let normalizedStrike = option.strike;
+      if (option.isPut && option.strike > 0n) {
+        // Invert: 1 / strike (with 18 decimal precision)
+        normalizedStrike = (10n ** 36n) / option.strike;
+      }
+
+      // Round strike to 2 decimal places to group similar strikes together
+      // Convert to float, round, then back to BigInt with 18 decimals
+      const strikeFloat = parseFloat(formatUnits(normalizedStrike, 18));
+      const strikeRounded = Math.round(strikeFloat * 100) / 100; // Round to 2 decimals
+      const strikeRoundedBigInt = BigInt(Math.round(strikeRounded * 1e18));
+
+      const strikeKey = strikeRoundedBigInt.toString();
       const expirationKey = option.expiration.toString();
 
       strikesSet.add(strikeKey);
@@ -105,7 +119,9 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
         <tbody>
           {strikes.map(strike => {
             // Format strike price (it's encoded with 18 decimals)
-            const strikeFormatted = formatUnits(BigInt(strike), 18);
+            const strikeNum = parseFloat(formatUnits(BigInt(strike), 18));
+            // Round to 2 decimal places for cleaner display
+            const strikeFormatted = strikeNum.toFixed(2);
 
             return (
               <tr key={strike} className="border-b border-gray-800">

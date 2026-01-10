@@ -1,9 +1,41 @@
 import { useState, useEffect } from "react";
 import { formatUnits, parseUnits } from "viem";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import type { TradableOption } from "../hooks/useTradableOptions";
+
+// ERC20 ABI for approve and allowance
+const ERC20_ABI = [
+  {
+    name: "approve",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
+
+// Bebop Router addresses by chain ID
+const BEBOP_ROUTER_ADDRESSES: Record<number, string> = {
+  1: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Ethereum Mainnet
+  1301: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Unichain Sepolia (verify this)
+  11155111: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Sepolia
+};
 
 interface TradePanelProps {
   selectedOption: {
@@ -21,6 +53,8 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState<string>("1");
   const { allTokensMap } = useTokenMap();
+  const { address: userAddress } = useAccount();
+  const chainId = useChainId();
 
   // Get token info
   const optionToken = selectedOption.optionAddress;
@@ -39,6 +73,9 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
   // Parse amount (assume 18 decimals for option tokens)
   const sellAmount = amount ? parseUnits(amount, 18).toString() : "0";
 
+  // Get Bebop router address for current chain
+  const bebopRouter = BEBOP_ROUTER_ADDRESSES[chainId];
+
   // Fetch quote from Bebop
   const { data: quote, isLoading: quoteLoading, error: quoteError } = useBebopQuote({
     buyToken,
@@ -46,6 +83,54 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     sellAmount,
     enabled: amount !== "" && parseFloat(amount) > 0,
   });
+
+  // Check current allowance
+  const { data: currentAllowance, refetch: refetchAllowance } = useReadContract({
+    address: optionToken as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
+    query: {
+      enabled: !!userAddress && !!bebopRouter,
+    },
+  });
+
+  // Approval transaction
+  const { writeContract: approve, data: approvalHash, isPending: isApproving } = useWriteContract();
+  const { isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({
+    hash: approvalHash,
+  });
+
+  // Refetch allowance after successful approval
+  useEffect(() => {
+    if (isApprovalSuccess) {
+      refetchAllowance();
+    }
+  }, [isApprovalSuccess, refetchAllowance]);
+
+  // Check if approval is needed
+  const sellAmountBigInt = amount ? parseUnits(amount, 18) : 0n;
+  const needsApproval =
+    tradeType === "sell" &&
+    bebopRouter &&
+    currentAllowance !== undefined &&
+    currentAllowance < sellAmountBigInt;
+
+  // Handle approval
+  const handleApprove = async () => {
+    if (!bebopRouter) return;
+
+    try {
+      approve({
+        address: optionToken as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [bebopRouter as `0x${string}`, sellAmountBigInt],
+      });
+    } catch (err) {
+      console.error("Approval failed:", err);
+    }
+  };
 
   // Trade execution
   const { executeTrade, status, error: tradeError, txHash, reset } = useBebopTrade();
@@ -141,6 +226,56 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
         />
       </div>
 
+      {/* Token Approval Section */}
+      <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">Token Allowance</h3>
+        <div className="space-y-3">
+          {!bebopRouter ? (
+            <div className="p-3 bg-red-900/20 rounded border border-red-700">
+              <div className="text-red-300 text-sm">
+                Bebop router not available for chain {chainId}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Current Allowance:</span>
+                <span className="text-blue-300 font-mono">
+                  {currentAllowance !== undefined ? formatUnits(currentAllowance, 18) : "Loading..."}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Bebop Router:</span>
+                <span className="text-blue-300 font-mono text-xs">
+                  {bebopRouter.slice(0, 6)}...{bebopRouter.slice(-4)}
+                </span>
+              </div>
+              <button
+                onClick={handleApprove}
+                disabled={isApproving}
+                className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors ${
+                  isApproving
+                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                }`}
+              >
+                {isApproving ? "Approving..." : "Approve Spending"}
+              </button>
+            </>
+          )}
+          {isApprovalSuccess && (
+            <div className="p-3 bg-green-900/20 rounded border border-green-700">
+              <div className="text-green-300 text-sm">Approval successful!</div>
+              {approvalHash && (
+                <div className="mt-1 text-xs text-gray-400 break-all">
+                  Tx: {approvalHash}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quote Display */}
       {quoteLoading && (
         <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
@@ -160,25 +295,36 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
             <div className="flex justify-between">
               <span className="text-gray-400">You pay:</span>
               <span className="text-blue-300 font-medium">
-                {formatUnits(BigInt(quote.sellAmount), 18)} {tradeType === "buy" ? paymentTokenSymbol : "OPT"}
+                {quote.sellAmount ? formatUnits(BigInt(quote.sellAmount), 18) : "N/A"} {tradeType === "buy" ? paymentTokenSymbol : "OPT"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">You receive:</span>
               <span className="text-blue-300 font-medium">
-                {formatUnits(BigInt(quote.buyAmount), 18)} {tradeType === "buy" ? "OPT" : paymentTokenSymbol}
+                {quote.buyAmount ? formatUnits(BigInt(quote.buyAmount), 18) : "N/A"} {tradeType === "buy" ? "OPT" : paymentTokenSymbol}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Price:</span>
-              <span className="text-blue-300 font-medium">{quote.price}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Est. Gas:</span>
-              <span className="text-blue-300 font-medium">{quote.estimatedGas}</span>
-            </div>
+            {quote.price && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Price:</span>
+                <span className="text-blue-300 font-medium">{quote.price}</span>
+              </div>
+            )}
+            {quote.estimatedGas && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Est. Gas:</span>
+                <span className="text-blue-300 font-medium">{quote.estimatedGas}</span>
+              </div>
+            )}
           </div>
           <div className="mt-2 text-xs text-gray-500">Quote refreshes every 15 seconds</div>
+          {/* Debug info */}
+          <details className="mt-2">
+            <summary className="text-xs text-gray-500 cursor-pointer">Debug: Show raw quote data</summary>
+            <div className="mt-1 text-xs text-gray-600 break-all bg-black/40 p-2 rounded">
+              <pre>{JSON.stringify(quote, null, 2)}</pre>
+            </div>
+          </details>
         </div>
       )}
 
@@ -210,9 +356,9 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       {/* Execute Button */}
       <button
         onClick={handleExecuteTrade}
-        disabled={!quote || status === "pending" || status === "preparing"}
+        disabled={!quote || status === "pending" || status === "preparing" || needsApproval}
         className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-          !quote || status === "pending" || status === "preparing"
+          !quote || status === "pending" || status === "preparing" || needsApproval
             ? "bg-gray-800 text-gray-500 cursor-not-allowed"
             : tradeType === "buy"
               ? "bg-green-500 hover:bg-green-600 text-white"
@@ -221,9 +367,11 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       >
         {status === "pending" || status === "preparing"
           ? "Processing..."
-          : tradeType === "buy"
-            ? "Buy Option"
-            : "Sell Option"}
+          : needsApproval
+            ? "Approval Required"
+            : tradeType === "buy"
+              ? "Buy Option"
+              : "Sell Option"}
       </button>
     </div>
   );

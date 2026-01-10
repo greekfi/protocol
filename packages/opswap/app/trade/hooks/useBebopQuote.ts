@@ -49,22 +49,24 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, enabled = true 
         sell_amounts: sellAmount,
         taker_address: takerAddress,
         gasless: "false",
-        include_routes: "JAMv2",
-        receiver_address: "",
-        source: "bebop.xyz",
         approval_type: "Standard",
-        skip_taker_checks: "true",
+        skip_validation: "true",
       });
+
+      console.log("Bebop quote params:", params.toString());
 
       const url = `https://api.bebop.xyz/router/${chainName}/v1/quote?${params.toString()}`;
 
       const response = await fetch(url);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Bebop API error:", response.status, errorText);
         throw new Error(`Bebop API error: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log("Bebop API raw response:", data);
       return data;
     },
     enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && !!sellAmount,

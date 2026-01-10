@@ -112,6 +112,7 @@ export class BebopClient {
 
   private handleMessage(data: string): void {
     try {
+      console.log("📨 Received message:", data);
       const message = JSON.parse(data) as IncomingMessage;
 
       switch (message.type) {
@@ -122,10 +123,10 @@ export class BebopClient {
           this.handleOrder(message as OrderNotification);
           break;
         case "heartbeat":
-          // Server heartbeat, no action needed
+          console.log("💓 Heartbeat received");
           break;
         default:
-          console.log("Unknown message type:", data);
+          console.log("❓ Unknown message type:", data);
       }
     } catch (error) {
       console.error("Failed to parse message:", data, error);
@@ -184,7 +185,9 @@ export class BebopClient {
       return;
     }
 
-    this.ws.send(JSON.stringify(message));
+    const msgStr = JSON.stringify(message);
+    console.log("📤 Sending message:", msgStr);
+    this.ws.send(msgStr);
   }
 
   disconnect(): void {
