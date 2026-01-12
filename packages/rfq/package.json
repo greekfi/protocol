@@ -15,6 +15,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "protobufjs": "^8.0.0",
     "viem": "^2.44.1",
     "ws": "^8.19.0"
   },
@@ -24,6 +25,7 @@
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13",
     "nodemon": "^3.1.9",
+    "protobufjs-cli": "^2.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }

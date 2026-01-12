@@ -1,14 +1,25 @@
 import dotenv from "dotenv";
 dotenv.config();
+import WebSocket from "ws";
+import { bebop } from "./pricing_pb";
 import { BebopClient } from "./client";
 import type { Chain, RFQRequest } from "./types";
 import { OPTIONS_LIST, isOptionToken, getOption } from "./optionsList";
 import { startAPIServer } from "./api";
 
+// Configuration
 const CHAIN = (process.env.CHAIN || "ethereum") as Chain;
 const MARKETMAKER = process.env.BEBOP_MARKETMAKER;
 const AUTHORIZATION = process.env.BEBOP_AUTHORIZATION;
 const MAKER_ADDRESS = process.env.MAKER_ADDRESS;
+
+// Token addresses
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+
+// Bebop API URLs
+const BEBOP_WS_BASE = "wss://api.bebop.xyz/pmm";
+const BEBOP_RFQ_ENDPOINT = `${BEBOP_WS_BASE}/${CHAIN}/v3/maker/quote`;
+const BEBOP_PRICING_ENDPOINT = `${BEBOP_WS_BASE}/${CHAIN}/v3/maker/pricing?format=protobuf`;
 
 if (!MARKETMAKER) {
   throw new Error("BEBOP_MARKETMAKER environment variable required");
@@ -20,6 +31,162 @@ if (!AUTHORIZATION) {
 
 if (!MAKER_ADDRESS) {
   throw new Error("MAKER_ADDRESS environment variable required");
+}
+
+// Chain ID mapping
+const CHAIN_IDS: Record<Chain, number> = {
+  ethereum: 1,
+  arbitrum: 42161,
+  optimism: 10,
+  polygon: 137,
+  base: 8453,
+  blast: 81457,
+  bsc: 56,
+  mode: 34443,
+  scroll: 534352,
+  taiko: 167000,
+  zksync: 324,
+};
+
+// Pricing function - returns $0.05 for all options
+function getOptionPrice(optionAddress: string): number {
+  const option = getOption(optionAddress);
+  if (!option) return 0;
+
+  // Return ask price for our pricing stream
+  return parseFloat(option.askPrice);
+}
+
+// Protobuf types from generated code
+const { LevelsSchema, LevelMsg, LevelInfo } = bebop;
+
+// Helper function to convert hex address to bytes
+function hexToBytes(hex: string): Buffer {
+  const cleanHex = hex.startsWith("0x") ? hex.slice(2) : hex;
+  return Buffer.from(cleanHex, "hex");
+}
+
+// Pricing WebSocket connection
+let pricingWs: WebSocket | null = null;
+let pricingInterval: NodeJS.Timeout | null = null;
+
+function connectPricingWebSocket() {
+  console.log(`Connecting to pricing WebSocket: ${BEBOP_PRICING_ENDPOINT}`);
+
+  pricingWs = new WebSocket(BEBOP_PRICING_ENDPOINT, [], {
+    headers: {
+      marketmaker: MARKETMAKER!,
+      authorization: AUTHORIZATION!,
+    },
+  });
+
+  pricingWs.on("open", () => {
+    console.log("✅ Connected to Bebop Pricing WebSocket");
+    startPricingSending();
+  });
+
+  pricingWs.on("message", (data) => {
+    try {
+      // Try to parse as text first
+      const text = data.toString();
+      console.log("📨 Pricing response (text):", text);
+
+      // Try to parse as JSON
+      try {
+        const json = JSON.parse(text);
+        console.log("📨 Pricing response (JSON):", JSON.stringify(json, null, 2));
+      } catch {}
+    } catch (error) {
+      console.log("📨 Pricing response (binary):", Array.from(data as Buffer).slice(0, 100));
+    }
+  });
+
+  pricingWs.on("close", (code, reason) => {
+    console.log(`❌ Pricing WebSocket closed: ${code} - ${reason.toString()}`);
+    stopPricingSending();
+
+    // Reconnect after 5 seconds
+    setTimeout(() => {
+      console.log("🔄 Reconnecting pricing WebSocket...");
+      connectPricingWebSocket();
+    }, 5000);
+  });
+
+  pricingWs.on("error", (error) => {
+    console.error("❌ Pricing WebSocket error:", error.message);
+  });
+}
+
+function startPricingSending() {
+  // Send pricing updates every 5 seconds (well above the 0.4s minimum from Bebop)
+  pricingInterval = setInterval(() => {
+    sendPricingUpdate();
+  }, 5000);
+
+  // Send initial pricing update after a short delay
+  setTimeout(() => {
+    sendPricingUpdate();
+  }, 1000);
+}
+
+function stopPricingSending() {
+  if (pricingInterval) {
+    clearInterval(pricingInterval);
+    pricingInterval = null;
+  }
+}
+
+function sendPricingUpdate() {
+  if (!pricingWs || pricingWs.readyState !== WebSocket.OPEN) {
+    console.log("⚠️  Pricing WebSocket not ready, skipping update");
+    return;
+  }
+
+  try {
+    // Build protobuf message like Python example (with camelCase properties)
+    const levelsSchema = new LevelsSchema();
+    levelsSchema.chainId = CHAIN_IDS[CHAIN];
+    levelsSchema.msgTopic = "pricing";
+    levelsSchema.msgType = "update";
+    levelsSchema.msg = new LevelMsg();
+    levelsSchema.msg.makerAddress = hexToBytes(MAKER_ADDRESS!);
+    levelsSchema.msg.levels = [];
+
+    // Add levels for all options
+    for (const option of OPTIONS_LIST) {
+      const levelInfo = new LevelInfo();
+
+      levelInfo.baseAddress = hexToBytes(option.address);
+      levelInfo.baseDecimals = 18;
+      levelInfo.quoteAddress = hexToBytes(USDC_ADDRESS);
+      levelInfo.quoteDecimals = 6;
+
+      const askPrice = getOptionPrice(option.address);
+      const bidPrice = parseFloat(option.bidPrice);
+
+      // Flatten bids/asks like Python: [price, amount, price, amount, ...]
+      levelInfo.bids = [];
+      levelInfo.bids.push(bidPrice);
+      levelInfo.bids.push(1000.0);
+
+      levelInfo.asks = [];
+      levelInfo.asks.push(askPrice);
+      levelInfo.asks.push(1000.0);
+
+      levelsSchema.msg.levels.push(levelInfo);
+    }
+
+    // Encode to bytes
+    const buffer = LevelsSchema.encode(levelsSchema).finish();
+
+    console.log("📤 Sending Protobuf pricing update (", buffer.length, "bytes )");
+    console.log(`   ${OPTIONS_LIST.length} levels, bids/asks: $${parseFloat(OPTIONS_LIST[0].bidPrice)}/$${parseFloat(OPTIONS_LIST[0].askPrice)}`);
+
+    pricingWs.send(buffer);
+  } catch (error) {
+    console.error("❌ Failed to encode Protobuf message:", error);
+    console.error("   Stack:", (error as Error).stack);
+  }
 }
 
 const client = new BebopClient({
@@ -189,12 +356,20 @@ client.onOrder((order) => {
 // Graceful shutdown
 process.on("SIGINT", () => {
   console.log("\nShutting down...");
+  stopPricingSending();
+  if (pricingWs) {
+    pricingWs.close(1000, "Client disconnect");
+  }
   client.disconnect();
   process.exit(0);
 });
 
 process.on("SIGTERM", () => {
   console.log("\nShutting down...");
+  stopPricingSending();
+  if (pricingWs) {
+    pricingWs.close(1000, "Client disconnect");
+  }
   client.disconnect();
   process.exit(0);
 });
@@ -208,9 +383,13 @@ OPTIONS_LIST.forEach(opt => {
 // Start HTTP API server for direct quotes
 startAPIServer(3001);
 
-// Start client
+// Start RFQ client
 console.log(`Starting Bebop RFQ client on ${CHAIN}...`);
 client.connect().catch((error) => {
   console.error("Failed to connect:", error);
   process.exit(1);
 });
+
+// Start pricing WebSocket connection
+console.log(`Starting Bebop Pricing client on ${CHAIN}...`);
+connectPricingWebSocket();
