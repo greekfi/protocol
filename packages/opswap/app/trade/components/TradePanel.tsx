@@ -262,7 +262,7 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
           value={amount}
           onChange={e => setAmount(e.target.value)}
           placeholder="0.0"
-          step="0.01"
+          step="any"
           min="0"
           className="w-full p-3 rounded-lg border border-gray-700 bg-black/60 text-blue-300 focus:outline-none focus:border-blue-500"
         />

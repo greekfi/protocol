@@ -23,6 +23,7 @@ export function useTradableOptions(underlyingToken: string | null) {
 
   const contracts = deployedContracts[chainId as keyof typeof deployedContracts];
   const factoryAddress = contracts?.OptionFactory?.address;
+  // const factoryAddress = "0xeac6035621817b16811395f1f1fa3e3705b0aacd";
   // Use earliest block to fetch all events
   const deploymentBlock = 0n;
 

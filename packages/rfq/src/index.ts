@@ -6,16 +6,14 @@ import { BebopClient } from "./client";
 import type { Chain, RFQRequest } from "./types";
 import { OPTIONS_LIST, isOptionToken, getOption } from "./optionsList";
 import { startAPIServer } from "./api";
+import { getUSDCAddress } from "./constants";
 
 // Configuration
-const CHAIN = (process.env.CHAIN || "ethereum") as Chain;
+const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1; // Default to Ethereum mainnet
+const CHAIN = (process.env.CHAIN || "ethereum") as Chain; // For Bebop API compatibility
 const MARKETMAKER = process.env.BEBOP_MARKETMAKER;
 const AUTHORIZATION = process.env.BEBOP_AUTHORIZATION;
 const MAKER_ADDRESS = process.env.MAKER_ADDRESS;
-
-// Token addresses
-// const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
-const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Base USDC
 
 // Bebop API URLs
 const BEBOP_WS_BASE = "wss://api.bebop.xyz/pmm";
@@ -34,27 +32,12 @@ if (!MAKER_ADDRESS) {
   throw new Error("MAKER_ADDRESS environment variable required");
 }
 
-// Chain ID mapping
-const CHAIN_IDS: Record<Chain, number> = {
-  ethereum: 1,
-  arbitrum: 42161,
-  optimism: 10,
-  polygon: 137,
-  base: 8453,
-  blast: 81457,
-  bsc: 56,
-  mode: 34443,
-  scroll: 534352,
-  taiko: 167000,
-  zksync: 324,
-};
+const USDC_ADDRESS = getUSDCAddress(CHAIN_ID);
 
-// Pricing function - returns $0.05 for all options
+// Get option ask price for pricing stream
 function getOptionPrice(optionAddress: string): number {
   const option = getOption(optionAddress);
   if (!option) return 0;
-
-  // Return ask price for our pricing stream
   return parseFloat(option.askPrice);
 }
 
@@ -146,7 +129,7 @@ function sendPricingUpdate() {
   try {
     // Build protobuf message like Python example (with camelCase properties)
     const levelsSchema = new LevelsSchema();
-    levelsSchema.chainId = CHAIN_IDS[CHAIN];
+    levelsSchema.chainId = CHAIN_ID;
     levelsSchema.msgTopic = "pricing";
     levelsSchema.msgType = "update";
     levelsSchema.msg = new LevelMsg();
@@ -158,9 +141,9 @@ function sendPricingUpdate() {
       const levelInfo = new LevelInfo();
 
       levelInfo.baseAddress = hexToBytes(option.address);
-      levelInfo.baseDecimals = 18;
+      levelInfo.baseDecimals = option.decimals;
       levelInfo.quoteAddress = hexToBytes(USDC_ADDRESS);
-      levelInfo.quoteDecimals = 6;
+      levelInfo.quoteDecimals = option.quoteDecimals;
 
       const askPrice = getOptionPrice(option.address);
       const bidPrice = parseFloat(option.bidPrice);

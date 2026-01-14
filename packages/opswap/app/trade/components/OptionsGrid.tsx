@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 import { useTradableOptions, type TradableOption } from "../hooks/useTradableOptions";
-import { useBebopQuote } from "../hooks/useBebopQuote";
-import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { formatUnits } from "viem";
 
 interface OptionsGridProps {
@@ -16,7 +14,6 @@ interface GridCell {
 
 export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps) {
   const { data: options, isLoading } = useTradableOptions(selectedToken);
-  const { allTokensMap } = useTokenMap();
 
   // Group options by strike and expiration
   const { strikes, expirations, grid } = useMemo(() => {
