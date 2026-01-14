@@ -20,50 +20,68 @@ export interface BebopQuote {
 interface UseBebopQuoteParams {
   buyToken: string; // Token address to buy
   sellToken: string; // Token address to sell
-  sellAmount: string; // Amount to sell in wei
+  sellAmount?: string; // Amount to sell in wei (optional)
+  buyAmount?: string; // Amount to buy in wei (optional)
   enabled?: boolean;
 }
 
-// Use our aggregator instead of Bebop
-const AGGREGATOR_URL = process.env.NEXT_PUBLIC_AGGREGATOR_URL || "http://localhost:3002";
+// Bebop API endpoints by chain ID
+const BEBOP_API_URLS: Record<number, string> = {
+  1: "https://api.bebop.xyz/pmm/ethereum/v3", // Ethereum Mainnet
+  1301: "https://api.bebop.xyz/pmm/unichain/v3", // Unichain Sepolia
+  11155111: "https://api.bebop.xyz/pmm/sepolia/v3", // Sepolia
+};
 
-export function useBebopQuote({ buyToken, sellToken, sellAmount, enabled = true }: UseBebopQuoteParams) {
+export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enabled = true }: UseBebopQuoteParams) {
   const { address: takerAddress } = useAccount();
   const chainId = useChainId();
 
   return useQuery<BebopQuote | null>({
-    queryKey: ["bebopQuote", buyToken, sellToken, sellAmount, takerAddress, chainId],
+    queryKey: ["bebopQuote", buyToken, sellToken, sellAmount, buyAmount, takerAddress, chainId],
     queryFn: async () => {
-      if (!takerAddress || !buyToken || !sellToken || !sellAmount) {
+      if (!takerAddress || !buyToken || !sellToken || (!sellAmount && !buyAmount)) {
         return null;
       }
 
-      const params = new URLSearchParams({
+      const bebopApiUrl = BEBOP_API_URLS[chainId];
+      if (!bebopApiUrl) {
+        throw new Error(`Bebop API not available for chain ${chainId}`);
+      }
+
+      const params: Record<string, string> = {
         buy_tokens: buyToken,
         sell_tokens: sellToken,
-        sell_amounts: sellAmount,
         taker_address: takerAddress,
-      });
+      };
 
-      console.log("📞 Requesting quote from aggregator");
-      console.log("   Params:", params.toString());
+      // Use either sell_amounts or buy_amounts depending on what's provided
+      if (sellAmount) {
+        params.sell_amounts = sellAmount;
+      } else if (buyAmount) {
+        params.buy_amounts = buyAmount;
+      }
 
-      const url = `${AGGREGATOR_URL}/quote?${params.toString()}`;
+      const searchParams = new URLSearchParams(params);
+
+      console.log("📞 Requesting quote from Bebop");
+      console.log("   Params:", searchParams.toString());
+
+      const url = `${bebopApiUrl}/quote?${searchParams.toString()}`;
       console.log("   URL:", url);
 
       const response = await fetch(url);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ Aggregator API error:", response.status, errorText);
-        throw new Error(`Aggregator API error: ${response.statusText}`);
+        console.error("❌ Bebop API error:", response.status, errorText);
+        throw new Error(`Bebop API error: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("✅ Aggregator response:", data);
+      console.log("✅ Bebop response:", data);
       return data;
     },
-    enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && !!sellAmount,
+    enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && (!!sellAmount || !!buyAmount),
     staleTime: 15_000, // 15 seconds
     refetchInterval: 15_000, // Refresh every 15 seconds
     retry: 2,

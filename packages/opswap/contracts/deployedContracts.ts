@@ -6,12 +6,10 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
 import mainnetContracts from "./chains/mainnet";
 import baseContracts from "./chains/base";
-import foundryContracts from "./chains/foundry";
 
 const deployedContracts = {
   1: mainnetContracts,
   8453: baseContracts,
-  31337: foundryContracts,
 } as const;
 
 export default deployedContracts satisfies GenericContractsDeclaration;

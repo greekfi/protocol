@@ -34,7 +34,8 @@
       "Bash(do echo -n \"$err: \")",
       "Bash(done)",
       "Bash(jobs:*)",
-      "WebFetch(domain:docs.bebop.xyz)"
+      "WebFetch(domain:docs.bebop.xyz/*)",
+      "Bash(FOUNDRY_DISABLE_NIGHTLY_WARNING=1 forge build:*)"
     ],
     "deny": [],
     "ask": []

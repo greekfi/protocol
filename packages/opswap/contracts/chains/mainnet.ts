@@ -6,7 +6,7 @@ const mainnetContracts = {
   chainId: 1,
   deploymentBlock: 24116718,
   StableToken: {
-    address: "0xf398e51c6a926727604a7f79d3632ac799dce5a5",
+    address: "0xb6e4892bfa1347c7f931aabffa2b2ea7077cdaaf",
     abi: [
       {
         type: "constructor",
@@ -247,7 +247,7 @@ const mainnetContracts = {
     inheritedFunctions: {},
   },
   ShakyToken: {
-    address: "0xbf6ad767795c70be366eedae46fe7c2e98749679",
+    address: "0x6609c42d995892b9043f8ffb6abe2b4a820b1b02",
     abi: [
       {
         type: "constructor",
@@ -488,7 +488,7 @@ const mainnetContracts = {
     inheritedFunctions: {},
   },
   Redemption: {
-    address: "0xb7fc59d869e5dd7bead5c16ce565a1a49588fa4d",
+    address: "0xcb87945ac4e9d9b95d956f7212efd9eb728a96f0",
     abi: [
       {
         type: "constructor",
@@ -1266,7 +1266,7 @@ const mainnetContracts = {
     inheritedFunctions: {},
   },
   Option: {
-    address: "0x5ff3389644cfc6115560e53928aa3b5ed8f48519",
+    address: "0xe2faa786923316ff29ef90e8d7d50dd0d76d745c",
     abi: [
       {
         type: "constructor",
@@ -1920,7 +1920,7 @@ const mainnetContracts = {
     inheritedFunctions: {},
   },
   OptionFactory: {
-    address: "0xeac6035621817b16811395f1f1fa3e3705b0aacd",
+    address: "0x654d9fac23faaf45dc082d64a7aaf644cb62c0b4",
     abi: [
       {
         type: "constructor",

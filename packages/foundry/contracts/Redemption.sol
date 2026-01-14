@@ -251,9 +251,13 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         validAmount(amount)
         validAddress(account)
     {
+        // Ensure amount fits in uint160 for Permit2 compatibility
+        if (amount > type(uint160).max) revert ArithmeticOverflow();
+
         // Defense-in-depth: verify no fee-on-transfer despite factory blocklist
         uint256 balanceBefore = collateral.balanceOf(address(this));
 
+            // forge-lint: disable-next-line(unsafe-typecast)
         _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
 
         // Verify full amount received (costs ~3.2k gas but provides important safety)
@@ -397,7 +401,12 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         sufficientCollateral(address(this), amount)
         validAmount(amount)
     {
-        _factory.transferFrom(caller, address(this), uint160(toConsideration(amount)), address(consideration));
+        uint256 consAmount = toConsideration(amount);
+        // Ensure consideration amount fits in uint160 for Permit2 compatibility
+        if (consAmount > type(uint160).max) revert ArithmeticOverflow();
+
+        // forge-lint: disable-next-line(unsafe-typecast)
+        _factory.transferFrom(caller, address(this), uint160(consAmount), address(consideration));
         collateral.safeTransfer(account, amount);
     }
 
@@ -554,9 +563,12 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
-        return TokenData(
-            address(collateral), collateralMetadata.name(), collateralMetadata.symbol(), collateralMetadata.decimals()
-        );
+        return TokenData({
+            address_:address(collateral),
+            name: collateralMetadata.name(),
+            symbol: collateralMetadata.symbol(),
+            decimals: collateralMetadata.decimals()
+        });
     }
 
     /**
@@ -566,12 +578,12 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
-        return TokenData(
-            address(consideration),
-            considerationMetadata.name(),
-            considerationMetadata.symbol(),
-            considerationMetadata.decimals()
-        );
+        return TokenData({
+            address_:address(consideration),
+            name: considerationMetadata.name(),
+            symbol: considerationMetadata.symbol(),
+            decimals: considerationMetadata.decimals()
+        });
     }
 
     /**
@@ -634,6 +646,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 k = length;
         j = _i;
         while (j != 0) {
+            // casting to uint8 is safe because (j % 10) is always 0-9, adding 48 gives 48-57 (ASCII digits)
+            // forge-lint: disable-next-line(unsafe-typecast)
             bstr[--k] = bytes1(uint8(48 + j % 10));
             j /= 10;
         }
@@ -642,9 +656,12 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Converts a uint96 10**18 based strike to its string representation
-     * @dev Used for generating token names with strike prices
-     *      The ideally we check for the largest digit and represent accordingly
-     *      i.e. 1000e18 -> "1000", .01e18 -> "0.01"
+     * @dev Used for generating token names with strike prices.
+     *      Handles different cases:
+     *      - Whole numbers: "1000", "2000"
+     *      - Normal decimals: "1.5", "0.01", "3000.25"
+     *      - Scientific notation for >8 zeros: "1e-9", "1e15"
+     *      - Rounds fractional part to max 8 significant digits to avoid floating-point artifacts
      * @param _i The number to convert (in 18 decimal format)
      * @return str The string representation of the number
      */
@@ -657,11 +674,87 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
             return uint2str(whole);
         }
 
+        // Count leading zeros in fractional part
+        uint256 leadingZeros = 0;
+        uint256 temp = fractional;
+        uint256 divisor = 1e17; // Start from first decimal place
+
+        while (leadingZeros < 18 && (temp / divisor) == 0) {
+            leadingZeros++;
+            divisor /= 10;
+        }
+
+        // Use scientific notation if >8 leading zeros (very small numbers like 0.000000001)
+        if (whole == 0 && leadingZeros > 8) {
+            // Find first non-zero digit
+            uint256 significand = fractional;
+            uint256 exp = leadingZeros + 1;
+
+            // Remove leading zeros
+            while (significand > 0 && significand < 1e17) {
+                significand *= 10;
+            }
+            significand /= 1e17; // Get first digit
+
+            return string(abi.encodePacked(uint2str(significand), "e-", uint2str(exp)));
+        }
+
+        // Use scientific notation if whole number is very large (>8 trailing zeros)
+        if (whole > 0 && fractional == 0) {
+            uint256 tempWhole = whole;
+            uint256 trailingZeros = 0;
+
+            while (tempWhole > 0 && tempWhole % 10 == 0) {
+                trailingZeros++;
+                tempWhole /= 10;
+            }
+
+            if (trailingZeros > 8) {
+                return string(abi.encodePacked(uint2str(tempWhole), "e", uint2str(trailingZeros)));
+            }
+        }
+
+        // Round fractional part to max 8 significant digits to remove floating-point artifacts
+        // This prevents "3000.0000000003" by rounding off insignificant digits
+        uint256 roundedFractional = fractional;
+        if (leadingZeros < 10) {
+            // Keep 8 significant digits, round off the rest
+            uint256 keepDigits = leadingZeros + 8;
+            if (keepDigits < 18) {
+                uint256 divisorForRound = 1;
+                for (uint256 i = 0; i < (18 - keepDigits); i++) {
+                    divisorForRound *= 10;
+                }
+                // Round to nearest: (fractional + divisorForRound/2) / divisorForRound * divisorForRound
+                // Rewritten to avoid divide-before-multiply: round down to nearest multiple
+                uint256 rounded = fractional / divisorForRound;
+                uint256 remainder = fractional % divisorForRound;
+                // Add 1 if remainder >= divisorForRound/2 (rounding up)
+                if (remainder >= divisorForRound / 2) {
+                    rounded += 1;
+                }
+                roundedFractional = rounded * divisorForRound;
+
+                // Check if rounding caused overflow into whole number
+                if (roundedFractional >= 1e18) {
+                    return uint2str(whole + 1);
+                }
+
+                // Check if rounding made it zero
+                if (roundedFractional == 0) {
+                    return uint2str(whole);
+                }
+            }
+        }
+
         // Convert fractional part to 18-digit string (with leading zeros)
         bytes memory fracBytes = new bytes(18);
+        temp = roundedFractional;
         for (uint256 i = 18; i > 0; i--) {
-            fracBytes[i - 1] = bytes1(uint8(48 + fractional % 10));
-            fractional /= 10;
+            // casting to uint8 is safe because (temp % 10) is always 0-9, adding 48 gives 48-57 (ASCII digits)
+            // forge-lint: disable-next-line(unsafe-typecast)
+            fracBytes[i - 1] = bytes1(uint8(48 + temp % 10));
+            temp /= 10;
         }
 
         // Remove trailing zeros from fractional part
