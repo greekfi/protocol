@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, useChainId } from "wagmi";
+import { env } from "process";
 
 export interface BebopQuote {
   buyAmount: string;
@@ -48,10 +49,19 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
         throw new Error(`Bebop API not available for chain ${chainId}`);
       }
 
+      // Source name and auth from env
+      const sourceName = process.env.NEXT_PUBLIC_BEBOP_MARKETMAKER || "";
+      const sourceAuth = process.env.NEXT_PUBLIC_BEBOP_AUTHORIZATION || "";
+
       const params: Record<string, string> = {
         buy_tokens: buyToken,
         sell_tokens: sellToken,
         taker_address: takerAddress,
+        source: sourceName,
+        // &approval_type=Standard&skip_validation=true&gasless=false&
+        approval_type: "Standard",
+        skip_validation: "true",
+        gasless: "false",
       };
 
       // Use either sell_amounts or buy_amounts depending on what's provided
@@ -64,12 +74,19 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
       const searchParams = new URLSearchParams(params);
 
       console.log("📞 Requesting quote from Bebop");
+      console.log("   Source:", sourceName);
       console.log("   Params:", searchParams.toString());
 
       const url = `${bebopApiUrl}/quote?${searchParams.toString()}`;
       console.log("   URL:", url);
 
-      const response = await fetch(url);
+      // Add source-auth header
+      const headers: HeadersInit = {
+        "source-auth": sourceAuth,
+      };
+      console.log("   Using source-auth:", sourceAuth.slice(0, 8) + "...");
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         const errorText = await response.text();

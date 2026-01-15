@@ -14,6 +14,7 @@ const CHAIN = (process.env.CHAIN || "ethereum") as Chain; // For Bebop API compa
 const MARKETMAKER = process.env.BEBOP_MARKETMAKER;
 const AUTHORIZATION = process.env.BEBOP_AUTHORIZATION;
 const MAKER_ADDRESS = process.env.MAKER_ADDRESS;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 // Bebop API URLs
 const BEBOP_WS_BASE = "wss://api.bebop.xyz/pmm";
@@ -175,9 +176,11 @@ function sendPricingUpdate() {
 
 const client = new BebopClient({
   chain: CHAIN,
+  chainId: CHAIN_ID,
   marketmaker: MARKETMAKER,
   authorization: AUTHORIZATION,
   makerAddress: MAKER_ADDRESS,
+  privateKey: PRIVATE_KEY,
 });
 
 // Handle incoming RFQ requests
@@ -209,7 +212,6 @@ client.onRFQ(async (rfq: RFQRequest) => {
       };
     }
 
-    const sellAmount = BigInt(sellToken.amount);
     let buyAmount: bigint;
 
     if (isBuyTokenOption) {
@@ -217,7 +219,10 @@ client.onRFQ(async (rfq: RFQRequest) => {
       const optionInfo = getOption(buyToken.token);
       console.log("\n=== USER BUYING OPTIONS ===");
       console.log("Option info:", optionInfo);
-      console.log("User wants to buy:", sellAmount.toString(), "option tokens");
+
+      // When user buys options, they specify maker_amount (option tokens they want)
+      const optionAmountWanted = BigInt(buyToken.amount);
+      console.log("User wants to buy:", optionAmountWanted.toString(), "option tokens");
 
       if (!optionInfo) {
         return {
@@ -231,18 +236,19 @@ client.onRFQ(async (rfq: RFQRequest) => {
       const askPriceUSDC = parseFloat(optionInfo.askPrice);
       console.log("Ask price (USDC):", askPriceUSDC);
 
-      // Convert: askPrice (dollars) * 1e6 (USDC decimals) per 1e18 option tokens
+      // Convert: askPrice (dollars) * 1e6 (USDC decimals) per 1e6 option tokens
       const pricePerOption = BigInt(Math.floor(askPriceUSDC * 1e6));
       console.log("Price per option (USDC wei):", pricePerOption.toString());
 
-      const sellAmountNeeded = (sellAmount * pricePerOption) / 1000000000000000000n;
-      console.log("USDC needed:", sellAmountNeeded.toString());
+      // Calculate USDC needed based on option decimals (6 decimals)
+      const usdcNeeded = (optionAmountWanted * pricePerOption) / BigInt(10 ** optionInfo.decimals);
+      console.log("USDC needed:", usdcNeeded.toString());
 
-      buyAmount = sellAmount;
+      buyAmount = optionAmountWanted;
       console.log("Option tokens to give:", buyAmount.toString());
 
       console.log("\nFINAL QUOTE:");
-      console.log("  User pays:", sellAmountNeeded.toString(), "USDC");
+      console.log("  User pays:", usdcNeeded.toString(), "USDC");
       console.log("  User gets:", buyAmount.toString(), "option tokens");
 
       const quoteResponse = {
@@ -258,10 +264,15 @@ client.onRFQ(async (rfq: RFQRequest) => {
         sell_tokens: [
           {
             token: sellToken.token,
-            amount: sellAmountNeeded.toString(),
+            amount: usdcNeeded.toString(),
           },
         ],
         expiry: Math.floor(Date.now() / 1000) + 30,
+        _originalRequest: {
+          ...rfq._originalRequest,
+          taker_address: rfq.taker_address,
+          receiver: rfq.receiver_address,
+        },
       };
 
       console.log("\n📤 SENDING QUOTE TO BEBOP:");
@@ -273,7 +284,10 @@ client.onRFQ(async (rfq: RFQRequest) => {
       const optionInfo = getOption(sellToken.token);
       console.log("\n=== USER SELLING OPTIONS ===");
       console.log("Option info:", optionInfo);
-      console.log("User wants to sell:", sellAmount.toString(), "option tokens");
+
+      // When user sells options, they specify taker_amount (option tokens they're selling)
+      const optionAmountSelling = BigInt(sellToken.amount);
+      console.log("User wants to sell:", optionAmountSelling.toString(), "option tokens");
 
       if (!optionInfo) {
         return {
@@ -287,15 +301,16 @@ client.onRFQ(async (rfq: RFQRequest) => {
       const bidPriceUSDC = parseFloat(optionInfo.bidPrice);
       console.log("Bid price (USDC):", bidPriceUSDC);
 
-      // Convert: bidPrice (dollars) * 1e6 (USDC decimals) per 1e18 option tokens
+      // Convert: bidPrice (dollars) * 1e6 (USDC decimals) per 1e6 option tokens
       const pricePerOption = BigInt(Math.floor(bidPriceUSDC * 1e6));
       console.log("Price per option (USDC wei):", pricePerOption.toString());
 
-      buyAmount = (sellAmount * pricePerOption) / 1000000000000000000n;
+      // Calculate USDC to give based on option decimals (6 decimals)
+      buyAmount = (optionAmountSelling * pricePerOption) / BigInt(10 ** optionInfo.decimals);
       console.log("USDC to give:", buyAmount.toString());
 
       console.log("\nFINAL QUOTE:");
-      console.log("  User gives:", sellAmount.toString(), "option tokens");
+      console.log("  User gives:", optionAmountSelling.toString(), "option tokens");
       console.log("  User gets:", buyAmount.toString(), "USDC");
 
       const quoteResponse = {
@@ -315,6 +330,11 @@ client.onRFQ(async (rfq: RFQRequest) => {
           },
         ],
         expiry: Math.floor(Date.now() / 1000) + 30,
+        _originalRequest: {
+          ...rfq._originalRequest,
+          taker_address: rfq.taker_address,
+          receiver: rfq.receiver_address,
+        },
       };
 
       console.log("\n📤 SENDING QUOTE TO BEBOP:");

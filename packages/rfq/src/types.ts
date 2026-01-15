@@ -15,9 +15,11 @@ export type Chain =
 
 export interface BebopConfig {
   chain: Chain;
+  chainId: number;        // Chain ID (e.g., 1 for Ethereum mainnet)
   marketmaker: string;    // Request from Bebop team
   authorization: string;  // Request from Bebop team
   makerAddress: string;   // Your wallet address for signing quotes
+  privateKey?: string;    // Private key for signing (optional - if not provided, quotes won't be signed)
 }
 
 // Incoming RFQ request from Bebop
@@ -30,6 +32,20 @@ export interface RFQRequest {
   sell_tokens: TokenAmount[];
   receiver_address?: string;
   expiry?: number;
+  // Original request metadata that needs to be echoed back in response
+  _originalRequest?: {
+    event_id?: string;
+    order_signing_type?: string;
+    order_type?: string;
+    onchain_partner_id?: number;
+    maker_nonce?: string;
+    commands?: string;
+    packed_commands?: string;
+    fee_native?: number;
+    is_aggregate_order?: boolean;
+    origin_address?: string;
+    expiry_type?: string;
+  };
 }
 
 export interface TokenAmount {
@@ -46,6 +62,22 @@ export interface QuoteResponse {
   sell_tokens: TokenAmount[];
   signature?: string;
   expiry: number;
+  // Pass through original request metadata
+  _originalRequest?: {
+    event_id?: string;
+    order_signing_type?: string;
+    order_type?: string;
+    onchain_partner_id?: number;
+    maker_nonce?: string;
+    commands?: string;
+    packed_commands?: string;
+    fee_native?: number;
+    is_aggregate_order?: boolean;
+    origin_address?: string;
+    taker_address?: string;
+    receiver?: string;
+    expiry_type?: string;
+  };
 }
 
 // Decline response

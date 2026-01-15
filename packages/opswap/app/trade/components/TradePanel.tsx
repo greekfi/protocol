@@ -4,7 +4,6 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
-import type { TradableOption } from "../hooks/useTradableOptions";
 
 // ERC20 ABI for approve, allowance, and decimals
 const ERC20_ABI = [
@@ -40,8 +39,8 @@ const ERC20_ABI = [
 // Bebop Router addresses by chain ID
 const BEBOP_ROUTER_ADDRESSES: Record<number, string> = {
   1: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Ethereum Mainnet
-  1301: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Unichain Sepolia (verify this)
-  11155111: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Sepolia
+  1301: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Unichain Sepolia (verify this)
+  11155111: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Sepolia
 };
 
 interface TradePanelProps {
@@ -120,9 +119,9 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     enabled: amount !== "" && parseFloat(amount) > 0,
   });
 
-  // Check current allowance for the token we're selling
-  const { data: currentAllowance, refetch: refetchAllowance } = useReadContract({
-    address: sellToken as `0x${string}`,
+  // Check USDC allowance
+  const { data: usdcAllowance, refetch: refetchUsdcAllowance } = useReadContract({
+    address: paymentToken as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
     args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
@@ -131,46 +130,89 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     },
   });
 
-  // Approval transaction
-  const { writeContract: approve, data: approvalHash, isPending: isApproving } = useWriteContract();
-  const { isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({
-    hash: approvalHash,
+  // Check option token allowance
+  const { data: optionAllowance, refetch: refetchOptionAllowance } = useReadContract({
+    address: optionToken as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
+    query: {
+      enabled: !!userAddress && !!bebopRouter,
+    },
   });
 
-  // Refetch allowance after successful approval
+  // USDC approval transaction
+  const { writeContract: approveUsdc, data: usdcApprovalHash, isPending: isApprovingUsdc } = useWriteContract();
+  const { isSuccess: isUsdcApprovalSuccess } = useWaitForTransactionReceipt({
+    hash: usdcApprovalHash,
+  });
+
+  // Option approval transaction
+  const { writeContract: approveOption, data: optionApprovalHash, isPending: isApprovingOption } = useWriteContract();
+  const { isSuccess: isOptionApprovalSuccess } = useWaitForTransactionReceipt({
+    hash: optionApprovalHash,
+  });
+
+  // Refetch allowances after successful approvals
   useEffect(() => {
-    if (isApprovalSuccess) {
-      refetchAllowance();
+    if (isUsdcApprovalSuccess) {
+      refetchUsdcAllowance();
     }
-  }, [isApprovalSuccess, refetchAllowance]);
+  }, [isUsdcApprovalSuccess, refetchUsdcAllowance]);
 
-  // Check if approval is needed
-  // When buying: approve USDC based on quote's sellAmount
-  // When selling: approve option tokens based on user's input amount
-  const sellAmountFromQuote = quote?.sellAmount ? BigInt(quote.sellAmount) : 0n;
-  const sellAmountFromInput = amount && !isBuy ? parseUnits(amount, sellTokenDecimals) : 0n;
-  const sellAmountBigInt = isBuy ? sellAmountFromQuote : sellAmountFromInput;
+  useEffect(() => {
+    if (isOptionApprovalSuccess) {
+      refetchOptionAllowance();
+    }
+  }, [isOptionApprovalSuccess, refetchOptionAllowance]);
 
-  const needsApproval = Boolean(
+  // Check if USDC approval is needed (when buying options)
+  const usdcNeededAmount = isBuy && quote?.sellAmount ? BigInt(quote.sellAmount) : 0n;
+  const needsUsdcApproval = Boolean(
     bebopRouter &&
-    currentAllowance !== undefined &&
-    sellAmountBigInt > 0n &&
-    currentAllowance < sellAmountBigInt
+    usdcAllowance !== undefined &&
+    usdcNeededAmount > 0n &&
+    usdcAllowance < usdcNeededAmount
   );
 
-  // Handle approval
-  const handleApprove = async () => {
-    if (!bebopRouter || sellAmountBigInt === 0n) return;
+  // Check if option approval is needed (when selling options)
+  const optionNeededAmount = !isBuy && amount ? parseUnits(amount, sellTokenDecimals) : 0n;
+  const needsOptionApproval = Boolean(
+    bebopRouter &&
+    optionAllowance !== undefined &&
+    optionNeededAmount > 0n &&
+    optionAllowance < optionNeededAmount
+  );
+
+  // Handle USDC approval (approve max amount for convenience)
+  const handleApproveUsdc = async () => {
+    if (!bebopRouter) return;
 
     try {
-      approve({
-        address: sellToken as `0x${string}`,
+      approveUsdc({
+        address: paymentToken as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [bebopRouter as `0x${string}`, sellAmountBigInt],
+        args: [bebopRouter as `0x${string}`, BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")], // max uint256
       });
     } catch (err) {
-      console.error("Approval failed:", err);
+      console.error("USDC approval failed:", err);
+    }
+  };
+
+  // Handle option token approval (approve max amount for convenience)
+  const handleApproveOption = async () => {
+    if (!bebopRouter) return;
+
+    try {
+      approveOption({
+        address: optionToken as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [bebopRouter as `0x${string}`, BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")], // max uint256
+      });
+    } catch (err) {
+      console.error("Option approval failed:", err);
     }
   };
 
@@ -268,22 +310,23 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
         />
       </div>
 
-      {/* Token Approval Section */}
-      <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">Token Allowance</h3>
-        <div className="space-y-3">
-          {!bebopRouter ? (
-            <div className="p-3 bg-red-900/20 rounded border border-red-700">
-              <div className="text-red-300 text-sm">
-                Bebop router not available for chain {chainId}
-              </div>
-            </div>
-          ) : (
-            <>
+      {/* Token Approval Sections */}
+      {!bebopRouter ? (
+        <div className="mb-4 p-4 bg-red-900/20 rounded-lg border border-red-700">
+          <div className="text-red-300 text-sm">
+            Bebop router not available for chain {chainId}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-4 space-y-3">
+          {/* USDC Approval */}
+          <div className="p-4 bg-gray-900 rounded-lg border border-gray-700">
+            <h3 className="text-sm font-medium text-gray-300 mb-3">USDC Allowance</h3>
+            <div className="space-y-3">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-400">Current Allowance:</span>
                 <span className="text-blue-300 font-mono">
-                  {currentAllowance !== undefined ? formatUnits(currentAllowance, sellTokenDecimals) : "Loading..."}
+                  {usdcAllowance !== undefined ? formatUnits(usdcAllowance, 6) : "Loading..."}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -293,30 +336,70 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
                 </span>
               </div>
               <button
-                onClick={handleApprove}
-                disabled={isApproving}
+                onClick={handleApproveUsdc}
+                disabled={isApprovingUsdc}
                 className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors ${
-                  isApproving
+                  isApprovingUsdc
                     ? "bg-gray-800 text-gray-500 cursor-not-allowed"
                     : "bg-blue-500 hover:bg-blue-600 text-white"
                 }`}
               >
-                {isApproving ? "Approving..." : "Approve Spending"}
+                {isApprovingUsdc ? "Approving..." : "Approve USDC"}
               </button>
-            </>
-          )}
-          {isApprovalSuccess && (
-            <div className="p-3 bg-green-900/20 rounded border border-green-700">
-              <div className="text-green-300 text-sm">Approval successful!</div>
-              {approvalHash && (
-                <div className="mt-1 text-xs text-gray-400 break-all">
-                  Tx: {approvalHash}
+              {isUsdcApprovalSuccess && (
+                <div className="p-3 bg-green-900/20 rounded border border-green-700">
+                  <div className="text-green-300 text-sm">USDC approval successful!</div>
+                  {usdcApprovalHash && (
+                    <div className="mt-1 text-xs text-gray-400 break-all">
+                      Tx: {usdcApprovalHash}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Option Token Approval */}
+          <div className="p-4 bg-gray-900 rounded-lg border border-gray-700">
+            <h3 className="text-sm font-medium text-gray-300 mb-3">Option Token Allowance</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Current Allowance:</span>
+                <span className="text-blue-300 font-mono">
+                  {optionAllowance !== undefined ? formatUnits(optionAllowance, buyTokenDecimals) : "Loading..."}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Bebop Router:</span>
+                <span className="text-blue-300 font-mono text-xs">
+                  {bebopRouter.slice(0, 6)}...{bebopRouter.slice(-4)}
+                </span>
+              </div>
+              <button
+                onClick={handleApproveOption}
+                disabled={isApprovingOption}
+                className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors ${
+                  isApprovingOption
+                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                }`}
+              >
+                {isApprovingOption ? "Approving..." : "Approve Option Token"}
+              </button>
+              {isOptionApprovalSuccess && (
+                <div className="p-3 bg-green-900/20 rounded border border-green-700">
+                  <div className="text-green-300 text-sm">Option approval successful!</div>
+                  {optionApprovalHash && (
+                    <div className="mt-1 text-xs text-gray-400 break-all">
+                      Tx: {optionApprovalHash}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Quote Display */}
       {quoteLoading && (
@@ -398,9 +481,9 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       {/* Execute Button */}
       <button
         onClick={handleExecuteTrade}
-        disabled={!quote || status === "pending" || status === "preparing" || needsApproval}
+        disabled={!quote || status === "pending" || status === "preparing" || (isBuy ? needsUsdcApproval : needsOptionApproval)}
         className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-          !quote || status === "pending" || status === "preparing" || needsApproval
+          !quote || status === "pending" || status === "preparing" || (isBuy ? needsUsdcApproval : needsOptionApproval)
             ? "bg-gray-800 text-gray-500 cursor-not-allowed"
             : isBuy
               ? "bg-green-500 hover:bg-green-600 text-white"
@@ -409,7 +492,7 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       >
         {status === "pending" || status === "preparing"
           ? "Processing..."
-          : needsApproval
+          : (isBuy ? needsUsdcApproval : needsOptionApproval)
             ? "Approval Required"
             : isBuy
               ? "Buy Option"
