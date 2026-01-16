@@ -150,13 +150,16 @@ function sendPricingUpdate() {
       const bidPrice = parseFloat(option.bidPrice);
 
       // Flatten bids/asks like Python: [price, amount, price, amount, ...]
+      // Amount in whole tokens (not wei)
+      const liquidityAmount = 10000.0;
+
       levelInfo.bids = [];
       levelInfo.bids.push(bidPrice);
-      levelInfo.bids.push(1000.0);
+      levelInfo.bids.push(liquidityAmount);
 
       levelInfo.asks = [];
       levelInfo.asks.push(askPrice);
-      levelInfo.asks.push(1000.0);
+      levelInfo.asks.push(liquidityAmount);
 
       levelsSchema.msg.levels.push(levelInfo);
     }
