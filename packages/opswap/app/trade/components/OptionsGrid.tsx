@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTradableOptions, type TradableOption } from "../hooks/useTradableOptions";
+import { PriceCell } from "./PriceCell";
 import { formatUnits } from "viem";
 
 interface OptionsGridProps {
@@ -153,21 +154,3 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
   );
 }
 
-interface PriceCellProps {
-  option: TradableOption;
-  label: string;
-  onSelect: (option: TradableOption) => void;
-}
-
-function PriceCell({ option, label, onSelect }: PriceCellProps) {
-  // For now, just show a placeholder. The actual pricing will be fetched when user selects
-  // We could fetch all prices here but that would be a lot of API calls
-  return (
-    <button
-      onClick={() => onSelect(option)}
-      className="px-2 py-1 rounded bg-gray-900 hover:bg-blue-900 border border-gray-700 hover:border-blue-500 text-blue-300 transition-colors text-xs"
-    >
-      {label}: Quote
-    </button>
-  );
-}
