@@ -2146,6 +2146,26 @@ const foundryContracts = {
       },
       {
         type: "function",
+        name: "isApprovedForAll",
+        inputs: [
+          {
+            name: "owner",
+            type: "address",
+          },
+          {
+            name: "operator",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
         name: "isBlocked",
         inputs: [
           {
@@ -2166,6 +2186,22 @@ const foundryContracts = {
         outputs: [
           {
             type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "options",
+        inputs: [
+          {
+            name: "",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
           },
         ],
         stateMutability: "view",
@@ -2214,6 +2250,21 @@ const foundryContracts = {
       {
         type: "function",
         name: "renounceOwnership",
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "setApprovalForAll",
+        inputs: [
+          {
+            name: "operator",
+            type: "address",
+          },
+          {
+            name: "approved",
+            type: "bool",
+          },
+        ],
         stateMutability: "nonpayable",
       },
       {
@@ -2281,6 +2332,26 @@ const foundryContracts = {
           },
         ],
         stateMutability: "payable",
+      },
+      {
+        type: "event",
+        name: "ApprovalForAll",
+        inputs: [
+          {
+            name: "owner",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "operator",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "approved",
+            type: "bool",
+          },
+        ],
       },
       {
         type: "event",

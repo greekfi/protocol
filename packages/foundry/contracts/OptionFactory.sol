@@ -67,17 +67,25 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     event TokenBlocked(address token, bool blocked);
     event FeeUpdated(uint64 oldFee, uint64 newFee);
     event TemplateUpdated();
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     // ============ STORAGE MAPPINGS ============
 
     /// @notice Tracks valid redemption contracts for security in transferFrom()
     mapping(address => bool) private redemptions;
 
+    /// @notice Tracks valid option contracts created by this factory
+    mapping(address => bool) public options;
+
     /// @notice Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
 
     /// @notice Allowances mapping for token transfers; token => owner => amount
     mapping(address => mapping(address => uint256)) private _allowances;
+
+    /// @notice Universal operator approvals for option token transfers; owner => operator => approved
+    /// @dev When approved, operator can transfer ANY option token created by this factory on behalf of owner
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // ============ CONSTRUCTOR & INITIALIZER ============
 
@@ -140,6 +148,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         redemption.init(collateral, consideration, expirationDate, strike, isPut, option_, address(this), fee);
         option.init(redemption_, msg.sender, fee);
         redemptions[redemption_] = true;
+        options[option_] = true;
 
         emit OptionCreated(collateral, consideration, expirationDate, strike, isPut, option_, redemption_);
         return option_;
@@ -202,6 +211,32 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     function approve(address token, uint256 amount) public {
         if (token == address(0)) revert InvalidAddress();
         _allowances[token][msg.sender] = amount;
+    }
+
+    // ============ UNIVERSAL OPERATOR APPROVAL FUNCTIONS ============
+
+    /**
+     * @notice Sets or revokes universal approval for an operator to transfer ANY option token on behalf of the caller
+     * @dev Similar to ERC-1155's setApprovalForAll. Once approved, the operator can call transferFrom
+     *      on any Option contract created by this factory without needing individual ERC20 approvals.
+     * @param operator The address to grant or revoke approval for
+     * @param approved True to approve, false to revoke
+     */
+    function setApprovalForAll(address operator, bool approved) external {
+        if (operator == address(0)) revert InvalidAddress();
+        if (operator == msg.sender) revert InvalidAddress(); // Can't approve self
+        _operatorApprovals[msg.sender][operator] = approved;
+        emit ApprovalForAll(msg.sender, operator, approved);
+    }
+
+    /**
+     * @notice Checks if an operator is approved to transfer all option tokens on behalf of an owner
+     * @param owner The address that owns the tokens
+     * @param operator The address to check approval for
+     * @return True if operator is approved for all option transfers
+     */
+    function isApprovedForAll(address owner, address operator) external view returns (bool) {
+        return _operatorApprovals[owner][operator];
     }
 
     // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============

@@ -257,7 +257,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         // Defense-in-depth: verify no fee-on-transfer despite factory blocklist
         uint256 balanceBefore = collateral.balanceOf(address(this));
 
-            // forge-lint: disable-next-line(unsafe-typecast)
+        // forge-lint: disable-next-line(unsafe-typecast)
         _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
 
         // Verify full amount received (costs ~3.2k gas but provides important safety)
@@ -564,7 +564,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata collateralMetadata = IERC20Metadata(address(collateral));
         return TokenData({
-            address_:address(collateral),
+            address_: address(collateral),
             name: collateralMetadata.name(),
             symbol: collateralMetadata.symbol(),
             decimals: collateralMetadata.decimals()
@@ -579,7 +579,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata considerationMetadata = IERC20Metadata(address(consideration));
         return TokenData({
-            address_:address(consideration),
+            address_: address(consideration),
             name: considerationMetadata.name(),
             symbol: considerationMetadata.symbol(),
             decimals: considerationMetadata.decimals()

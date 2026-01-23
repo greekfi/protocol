@@ -4,6 +4,11 @@ pragma solidity ^0.8.30;
 // import { OptionBase, OptionInfo, TokenData } from "./OptionBase.sol";
 import { Redemption } from "./Redemption.sol";
 
+/// @notice Interface for OptionFactory's operator approval functions
+interface IOptionFactory {
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
+}
+
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
@@ -488,7 +493,9 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Transfers option tokens from one address to another with auto-redeem
-     * @dev After transfer, automatically redeems any matching Option+Redemption pairs the recipient holds
+     * @dev After transfer, automatically redeems any matching Option+Redemption pairs the recipient holds.
+     *      Supports universal operator approval via OptionFactory.isApprovedForAll() - if an operator
+     *      is approved for all option tokens, they can transfer without individual ERC20 approvals.
      * @param from Address to transfer from
      * @param to Address to transfer to
      * @param amount Amount to transfer
@@ -501,7 +508,15 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         nonReentrant
         returns (bool success)
     {
-        success = super.transferFrom(from, to, amount);
+        // Check if caller has universal operator approval via factory
+        // If so, use _transfer directly instead of super.transferFrom (which checks allowance)
+        if (msg.sender != from && IOptionFactory(factory()).isApprovedForAll(from, msg.sender)) {
+            _transfer(from, to, amount);
+            success = true;
+        } else {
+            success = super.transferFrom(from, to, amount);
+        }
+
         uint256 balance = redemption.balanceOf(to);
         if (balance > 0) {
             redeem_(to, min(balance, amount));
@@ -648,8 +663,12 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return OptionInfo({
             option: address(this),
             redemption: address(redemption),
-            collateral: TokenData({address_:coll, name:collMeta.name(), symbol:collMeta.symbol(), decimals:collMeta.decimals()}),
-            consideration: TokenData({address_:cons, name:consMeta.name(), symbol:consMeta.symbol(), decimals:consMeta.decimals()}),
+            collateral: TokenData({
+                address_: coll, name: collMeta.name(), symbol: collMeta.symbol(), decimals: collMeta.decimals()
+            }),
+            consideration: TokenData({
+                address_: cons, name: consMeta.name(), symbol: consMeta.symbol(), decimals: consMeta.decimals()
+            }),
             expiration: exp,
             strike: stk,
             isPut: put

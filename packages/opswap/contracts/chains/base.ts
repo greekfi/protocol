@@ -6,7 +6,7 @@ const baseContracts = {
   chainId: 8453,
   deploymentBlock: 39844173,
   StableToken: {
-    address: "0x5513fdc19ad4347f4257e7a158c03f15ded85cca",
+    address: "0x26fac1a59dc80e4b28609fb0da74b3d20e5c8fa4",
     abi: [
       {
         type: "constructor",
@@ -247,7 +247,7 @@ const baseContracts = {
     inheritedFunctions: {},
   },
   ShakyToken: {
-    address: "0x3cc5446122ed971bdb8cd2b0977211d9ce45c6c9",
+    address: "0xbb55b41a791dcc53aa56673f50de19c9da5ab52c",
     abi: [
       {
         type: "constructor",
@@ -488,7 +488,7 @@ const baseContracts = {
     inheritedFunctions: {},
   },
   Redemption: {
-    address: "0x7091f25428ff8576a27b288e0a8de992e8f23286",
+    address: "0xb9584b11d896ea2c51c5a21a87619963422417f8",
     abi: [
       {
         type: "constructor",
@@ -1266,7 +1266,7 @@ const baseContracts = {
     inheritedFunctions: {},
   },
   Option: {
-    address: "0xa7cea9323313ab0c10af19afe9a186040cb6bc29",
+    address: "0x56755352ffb113547be2f5deaa8f05c2511eb5e4",
     abi: [
       {
         type: "constructor",
@@ -1920,7 +1920,7 @@ const baseContracts = {
     inheritedFunctions: {},
   },
   OptionFactory: {
-    address: "0xfd6f39e90cfe55a5f81b5c164f2f8339771757dd",
+    address: "0xb9e0c585296541d2c21a5a17d32727beb8650fea",
     abi: [
       {
         type: "constructor",
@@ -2146,6 +2146,26 @@ const baseContracts = {
       },
       {
         type: "function",
+        name: "isApprovedForAll",
+        inputs: [
+          {
+            name: "owner",
+            type: "address",
+          },
+          {
+            name: "operator",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
         name: "isBlocked",
         inputs: [
           {
@@ -2166,6 +2186,22 @@ const baseContracts = {
         outputs: [
           {
             type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "options",
+        inputs: [
+          {
+            name: "",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
           },
         ],
         stateMutability: "view",
@@ -2214,6 +2250,21 @@ const baseContracts = {
       {
         type: "function",
         name: "renounceOwnership",
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "setApprovalForAll",
+        inputs: [
+          {
+            name: "operator",
+            type: "address",
+          },
+          {
+            name: "approved",
+            type: "bool",
+          },
+        ],
         stateMutability: "nonpayable",
       },
       {
@@ -2281,6 +2332,26 @@ const baseContracts = {
           },
         ],
         stateMutability: "payable",
+      },
+      {
+        type: "event",
+        name: "ApprovalForAll",
+        inputs: [
+          {
+            name: "owner",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "operator",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "approved",
+            type: "bool",
+          },
+        ],
       },
       {
         type: "event",
