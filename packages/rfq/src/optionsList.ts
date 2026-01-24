@@ -20,6 +20,31 @@ export const OPTIONS_LIST: OptionWithPrice[] = [
   },
 
   // WETH Calls
+  {
+    address: "0xAb04Bdab9B5Dc0aD04d4809D500C19C822272b84",
+    type: "CALL",
+    bidPrice: "7.5",
+    askPrice: "7.6",
+    decimals: 18,
+    quoteDecimals: 18,
+  },
+  {
+    address: "0xF1Ac5401A7e3bfa43bB7C7fd35d2E5C5b2ef26e3",
+    type: "CALL",
+    bidPrice: "104.5",
+    askPrice: "105.6",
+    decimals: 18,
+    quoteDecimals: 18,
+  },
+  {
+    address: "0x93a8f0E3b2103F2DeeA8EcefD86701b41b7810eA",
+    type: "CALL",
+    bidPrice: "307.5",
+    askPrice: "308.6",
+    decimals: 18,
+    quoteDecimals: 18,
+  },
+  
 ];
 
 // Create a map for quick lookup

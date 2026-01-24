@@ -91,3 +91,36 @@ export type MarketMakerMessage =
   | QuoteResponse
   | DeclineResponse
   | HeartbeatMessage;
+
+// Batch Pricing Request (trader to aggregator)
+export interface BatchPricingRequest {
+  pairs: Array<{
+    tokenA: string;  // First token in the pair
+    tokenB: string;  // Second token in the pair
+  }>;
+  taker_address?: string;
+}
+
+// Bidirectional Price for a single pair
+export interface BidirectionalPrice {
+  tokenA: string;
+  tokenB: string;
+  // A -> B direction (selling A to get B)
+  sellA: {
+    price: string | null;       // Price per 1 token A in terms of B
+    maxInput: string | null;    // Max amount of A that can be sold
+    maxOutput: string | null;   // Max amount of B that can be received
+  };
+  // B -> A direction (selling B to get A)
+  sellB: {
+    price: string | null;       // Price per 1 token B in terms of A
+    maxInput: string | null;    // Max amount of B that can be sold
+    maxOutput: string | null;   // Max amount of A that can be received
+  };
+}
+
+// Batch Pricing Response
+export interface BatchPricingResponse {
+  pairs: BidirectionalPrice[];
+  timestamp: number;
+}

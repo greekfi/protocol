@@ -114,8 +114,8 @@ export function PriceCell({ option, label, onSelect }: PriceCellProps) {
         return { bid: null, ask: null };
       }
 
-      // Quote for 0.1 option using fetched decimals
-      const quoteAmount = parseUnits("0.1", optionDecimals).toString();
+      // Quote for 0.005 option using fetched decimals
+      const quoteAmount = parseUnits("0.005", optionDecimals).toString();
 
       // Bid: sell 0.1 option → get USDC (user sells option)
       const bidQuote = await fetchQuote(
@@ -147,21 +147,21 @@ export function PriceCell({ option, label, onSelect }: PriceCellProps) {
         return key ? tokens[key] : null;
       };
 
-      // Bid = USDC received from buyTokens, multiply by 10 for price per 1 option
+      // Bid = USDC received from buyTokens, multiply by 200 for price per 1 option (1/0.005 = 200)
       const bidUsdcData = findTokenData(bidQuote?.buyTokens, usdcAddress);
       console.log("[PriceCell] bidUsdcData:", bidUsdcData, "usdcAddress:", usdcAddress);
       const bidRaw = bidUsdcData?.amount || null;
       const bidDecimals = bidUsdcData?.decimals || 6;
-      const bidPer01 = bidRaw ? parseFloat(formatUnits(BigInt(bidRaw), bidDecimals)) : null;
-      const bid = bidPer01 !== null ? (bidPer01 * 10).toFixed(4) : null;
+      const bidPer005 = bidRaw ? parseFloat(formatUnits(BigInt(bidRaw), bidDecimals)) : null;
+      const bid = bidPer005 !== null ? (bidPer005 * 200).toFixed(4) : null;
 
-      // Ask = USDC paid from sellTokens, multiply by 10 for price per 1 option
+      // Ask = USDC paid from sellTokens, multiply by 200 for price per 1 option (1/0.005 = 200)
       const askUsdcData = findTokenData(askQuote?.sellTokens, usdcAddress);
       console.log("[PriceCell] askUsdcData:", askUsdcData);
       const askRaw = askUsdcData?.amount || null;
       const askDecimals = askUsdcData?.decimals || 6;
-      const askPer01 = askRaw ? parseFloat(formatUnits(BigInt(askRaw), askDecimals)) : null;
-      const ask = askPer01 !== null ? (askPer01 * 10).toFixed(4) : null;
+      const askPer005 = askRaw ? parseFloat(formatUnits(BigInt(askRaw), askDecimals)) : null;
+      const ask = askPer005 !== null ? (askPer005 * 200).toFixed(4) : null;
 
       console.log("[PriceCell] Final prices - bid:", bid, "ask:", ask);
       return { bid, ask };

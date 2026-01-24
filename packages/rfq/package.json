@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec 'ts-node src/index.ts'",
     "dev:aggregator": "nodemon --watch src --ext ts --exec 'ts-node src/index-aggregator.ts'",
+    "dev:allpairs": "nodemon --watch src --ext ts --exec 'ts-node src/allPairsRfq.ts'",
     "start": "ts-node src/index.ts",
     "start:aggregator": "ts-node src/index-aggregator.ts",
+    "start:allpairs": "ts-node src/allPairsRfq.ts",
     "build": "tsc",
     "lint": "eslint src/"
   },
