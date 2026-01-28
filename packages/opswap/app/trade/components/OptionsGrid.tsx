@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTradableOptions, type TradableOption } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
+import { usePricingStream } from "../../hooks/usePricingStream";
 
 interface OptionsGridProps {
   selectedToken: string;
@@ -14,6 +15,11 @@ interface GridCell {
 
 export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps) {
   const { data: options, isLoading } = useTradableOptions(selectedToken);
+
+  // Connect to pricing stream only when we have options
+  const { getPrice, isConnected } = usePricingStream({
+    enabled: !!options && options.length > 0,
+  });
 
   // Group options by strike and expiration
   const { strikes, expirations, grid } = useMemo(() => {
@@ -94,7 +100,7 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
     <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg overflow-x-auto">
       <h2 className="text-xl font-light text-blue-300 mb-4">Options Chain</h2>
       <div className="text-sm text-gray-400 mb-4">
-        Click on a price to trade. Prices refresh every 15 seconds.
+        Click on a price to trade. {isConnected ? "🟢 Live prices" : "⚪ Connecting..."}
       </div>
 
       <table className="w-full border-collapse text-sm">
@@ -132,10 +138,10 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
                       {cell ? (
                         <div className="space-y-1">
                           {cell.call && (
-                            <PriceCell option={cell.call} label="C" onSelect={onSelectOption} />
+                            <PriceCell option={cell.call} label="C" onSelect={onSelectOption} getPrice={getPrice} />
                           )}
                           {cell.put && (
-                            <PriceCell option={cell.put} label="P" onSelect={onSelectOption} />
+                            <PriceCell option={cell.put} label="P" onSelect={onSelectOption} getPrice={getPrice} />
                           )}
                         </div>
                       ) : (
@@ -157,17 +163,28 @@ interface PriceCellProps {
   option: TradableOption;
   label: string;
   onSelect: (option: TradableOption) => void;
+  getPrice: (tokenAddress: string) => { bids: [number, number][]; asks: [number, number][] } | undefined;
 }
 
-function PriceCell({ option, label, onSelect }: PriceCellProps) {
-  // For now, just show a placeholder. The actual pricing will be fetched when user selects
-  // We could fetch all prices here but that would be a lot of API calls
+function PriceCell({ option, label, onSelect, getPrice }: PriceCellProps) {
+  // Get option price using the option token address
+  const priceData = getPrice(option.optionAddress);
+
+  // Show best bid/ask from the spot price
+  const bestBid = priceData?.bids[0]?.[0];
+  const bestAsk = priceData?.asks[0]?.[0];
+
+  const priceDisplay = bestBid && bestAsk
+    ? `${bestBid.toFixed(2)}/${bestAsk.toFixed(2)}`
+    : "—";
+
   return (
     <button
       onClick={() => onSelect(option)}
       className="px-2 py-1 rounded bg-gray-900 hover:bg-blue-900 border border-gray-700 hover:border-blue-500 text-blue-300 transition-colors text-xs"
+      title={`Spot: ${priceDisplay}`}
     >
-      {label}: Quote
+      {label}: {priceDisplay}
     </button>
   );
 }

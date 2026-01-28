@@ -10160,6 +10160,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pricing@workspace:packages/pricing":
+  version: 0.0.0-use.local
+  resolution: "pricing@workspace:packages/pricing"
+  dependencies:
+    "@types/node": "npm:^22.10.2"
+    "@types/ws": "npm:^8.5.13"
+    dotenv: "npm:^16.4.5"
+    nodemon: "npm:^3.1.9"
+    protobufjs: "npm:^8.0.0"
+    protobufjs-cli: "npm:^2.0.0"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.7.2"
+    ws: "npm:^8.19.0"
+  languageName: unknown
+  linkType: soft
+
 "proc-log@npm:^5.0.0":
   version: 5.0.0
   resolution: "proc-log@npm:5.0.0"

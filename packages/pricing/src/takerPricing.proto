@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package bebop;
+
+// Bebop taker pricing feed message format
+// Used for consuming real-time price updates from Bebop PMM RFQ
+
+message PriceUpdate {
+  optional bytes base = 1;            // Base token address (raw bytes)
+  optional bytes quote = 2;           // Quote token address (raw bytes)
+  optional uint64 last_update_ts = 3; // Unix timestamp of last update
+  repeated float bids = 4 [packed=true];  // Bid levels: [price, quantity, price, quantity, ...]
+  repeated float asks = 5 [packed=true];  // Ask levels: [price, quantity, price, quantity, ...]
+}
+
+message BebopPricingUpdate {
+  repeated PriceUpdate pairs = 1;     // Array of price updates for different pairs
+}
