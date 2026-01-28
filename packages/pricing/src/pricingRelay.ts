@@ -133,12 +133,20 @@ export class PricingRelay extends EventEmitter {
         const pairKey = `${base}/${quote}`;
         const cacheKey = `${chainId}:${pairKey}`;
 
+        const bids = toPriceLevels(pair.bids || []);
+        const asks = toPriceLevels(pair.asks || []);
+
+        // Debug: log when we get option prices
+        if (base.toLowerCase().includes("2b8280") || base.toLowerCase().includes("a59fee")) {
+          console.log(`🔍 Option price received: ${base.slice(0,10)}... bids=${JSON.stringify(bids)} asks=${JSON.stringify(asks)}`);
+        }
+
         const priceData: PriceData = {
           base,
           quote,
           lastUpdateTs: Number(pair.lastUpdateTs || 0),
-          bids: toPriceLevels(pair.bids || []),
-          asks: toPriceLevels(pair.asks || []),
+          bids,
+          asks,
         };
 
         // Update cache

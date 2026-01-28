@@ -1,5 +1,12 @@
 import WebSocket, { WebSocketServer } from "ws";
 import { PricingRelay, PriceUpdateEvent, TAKER_CHAINS } from "./pricingRelay";
+import { isOptionToken } from "./optionTokens";
+
+// Check if a pair contains one of our option tokens
+function isPairForOptionToken(pair: string): boolean {
+  const [base, quote] = pair.toLowerCase().split("/");
+  return isOptionToken(base) || isOptionToken(quote);
+}
 
 // Client subscription state
 interface ClientSubscription {
@@ -202,6 +209,11 @@ export class PricingServer {
       const [chainIdStr, pair] = cacheKey.split(":");
       const chainId = parseInt(chainIdStr);
 
+      // Filter: only send prices for our option tokens
+      if (!isPairForOptionToken(pair)) {
+        continue;
+      }
+
       // Check if client is subscribed to this chain
       if (subscription.chains.size > 0 && !subscription.chains.has(chainId)) {
         continue;
@@ -233,6 +245,11 @@ export class PricingServer {
   }
 
   private broadcastPrice(event: PriceUpdateEvent): void {
+    // Filter: only broadcast prices for our option tokens
+    if (!isPairForOptionToken(event.pair)) {
+      return;
+    }
+
     const message: PriceMessage = {
       type: "price",
       chainId: event.chainId,

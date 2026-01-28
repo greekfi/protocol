@@ -103,10 +103,10 @@ function connectPricingWebSocket() {
 }
 
 function startPricingSending() {
-  // Send pricing updates every 5 seconds (well above the 0.4s minimum from Bebop)
+  // Send pricing updates every 10 seconds
   pricingInterval = setInterval(() => {
     sendPricingUpdate();
-  }, 5000);
+  }, 10000);
 
   // Send initial pricing update after a short delay
   setTimeout(() => {
@@ -149,6 +149,8 @@ function sendPricingUpdate() {
       const askPrice = getOptionPrice(option.address);
       const bidPrice = parseFloat(option.bidPrice);
 
+      console.log(`   📊 ${option.address.slice(0,10)}... bid=${bidPrice} ask=${askPrice}`);
+
       // Flatten bids/asks like Python: [price, amount, price, amount, ...]
       levelInfo.bids = [];
       levelInfo.bids.push(bidPrice);
@@ -165,7 +167,6 @@ function sendPricingUpdate() {
     const buffer = LevelsSchema.encode(levelsSchema).finish();
 
     console.log("📤 Sending Protobuf pricing update (", buffer.length, "bytes )");
-    console.log(`   ${OPTIONS_LIST.length} levels, bids/asks: $${parseFloat(OPTIONS_LIST[0].bidPrice)}/$${parseFloat(OPTIONS_LIST[0].askPrice)}`);
 
     pricingWs.send(buffer);
   } catch (error) {

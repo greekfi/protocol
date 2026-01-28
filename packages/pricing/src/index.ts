@@ -37,15 +37,6 @@ pricingRelay.on("disconnected", ({ chain }) => {
   console.log(`❌ Disconnected from ${chain} pricing feed`);
 });
 
-// Log price updates (limited to avoid spam)
-let priceCount = 0;
-pricingRelay.on("price", (event) => {
-  priceCount++;
-  if (priceCount % 100 === 1) {
-    console.log(`💰 Received ${priceCount} prices. Latest: ${event.chain} ${event.pair.slice(0, 20)}...`);
-  }
-});
-
 // Start the relay and server
 pricingRelay.start();
 const server = startPricingServer(pricingRelay, PRICING_WS_PORT);
