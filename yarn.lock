@@ -10715,6 +10715,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rfq-direct@workspace:packages/rfq-direct":
+  version: 0.0.0-use.local
+  resolution: "rfq-direct@workspace:packages/rfq-direct"
+  dependencies:
+    "@types/cors": "npm:^2"
+    "@types/express": "npm:^5"
+    "@types/node": "npm:^22.10.2"
+    "@types/ws": "npm:^8.5.13"
+    cors: "npm:^2.8.5"
+    dotenv: "npm:^16.4.5"
+    express: "npm:^5.2.1"
+    nodemon: "npm:^3.1.9"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.7.2"
+    viem: "npm:^2.44.1"
+    ws: "npm:^8.19.0"
+  languageName: unknown
+  linkType: soft
+
 "rfq@workspace:packages/rfq":
   version: 0.0.0-use.local
   resolution: "rfq@workspace:packages/rfq"
