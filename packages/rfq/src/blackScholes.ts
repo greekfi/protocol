@@ -81,11 +81,8 @@ export function calculateBidAsk(
     isPut,
   });
 
-  // For puts: 1 option token = right to sell (1/strike) of underlying
-  // So put price per token = BS price / strike
-  if (isPut && strike > 0) {
-    midPrice = midPrice / strike;
-  }
+  // CALLS (for 1 WETH): 1 token = 1 WETH exposure, price is direct
+  // PUTS (for 1 WETH): strike tokens = 1 WETH exposure, price shown is cost of that bundle
 
   // Apply spread around mid price
   const halfSpread = midPrice * spreadPercent / 2;

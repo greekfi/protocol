@@ -168,7 +168,7 @@ function sendPricingUpdate() {
 
       const { bid: bidPrice, ask: askPrice } = getOptionPrices(addr);
 
-      const type = metadata.isPut ? "PUT" : "CALL";
+      const type = metadata.isPut ? "PUT (for 1 WETH)" : "CALL (for 1 WETH)";
       console.log(`   📊 ${addr.slice(0,10)}... $${metadata.strike.toFixed(0)} ${type} bid=${bidPrice.toFixed(2)} ask=${askPrice.toFixed(2)}`);
 
       // Flatten bids/asks like Python: [price, amount, price, amount, ...]
@@ -421,7 +421,7 @@ async function initialize() {
     if (!metadata) continue;
 
     const { bid, ask } = getOptionPrices(addr);
-    const type = metadata.isPut ? "PUT" : "CALL";
+    const type = metadata.isPut ? "PUT (for 1 WETH)" : "CALL (for 1 WETH)";
     console.log(`  - ${addr.slice(0, 10)}... Strike: $${metadata.strike.toFixed(2)} ${type} bid: $${bid.toFixed(2)}, ask: $${ask.toFixed(2)}`);
 
     loggedCount++;
