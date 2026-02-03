@@ -72,7 +72,7 @@ export function calculateBidAsk(
   const now = Date.now() / 1000;
   const timeToExpiry = Math.max(0, (expirationTimestamp - now) / (365 * 24 * 60 * 60)); // Convert to years
 
-  const midPrice = blackScholesPrice({
+  let midPrice = blackScholesPrice({
     spot,
     strike,
     timeToExpiry,
@@ -80,6 +80,12 @@ export function calculateBidAsk(
     riskFreeRate,
     isPut,
   });
+
+  // For puts: 1 option token = right to sell (1/strike) of underlying
+  // So put price per token = BS price / strike
+  if (isPut && strike > 0) {
+    midPrice = midPrice / strike;
+  }
 
   // Apply spread around mid price
   const halfSpread = midPrice * spreadPercent / 2;

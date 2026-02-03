@@ -120,7 +120,13 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
     ]);
 
     // Strike is encoded with 18 decimals
-    const strikeNum = parseFloat(formatUnits(strike, 18));
+    let strikeNum = parseFloat(formatUnits(strike, 18));
+
+    // For puts, the contract stores strike as collateral/consideration (inverted)
+    // Normalize to consideration/collateral (same as calls) for Black-Scholes
+    if (isPut && strikeNum > 0) {
+      strikeNum = 1 / strikeNum;
+    }
 
     const metadata: OptionMetadata = {
       address: optionAddress.toLowerCase(),

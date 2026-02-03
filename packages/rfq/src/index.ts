@@ -4,11 +4,11 @@ import WebSocket from "ws";
 import { bebop } from "./pricing_pb";
 import { BebopClient } from "./client";
 import type { Chain, RFQRequest } from "./types";
-import { OPTIONS_LIST, isOptionToken, getOption } from "./optionsList";
+import { isOptionToken, getOption, OPTION_ADDRESSES } from "./optionsList";
 import { startAPIServer } from "./api";
 import { getUSDCAddress } from "./constants";
 import { calculateBidAsk } from "./blackScholes";
-import { fetchSpotPrice, getSpotPrice } from "./optionMetadata";
+import { fetchSpotPrice, getSpotPrice, fetchAllOptionMetadata, getOptionMetadata } from "./optionMetadata";
 
 // Configuration
 const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1; // Default to Ethereum mainnet
@@ -39,17 +39,17 @@ const USDC_ADDRESS = getUSDCAddress(CHAIN_ID);
 
 // Get option bid/ask prices using Black-Scholes
 function getOptionPrices(optionAddress: string): { bid: number; ask: number } {
-  const option = getOption(optionAddress);
-  if (!option) return { bid: 0, ask: 0 };
+  // Use real on-chain metadata instead of hardcoded fake data
+  const metadata = getOptionMetadata(optionAddress);
+  if (!metadata) return { bid: 0, ask: 0 };
 
   const spot = getSpotPrice();
-  const isPut = option.type === "PUT";
 
   const { bid, ask } = calculateBidAsk(
     spot,
-    option.strike,
-    option.expiration,
-    isPut,
+    metadata.strike,
+    metadata.expirationTimestamp,
+    metadata.isPut,
     1.0,  // 100% volatility
     0.05, // 5% risk-free rate
     0.02  // 2% spread
@@ -153,18 +153,23 @@ function sendPricingUpdate() {
     levelsSchema.msg.makerAddress = hexToBytes(MAKER_ADDRESS!);
     levelsSchema.msg.levels = [];
 
-    // Add levels for all options
-    for (const option of OPTIONS_LIST) {
+    // Add levels for options with valid metadata
+    for (const addr of OPTION_ADDRESSES) {
+      const metadata = getOptionMetadata(addr);
+      if (!metadata) continue; // Skip options without metadata
+
+      const option = getOption(addr); // For decimals
       const levelInfo = new LevelInfo();
 
-      levelInfo.baseAddress = hexToBytes(option.address);
-      levelInfo.baseDecimals = option.decimals;
+      levelInfo.baseAddress = hexToBytes(addr);
+      levelInfo.baseDecimals = option?.decimals ?? 6;
       levelInfo.quoteAddress = hexToBytes(USDC_ADDRESS);
-      levelInfo.quoteDecimals = option.quoteDecimals;
+      levelInfo.quoteDecimals = option?.quoteDecimals ?? 6;
 
-      const { bid: bidPrice, ask: askPrice } = getOptionPrices(option.address);
+      const { bid: bidPrice, ask: askPrice } = getOptionPrices(addr);
 
-      console.log(`   📊 ${option.address.slice(0,10)}... bid=${bidPrice.toFixed(2)} ask=${askPrice.toFixed(2)}`);
+      const type = metadata.isPut ? "PUT" : "CALL";
+      console.log(`   📊 ${addr.slice(0,10)}... $${metadata.strike.toFixed(0)} ${type} bid=${bidPrice.toFixed(2)} ask=${askPrice.toFixed(2)}`);
 
       // Flatten bids/asks like Python: [price, amount, price, amount, ...]
       levelInfo.bids = [];
@@ -396,21 +401,35 @@ process.on("SIGTERM", () => {
 
 // Initialize and start
 async function initialize() {
-  console.log(`Loaded ${OPTIONS_LIST.length} option contracts from static list`);
+  console.log(`Loaded ${OPTION_ADDRESSES.length} option contracts from static list`);
 
   // Fetch spot price first
   console.log("Fetching spot price...");
   await fetchSpotPrice();
   console.log(`Spot price: $${getSpotPrice()}`);
 
-  // Log options with Black-Scholes prices
+  // Fetch real on-chain metadata for all options
+  console.log("Fetching on-chain option metadata...");
+  await fetchAllOptionMetadata();
+  console.log("Metadata fetched for all options");
+
+  // Log options with Black-Scholes prices using real metadata
   console.log("\nOption prices (Black-Scholes, 100% vol):");
-  for (const opt of OPTIONS_LIST.slice(0, 10)) { // Show first 10
-    const { bid, ask } = getOptionPrices(opt.address);
-    console.log(`  - ${opt.address.slice(0, 10)}... Strike: $${opt.strike} ${opt.type} bid: $${bid.toFixed(2)}, ask: $${ask.toFixed(2)}`);
+  let loggedCount = 0;
+  for (const addr of OPTION_ADDRESSES) {
+    const metadata = getOptionMetadata(addr);
+    if (!metadata) continue;
+
+    const { bid, ask } = getOptionPrices(addr);
+    const type = metadata.isPut ? "PUT" : "CALL";
+    console.log(`  - ${addr.slice(0, 10)}... Strike: $${metadata.strike.toFixed(2)} ${type} bid: $${bid.toFixed(2)}, ask: $${ask.toFixed(2)}`);
+
+    loggedCount++;
+    if (loggedCount >= 10) break;
   }
-  if (OPTIONS_LIST.length > 10) {
-    console.log(`  ... and ${OPTIONS_LIST.length - 10} more options`);
+  const totalWithMetadata = OPTION_ADDRESSES.filter(a => getOptionMetadata(a)).length;
+  if (totalWithMetadata > 10) {
+    console.log(`  ... and ${totalWithMetadata - 10} more options with metadata`);
   }
 
   // Refresh spot price every 60 seconds
