@@ -72,7 +72,7 @@ export function calculateBidAsk(
   const now = Date.now() / 1000;
   const timeToExpiry = Math.max(0, (expirationTimestamp - now) / (365 * 24 * 60 * 60)); // Convert to years
 
-  let midPrice = blackScholesPrice({
+  const midPrice = blackScholesPrice({
     spot,
     strike,
     timeToExpiry,
@@ -86,8 +86,15 @@ export function calculateBidAsk(
 
   // Apply spread around mid price
   const halfSpread = midPrice * spreadPercent / 2;
-  const bid = Math.max(0.01, midPrice - halfSpread); // Minimum bid of $0.01
-  const ask = midPrice + halfSpread;
+  let bid = midPrice - halfSpread;
+  let ask = midPrice + halfSpread;
+
+  // Apply minimum price floor, ensuring ask >= bid
+  const minPrice = 0.001; // $0.001 minimum (puts can be very small)
+  if (bid < minPrice) {
+    bid = minPrice;
+    ask = Math.max(ask, minPrice * 1.02); // Ensure 2% spread minimum
+  }
 
   return { bid, ask };
 }

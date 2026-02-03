@@ -169,31 +169,51 @@ export function getOptionMetadata(address: string): OptionMetadata | undefined {
 
 // Fetch current ETH spot price from a simple source
 // In production, use Chainlink or similar oracle
-let cachedSpotPrice = 2500; // Default fallback
+let cachedSpotPrice = 2300; // Default fallback (update this!)
 let lastSpotFetch = 0;
 
 export async function fetchSpotPrice(): Promise<number> {
   const now = Date.now();
-  // Cache for 60 seconds
-  if (now - lastSpotFetch < 60000) {
+  // Cache for 30 seconds
+  if (now - lastSpotFetch < 30000 && lastSpotFetch > 0) {
     return cachedSpotPrice;
   }
 
+  // Try CoinGecko first
   try {
-    // Use CoinGecko API (free, no key needed for basic use)
     const response = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+      { signal: AbortSignal.timeout(5000) }
     );
     const data = await response.json();
     if (data.ethereum?.usd) {
       cachedSpotPrice = data.ethereum.usd;
       lastSpotFetch = now;
-      console.log(`Updated spot price: $${cachedSpotPrice}`);
+      console.log(`[CoinGecko] ETH spot price: $${cachedSpotPrice}`);
+      return cachedSpotPrice;
     }
   } catch (error) {
-    console.error("Failed to fetch spot price:", error);
+    console.error("[CoinGecko] Failed:", (error as Error).message);
   }
 
+  // Fallback to CoinCap
+  try {
+    const response = await fetch(
+      "https://api.coincap.io/v2/assets/ethereum",
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await response.json();
+    if (data.data?.priceUsd) {
+      cachedSpotPrice = parseFloat(data.data.priceUsd);
+      lastSpotFetch = now;
+      console.log(`[CoinCap] ETH spot price: $${cachedSpotPrice}`);
+      return cachedSpotPrice;
+    }
+  } catch (error) {
+    console.error("[CoinCap] Failed:", (error as Error).message);
+  }
+
+  console.warn(`⚠️  Using cached/default spot price: $${cachedSpotPrice}`);
   return cachedSpotPrice;
 }
 
