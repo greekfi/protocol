@@ -1,0 +1,16 @@
+{
+  "transactions": [
+    {
+      "rpc": "https://ethereum-rpc.publicnode.com"
+    },
+    {
+      "rpc": "https://ethereum-rpc.publicnode.com"
+    },
+    {
+      "rpc": "https://ethereum-rpc.publicnode.com"
+    },
+    {
+      "rpc": "https://ethereum-rpc.publicnode.com"
+    }
+  ]
+}
