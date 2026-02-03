@@ -756,6 +756,193 @@ yarn deploy:verify
 - Change frontend code → Next.js fast refresh → Instant preview
 - Change deployment script → Re-run `yarn deploy` → New addresses in frontend
 
+---
+
+## RFQ Market Maker Package (`packages/rfq/`)
+
+The RFQ (Request for Quote) package is a TypeScript market maker that connects to Bebop's RFQ system to provide liquidity for option tokens.
+
+### Package Structure
+
+```
+packages/rfq/src/
+├── index.ts           # Main entry point, WebSocket connections, RFQ handling
+├── blackScholes.ts    # Black-Scholes option pricing
+├── optionMetadata.ts  # Fetches real option data from chain
+├── optionsList.ts     # Static list of option token addresses
+├── client.ts          # Bebop WebSocket client
+├── api.ts             # HTTP API server for direct quotes
+├── constants.ts       # Chain-specific constants (USDC addresses)
+├── types.ts           # TypeScript interfaces
+└── pricing_pb.ts      # Protobuf definitions for Bebop pricing
+```
+
+### Running the RFQ Server
+
+```bash
+cd packages/rfq
+yarn dev  # or: npx ts-node src/index.ts
+```
+
+**Required environment variables** (in `.env`):
+```
+CHAIN_ID=1301              # Unichain Sepolia
+CHAIN=unichain             # For Bebop API
+RPC_URL=https://...        # RPC endpoint
+BEBOP_MARKETMAKER=xxx      # Bebop credentials
+BEBOP_AUTHORIZATION=xxx
+MAKER_ADDRESS=0x...        # Market maker wallet
+PRIVATE_KEY=0x...          # For signing (optional)
+```
+
+### Key Files
+
+#### `blackScholes.ts` - Option Pricing
+
+Implements Black-Scholes pricing with these key functions:
+
+```typescript
+// Core BS formula
+blackScholesPrice({ spot, strike, timeToExpiry, volatility, riskFreeRate, isPut }): number
+
+// Calculates bid/ask with spread
+calculateBidAsk(spot, strike, expirationTimestamp, isPut, volatility, riskFreeRate, spreadPercent): { bid, ask }
+```
+
+**Critical: Put price normalization**
+```typescript
+// For puts: 1 option token = right to sell (1/strike) of underlying
+// So put price per token = BS price / strike
+if (isPut && strike > 0) {
+  midPrice = midPrice / strike;
+}
+```
+
+#### `optionMetadata.ts` - On-Chain Data
+
+Fetches real option parameters from deployed contracts:
+
+```typescript
+interface OptionMetadata {
+  address: string;
+  redemptionAddress: string;
+  strike: number;              // Normalized to USD (inverted for puts)
+  expirationTimestamp: number; // Unix timestamp
+  isPut: boolean;
+  collateralAddress: string;
+}
+
+fetchAllOptionMetadata()     // Fetches metadata for all options in OPTION_ADDRESSES
+getOptionMetadata(address)   // Returns cached metadata
+fetchSpotPrice()             // Gets ETH price from CoinGecko
+getSpotPrice()               // Returns cached spot price
+```
+
+**Critical: Strike normalization for puts**
+```typescript
+// Contract stores put strikes inverted (WETH per USDC instead of USDC per WETH)
+if (isPut && strikeNum > 0) {
+  strikeNum = 1 / strikeNum;  // Convert to same format as calls
+}
+```
+
+#### `optionsList.ts` - Option Addresses
+
+Static list of deployed option token addresses:
+```typescript
+OPTION_ADDRESSES: string[]           // All option contract addresses
+isOptionToken(address): boolean      // Check if address is a known option
+getOption(address): OptionWithPrice  // Get option info (for decimals)
+```
+
+### Strike Price Encoding (Calls vs Puts)
+
+The protocol stores strikes differently for calls vs puts:
+
+| Type | Collateral | Consideration | Strike Encoding | Example |
+|------|------------|---------------|-----------------|---------|
+| Call | WETH | USDC | USDC per WETH | 2000 (pay 2000 USDC for 1 WETH) |
+| Put | USDC | WETH | WETH per USDC | 0.0005 (pay 0.0005 WETH for 1 USDC) |
+
+**For Black-Scholes, both need to be in "USDC per WETH" format**, so puts are inverted:
+- Raw put strike: `0.0005`
+- Normalized: `1 / 0.0005 = 2000`
+
+### Option Token Units
+
+**Call tokens**: 1 token = right to buy 1 WETH at strike price
+- BS price is correct as-is
+
+**Put tokens**: 1 token = right to sell (1/strike) WETH, receiving 1 USDC
+- This is 1/strike of a standard put
+- Price per token = BS price / strike
+
+Example with $2000 strike:
+- Standard put on 1 WETH worth $400 → put token worth $400/2000 = $0.20
+
+---
+
+## Trading Frontend (`packages/opswap/`)
+
+The trading UI built with Next.js for buying/selling options.
+
+### Key Components
+
+```
+packages/opswap/app/
+├── trade/
+│   ├── page.tsx                    # Main trading page
+│   ├── components/
+│   │   ├── OptionsGrid.tsx         # Options chain display (calls/puts by strike/expiry)
+│   │   └── TradePanel.tsx          # Order entry panel
+│   └── hooks/
+│       └── useTradableOptions.ts   # Fetches options from OptionCreated events
+└── hooks/
+    └── usePricingStream.ts         # WebSocket connection for live prices
+```
+
+### `useTradableOptions` Hook
+
+Fetches all deployed options by reading `OptionCreated` events from the factory:
+
+```typescript
+interface TradableOption {
+  optionAddress: string;
+  collateralAddress: string;
+  considerationAddress: string;
+  expiration: bigint;
+  strike: bigint;           // Raw from contract (18 decimals)
+  isPut: boolean;
+  redemptionAddress: string;
+}
+```
+
+### `OptionsGrid` Component
+
+Displays options chain with:
+- Strikes as rows
+- Expirations as columns
+- Calls on left, Puts on right
+- Bid/Ask prices from pricing stream
+
+**Strike normalization in grid** (same logic as RFQ):
+```typescript
+// For puts, invert the strike price to align with calls
+if (option.isPut && option.strike > 0n) {
+  normalizedStrike = (10n ** 36n) / option.strike;
+}
+```
+
+### `usePricingStream` Hook
+
+Connects to RFQ server's pricing WebSocket:
+```typescript
+const { getPrice, isConnected } = usePricingStream({ enabled: true });
+const price = getPrice(optionAddress);  // { bids: [[price, size]], asks: [[price, size]] }
+```
+
+---
+
 ## Important Implementation Notes
 
 ### Security Considerations
