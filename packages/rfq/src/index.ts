@@ -7,6 +7,8 @@ import type { Chain, RFQRequest } from "./types";
 import { OPTIONS_LIST, isOptionToken, getOption } from "./optionsList";
 import { startAPIServer } from "./api";
 import { getUSDCAddress } from "./constants";
+import { calculateBidAsk } from "./blackScholes";
+import { fetchSpotPrice, getSpotPrice } from "./optionMetadata";
 
 // Configuration
 const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1; // Default to Ethereum mainnet
@@ -35,11 +37,25 @@ if (!MAKER_ADDRESS) {
 
 const USDC_ADDRESS = getUSDCAddress(CHAIN_ID);
 
-// Get option ask price for pricing stream
-function getOptionPrice(optionAddress: string): number {
+// Get option bid/ask prices using Black-Scholes
+function getOptionPrices(optionAddress: string): { bid: number; ask: number } {
   const option = getOption(optionAddress);
-  if (!option) return 0;
-  return parseFloat(option.askPrice);
+  if (!option) return { bid: 0, ask: 0 };
+
+  const spot = getSpotPrice();
+  const isPut = option.type === "PUT";
+
+  const { bid, ask } = calculateBidAsk(
+    spot,
+    option.strike,
+    option.expiration,
+    isPut,
+    1.0,  // 100% volatility
+    0.05, // 5% risk-free rate
+    0.02  // 2% spread
+  );
+
+  return { bid, ask };
 }
 
 // Protobuf types from generated code
@@ -146,10 +162,9 @@ function sendPricingUpdate() {
       levelInfo.quoteAddress = hexToBytes(USDC_ADDRESS);
       levelInfo.quoteDecimals = option.quoteDecimals;
 
-      const askPrice = getOptionPrice(option.address);
-      const bidPrice = parseFloat(option.bidPrice);
+      const { bid: bidPrice, ask: askPrice } = getOptionPrices(option.address);
 
-      console.log(`   📊 ${option.address.slice(0,10)}... bid=${bidPrice} ask=${askPrice}`);
+      console.log(`   📊 ${option.address.slice(0,10)}... bid=${bidPrice.toFixed(2)} ask=${askPrice.toFixed(2)}`);
 
       // Flatten bids/asks like Python: [price, amount, price, amount, ...]
       levelInfo.bids = [];
@@ -233,9 +248,9 @@ client.onRFQ(async (rfq: RFQRequest) => {
         };
       }
 
-      // Use ask price from the static list
-      const askPriceUSDC = parseFloat(optionInfo.askPrice);
-      console.log("Ask price (USDC):", askPriceUSDC);
+      // Use Black-Scholes ask price
+      const { ask: askPriceUSDC } = getOptionPrices(buyToken.token);
+      console.log("Ask price (USDC):", askPriceUSDC.toFixed(2));
 
       // Convert: askPrice (dollars) * 1e6 (USDC decimals) per 1e6 option tokens
       const pricePerOption = BigInt(Math.floor(askPriceUSDC * 1e6));
@@ -298,9 +313,9 @@ client.onRFQ(async (rfq: RFQRequest) => {
         };
       }
 
-      // Use bid price from the static list
-      const bidPriceUSDC = parseFloat(optionInfo.bidPrice);
-      console.log("Bid price (USDC):", bidPriceUSDC);
+      // Use Black-Scholes bid price
+      const { bid: bidPriceUSDC } = getOptionPrices(sellToken.token);
+      console.log("Bid price (USDC):", bidPriceUSDC.toFixed(2));
 
       // Convert: bidPrice (dollars) * 1e6 (USDC decimals) per 1e6 option tokens
       const pricePerOption = BigInt(Math.floor(bidPriceUSDC * 1e6));
@@ -379,22 +394,46 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-// Load static options list
-console.log(`Loaded ${OPTIONS_LIST.length} option contracts from static list`);
-OPTIONS_LIST.forEach(opt => {
-  console.log(`  - ${opt.address}: ${opt.type} (bid: $${opt.bidPrice}, ask: $${opt.askPrice})`);
-});
+// Initialize and start
+async function initialize() {
+  console.log(`Loaded ${OPTIONS_LIST.length} option contracts from static list`);
 
-// Start HTTP API server for direct quotes
-startAPIServer(3001);
+  // Fetch spot price first
+  console.log("Fetching spot price...");
+  await fetchSpotPrice();
+  console.log(`Spot price: $${getSpotPrice()}`);
 
-// Start RFQ client
-console.log(`Starting Bebop RFQ client on ${CHAIN}...`);
-client.connect().catch((error) => {
-  console.error("Failed to connect:", error);
+  // Log options with Black-Scholes prices
+  console.log("\nOption prices (Black-Scholes, 100% vol):");
+  for (const opt of OPTIONS_LIST.slice(0, 10)) { // Show first 10
+    const { bid, ask } = getOptionPrices(opt.address);
+    console.log(`  - ${opt.address.slice(0, 10)}... Strike: $${opt.strike} ${opt.type} bid: $${bid.toFixed(2)}, ask: $${ask.toFixed(2)}`);
+  }
+  if (OPTIONS_LIST.length > 10) {
+    console.log(`  ... and ${OPTIONS_LIST.length - 10} more options`);
+  }
+
+  // Refresh spot price every 60 seconds
+  setInterval(async () => {
+    await fetchSpotPrice();
+  }, 60000);
+
+  // Start HTTP API server for direct quotes
+  startAPIServer(3001);
+
+  // Start RFQ client
+  console.log(`\nStarting Bebop RFQ client on ${CHAIN}...`);
+  client.connect().catch((error) => {
+    console.error("Failed to connect:", error);
+    process.exit(1);
+  });
+
+  // Start pricing WebSocket connection
+  console.log(`Starting Bebop Pricing client on ${CHAIN}...`);
+  connectPricingWebSocket();
+}
+
+initialize().catch((error) => {
+  console.error("Initialization failed:", error);
   process.exit(1);
 });
-
-// Start pricing WebSocket connection
-console.log(`Starting Bebop Pricing client on ${CHAIN}...`);
-connectPricingWebSocket();

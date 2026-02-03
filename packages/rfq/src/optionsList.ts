@@ -2,8 +2,10 @@
 export interface OptionWithPrice {
   address: string;
   type: "CALL" | "PUT";
-  bidPrice: string;  // Price we pay (when user sells to us)
-  askPrice: string;  // Price we charge (when user buys from us)
+  strike: number;  // Strike price in USD
+  expiration: number;  // Unix timestamp
+  bidPrice: string;  // Price we pay (when user sells to us) - computed dynamically
+  askPrice: string;  // Price we charge (when user buys from us) - computed dynamically
   decimals: number;  // Option token decimals (fetched from contract)
   quoteDecimals: number;  // Quote token (USDC) decimals
 }
@@ -122,12 +124,20 @@ export const OPTION_ADDRESSES: string[] = [
   "0x5f469afbd1d8ea4a989dc4e25a941d7a92867c91",
 ];
 
+// Default expiration: 30 days from now
+const DEFAULT_EXPIRATION = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+
 // Generate OPTIONS_LIST from addresses with default values
-export const OPTIONS_LIST: OptionWithPrice[] = OPTION_ADDRESSES.map(address => ({
+// Strike alternates between common ETH option strikes
+const STRIKES = [2000, 2200, 2400, 2600, 2800, 3000, 3200, 3400];
+
+export const OPTIONS_LIST: OptionWithPrice[] = OPTION_ADDRESSES.map((address, i) => ({
   address,
-  type: "PUT" as const,
-  bidPrice: "500",
-  askPrice: "502",
+  type: (i % 2 === 0 ? "CALL" : "PUT") as "CALL" | "PUT",
+  strike: STRIKES[i % STRIKES.length],
+  expiration: DEFAULT_EXPIRATION + (Math.floor(i / 16) * 7 * 24 * 60 * 60), // Stagger expirations by week
+  bidPrice: "0", // Will be computed by Black-Scholes
+  askPrice: "0", // Will be computed by Black-Scholes
   decimals: 6,
   quoteDecimals: 6,
 }));

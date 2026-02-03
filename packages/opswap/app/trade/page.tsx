@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TokenSelector } from "./components/TokenSelector";
-import { OptionsGrid } from "./components/OptionsGrid";
+import { OptionsGrid, type OptionSelection } from "./components/OptionsGrid";
 import { TradePanel } from "./components/TradePanel";
 import Navbar from "../mint/components/Navbar";
 
@@ -15,7 +15,20 @@ export default function TradePage() {
     isPut: boolean;
     collateralAddress: string;
     considerationAddress: string;
+    isBuy: boolean;
   } | null>(null);
+
+  const handleSelectOption = (selection: OptionSelection) => {
+    setSelectedOption({
+      optionAddress: selection.option.optionAddress,
+      strike: selection.option.strike,
+      expiration: selection.option.expiration,
+      isPut: selection.option.isPut,
+      collateralAddress: selection.option.collateralAddress,
+      considerationAddress: selection.option.considerationAddress,
+      isBuy: selection.isBuy,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
@@ -31,7 +44,7 @@ export default function TradePage() {
         {/* Options Grid */}
         {selectedToken && (
           <div className="mb-6">
-            <OptionsGrid selectedToken={selectedToken} onSelectOption={setSelectedOption} />
+            <OptionsGrid selectedToken={selectedToken} onSelectOption={handleSelectOption} />
           </div>
         )}
 

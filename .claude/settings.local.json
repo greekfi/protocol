@@ -36,7 +36,9 @@
       "Bash(jobs:*)",
       "WebFetch(domain:docs.bebop.xyz/*)",
       "Bash(FOUNDRY_DISABLE_NIGHTLY_WARNING=1 forge build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": []

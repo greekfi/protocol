@@ -51,12 +51,18 @@ interface TradePanelProps {
     isPut: boolean;
     collateralAddress: string;
     considerationAddress: string;
+    isBuy: boolean;
   };
   onClose: () => void;
 }
 
 export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
-  const [isBuy, setIsBuy] = useState<boolean>(true);
+  const [isBuy, setIsBuy] = useState<boolean>(selectedOption.isBuy);
+
+  // Update isBuy when selectedOption changes
+  useEffect(() => {
+    setIsBuy(selectedOption.isBuy);
+  }, [selectedOption.isBuy]);
   const [amount, setAmount] = useState<string>("1");
   const { allTokensMap } = useTokenMap();
   const { address: userAddress } = useAccount();
