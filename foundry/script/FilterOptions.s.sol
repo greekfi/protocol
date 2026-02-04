@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Script, console} from "forge-std/Script.sol";
-import {IOption} from "../src/interfaces/IOption.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { IOption } from "../contracts/interfaces/IOption.sol";
 
 contract FilterOptions is Script {
     address constant WETH_MAINNET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;

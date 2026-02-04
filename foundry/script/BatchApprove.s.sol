@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Script, console} from "forge-std/Script.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
 /// @notice Gas-efficient batch approval script
 /// @dev Sends all approvals in a single transaction from the caller's address
@@ -74,9 +74,7 @@ contract BatchApproveScript is Script {
             bytes memory trimmedBytes = bytes(trimmed);
 
             // Only parse lines that look like addresses (start with "0x", at least 42 chars)
-            if (trimmedBytes.length >= 42 &&
-                trimmedBytes[0] == "0" &&
-                trimmedBytes[1] == "x") {
+            if (trimmedBytes.length >= 42 && trimmedBytes[0] == "0" && trimmedBytes[1] == "x") {
                 tempTokens[count] = vm.parseAddress(trimmed);
                 count++;
             }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePricingStream } from "../../hooks/usePricingStream";
+import { usePricing } from "../../contexts/PricingContext";
 import { type TradableOption, useTradableOptions } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
 
@@ -25,10 +25,8 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
 
   const { data: options, isLoading } = useTradableOptions(selectedToken);
 
-  // Connect to pricing stream only when we have options
-  const { getPrice, isConnected } = usePricingStream({
-    enabled: !!options && options.length > 0,
-  });
+  // Use pricing from context (connection is managed at layout level)
+  const { getPrice, isConnected } = usePricing();
 
   // Group options by strike and expiration
   const { strikes, expirations, grid } = useMemo(() => {

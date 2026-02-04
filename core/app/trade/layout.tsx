@@ -4,6 +4,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { ThemeProvider } from "next-themes";
+import { PricingProvider } from "../contexts/PricingContext";
 
 export const metadata = {
   title: "Trade Options - Greek.fi",
@@ -16,7 +17,9 @@ export default function TradeLayout({ children }: { children: React.ReactNode })
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Providers>
-            <div className="min-h-screen">{children}</div>
+            <PricingProvider enabled={true}>
+              <div className="min-h-screen">{children}</div>
+            </PricingProvider>
           </Providers>
         </ThemeProvider>
       </body>

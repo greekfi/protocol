@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Script, console} from "forge-std/Script.sol";
-import {IOption} from "../src/interfaces/IOption.sol";
-import {IOptionFactory} from "../src/interfaces/IOptionFactory.sol";
-import {BatchMinter} from "../src/BatchMinter.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { IOption } from "../contracts/interfaces/IOption.sol";
+import { IOptionFactory } from "../contracts/interfaces/IOptionFactory.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { BatchMinter } from "../contracts/BatchMinter.sol";
 
 contract BatchMintScript is Script {
     function run() external {
