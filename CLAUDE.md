@@ -23,13 +23,13 @@ This is an **options protocol** built on Scaffold-ETH 2, implementing a dual-tok
 <Root>/protocol/foundry/contracts
 <Root>/protocol/foundry/test
 <Root>/protocol/foundry/script
-<Root>/protocol/opswap
+<Root>/protocol/core
 ```
 
 
 ### React Folders
 ```bash
-<Root>/protocol/opswap
+<Root>/protocol/core
 ```
 
 ### Local Development (Three Terminal Setup)
@@ -470,13 +470,13 @@ _factory.transferFrom(caller, address(this), considerationAmount, considerationT
 
 ### Frontend Architecture
 
-Located in `opswap/`:
+Located in `core/`:
 - **Framework**: Next.js 14+ with App Router (not Pages Router)
 - **Web3 Stack**: RainbowKit + Wagmi + Viem
 - **Styling**: Tailwind CSS v4.1.8
 - **Contract Hot Reload**: Frontend auto-updates when contracts change via filesystem watchers
 
-**Key Scaffold-ETH Hooks** (in `opswap/hooks/scaffold-eth/`):
+**Key Scaffold-ETH Hooks** (in `core/hooks/scaffold-eth/`):
 - `useScaffoldReadContract`: Read contract state (auto-typed with ABIs)
 - `useScaffoldWriteContract`: Write to contracts (with transaction feedback)
 - `useScaffoldWatchContractEvent`: Real-time event watching
@@ -484,7 +484,7 @@ Located in `opswap/`:
 - `useDeployedContractInfo`: Get deployed contract addresses and ABIs
 - `useTargetNetwork`: Get current target network configuration
 
-**Key Scaffold-ETH Components** (in `opswap/components/scaffold-eth/`):
+**Key Scaffold-ETH Components** (in `core/components/scaffold-eth/`):
 - `<Address>`: Display Ethereum addresses with ENS support and copy functionality
 - `<AddressInput>`: Input field for addresses with ENS resolution
 - `<Balance>`: Display ETH/token balances with USD conversion
@@ -552,7 +552,7 @@ When you run `yarn deploy`:
 
 3. **Scaffold-ETH Auto-Generates TypeScript File**:
    - Reads deployment data from `broadcast/` directory
-   - Generates `opswap/contracts/deployedContracts.ts`
+   - Generates `core/contracts/deployedContracts.ts`
    - Creates fully-typed contract configuration
 
 #### The `deployedContracts.ts` File
@@ -560,7 +560,7 @@ When you run `yarn deploy`:
 This file is **automatically generated** and contains:
 
 ```typescript
-// opswap/contracts/deployedContracts.ts
+// core/contracts/deployedContracts.ts
 
 const deployedContracts = {
   31337: {  // Local Anvil chainId
@@ -738,7 +738,7 @@ yarn deploy:verify
    - See events in real-time
 
 6. **Build Custom UI**
-   - Create pages in `opswap/app/`
+   - Create pages in `core/app/`
    - Use Scaffold-ETH hooks for contract interaction
    - Frontend auto-reloads on file changes
 
@@ -758,52 +758,124 @@ yarn deploy:verify
 
 ---
 
-## RFQ Market Maker Package (`rfq/`)
+## Market Maker Package (`market-maker/`)
 
-The RFQ (Request for Quote) package is a TypeScript market maker that connects to Bebop's RFQ system to provide liquidity for option tokens.
+The market-maker package is a consolidated TypeScript service that provides liquidity for option tokens through multiple modes: direct quote server, Bebop RFQ integration, and Bebop price relay.
 
 ### Package Structure
 
 ```
-rfq/src/
-├── index.ts           # Main entry point, WebSocket connections, RFQ handling
-├── blackScholes.ts    # Black-Scholes option pricing
-├── optionMetadata.ts  # Fetches real option data from chain
-├── optionsList.ts     # Static list of option token addresses
-├── client.ts          # Bebop WebSocket client
-├── api.ts             # HTTP API server for direct quotes
-├── constants.ts       # Chain-specific constants (USDC addresses)
-├── types.ts           # TypeScript interfaces
-└── pricing_pb.ts      # Protobuf definitions for Bebop pricing
+market-maker/
+├── src/
+│   ├── direct.ts          # Entry point for standalone quote server
+│   ├── bebop.ts           # Entry point for Bebop RFQ client
+│   ├── relay.ts           # Entry point for Bebop price relay
+│   │
+│   ├── modes/             # Mode implementations
+│   │   ├── direct.ts      # HTTP + WebSocket quote server
+│   │   ├── bebop.ts       # Bebop RFQ handler
+│   │   └── relay.ts       # Bebop price relay
+│   │
+│   ├── pricing/           # Pricing core (shared across modes)
+│   │   ├── blackScholes.ts    # Black-Scholes with Greeks
+│   │   ├── pricer.ts          # Pricing engine
+│   │   ├── spotFeed.ts        # On-chain spot price feed
+│   │   └── types.ts           # Pricing types
+│   │
+│   ├── servers/           # Server implementations
+│   │   ├── httpApi.ts         # Express HTTP quote API
+│   │   ├── wsStream.ts        # WebSocket price broadcast
+│   │   └── wsRelay.ts         # WebSocket relay server
+│   │
+│   ├── bebop/             # Bebop integration
+│   │   ├── client.ts          # Bebop RFQ WebSocket client
+│   │   ├── relay.ts           # Bebop pricing relay
+│   │   ├── signing.ts         # Quote signing
+│   │   ├── types.ts           # Bebop types
+│   │   └── proto/             # Protobuf definitions
+│   │
+│   ├── config/            # Chain/token configuration
+│   │   ├── chains.ts          # 8 chains with Chainlink feeds
+│   │   ├── tokens.ts          # Token addresses per chain
+│   │   ├── options.ts         # Option deployment tracking
+│   │   ├── metadata.ts        # Fetch option params from chain
+│   │   └── registry.ts        # Option address registry
+│   │
+│   ├── constants.ts
+│   └── types.ts
+│
+├── package.json
+├── tsconfig.json
+└── .env.example
 ```
 
-### Running the RFQ Server
+### Running Market Maker Services
 
 ```bash
-cd rfq
-yarn dev  # or: npx ts-node src/index.ts
+cd market-maker
+
+# Standalone quote server (HTTP + WebSocket)
+yarn direct       # Production
+yarn dev:direct   # Development with watch mode
+
+# Bebop RFQ client (PMM integration)
+yarn bebop        # Production
+yarn dev:bebop    # Development with watch mode
+
+# Bebop price relay (relay Bebop prices to local clients)
+yarn relay        # Production
+yarn dev:relay    # Development with watch mode
 ```
 
-**Required environment variables** (in `.env`):
-```
-CHAIN_ID=1301              # Unichain Sepolia
-CHAIN=unichain             # For Bebop API
-RPC_URL=https://...        # RPC endpoint
-BEBOP_MARKETMAKER=xxx      # Bebop credentials
-BEBOP_AUTHORIZATION=xxx
-MAKER_ADDRESS=0x...        # Market maker wallet
-PRIVATE_KEY=0x...          # For signing (optional)
+### Environment Variables
+
+**Common** (all modes):
+```bash
+CHAIN_ID=8453              # Default chain (Base, Unichain, etc.)
+MAKER_ADDRESS=0x...
+PRIVATE_KEY=0x...          # For signing quotes
 ```
 
-### Key Files
+**Direct Mode** (standalone quote server):
+```bash
+HTTP_PORT=3010             # HTTP API port
+WS_PORT=3011               # WebSocket stream port
+DEFAULT_IV=0.8             # Implied volatility
+RISK_FREE_RATE=0.05        # Risk-free rate
+BID_SPREAD=0.02            # Bid spread (2%)
+ASK_SPREAD=0.02            # Ask spread (2%)
+SPOT_POLL_INTERVAL=30000   # Spot price update interval (ms)
+PRICE_BROADCAST_INTERVAL=5000  # WebSocket broadcast interval
+```
 
-#### `blackScholes.ts` - Option Pricing
+**Bebop Mode** (RFQ client):
+```bash
+BEBOP_MARKETMAKER=xxx      # Bebop market maker ID
+BEBOP_AUTHORIZATION=xxx    # Bebop auth token
+BEBOP_API_URL=https://api.bebop.xyz
+CHAIN=ethereum             # Chain name for Bebop
+```
 
-Implements Black-Scholes pricing with these key functions:
+**Relay Mode** (price relay):
+```bash
+RELAY_WS_PORT=3004         # WebSocket relay port
+BEBOP_CHAINS=ethereum,base,arbitrum  # Chains to relay
+```
 
+### Key Modules
+
+#### Pricing Core (`pricing/`)
+
+**`blackScholes.ts`** - Black-Scholes option pricing with Greeks:
 ```typescript
-// Core BS formula
-blackScholesPrice({ spot, strike, timeToExpiry, volatility, riskFreeRate, isPut }): number
+// Core BS formula with Greeks
+blackScholesPrice({ spot, strike, timeToExpiry, volatility, riskFreeRate, isPut }): {
+  price: number;
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+}
 
 // Calculates bid/ask with spread
 calculateBidAsk(spot, strike, expirationTimestamp, isPut, volatility, riskFreeRate, spreadPercent): { bid, ask }
@@ -818,10 +890,64 @@ if (isPut && strike > 0) {
 }
 ```
 
-#### `optionMetadata.ts` - On-Chain Data
+**`pricer.ts`** - Pricing engine:
+- Manages option pricing across all tokens
+- Handles RFQ quote generation
+- Integrates with spot price feed
 
-Fetches real option parameters from deployed contracts:
+**`spotFeed.ts`** - On-chain spot price feed:
+- Fetches prices from Chainlink price feeds
+- Fallback to Uniswap V3 TWAP for chains without Chainlink
+- Configurable via `config/chains.ts`
 
+#### Chain Configuration (`config/`)
+
+**`chains.ts`** - Multi-chain support:
+```typescript
+interface ChainConfig {
+  id: number;
+  name: string;
+  rpcUrl: string;
+  blockExplorer: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  priceFeed: {
+    ethUsd?: string;       // Chainlink ETH/USD
+    uniV3Pool?: string;    // Uniswap V3 pool for TWAP
+  };
+}
+
+// Supported chains: Ethereum, Base, Arbitrum, Unichain (+ testnets)
+getChain(chainId): ChainConfig
+getChainByName(name): ChainConfig
+```
+
+**`tokens.ts`** - Token addresses per chain:
+```typescript
+interface TokenConfig {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name: string;
+}
+
+// WETH, USDC, USDT, DAI, etc. for all chains
+getToken(chainId, symbol): TokenConfig
+getTokenByAddress(chainId, address): TokenConfig
+```
+
+**`options.ts`** - Option deployment tracking:
+```typescript
+interface OptionDeployment {
+  factory: string;
+  options: string[];  // Deployed option contract addresses
+}
+
+getOptionFactory(chainId): string
+getOptionAddresses(chainId): string[]
+isOptionToken(chainId, address): boolean
+```
+
+**`metadata.ts`** - Fetch option parameters from chain:
 ```typescript
 interface OptionMetadata {
   address: string;
@@ -832,10 +958,8 @@ interface OptionMetadata {
   collateralAddress: string;
 }
 
-fetchAllOptionMetadata()     // Fetches metadata for all options in OPTION_ADDRESSES
+fetchAllOptionMetadata()     // Fetches metadata for all options
 getOptionMetadata(address)   // Returns cached metadata
-fetchSpotPrice()             // Gets ETH price from CoinGecko
-getSpotPrice()               // Returns cached spot price
 ```
 
 **Critical: Strike normalization for puts**
@@ -844,15 +968,6 @@ getSpotPrice()               // Returns cached spot price
 if (isPut && strikeNum > 0) {
   strikeNum = 1 / strikeNum;  // Convert to same format as calls
 }
-```
-
-#### `optionsList.ts` - Option Addresses
-
-Static list of deployed option token addresses:
-```typescript
-OPTION_ADDRESSES: string[]           // All option contract addresses
-isOptionToken(address): boolean      // Check if address is a known option
-getOption(address): OptionWithPrice  // Get option info (for decimals)
 ```
 
 ### Strike Price Encoding (Calls vs Puts)
@@ -882,14 +997,14 @@ Example with $2000 strike:
 
 ---
 
-## Trading Frontend (`opswap/`)
+## Trading Frontend (`core/`)
 
 The trading UI built with Next.js for buying/selling options.
 
 ### Key Components
 
 ```
-opswap/app/
+core/app/
 ├── trade/
 │   ├── page.tsx                    # Main trading page
 │   ├── components/
@@ -925,7 +1040,7 @@ Displays options chain with:
 - Calls on left, Puts on right
 - Bid/Ask prices from pricing stream
 
-**Strike normalization in grid** (same logic as RFQ):
+**Strike normalization in grid** (same logic as market-maker):
 ```typescript
 // For puts, invert the strike price to align with calls
 if (option.isPut && option.strike > 0n) {
@@ -935,7 +1050,7 @@ if (option.isPut && option.strike > 0n) {
 
 ### `usePricingStream` Hook
 
-Connects to RFQ server's pricing WebSocket:
+Connects to market-maker's pricing WebSocket:
 ```typescript
 const { getPrice, isConnected } = usePricingStream({ enabled: true });
 const price = getPrice(optionAddress);  // { bids: [[price, size]], asks: [[price, size]] }
