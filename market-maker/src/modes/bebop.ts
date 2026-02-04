@@ -3,18 +3,21 @@ import { Pricer } from "../pricing/pricer";
 import { BebopClient } from "../bebop/client";
 import { PricingStream } from "../bebop/pricingStream";
 import type { RFQRequest } from "../bebop/types";
-
-const USDC_ADDRESSES: Record<number, string> = {
-  1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Ethereum
-  8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base
-  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // Arbitrum
-};
+import { getToken } from "../config/tokens";
 
 export async function startBebopMode(pricer: Pricer) {
   const chainId = parseInt(process.env.CHAIN_ID || "1");
   const chain = (process.env.CHAIN || "ethereum") as any;
   const makerAddress = process.env.MAKER_ADDRESS || "0x0000000000000000000000000000000000000000";
-  const usdcAddress = USDC_ADDRESSES[chainId] || USDC_ADDRESSES[1];
+
+  // Get USDC address from config, fallback to Ethereum if chain not configured
+  let usdcAddress: string;
+  try {
+    usdcAddress = getToken(chainId, "USDC").address;
+  } catch {
+    console.warn(`USDC not configured for chain ${chainId}, using Ethereum USDC`);
+    usdcAddress = getToken(1, "USDC").address;
+  }
 
   // Connect to Bebop RFQ
   const bebopClient = new BebopClient({
