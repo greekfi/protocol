@@ -995,6 +995,78 @@ The protocol stores strikes differently for calls vs puts:
 Example with $2000 strike:
 - Standard put on 1 WETH worth $400 → put token worth $400/2000 = $0.20
 
+### Bebop Integration
+
+The market-maker integrates with Bebop via **two WebSocket connections**:
+
+#### 1. **RFQ Connection** (Request for Quote)
+Receives quote requests from Bebop and responds with signed quotes.
+
+#### 2. **Pricing Stream** (Protobuf)
+Continuously sends price updates to Bebop every 10 seconds using Protobuf format.
+
+**Files**:
+- `src/bebop/client.ts` - RFQ WebSocket client
+- `src/bebop/pricingStream.ts` - Protobuf pricing stream
+- `src/bebop/proto/pricing_pb.js` - Protobuf encoder
+
+**Price Filtering**:
+```typescript
+// Skip options with zero prices (Bebop rejects these)
+if (bidPrice <= 0 || askPrice <= 0) continue;
+
+// Skip options with spreads > 500 bps (5%)
+const spreadBps = ((ask - bid) / mid) * 10000;
+if (spreadBps > 500) continue;
+```
+
+### Centralized RPC Client Architecture
+
+All blockchain RPC calls use a centralized client factory for consistency:
+
+**Single Source of Truth**:
+- `src/config/client.ts` - RPC client factory
+- `src/config/chains.ts` - Chain configurations with RPC URLs
+
+**Usage**:
+```typescript
+import { getPublicClient, getWalletClient } from "./config/client";
+
+// Read blockchain data
+const client = getPublicClient();
+const balance = await client.getBalance({ address: "0x..." });
+
+// Send transactions
+const wallet = getWalletClient();
+const hash = await wallet.sendTransaction({ ... });
+```
+
+**Environment Variables**:
+```bash
+# Chain selection
+CHAIN_ID=1  # 1=Ethereum, 8453=Base, 42161=Arbitrum, etc.
+
+# RPC URL override (optional)
+RPC_ETHEREUM=https://eth.drpc.org
+RPC_BASE=https://mainnet.base.org
+```
+
+### Metadata Caching System
+
+Option metadata is fetched once and cached for fast startup:
+
+**Fetch and Save** (run once per chain):
+```bash
+cd market-maker
+yarn fetch-metadata  # Fetches from chain, saves to data/metadata-{chainId}.json
+```
+
+**Auto-Load** (fast startup):
+- Services automatically load from `data/metadata-{chainId}.json` (~5ms)
+- Falls back to fetching from chain if file doesn't exist (~500ms+)
+
+**Performance**: 100x faster startup with cached metadata
+
 ---
 
 ## Trading Frontend (`core/`)

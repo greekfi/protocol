@@ -12,7 +12,7 @@ export interface PricerConfig {
 const DEFAULT_SPREAD_CONFIG: SpreadConfig = {
   bidSpread: 0.02, // 2% below mid
   askSpread: 0.02, // 2% above mid
-  minSpread: 0.01, // Minimum $0.01 spread
+  minSpread: 0.001, // Minimum $0.001 spread (reduced to avoid large % spreads on cheap options)
 };
 
 /**

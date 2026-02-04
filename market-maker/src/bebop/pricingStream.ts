@@ -115,9 +115,34 @@ export class PricingStream {
       console.log(`📊 Building pricing update for ${optionAddresses.length} options...`);
 
       // Add levels for each option
+      let validCount = 0;
+      let skippedCount = 0;
+
       for (const addr of optionAddresses) {
         const pricing = this.pricer.getPrice(addr);
         if (!pricing || pricing.bids.length === 0 || pricing.asks.length === 0) {
+          skippedCount++;
+          continue;
+        }
+
+        const [bidPrice] = pricing.bids[0];
+        const [askPrice] = pricing.asks[0];
+
+        // Skip options with zero or negative prices (Bebop rejects these)
+        if (bidPrice <= 0 || askPrice <= 0) {
+          console.log(`   ${addr.slice(0, 10)}... SKIPPED (zero price: bid=$${bidPrice.toFixed(2)} ask=$${askPrice.toFixed(2)})`);
+          skippedCount++;
+          continue;
+        }
+
+        // Calculate spread percentage (Bebop rejects spreads > ~10%)
+        const mid = (bidPrice + askPrice) / 2;
+        const spreadBps = ((askPrice - bidPrice) / mid) * 10000;
+
+        // Skip options with abnormally large spreads (> 500 bps = 5%)
+        if (spreadBps > 500) {
+          console.log(`   ${addr.slice(0, 10)}... SKIPPED (spread too large: ${spreadBps.toFixed(0)} bps, bid=$${bidPrice.toFixed(2)} ask=$${askPrice.toFixed(2)})`);
+          skippedCount++;
           continue;
         }
 
@@ -127,9 +152,6 @@ export class PricingStream {
         levelInfo.quoteAddress = this.hexToBytes(this.config.usdcAddress);
         levelInfo.quoteDecimals = 6; // USDC has 6 decimals
 
-        const [bidPrice] = pricing.bids[0];
-        const [askPrice] = pricing.asks[0];
-
         console.log(`   ${addr.slice(0, 10)}... bid=$${bidPrice.toFixed(2)} ask=$${askPrice.toFixed(2)}`);
 
         // Flatten bids/asks: [price, amount, price, amount, ...]
@@ -137,12 +159,21 @@ export class PricingStream {
         levelInfo.asks = [askPrice, 1000.0];
 
         levelsSchema.msg.levels.push(levelInfo);
+        validCount++;
       }
+
+      if (validCount === 0) {
+        console.log("⚠️  No valid options to price (all have zero prices)");
+        return;
+      }
+
+      console.log(`   ✓ ${validCount} valid options, ${skippedCount} skipped (zero price)`);
+
 
       // Encode to protobuf bytes
       const buffer = LevelsSchema.encode(levelsSchema).finish();
 
-      console.log(`📤 Sending protobuf pricing update (${buffer.length} bytes, ${levelsSchema.msg.levels.length} options)`);
+      console.log(`📤 Sending protobuf pricing update (${buffer.length} bytes, ${levelsSchema.msg.levels.length} options)\n`);
 
       this.ws.send(buffer);
     } catch (error) {
