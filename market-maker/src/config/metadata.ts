@@ -174,30 +174,73 @@ export function loadMetadataFromFile(): Map<string, OptionMetadata> | null {
 /**
  * Fetch all option metadata from chain (slow, use loadMetadataFromFile when possible)
  *
- * @param forceRefresh If true, fetches from chain even if file exists
+ * @param forceRefresh If true, merges cached data with new options from config
  */
 export async function fetchAllOptionMetadata(forceRefresh = false): Promise<Map<string, OptionMetadata>> {
-  // Try loading from file first (unless force refresh)
-  if (!forceRefresh) {
-    const fromFile = loadMetadataFromFile();
-    if (fromFile) {
-      return fromFile;
-    }
-    console.log("No cached metadata found, fetching from chain...");
-  }
-
   const chainId = getCurrentChainId();
   const optionAddresses = getOptionAddresses(chainId);
 
+  // Load existing cache
+  const fromFile = loadMetadataFromFile();
+
+  if (forceRefresh && fromFile) {
+    // Merge mode: find options that are in config but not in cache
+    const cachedAddresses = new Set(fromFile.keys());
+    const configAddresses = new Set(optionAddresses.map(addr => addr.toLowerCase()));
+
+    const newAddresses = optionAddresses.filter(
+      addr => !cachedAddresses.has(addr.toLowerCase())
+    );
+
+    const removedAddresses = Array.from(cachedAddresses).filter(
+      addr => !configAddresses.has(addr)
+    );
+
+    if (newAddresses.length === 0 && removedAddresses.length === 0) {
+      console.log("✅ Cache is up to date with config");
+      return fromFile;
+    }
+
+    if (removedAddresses.length > 0) {
+      console.log(`🗑️  Removing ${removedAddresses.length} options no longer in config`);
+      removedAddresses.forEach(addr => {
+        fromFile.delete(addr);
+        metadataCache.delete(addr);
+      });
+    }
+
+    if (newAddresses.length > 0) {
+      console.log(`📥 Fetching ${newAddresses.length} new options from chain...`);
+
+      // Fetch new options in batches
+      const batchSize = 10;
+      for (let i = 0; i < newAddresses.length; i += batchSize) {
+        const batch = newAddresses.slice(i, i + batchSize);
+        await Promise.all(batch.map(addr => fetchOptionMetadata(addr)));
+        if (i + batchSize < newAddresses.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`✅ Successfully fetched ${newAddresses.length} new options`);
+    }
+
+    return metadataCache;
+  }
+
+  // Non-refresh mode: use cache if available
+  if (!forceRefresh && fromFile) {
+    return fromFile;
+  }
+
+  // No cache available: fetch everything
   console.log(`Fetching metadata for ${optionAddresses.length} options on chain ${chainId}...`);
 
-  // Fetch in batches to avoid rate limiting
   const batchSize = 10;
   for (let i = 0; i < optionAddresses.length; i += batchSize) {
     const batch = optionAddresses.slice(i, i + batchSize);
     await Promise.all(batch.map(addr => fetchOptionMetadata(addr)));
     if (i + batchSize < optionAddresses.length) {
-      // Small delay between batches
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }

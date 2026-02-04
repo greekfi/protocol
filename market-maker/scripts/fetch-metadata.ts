@@ -21,8 +21,8 @@ async function main() {
   console.log(`\n🔍 Fetching option metadata for chain ${chainId}...\n`);
 
   try {
-    // Fetch all metadata from chain
-    const metadataMap = await fetchAllOptionMetadata();
+    // Force refresh to bypass cache and merge old + new
+    const metadataMap = await fetchAllOptionMetadata(true);
 
     if (metadataMap.size === 0) {
       console.warn("⚠️  No options found on this chain");
