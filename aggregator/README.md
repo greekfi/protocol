@@ -38,7 +38,7 @@ Market Makers (RFQ Package)
 
 ```bash
 # Install dependencies
-cd packages/aggregator
+cd aggregator
 yarn install
 
 # Create .env file
@@ -59,13 +59,13 @@ WS_PORT=3003        # WebSocket port for market makers
 
 ### Terminal 1: Start Aggregator
 ```bash
-cd packages/aggregator
+cd aggregator
 yarn dev
 ```
 
 ### Terminal 2: Start Market Maker(s)
 ```bash
-cd packages/rfq
+cd rfq
 yarn dev:aggregator
 ```
 

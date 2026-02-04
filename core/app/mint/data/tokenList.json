@@ -1,0 +1,193 @@
+{
+  "1": [
+    {
+      "address": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
+      "symbol": "osETH",
+      "decimals": 18
+    },
+    {
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "symbol": "USDC",
+      "decimals": 6
+    },
+    {
+      "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "symbol": "DAI",
+      "decimals": 18
+    },
+    {
+      "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "symbol": "WBTC",
+      "decimals": 8
+    },
+    {
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "symbol": "WETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+      "symbol": "UNI",
+      "decimals": 18
+    },
+    {
+      "address": "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
+      "symbol": "SHIB",
+      "decimals": 18
+    }
+  ],
+  "130": [
+    {
+      "address": "0x8f187aa05619a017077f5308904739877ce9ea21",
+      "symbol": "UNI",
+      "decimals": 18
+    },
+    {
+      "address": "0x078d782b760474a361dda0af3839290b0ef57ad6",
+      "symbol": "USDC",
+      "decimals": 6
+    },
+    {
+      "address": "0x9151434b16b9763660705744891fa906f660ecc5",
+      "symbol": "USDT0",
+      "decimals": 6
+    },
+    {
+      "address": "0x14d9143becc348920b68d123687045db49a016c6",
+      "symbol": "sUSDC",
+      "decimals": 6
+    },
+    {
+      "address": "0xa06b10db9f390990364a3984c04fadf1c13691b5",
+      "symbol": "sUSDS",
+      "decimals": 6
+    },
+    {
+      "address": "0x7e10036acc4b56d4dfca3b77810356ce52313f9c",
+      "symbol": "USDS",
+      "decimals": 6
+    },
+    {
+      "address": "0x4200000000000000000000000000000000000006",
+      "symbol": "WETH",
+      "decimals": 18
+    },
+    {
+      "address": "0xc02fe7317d4eb8753a02c35fe019786854a92001",
+      "symbol": "wstETH",
+      "decimals": 18
+    },
+    {
+      "address": "0xc3eacf0612346366db554c991d7858716db09f58",
+      "symbol": "rsETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x7dcc39b4d1c53cb31e1abc0e358b43987fef80f7",
+      "symbol": "weETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x2416092f143378750bb29b79ed961ab195cceea5",
+      "symbol": "ezETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x73e0c0d45e048d25fc26fa3159b0aa04bfa4db98",
+      "symbol": "kBTC",
+      "decimals": 8
+    },
+    {
+      "address": "0x0555e30da8f98308edb960aa94c0db47230d2b9c",
+      "symbol": "wBTC_OFT",
+      "decimals": 8
+    },
+    {
+      "address": "0x927b51f251480a681271180da4de28d44ec4afb8",
+      "symbol": "wBTC_bridged",
+      "decimals": 8
+    },
+    {
+      "address": "0xbde8a5331e8ac4831cf8ea9e42e229219eafab97",
+      "symbol": "SOL",
+      "decimals": 9
+    },
+    {
+      "address": "0xbe51a5e8fa434f09663e8fb4cce79d0b2381afad",
+      "symbol": "JUP",
+      "decimals": 6
+    },
+    {
+      "address": "0x97fadb3d000b953360fd011e173f12cddb5d70fa",
+      "symbol": "WIF",
+      "decimals": 8
+    },
+    {
+      "address": "0x15d0e0c55a3e7ee67152ad7e89acf164253ff68d",
+      "symbol": "HL",
+      "decimals": 18
+    },
+    {
+      "address": "0xbbe97f3522101e5b6976cbf77376047097ba837f",
+      "symbol": "BONK",
+      "decimals": 5
+    }
+  ],
+  "8453": [
+    {
+      "address": "0xfb3CB973B2a9e2E09746393C59e7FB0d5189d290",
+      "symbol": "UNI",
+      "decimals": 18
+    },
+    {
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "symbol": "USDC",
+      "decimals": 6
+    },
+    {
+      "address": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+      "symbol": "USDT",
+      "decimals": 6
+    },
+    {
+      "address": "0x3128a0F7f0ea68E7B7c9B00AFa7E41045828e858",
+      "symbol": "sUSDC",
+      "decimals": 6
+    },
+    {
+      "address": "0xa06b10db9f390990364a3984c04fadf1c13691b5",
+      "symbol": "sUSDS",
+      "decimals": 6
+    },
+    {
+      "address": "0x5875eEE11Cf8398102FdAd704C9E96607675467a",
+      "symbol": "USDS",
+      "decimals": 6
+    },
+    {
+      "address": "0x4200000000000000000000000000000000000006",
+      "symbol": "WETH",
+      "decimals": 18
+    },
+    {
+      "address": "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452",
+      "symbol": "wstETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A",
+      "symbol": "weETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+      "symbol": "ezETH",
+      "decimals": 18
+    },
+    {
+      "address": "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c",
+      "symbol": "wBTC",
+      "decimals": 8
+    }
+  ]
+}

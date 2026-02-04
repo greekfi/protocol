@@ -20,16 +20,16 @@ This is an **options protocol** built on Scaffold-ETH 2, implementing a dual-tok
 
 ### Smart Contract Folders
 ```bash
-<Root>/protocol/packages/foundry/contracts
-<Root>/protocol/packages/foundry/test
-<Root>/protocol/packages/foundry/script
-<Root>/protocol/packages/opswap
+<Root>/protocol/foundry/contracts
+<Root>/protocol/foundry/test
+<Root>/protocol/foundry/script
+<Root>/protocol/opswap
 ```
 
 
 ### React Folders
 ```bash
-<Root>/protocol/packages/opswap
+<Root>/protocol/opswap
 ```
 
 ### Local Development (Three Terminal Setup)
@@ -51,7 +51,7 @@ yarn foundry:lint       # Lint Solidity code
 ### Testing Specific Contracts
 ```bash
 # Run a specific test file
-forge test --match-path packages/foundry/test/Option.t.sol
+forge test --match-path foundry/test/Option.t.sol
 
 # Run a specific test function
 forge test --match-test testExercise
@@ -470,13 +470,13 @@ _factory.transferFrom(caller, address(this), considerationAmount, considerationT
 
 ### Frontend Architecture
 
-Located in `packages/nextjs/`:
+Located in `opswap/`:
 - **Framework**: Next.js 14+ with App Router (not Pages Router)
 - **Web3 Stack**: RainbowKit + Wagmi + Viem
 - **Styling**: Tailwind CSS v4.1.8
 - **Contract Hot Reload**: Frontend auto-updates when contracts change via filesystem watchers
 
-**Key Scaffold-ETH Hooks** (in `packages/nextjs/hooks/scaffold-eth/`):
+**Key Scaffold-ETH Hooks** (in `opswap/hooks/scaffold-eth/`):
 - `useScaffoldReadContract`: Read contract state (auto-typed with ABIs)
 - `useScaffoldWriteContract`: Write to contracts (with transaction feedback)
 - `useScaffoldWatchContractEvent`: Real-time event watching
@@ -484,7 +484,7 @@ Located in `packages/nextjs/`:
 - `useDeployedContractInfo`: Get deployed contract addresses and ABIs
 - `useTargetNetwork`: Get current target network configuration
 
-**Key Scaffold-ETH Components** (in `packages/nextjs/components/scaffold-eth/`):
+**Key Scaffold-ETH Components** (in `opswap/components/scaffold-eth/`):
 - `<Address>`: Display Ethereum addresses with ENS support and copy functionality
 - `<AddressInput>`: Input field for addresses with ENS resolution
 - `<Balance>`: Display ETH/token balances with USD conversion
@@ -529,7 +529,7 @@ useScaffoldWatchContractEvent({
 
 When you run `yarn deploy`:
 
-1. **Foundry Deployment Script Runs** (`packages/foundry/script/Deploy.s.sol`):
+1. **Foundry Deployment Script Runs** (`foundry/script/Deploy.s.sol`):
    ```solidity
    // Deploys template contracts
    Redemption redemptionTemplate = new Redemption(...);
@@ -546,13 +546,13 @@ When you run `yarn deploy`:
    factory.createOption(...);
    ```
 
-2. **Deployment Info Exported** to `packages/foundry/broadcast/`:
+2. **Deployment Info Exported** to `foundry/broadcast/`:
    - Chain-specific deployment data (addresses, ABIs, transaction hashes)
    - Format: `Deploy.s.sol/<chainId>/run-latest.json`
 
 3. **Scaffold-ETH Auto-Generates TypeScript File**:
    - Reads deployment data from `broadcast/` directory
-   - Generates `packages/nextjs/contracts/deployedContracts.ts`
+   - Generates `opswap/contracts/deployedContracts.ts`
    - Creates fully-typed contract configuration
 
 #### The `deployedContracts.ts` File
@@ -560,7 +560,7 @@ When you run `yarn deploy`:
 This file is **automatically generated** and contains:
 
 ```typescript
-// packages/nextjs/contracts/deployedContracts.ts
+// opswap/contracts/deployedContracts.ts
 
 const deployedContracts = {
   31337: {  // Local Anvil chainId
@@ -697,7 +697,7 @@ yarn deploy:verify
 
 **Typical Development Flow**:
 
-1. **Modify Contracts** (`packages/foundry/contracts/`)
+1. **Modify Contracts** (`foundry/contracts/`)
    ```bash
    # Edit Option.sol, Redemption.sol, or OptionFactory.sol
    ```
@@ -738,7 +738,7 @@ yarn deploy:verify
    - See events in real-time
 
 6. **Build Custom UI**
-   - Create pages in `packages/nextjs/app/`
+   - Create pages in `opswap/app/`
    - Use Scaffold-ETH hooks for contract interaction
    - Frontend auto-reloads on file changes
 
@@ -758,14 +758,14 @@ yarn deploy:verify
 
 ---
 
-## RFQ Market Maker Package (`packages/rfq/`)
+## RFQ Market Maker Package (`rfq/`)
 
 The RFQ (Request for Quote) package is a TypeScript market maker that connects to Bebop's RFQ system to provide liquidity for option tokens.
 
 ### Package Structure
 
 ```
-packages/rfq/src/
+rfq/src/
 ├── index.ts           # Main entry point, WebSocket connections, RFQ handling
 ├── blackScholes.ts    # Black-Scholes option pricing
 ├── optionMetadata.ts  # Fetches real option data from chain
@@ -780,7 +780,7 @@ packages/rfq/src/
 ### Running the RFQ Server
 
 ```bash
-cd packages/rfq
+cd rfq
 yarn dev  # or: npx ts-node src/index.ts
 ```
 
@@ -882,14 +882,14 @@ Example with $2000 strike:
 
 ---
 
-## Trading Frontend (`packages/opswap/`)
+## Trading Frontend (`opswap/`)
 
 The trading UI built with Next.js for buying/selling options.
 
 ### Key Components
 
 ```
-packages/opswap/app/
+opswap/app/
 ├── trade/
 │   ├── page.tsx                    # Main trading page
 │   ├── components/
@@ -952,7 +952,7 @@ const price = getPrice(optionAddress);  // { bids: [[price, size]], asks: [[pric
 - Emergency pause mechanism via `locked` flag (prevents transfers only)
 
 ### Testing Approach
-Tests in `packages/foundry/test/Option.t.sol`:
+Tests in `foundry/test/Option.t.sol`:
 - 40+ test cases covering normal operations, edge cases, time-based logic, and multi-user scenarios
 - Fork testing on Unichain via `vm.createSelectFork(UNICHAIN_RPC_URL)`
 - Two approval patterns tested: Permit2 (modifier `t1`) and standard ERC20 (modifier `t2`)
@@ -968,8 +968,8 @@ Git history shows recent rename:
 
 ## Development Workflow
 
-1. **Modify contracts** in `packages/foundry/contracts/`
-2. **Update deployment scripts** in `packages/foundry/script/` if needed
+1. **Modify contracts** in `foundry/contracts/`
+2. **Update deployment scripts** in `foundry/script/` if needed
 3. **Run tests** with `yarn foundry:test`
 4. **Deploy locally** with `yarn deploy`
 5. **Test in UI** at `http://localhost:3000/debug` (Debug Contracts page)

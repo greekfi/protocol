@@ -44,7 +44,7 @@ A complete RFQ aggregator system that routes quotes between traders and market m
 ### Step 1: Start the Aggregator (Terminal 1)
 
 ```bash
-cd packages/aggregator
+cd aggregator
 yarn dev
 ```
 
@@ -59,7 +59,7 @@ Waiting for market makers to connect...
 ### Step 2: Start Market Maker(s) (Terminal 2)
 
 ```bash
-cd packages/rfq
+cd rfq
 yarn dev:aggregator
 ```
 
@@ -119,7 +119,7 @@ Navigate to http://localhost:3000/trade
 
 ### "No market makers available for these tokens"
 - Make sure the RFQ market maker is running
-- Check that the token address matches one in `packages/rfq/src/optionsList.ts`
+- Check that the token address matches one in `rfq/src/optionsList.ts`
 
 ### "No quotes received from market makers"
 - Check market maker console for errors
@@ -137,7 +137,7 @@ You can run multiple market makers:
 
 **Terminal 4:**
 ```bash
-cd packages/rfq
+cd rfq
 MAKER_ID=maker-002 MAKER_NAME="Another MM" yarn dev:aggregator
 ```
 

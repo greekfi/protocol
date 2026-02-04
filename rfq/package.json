@@ -1,13 +1,12 @@
 {
-  "name": "rfq",
+  "name": "@greek/rfq",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "yarn@4.12.0",
   "scripts": {
-    "dev": "nodemon --watch src --ext ts --exec 'ts-node src/index.ts'",
-    "dev:aggregator": "nodemon --watch src --ext ts --exec 'ts-node src/index-aggregator.ts'",
-    "start": "ts-node src/index.ts",
-    "start:aggregator": "ts-node src/index-aggregator.ts",
+    "dev": "tsx watch src/index.ts",
+    "dev:aggregator": "tsx watch src/index-aggregator.ts",
+    "start": "tsx src/index.ts",
+    "start:aggregator": "tsx src/index-aggregator.ts",
     "build": "tsc",
     "lint": "eslint src/"
   },
@@ -20,13 +19,12 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
-    "@types/cors": "^2",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5",
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13",
-    "nodemon": "^3.1.9",
     "protobufjs-cli": "^2.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.3"
   }
 }

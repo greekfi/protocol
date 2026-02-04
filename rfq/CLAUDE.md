@@ -40,7 +40,7 @@ This package implements a **Request-for-Quote (RFQ) market maker** for option to
 ### File Structure
 
 ```
-packages/rfq/
+rfq/
 ├── src/
 │   ├── index.ts              # Main entry point, pricing WebSocket
 │   ├── client.ts             # Bebop RFQ WebSocket client
@@ -487,4 +487,4 @@ For Bebop-specific issues:
 
 For protocol issues:
 - See main [protocol CLAUDE.md](../../CLAUDE.md)
-- Review option contracts in [packages/foundry/](../foundry/)
+- Review option contracts in [foundry/](../foundry/)

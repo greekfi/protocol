@@ -24,7 +24,7 @@ A dual-token options protocol where both long (Option) and short (Redemption) po
 ## Core Contracts
 
 ```
-packages/foundry/contracts/
+foundry/contracts/
 ├── OptionFactory.sol      # Factory contract, creates option pairs via clones
 ├── Option.sol             # Long position (call/right side)
 ├── Redemption.sol         # Short position (put/obligation side)
@@ -78,10 +78,10 @@ forge test -vvv          # Run with detailed output
 - Debug UI at `http://localhost:3000/debug`
 
 **Key Directories:**
-- Contracts: `packages/foundry/contracts/`
-- Tests: `packages/foundry/test/`
-- Deployment: `packages/foundry/script/`
-- Frontend: `packages/opswap/`
+- Contracts: `foundry/contracts/`
+- Tests: `foundry/test/`
+- Deployment: `foundry/script/`
+- Frontend: `opswap/`
 
 ## Security Notice
 

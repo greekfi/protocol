@@ -38,7 +38,15 @@
       "Bash(FOUNDRY_DISABLE_NIGHTLY_WARNING=1 forge build:*)",
       "Bash(npx tsc:*)",
       "Bash(npx tsx:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(claude --version:*)",
+      "Bash(git log:*)",
+      "Bash(git worktree:*)",
+      "Bash(git -C ../protocol-claude diff --name-only main...HEAD -- '*.md')",
+      "Bash(git mv:*)",
+      "Bash(git rebase:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

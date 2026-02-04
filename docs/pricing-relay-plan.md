@@ -11,7 +11,7 @@ Create a **standalone server** that:
 
 ```
 Bebop Pricing Feeds          Pricing Relay Server           Frontend
-(7 chains)                   (packages/rfq)                 (packages/opswap)
+(7 chains)                   (rfq)                 (opswap)
 
 wss://api.bebop.xyz/         ┌──────────────────┐          ┌─────────────┐
   pmm/ethereum/v3/pricing ──>│                  │          │             │
@@ -26,7 +26,7 @@ wss://api.bebop.xyz/         ┌────────────────
 
 ## Files to Create/Modify
 
-### Server Side (packages/rfq/)
+### Server Side (rfq/)
 
 | File | Status | Description |
 |------|--------|-------------|
@@ -39,7 +39,7 @@ wss://api.bebop.xyz/         ┌────────────────
 | `package.json` | MODIFIED | Added `dev:pricing` and `start:pricing` scripts |
 | `.env.example` | MODIFIED | Added pricing relay config vars |
 
-### Frontend (packages/opswap/)
+### Frontend (opswap/)
 
 | File | Status | Description |
 |------|--------|-------------|
@@ -76,13 +76,13 @@ NEXT_PUBLIC_ENABLE_PRICING_STREAM=true
 
 ### Start Pricing Relay Server
 ```bash
-cd packages/rfq
+cd rfq
 yarn dev:pricing
 ```
 
 ### Start Frontend
 ```bash
-cd packages/opswap
+cd opswap
 yarn dev
 ```
 
