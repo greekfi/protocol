@@ -58,7 +58,8 @@
       "Bash(do echo \" \"\"$addr\"\",\")",
       "Bash(pkill:*)",
       "Bash(wc:*)",
-      "Bash(while read f)"
+      "Bash(while read f)",
+      "WebFetch(domain:etherscan.io)"
     ],
     "deny": [],
     "ask": []
