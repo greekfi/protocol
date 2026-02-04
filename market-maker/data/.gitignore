@@ -1,0 +1,5 @@
+# Ignore all metadata files
+metadata-*.json
+
+# Allow example files
+!metadata-example.json

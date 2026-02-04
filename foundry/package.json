@@ -1,0 +1,27 @@
+{
+  "name": "@greek/foundry",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "account": "make account",
+    "account:generate": "node scripts-js/generateKeystore.js",
+    "account:import": "node scripts-js/importAccount.js",
+    "chain": "make chain",
+    "compile": "forge compile",
+    "deploy": "node scripts-js/parseArgs.js",
+    "fork": "make fork FORK_URL=${1:-mainnet}",
+    "format": "forge fmt && prettier --write ./scripts-js/**/*.js",
+    "postinstall": "cp -n .env.example .env 2>/dev/null || true",
+    "lint": "forge fmt --check && prettier --check ./scripts-js/**/*.js",
+    "test": "forge test",
+    "verify": "make verify RPC_URL=${1:-localhost}"
+  },
+  "dependencies": {
+    "dotenv": "~17.2.3",
+    "envfile": "~7.1.0",
+    "ethers": "~6.16.0",
+    "prettier": "^3.7.4",
+    "qrcode": "~1.5.4",
+    "toml": "~3.0.0"
+  }
+}

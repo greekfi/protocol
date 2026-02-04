@@ -20,16 +20,16 @@ This is an **options protocol** built on Scaffold-ETH 2, implementing a dual-tok
 
 ### Smart Contract Folders
 ```bash
-<Root>/protocol/packages/foundry/contracts
-<Root>/protocol/packages/foundry/test
-<Root>/protocol/packages/foundry/script
-<Root>/protocol/packages/opswap
+<Root>/protocol/foundry/contracts
+<Root>/protocol/foundry/test
+<Root>/protocol/foundry/script
+<Root>/protocol/core
 ```
 
 
 ### React Folders
 ```bash
-<Root>/protocol/packages/opswap
+<Root>/protocol/core
 ```
 
 ### Local Development (Three Terminal Setup)
@@ -51,7 +51,7 @@ yarn foundry:lint       # Lint Solidity code
 ### Testing Specific Contracts
 ```bash
 # Run a specific test file
-forge test --match-path packages/foundry/test/Option.t.sol
+forge test --match-path foundry/test/Option.t.sol
 
 # Run a specific test function
 forge test --match-test testExercise
@@ -470,13 +470,13 @@ _factory.transferFrom(caller, address(this), considerationAmount, considerationT
 
 ### Frontend Architecture
 
-Located in `packages/nextjs/`:
+Located in `core/`:
 - **Framework**: Next.js 14+ with App Router (not Pages Router)
 - **Web3 Stack**: RainbowKit + Wagmi + Viem
 - **Styling**: Tailwind CSS v4.1.8
 - **Contract Hot Reload**: Frontend auto-updates when contracts change via filesystem watchers
 
-**Key Scaffold-ETH Hooks** (in `packages/nextjs/hooks/scaffold-eth/`):
+**Key Scaffold-ETH Hooks** (in `core/hooks/scaffold-eth/`):
 - `useScaffoldReadContract`: Read contract state (auto-typed with ABIs)
 - `useScaffoldWriteContract`: Write to contracts (with transaction feedback)
 - `useScaffoldWatchContractEvent`: Real-time event watching
@@ -484,7 +484,7 @@ Located in `packages/nextjs/`:
 - `useDeployedContractInfo`: Get deployed contract addresses and ABIs
 - `useTargetNetwork`: Get current target network configuration
 
-**Key Scaffold-ETH Components** (in `packages/nextjs/components/scaffold-eth/`):
+**Key Scaffold-ETH Components** (in `core/components/scaffold-eth/`):
 - `<Address>`: Display Ethereum addresses with ENS support and copy functionality
 - `<AddressInput>`: Input field for addresses with ENS resolution
 - `<Balance>`: Display ETH/token balances with USD conversion
@@ -529,7 +529,7 @@ useScaffoldWatchContractEvent({
 
 When you run `yarn deploy`:
 
-1. **Foundry Deployment Script Runs** (`packages/foundry/script/Deploy.s.sol`):
+1. **Foundry Deployment Script Runs** (`foundry/script/Deploy.s.sol`):
    ```solidity
    // Deploys template contracts
    Redemption redemptionTemplate = new Redemption(...);
@@ -546,13 +546,13 @@ When you run `yarn deploy`:
    factory.createOption(...);
    ```
 
-2. **Deployment Info Exported** to `packages/foundry/broadcast/`:
+2. **Deployment Info Exported** to `foundry/broadcast/`:
    - Chain-specific deployment data (addresses, ABIs, transaction hashes)
    - Format: `Deploy.s.sol/<chainId>/run-latest.json`
 
 3. **Scaffold-ETH Auto-Generates TypeScript File**:
    - Reads deployment data from `broadcast/` directory
-   - Generates `packages/nextjs/contracts/deployedContracts.ts`
+   - Generates `core/contracts/deployedContracts.ts`
    - Creates fully-typed contract configuration
 
 #### The `deployedContracts.ts` File
@@ -560,7 +560,7 @@ When you run `yarn deploy`:
 This file is **automatically generated** and contains:
 
 ```typescript
-// packages/nextjs/contracts/deployedContracts.ts
+// core/contracts/deployedContracts.ts
 
 const deployedContracts = {
   31337: {  // Local Anvil chainId
@@ -697,7 +697,7 @@ yarn deploy:verify
 
 **Typical Development Flow**:
 
-1. **Modify Contracts** (`packages/foundry/contracts/`)
+1. **Modify Contracts** (`foundry/contracts/`)
    ```bash
    # Edit Option.sol, Redemption.sol, or OptionFactory.sol
    ```
@@ -738,7 +738,7 @@ yarn deploy:verify
    - See events in real-time
 
 6. **Build Custom UI**
-   - Create pages in `packages/nextjs/app/`
+   - Create pages in `core/app/`
    - Use Scaffold-ETH hooks for contract interaction
    - Frontend auto-reloads on file changes
 
@@ -756,6 +756,380 @@ yarn deploy:verify
 - Change frontend code → Next.js fast refresh → Instant preview
 - Change deployment script → Re-run `yarn deploy` → New addresses in frontend
 
+---
+
+## Market Maker Package (`market-maker/`)
+
+The market-maker package is a consolidated TypeScript service that provides liquidity for option tokens through multiple modes: direct quote server, Bebop RFQ integration, and Bebop price relay.
+
+### Package Structure
+
+```
+market-maker/
+├── src/
+│   ├── direct.ts          # Entry point for standalone quote server
+│   ├── bebop.ts           # Entry point for Bebop RFQ client
+│   ├── relay.ts           # Entry point for Bebop price relay
+│   │
+│   ├── modes/             # Mode implementations
+│   │   ├── direct.ts      # HTTP + WebSocket quote server
+│   │   ├── bebop.ts       # Bebop RFQ handler
+│   │   └── relay.ts       # Bebop price relay
+│   │
+│   ├── pricing/           # Pricing core (shared across modes)
+│   │   ├── blackScholes.ts    # Black-Scholes with Greeks
+│   │   ├── pricer.ts          # Pricing engine
+│   │   ├── spotFeed.ts        # On-chain spot price feed
+│   │   └── types.ts           # Pricing types
+│   │
+│   ├── servers/           # Server implementations
+│   │   ├── httpApi.ts         # Express HTTP quote API
+│   │   ├── wsStream.ts        # WebSocket price broadcast
+│   │   └── wsRelay.ts         # WebSocket relay server
+│   │
+│   ├── bebop/             # Bebop integration
+│   │   ├── client.ts          # Bebop RFQ WebSocket client
+│   │   ├── relay.ts           # Bebop pricing relay
+│   │   ├── signing.ts         # Quote signing
+│   │   ├── types.ts           # Bebop types
+│   │   └── proto/             # Protobuf definitions
+│   │
+│   ├── config/            # Chain/token configuration
+│   │   ├── chains.ts          # 8 chains with Chainlink feeds
+│   │   ├── tokens.ts          # Token addresses per chain
+│   │   ├── options.ts         # Option deployment tracking
+│   │   ├── metadata.ts        # Fetch option params from chain
+│   │   └── registry.ts        # Option address registry
+│   │
+│   ├── constants.ts
+│   └── types.ts
+│
+├── package.json
+├── tsconfig.json
+└── .env.example
+```
+
+### Running Market Maker Services
+
+```bash
+cd market-maker
+
+# Standalone quote server (HTTP + WebSocket)
+yarn direct       # Production
+yarn dev:direct   # Development with watch mode
+
+# Bebop RFQ client (PMM integration)
+yarn bebop        # Production
+yarn dev:bebop    # Development with watch mode
+
+# Bebop price relay (relay Bebop prices to local clients)
+yarn relay        # Production
+yarn dev:relay    # Development with watch mode
+```
+
+### Environment Variables
+
+**Common** (all modes):
+```bash
+CHAIN_ID=8453              # Default chain (Base, Unichain, etc.)
+MAKER_ADDRESS=0x...
+PRIVATE_KEY=0x...          # For signing quotes
+```
+
+**Direct Mode** (standalone quote server):
+```bash
+HTTP_PORT=3010             # HTTP API port
+WS_PORT=3011               # WebSocket stream port
+DEFAULT_IV=0.8             # Implied volatility
+RISK_FREE_RATE=0.05        # Risk-free rate
+BID_SPREAD=0.02            # Bid spread (2%)
+ASK_SPREAD=0.02            # Ask spread (2%)
+SPOT_POLL_INTERVAL=30000   # Spot price update interval (ms)
+PRICE_BROADCAST_INTERVAL=5000  # WebSocket broadcast interval
+```
+
+**Bebop Mode** (RFQ client):
+```bash
+BEBOP_MARKETMAKER=xxx      # Bebop market maker ID
+BEBOP_AUTHORIZATION=xxx    # Bebop auth token
+BEBOP_API_URL=https://api.bebop.xyz
+CHAIN=ethereum             # Chain name for Bebop
+```
+
+**Relay Mode** (price relay):
+```bash
+RELAY_WS_PORT=3004         # WebSocket relay port
+BEBOP_CHAINS=ethereum,base,arbitrum  # Chains to relay
+```
+
+### Key Modules
+
+#### Pricing Core (`pricing/`)
+
+**`blackScholes.ts`** - Black-Scholes option pricing with Greeks:
+```typescript
+// Core BS formula with Greeks
+blackScholesPrice({ spot, strike, timeToExpiry, volatility, riskFreeRate, isPut }): {
+  price: number;
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+}
+
+// Calculates bid/ask with spread
+calculateBidAsk(spot, strike, expirationTimestamp, isPut, volatility, riskFreeRate, spreadPercent): { bid, ask }
+```
+
+**Critical: Put price normalization**
+```typescript
+// For puts: 1 option token = right to sell (1/strike) of underlying
+// So put price per token = BS price / strike
+if (isPut && strike > 0) {
+  midPrice = midPrice / strike;
+}
+```
+
+**`pricer.ts`** - Pricing engine:
+- Manages option pricing across all tokens
+- Handles RFQ quote generation
+- Integrates with spot price feed
+
+**`spotFeed.ts`** - On-chain spot price feed:
+- Fetches prices from Chainlink price feeds
+- Fallback to Uniswap V3 TWAP for chains without Chainlink
+- Configurable via `config/chains.ts`
+
+#### Chain Configuration (`config/`)
+
+**`chains.ts`** - Multi-chain support:
+```typescript
+interface ChainConfig {
+  id: number;
+  name: string;
+  rpcUrl: string;
+  blockExplorer: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  priceFeed: {
+    ethUsd?: string;       // Chainlink ETH/USD
+    uniV3Pool?: string;    // Uniswap V3 pool for TWAP
+  };
+}
+
+// Supported chains: Ethereum, Base, Arbitrum, Unichain (+ testnets)
+getChain(chainId): ChainConfig
+getChainByName(name): ChainConfig
+```
+
+**`tokens.ts`** - Token addresses per chain:
+```typescript
+interface TokenConfig {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name: string;
+}
+
+// WETH, USDC, USDT, DAI, etc. for all chains
+getToken(chainId, symbol): TokenConfig
+getTokenByAddress(chainId, address): TokenConfig
+```
+
+**`options.ts`** - Option deployment tracking:
+```typescript
+interface OptionDeployment {
+  factory: string;
+  options: string[];  // Deployed option contract addresses
+}
+
+getOptionFactory(chainId): string
+getOptionAddresses(chainId): string[]
+isOptionToken(chainId, address): boolean
+```
+
+**`metadata.ts`** - Fetch option parameters from chain:
+```typescript
+interface OptionMetadata {
+  address: string;
+  redemptionAddress: string;
+  strike: number;              // Normalized to USD (inverted for puts)
+  expirationTimestamp: number; // Unix timestamp
+  isPut: boolean;
+  collateralAddress: string;
+}
+
+fetchAllOptionMetadata()     // Fetches metadata for all options
+getOptionMetadata(address)   // Returns cached metadata
+```
+
+**Critical: Strike normalization for puts**
+```typescript
+// Contract stores put strikes inverted (WETH per USDC instead of USDC per WETH)
+if (isPut && strikeNum > 0) {
+  strikeNum = 1 / strikeNum;  // Convert to same format as calls
+}
+```
+
+### Strike Price Encoding (Calls vs Puts)
+
+The protocol stores strikes differently for calls vs puts:
+
+| Type | Collateral | Consideration | Strike Encoding | Example |
+|------|------------|---------------|-----------------|---------|
+| Call | WETH | USDC | USDC per WETH | 2000 (pay 2000 USDC for 1 WETH) |
+| Put | USDC | WETH | WETH per USDC | 0.0005 (pay 0.0005 WETH for 1 USDC) |
+
+**For Black-Scholes, both need to be in "USDC per WETH" format**, so puts are inverted:
+- Raw put strike: `0.0005`
+- Normalized: `1 / 0.0005 = 2000`
+
+### Option Token Units
+
+**Call tokens**: 1 token = right to buy 1 WETH at strike price
+- BS price is correct as-is
+
+**Put tokens**: 1 token = right to sell (1/strike) WETH, receiving 1 USDC
+- This is 1/strike of a standard put
+- Price per token = BS price / strike
+
+Example with $2000 strike:
+- Standard put on 1 WETH worth $400 → put token worth $400/2000 = $0.20
+
+### Bebop Integration
+
+The market-maker integrates with Bebop via **two WebSocket connections**:
+
+#### 1. **RFQ Connection** (Request for Quote)
+Receives quote requests from Bebop and responds with signed quotes.
+
+#### 2. **Pricing Stream** (Protobuf)
+Continuously sends price updates to Bebop every 10 seconds using Protobuf format.
+
+**Files**:
+- `src/bebop/client.ts` - RFQ WebSocket client
+- `src/bebop/pricingStream.ts` - Protobuf pricing stream
+- `src/bebop/proto/pricing_pb.js` - Protobuf encoder
+
+**Price Filtering**:
+```typescript
+// Skip options with zero prices (Bebop rejects these)
+if (bidPrice <= 0 || askPrice <= 0) continue;
+
+// Skip options with spreads > 500 bps (5%)
+const spreadBps = ((ask - bid) / mid) * 10000;
+if (spreadBps > 500) continue;
+```
+
+### Centralized RPC Client Architecture
+
+All blockchain RPC calls use a centralized client factory for consistency:
+
+**Single Source of Truth**:
+- `src/config/client.ts` - RPC client factory
+- `src/config/chains.ts` - Chain configurations with RPC URLs
+
+**Usage**:
+```typescript
+import { getPublicClient, getWalletClient } from "./config/client";
+
+// Read blockchain data
+const client = getPublicClient();
+const balance = await client.getBalance({ address: "0x..." });
+
+// Send transactions
+const wallet = getWalletClient();
+const hash = await wallet.sendTransaction({ ... });
+```
+
+**Environment Variables**:
+```bash
+# Chain selection
+CHAIN_ID=1  # 1=Ethereum, 8453=Base, 42161=Arbitrum, etc.
+
+# RPC URL override (optional)
+RPC_ETHEREUM=https://eth.drpc.org
+RPC_BASE=https://mainnet.base.org
+```
+
+### Metadata Caching System
+
+Option metadata is fetched once and cached for fast startup:
+
+**Fetch and Save** (run once per chain):
+```bash
+cd market-maker
+yarn fetch-metadata  # Fetches from chain, saves to data/metadata-{chainId}.json
+```
+
+**Auto-Load** (fast startup):
+- Services automatically load from `data/metadata-{chainId}.json` (~5ms)
+- Falls back to fetching from chain if file doesn't exist (~500ms+)
+
+**Performance**: 100x faster startup with cached metadata
+
+---
+
+## Trading Frontend (`core/`)
+
+The trading UI built with Next.js for buying/selling options.
+
+### Key Components
+
+```
+core/app/
+├── trade/
+│   ├── page.tsx                    # Main trading page
+│   ├── components/
+│   │   ├── OptionsGrid.tsx         # Options chain display (calls/puts by strike/expiry)
+│   │   └── TradePanel.tsx          # Order entry panel
+│   └── hooks/
+│       └── useTradableOptions.ts   # Fetches options from OptionCreated events
+└── hooks/
+    └── usePricingStream.ts         # WebSocket connection for live prices
+```
+
+### `useTradableOptions` Hook
+
+Fetches all deployed options by reading `OptionCreated` events from the factory:
+
+```typescript
+interface TradableOption {
+  optionAddress: string;
+  collateralAddress: string;
+  considerationAddress: string;
+  expiration: bigint;
+  strike: bigint;           // Raw from contract (18 decimals)
+  isPut: boolean;
+  redemptionAddress: string;
+}
+```
+
+### `OptionsGrid` Component
+
+Displays options chain with:
+- Strikes as rows
+- Expirations as columns
+- Calls on left, Puts on right
+- Bid/Ask prices from pricing stream
+
+**Strike normalization in grid** (same logic as market-maker):
+```typescript
+// For puts, invert the strike price to align with calls
+if (option.isPut && option.strike > 0n) {
+  normalizedStrike = (10n ** 36n) / option.strike;
+}
+```
+
+### `usePricingStream` Hook
+
+Connects to market-maker's pricing WebSocket:
+```typescript
+const { getPrice, isConnected } = usePricingStream({ enabled: true });
+const price = getPrice(optionAddress);  // { bids: [[price, size]], asks: [[price, size]] }
+```
+
+---
+
 ## Important Implementation Notes
 
 ### Security Considerations
@@ -765,7 +1139,7 @@ yarn deploy:verify
 - Emergency pause mechanism via `locked` flag (prevents transfers only)
 
 ### Testing Approach
-Tests in `packages/foundry/test/Option.t.sol`:
+Tests in `foundry/test/Option.t.sol`:
 - 40+ test cases covering normal operations, edge cases, time-based logic, and multi-user scenarios
 - Fork testing on Unichain via `vm.createSelectFork(UNICHAIN_RPC_URL)`
 - Two approval patterns tested: Permit2 (modifier `t1`) and standard ERC20 (modifier `t2`)
@@ -781,8 +1155,8 @@ Git history shows recent rename:
 
 ## Development Workflow
 
-1. **Modify contracts** in `packages/foundry/contracts/`
-2. **Update deployment scripts** in `packages/foundry/script/` if needed
+1. **Modify contracts** in `foundry/contracts/`
+2. **Update deployment scripts** in `foundry/script/` if needed
 3. **Run tests** with `yarn foundry:test`
 4. **Deploy locally** with `yarn deploy`
 5. **Test in UI** at `http://localhost:3000/debug` (Debug Contracts page)

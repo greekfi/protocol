@@ -1,0 +1,114 @@
+// market-maker/src/config/options.ts
+
+export interface OptionDeployment {
+  factory: string;
+  options: string[];  // Deployed option contract addresses
+}
+
+// Option contract addresses per chain
+export const OPTIONS: Record<number, OptionDeployment> = {
+  // === ETHEREUM MAINNET ===
+  1: {
+    factory: "0x...",  // OptionFactory address - update with actual address
+    options: [
+      // Filtered valid WETH call options (28 total)
+      "0x93a8f0E3b2103F2DeeA8EcefD86701b41b7810eA",
+      "0xE32d43a933Ed31965BacDC7Ba447175f299C7629",
+      "0x21893402F39eD825777cD90dc69E1eaa592E08d2",
+      "0xF1Ac5401A7e3bfa43bB7C7fd35d2E5C5b2ef26e3",
+      "0x9fCfE70EF948B624b56Ff0258a7983A6BD32deE4",
+      "0x4930fF225799eE51238B3dF04F3514087BC0DA02",
+      "0xAb04Bdab9B5Dc0aD04d4809D500C19C822272b84",
+      "0xD6eCA8F0Bb5ca0Aff56cB972D34bACF589eec834",
+      "0x369A058B4a7343ce67BEbe2bfeb5eaB61FA50DE8",
+      "0x12736710E5FB0367239caF88CdaDF8026221b959",
+      "0xe65F48d43e3DDD43d3e3CbD59AF9cA2Bacbb84e1",
+      "0x8b2e67d17CE9aEc4d51bb690c632dcBF4DE6C68a",
+      "0xCA1685e45198c37ea5B29579320DaF34d528EbbE",
+      "0x90b1916F693727129cbEEd3c511c5fB3359D8614",
+      "0x14aC1795916b1242DDb8bD9b09859f7B4af678b4",
+      "0x6FF8Aed4F0d88Bf3Ac968E02C0A2041c6652b9Bb",
+      "0xa127f6D2233DAE96066EE8eCC8a09b0a2C782FDF",
+      "0xB9D2a9C29BC2259A1dab70a8D56A3053b95A4904",
+      "0xAFef03aaBc2727226a5C78f8ef34078f857C5eC0",
+      "0x16Df5093A1393336C2Ef81A48aE37c76bB69Ce37",
+      "0xADa77b932375a2db6e084DbeedEcD6008fC11b01",
+      "0x65377F1f4F067A468D9A99cfe5A2D2078097Fb8E",
+      "0x3213D3a004A7721b694266A93C8033F461139099",
+      "0x2b7e70bC81566B23F9Ab5d7fB85EB723eA793ad6",
+      "0xDFfD4F0747E4CC055973e07CCF34610eE9f507a5",
+      "0xd127Fbe6415e406a14eBB2A2Ed431d5EaCc8ba2f",
+      "0x47a79d2395AF93D4f0b43167b0E22E2AfaDC3F73",
+      "0xa1Cb11B8eCA1Ce978a8F4E68ed205E1179cc0606",
+
+      // Put options (28 total)
+      "0xa59feE2E6e08bBC8c88CE993947B025C76c62322",
+      "0x1284055731C6c4e1C9938247beF2EeB0e2243B03",
+      "0xAb68adD4fB153b34eFe05c589d20AcDdE746a1d7",
+      "0xEd4D155D5279dE57F4ef8Af7Ed3252B3a4332e0C",
+      "0x0E89952c517D9b50785104E1ea6F41e8c6eDf3bB",
+      "0x32493Abed345930ad3dd412F37053173526Fb6a2",
+      "0x7113E90B610B627B5610FA51298b3C6A71710052",
+      "0xF9e9D60e0C21241bd92a2Ea337Ba52B0253b6E15",
+      "0xA960E2e51c9eA5EF14947d453434c1f0aF69B428",
+      "0x71e206538669aAaee34470b396fE4a8aed0eD827",
+      "0x535a7d3Fa2E6Ba047328de6bFbfa9994fbA5FBB8",
+      "0xb4e12A5E63eD2E2102DEA83a362255F4541797C4",
+      "0xd3a6147DcaD93a59863d5e0f5C68A731d263e62c",
+      "0xDCeA8Bc8D1b962EaeAc194D8Ea7d349B10B52F7C",
+      "0xA3bbe582c23b9F33a00ddbF80F4fcAE34A79d822",
+      "0x55f14B4Ddd6463CF1B616CCC4E032b4F4CeE590C",
+      "0xC1aFbB0C0d099f670B966DBc411bd154f76874a3",
+      "0xa91c51B760Ef567AACbf62C68a2ABD7F516302Bd",
+      "0xF1e57e10416dE5a88EF8F9c5Ca3c2aFdb324aEf9",
+      "0x3C2A3212fE0C0D5DDdC1d874EB944C30153e0a20",
+      "0xeE56D9576D50A3699975d105b006c201BA4a84Cd",
+      "0x34A9fCD095413Fd0fe8b36b4432Fc40D5B6cc7A4",
+      "0x91Fd0C60459e263D1faccbE0019106A795F3ffa5",
+      "0x38880B43b387CB509BA892423B0862ebD793D38C",
+      "0xeDE9e917280e5BCf5270D9ae85578Dd7b10AEE05",
+      "0xe106ED8aCF41C8007fe86633a642c25e3789D058",
+      "0x5D191Ff8c608702Afcc18E57e37D5115b8396770",
+      "0x3f217839F72387c1dFC45A93a7600d12B6e008B8",
+    ],
+  },
+
+  // === BASE MAINNET ===
+  8453: {
+    factory: "0x...",
+    options: [],
+  },
+
+  // === UNICHAIN MAINNET ===
+  130: {
+    factory: "0x...",
+    options: [],
+  },
+
+  // === UNICHAIN SEPOLIA ===
+  1301: {
+    factory: "0x...",
+    options: [],
+  },
+
+  // === ANVIL (LOCAL) ===
+  31337: {
+    factory: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    options: [],
+  },
+};
+
+export function getOptionFactory(chainId: number): string {
+  const deployment = OPTIONS[chainId];
+  if (!deployment) throw new Error(`No options deployed on chain ${chainId}`);
+  return deployment.factory;
+}
+
+export function getOptionAddresses(chainId: number): string[] {
+  return OPTIONS[chainId]?.options ?? [];
+}
+
+export function isOptionToken(chainId: number, address: string): boolean {
+  const options = getOptionAddresses(chainId);
+  return options.some((o) => o.toLowerCase() === address.toLowerCase());
+}

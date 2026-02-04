@@ -1,0 +1,35 @@
+{
+  "name": "@greek/market-maker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/direct.ts",
+    "start": "tsx src/direct.ts",
+    "build": "tsc",
+    "direct": "tsx src/direct.ts",
+    "bebop": "tsx src/bebop.ts",
+    "relay": "tsx src/relay.ts",
+    "dev:direct": "tsx watch src/direct.ts",
+    "dev:bebop": "tsx watch src/bebop.ts",
+    "dev:relay": "tsx watch src/relay.ts",
+    "fetch-metadata": "tsx scripts/fetch-metadata.ts",
+    "proto": "pbjs -t static-module -w es6 -o src/bebop/proto/pricing_pb.js src/bebop/proto/*.proto && pbts -o src/bebop/proto/pricing_pb.d.ts src/bebop/proto/pricing_pb.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "protobufjs": "^8.0.0",
+    "viem": "^2.44.1",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "protobufjs-cli": "^2.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.3"
+  }
+}

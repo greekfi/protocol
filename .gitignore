@@ -9,6 +9,9 @@ node_modules
 !.yarn/sdks
 !.yarn/versions
 
+# npm (this project uses yarn)
+package-lock.json
+
 # eslint
 .eslintcache
 
