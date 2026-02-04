@@ -1,6 +1,8 @@
-import { createPublicClient, http, formatUnits, type Chain } from "viem";
-import * as chains from "viem/chains";
+import { formatUnits } from "viem";
 import { getOptionAddresses } from "./options";
+import { getPublicClient, getCurrentChainId } from "./client";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // Option contract ABI (minimal for metadata)
 const OPTION_ABI = [
@@ -57,35 +59,11 @@ export interface OptionMetadata {
 // Cache for option metadata
 const metadataCache = new Map<string, OptionMetadata>();
 
-// Get chain from env - uses same CHAIN_ID as index.ts
-function getChain(): Chain {
-  const chainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1;
-  const chain = Object.values(chains).find((c: any) => c?.id === chainId) as Chain | undefined;
-  return chain || chains.mainnet;
-}
-
-// Create viem client lazily so env vars are loaded
-let _client: ReturnType<typeof createPublicClient> | null = null;
-
-function getClient() {
-  if (!_client) {
-    const chain = getChain();
-    const rpcUrl = process.env.RPC_URL || chain.rpcUrls.default.http[0];
-    console.log(`[optionMetadata] Creating RPC client for ${chain.name} (chainId: ${chain.id})`);
-    console.log(`[optionMetadata] RPC URL: ${rpcUrl}`);
-    _client = createPublicClient({
-      chain,
-      transport: http(rpcUrl),
-    });
-  }
-  return _client;
-}
-
 export async function fetchOptionMetadata(optionAddress: string): Promise<OptionMetadata | null> {
   const cached = metadataCache.get(optionAddress.toLowerCase());
   if (cached) return cached;
 
-  const client = getClient();
+  const client = getPublicClient();
 
   try {
     // First get the redemption contract address
@@ -145,8 +123,70 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
   }
 }
 
-export async function fetchAllOptionMetadata(): Promise<Map<string, OptionMetadata>> {
-  const chainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1;
+/**
+ * Load option metadata from persisted JSON file
+ * This is much faster than fetching from chain
+ *
+ * @returns Map of option metadata, or null if file doesn't exist
+ */
+export function loadMetadataFromFile(): Map<string, OptionMetadata> | null {
+  const chainId = getCurrentChainId();
+  const filePath = join(__dirname, "..", "..", "data", `metadata-${chainId}.json`);
+
+  if (!existsSync(filePath)) {
+    console.log(`⚠️  No metadata file found at ${filePath}`);
+    return null;
+  }
+
+  try {
+    const fileContent = readFileSync(filePath, "utf-8");
+    const data = JSON.parse(fileContent) as {
+      chainId: number;
+      timestamp: number;
+      count: number;
+      options: OptionMetadata[];
+    };
+
+    if (data.chainId !== chainId) {
+      console.warn(`⚠️  Metadata file is for chain ${data.chainId}, but CHAIN_ID is ${chainId}`);
+      return null;
+    }
+
+    // Populate cache
+    const map = new Map<string, OptionMetadata>();
+    for (const option of data.options) {
+      const address = option.address.toLowerCase();
+      map.set(address, option);
+      metadataCache.set(address, option);
+    }
+
+    const age = Date.now() - data.timestamp;
+    const ageMinutes = Math.floor(age / 60000);
+    console.log(`✅ Loaded ${data.count} options from file (${ageMinutes}m old)`);
+
+    return map;
+  } catch (error) {
+    console.error(`❌ Failed to load metadata from file:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all option metadata from chain (slow, use loadMetadataFromFile when possible)
+ *
+ * @param forceRefresh If true, fetches from chain even if file exists
+ */
+export async function fetchAllOptionMetadata(forceRefresh = false): Promise<Map<string, OptionMetadata>> {
+  // Try loading from file first (unless force refresh)
+  if (!forceRefresh) {
+    const fromFile = loadMetadataFromFile();
+    if (fromFile) {
+      return fromFile;
+    }
+    console.log("No cached metadata found, fetching from chain...");
+  }
+
+  const chainId = getCurrentChainId();
   const optionAddresses = getOptionAddresses(chainId);
 
   console.log(`Fetching metadata for ${optionAddresses.length} options on chain ${chainId}...`);

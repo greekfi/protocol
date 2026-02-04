@@ -18,7 +18,7 @@ export const CHAINS: Record<number, ChainConfig> = {
   1: {
     id: 1,
     name: "Ethereum",
-    rpcUrl: process.env.RPC_ETHEREUM || "https://eth.llamarpc.com",
+    rpcUrl: process.env.RPC_ETHEREUM || "https://eth.drpc.org",
     blockExplorer: "https://etherscan.io",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     priceFeed: {

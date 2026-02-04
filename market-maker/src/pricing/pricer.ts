@@ -65,6 +65,27 @@ export class Pricer {
   }
 
   /**
+   * Get all registered option addresses
+   */
+  getOptionAddresses(): string[] {
+    return Array.from(this.options.keys());
+  }
+
+  /**
+   * Get pricing for an option (for pricing stream)
+   * Returns bids/asks in [price, size] format
+   */
+  getPrice(optionAddress: string): { bids: [number, number][]; asks: [number, number][] } | null {
+    const priceResult = this.price(optionAddress);
+    if (!priceResult) return null;
+
+    return {
+      bids: [[priceResult.bid, 1000]],
+      asks: [[priceResult.ask, 1000]],
+    };
+  }
+
+  /**
    * Check if an address is a registered option
    */
   isOption(address: string): boolean {
@@ -227,15 +248,19 @@ export class Pricer {
    * Returns quote response or decline
    */
   async handleRfq(rfq: any): Promise<any> {
-    // Basic implementation - can be extended
-    // This method is called by bebop mode
-    const { buy_tokens, sell_tokens, rfq_id } = rfq;
+    const { buy_tokens, sell_tokens, rfq_id, taker_address, _originalRequest } = rfq;
 
-    // Determine which token is the option
+    // Log RFQ for debugging
+    console.log(`\n📝 RFQ ${rfq_id.substring(0, 8)}:`);
+    console.log(`  Buy: ${buy_tokens?.[0]?.amount} of ${buy_tokens?.[0]?.token?.substring(0, 8)}`);
+    console.log(`  Sell: ${sell_tokens?.[0]?.amount} of ${sell_tokens?.[0]?.token?.substring(0, 8)}`);
+
+    // Validate tokens
     const buyToken = buy_tokens?.[0];
     const sellToken = sell_tokens?.[0];
 
     if (!buyToken || !sellToken) {
+      console.log(`❌ Decline: Invalid tokens`);
       return {
         type: "decline",
         rfq_id,
@@ -243,10 +268,12 @@ export class Pricer {
       };
     }
 
+    // Determine which token is the option
     const isBuyingOption = this.isOption(buyToken.token);
     const isSellingOption = this.isOption(sellToken.token);
 
     if (!isBuyingOption && !isSellingOption) {
+      console.log(`❌ Decline: No option token found`);
       return {
         type: "decline",
         rfq_id,
@@ -254,12 +281,124 @@ export class Pricer {
       };
     }
 
-    // Use the same pricing logic as httpApi
-    // Return quote or decline
-    return {
-      type: "decline",
-      rfq_id,
-      reason: "Not implemented - use httpApi for quotes",
-    };
+    if (isBuyingOption && isSellingOption) {
+      console.log(`❌ Decline: Both tokens are options`);
+      return {
+        type: "decline",
+        rfq_id,
+        reason: "Cannot trade option for option",
+      };
+    }
+
+    try {
+      const makerAddress = process.env.MAKER_ADDRESS;
+      if (!makerAddress) {
+        throw new Error("MAKER_ADDRESS not set");
+      }
+
+      // Determine trade direction and calculate quote
+      let quoteResponse;
+      if (isBuyingOption) {
+        // Taker wants to buy options, maker sells options (asks)
+        // Taker pays sellToken, receives buyToken (options)
+        const optionAddress = buyToken.token;
+        const optionAmount = BigInt(buyToken.amount);
+        const option = this.getOption(optionAddress);
+
+        if (!option) {
+          throw new Error("Option not found in registry");
+        }
+
+        // Calculate how much consideration (USDC) the taker needs to pay
+        // Using ask price since maker is selling
+        const considerationAmount = this.getAskQuote(optionAddress, optionAmount, 6); // USDC has 6 decimals
+
+        if (!considerationAmount) {
+          throw new Error("Failed to calculate quote");
+        }
+
+        console.log(`💰 Quote: Sell ${optionAmount} options for ${considerationAmount} USDC`);
+
+        quoteResponse = {
+          type: "quote",
+          rfq_id,
+          maker_address: makerAddress,
+          buy_tokens: [{ token: sellToken.token, amount: considerationAmount.toString() }],
+          sell_tokens: [{ token: buyToken.token, amount: optionAmount.toString() }],
+          expiry: Math.floor(Date.now() / 1000) + 60, // 60 second expiry
+          _originalRequest,
+        };
+      } else {
+        // Taker wants to sell options, maker buys options (bids)
+        // Taker pays buyToken (options), receives sellToken
+        const optionAddress = sellToken.token;
+        const optionAmount = BigInt(sellToken.amount);
+        const option = this.getOption(optionAddress);
+
+        if (!option) {
+          throw new Error("Option not found in registry");
+        }
+
+        // Calculate how much consideration (USDC) the maker will pay
+        // Using bid price since maker is buying
+        const considerationAmount = this.getBidQuote(optionAddress, optionAmount, 6); // USDC has 6 decimals
+
+        if (!considerationAmount) {
+          throw new Error("Failed to calculate quote");
+        }
+
+        console.log(`💰 Quote: Buy ${optionAmount} options for ${considerationAmount} USDC`);
+
+        quoteResponse = {
+          type: "quote",
+          rfq_id,
+          maker_address: makerAddress,
+          buy_tokens: [{ token: sellToken.token, amount: optionAmount.toString() }],
+          sell_tokens: [{ token: buyToken.token, amount: considerationAmount.toString() }],
+          expiry: Math.floor(Date.now() / 1000) + 60, // 60 second expiry
+          _originalRequest,
+        };
+      }
+
+      // Sign the quote if private key is available
+      const privateKey = process.env.PRIVATE_KEY;
+      if (privateKey && _originalRequest) {
+        const { signQuote } = await import("../bebop/signing");
+        const quoteData = {
+          chain_id: rfq.chain_id,
+          order_signing_type: _originalRequest.order_signing_type || "SingleOrder",
+          order_type: _originalRequest.order_type || "Single",
+          onchain_partner_id: _originalRequest.onchain_partner_id || 0,
+          expiry: quoteResponse.expiry,
+          taker_address: taker_address,
+          maker_address: makerAddress,
+          maker_nonce: _originalRequest.maker_nonce || "0",
+          receiver: _originalRequest.receiver || taker_address,
+          packed_commands: _originalRequest.packed_commands || "0",
+          quotes: [
+            {
+              taker_token: quoteResponse.buy_tokens[0].token,
+              maker_token: quoteResponse.sell_tokens[0].token,
+              taker_amount: quoteResponse.buy_tokens[0].amount,
+              maker_amount: quoteResponse.sell_tokens[0].amount,
+            },
+          ],
+        };
+
+        const { signature } = await signQuote(quoteData, privateKey);
+        quoteResponse.signature = signature;
+        console.log(`✍️  Quote signed`);
+      }
+
+      console.log(`✅ Quote sent`);
+      return quoteResponse;
+    } catch (error) {
+      console.error(`❌ Error generating quote:`, error);
+      return {
+        type: "decline",
+        rfq_id,
+        reason: `Error: ${(error as Error).message}`,
+      };
+    }
   }
 }
