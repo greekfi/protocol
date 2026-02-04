@@ -6,10 +6,7 @@
     "packages": [
       "foundry",
       "core",
-      "rfq",
-      "rfq-direct",
-      "aggregator",
-      "pricing"
+      "market-maker"
     ]
   },
   "scripts": {

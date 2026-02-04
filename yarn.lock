@@ -1092,25 +1092,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@greek/aggregator@workspace:aggregator":
-  version: 0.0.0-use.local
-  resolution: "@greek/aggregator@workspace:aggregator"
-  dependencies:
-    "@types/cors": "npm:^2.8.17"
-    "@types/express": "npm:^5"
-    "@types/node": "npm:^22.10.2"
-    "@types/uuid": "npm:^9.0.7"
-    "@types/ws": "npm:^8.5.13"
-    cors: "npm:^2.8.5"
-    dotenv: "npm:^16.4.5"
-    express: "npm:^5.2.1"
-    tsx: "npm:^4.7.0"
-    typescript: "npm:^5.9.3"
-    uuid: "npm:^9.0.1"
-    ws: "npm:^8.19.0"
-  languageName: unknown
-  linkType: soft
-
 "@greek/core@workspace:core":
   version: 0.0.0-use.local
   resolution: "@greek/core@workspace:core"
@@ -1164,42 +1145,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@greek/pricing@workspace:pricing":
+"@greek/market-maker@workspace:market-maker":
   version: 0.0.0-use.local
-  resolution: "@greek/pricing@workspace:pricing"
-  dependencies:
-    "@types/node": "npm:^22.10.2"
-    "@types/ws": "npm:^8.5.13"
-    dotenv: "npm:^16.4.5"
-    protobufjs: "npm:^8.0.0"
-    protobufjs-cli: "npm:^2.0.0"
-    tsx: "npm:^4.7.0"
-    typescript: "npm:^5.9.3"
-    ws: "npm:^8.19.0"
-  languageName: unknown
-  linkType: soft
-
-"@greek/rfq-direct@workspace:rfq-direct":
-  version: 0.0.0-use.local
-  resolution: "@greek/rfq-direct@workspace:rfq-direct"
-  dependencies:
-    "@types/cors": "npm:^2.8.17"
-    "@types/express": "npm:^5"
-    "@types/node": "npm:^22.10.2"
-    "@types/ws": "npm:^8.5.13"
-    cors: "npm:^2.8.5"
-    dotenv: "npm:^16.4.5"
-    express: "npm:^5.2.1"
-    tsx: "npm:^4.7.0"
-    typescript: "npm:^5.9.3"
-    viem: "npm:^2.44.1"
-    ws: "npm:^8.19.0"
-  languageName: unknown
-  linkType: soft
-
-"@greek/rfq@workspace:rfq":
-  version: 0.0.0-use.local
-  resolution: "@greek/rfq@workspace:rfq"
+  resolution: "@greek/market-maker@workspace:market-maker"
   dependencies:
     "@types/cors": "npm:^2.8.17"
     "@types/express": "npm:^5"
@@ -3463,13 +3411,6 @@ __metadata:
   version: 8.3.4
   resolution: "@types/uuid@npm:8.3.4"
   checksum: 10/6f11f3ff70f30210edaa8071422d405e9c1d4e53abbe50fdce365150d3c698fe7bbff65c1e71ae080cbfb8fded860dbb5e174da96fdbbdfcaa3fb3daa474d20f
-  languageName: node
-  linkType: hard
-
-"@types/uuid@npm:^9.0.7":
-  version: 9.0.8
-  resolution: "@types/uuid@npm:9.0.8"
-  checksum: 10/b8c60b7ba8250356b5088302583d1704a4e1a13558d143c549c408bf8920535602ffc12394ede77f8a8083511b023704bc66d1345792714002bfa261b17c5275
   languageName: node
   linkType: hard
 
