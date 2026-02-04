@@ -46,7 +46,9 @@
       "Bash(git mv:*)",
       "Bash(git rebase:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nConsolidate rfq, rfq-direct, and pricing into market-maker package\n\nMerges 3 separate packages into a single @greek/market-maker package with\nmode-based execution via yarn commands \\(direct, bebop, relay, all\\).\n\n## Structure\n- src/pricing/     - Black-Scholes, pricer, spotFeed \\(from rfq-direct\\)\n- src/servers/     - HTTP API, WebSocket stream & relay\n- src/bebop/       - RFQ client, relay, signing, protobuf\n- src/config/      - Chains, tokens, options \\(multi-chain support\\)\n- src/modes/       - Mode entry points \\(direct, bebop, relay\\)\n- src/index.ts     - Main entry with singleton pattern\n\n## Features\n- Single Pricer instance shared across modes \\(no duplication\\)\n- Graceful shutdown handling \\(SIGTERM/SIGINT\\)\n- Mode validation with clear error messages\n- Master chain configuration \\(8 chains, Chainlink price feeds\\)\n- Master token configuration \\(multi-chain token addresses\\)\n- Centralized option deployment tracking\n\n## Changes\n- Remove: rfq/, rfq-direct/, pricing/, aggregator/\n- Add: market-maker/ with consolidated codebase\n- Update root package.json workspaces\n- Yarn commands: yarn direct, yarn bebop, yarn relay, yarn all\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRefactor to separate entry points instead of MODE routing\n\nReplace single index.ts with mode routing with three dedicated entry files:\n- src/direct.ts  → yarn direct\n- src/bebop.ts   → yarn bebop  \n- src/relay.ts   → yarn relay\n\nBenefits:\n- Simpler, more obvious entry points\n- No MODE env var indirection\n- Each service is completely independent\n- Clearer for debugging\n- No mode validation needed\n\nPackage.json now points directly to entry files instead of using MODE=x.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
