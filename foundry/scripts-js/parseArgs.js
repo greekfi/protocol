@@ -153,7 +153,7 @@ process.env.DEPLOY_SCRIPT = `script/${fileName}`;
 process.env.RPC_URL = network;
 process.env.ETH_KEYSTORE_ACCOUNT = selectedKeystore;
 
-const result = spawnSync("make", ["deploy-and-generate-abis"], {
+const result = spawnSync("make", ["deploy-full"], {
   stdio: "inherit",
   shell: true,
 });

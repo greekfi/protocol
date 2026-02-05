@@ -59,7 +59,13 @@
       "Bash(pkill:*)",
       "Bash(wc:*)",
       "Bash(while read f)",
-      "WebFetch(domain:etherscan.io)"
+      "WebFetch(domain:etherscan.io)",
+      "Bash(git clone:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(GIT_TRACE=1 git submodule:*)",
+      "Bash(chmod:*)",
+      "Bash(/Users/mla/_greek/protocol/foundry/setup-abi-submodule.sh:*)"
     ],
     "deny": [],
     "ask": []

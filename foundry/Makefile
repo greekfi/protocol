@@ -1,4 +1,4 @@
-.PHONY: build deploy generate-abis get-address account chain compile flatten fork format lint test verify
+.PHONY: build deploy deploy-and-generate-abis deploy-abis deploy-full generate-abis get-address account chain compile flatten fork format lint test verify
 
 DEPLOY_SCRIPT ?= script/Deploy.s.sol
 
@@ -31,6 +31,27 @@ deploy:
 
 # Deploy and generate ABIs
 deploy-and-generate-abis: deploy generate-abis
+
+# Deploy, generate ABIs, and commit to abi repo
+deploy-abis: 
+	@echo ""
+	@echo "📝 Checking for ABI changes in submodule..."
+	@if [ -d "abi/.git" ] && [ -n "$$(cd abi && git status --porcelain)" ]; then \
+		echo "✅ Committing ABI changes to submodule..."; \
+		cd abi && \
+		git add -A && \
+		git commit -m "Update ABIs from deployment" && \
+		git push && \
+		cd .. && \
+		git add abi && \
+		echo "✅ ABI submodule committed and pushed"; \
+		echo "⚠️  Parent repo submodule reference staged. Run 'git commit' to finalize."; \
+	else \
+		echo "ℹ️  No ABI changes detected"; \
+	fi
+
+# Full deployment (used by yarn deploy)
+deploy-full: deploy generate-abis deploy-abis
 
 # Generate TypeScript ABIs
 generate-abis:
