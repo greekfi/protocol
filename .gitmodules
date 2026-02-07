@@ -23,6 +23,6 @@
 [submodule "foundry/lib/openzeppelin-contracts-upgradeable"]
 	path = foundry/lib/openzeppelin-contracts-upgradeable
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
-[submodule "foundry/web"]
-	path = foundry/web
+[submodule "web"]
+	path = web
 	url = git@github.com:greekfi/web.git
