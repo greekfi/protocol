@@ -142,7 +142,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @param account The account to check
     /// @param amount The required balance
     modifier sufficientBalance(address account, uint256 amount) {
-        if (balanceOf(account) < amount) return;
+        if (balanceOf(account) < amount) revert InsufficientBalance();
         _;
     }
 
@@ -477,13 +477,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @return Equivalent amount in consideration decimals
      */
     function toConsideration(uint256 amount) public view returns (uint256) {
-        uint256 consMultiple = Math.mulDiv((10 ** consDecimals), strike, (10 ** STRIKE_DECIMALS) * (10 ** collDecimals));
-
-        (uint256 high, uint256 low) = Math.mul512(amount, consMultiple);
-        if (high != 0) {
-            revert ArithmeticOverflow();
-        }
-        return low;
+        return Math.mulDiv(amount, strike * (10 ** consDecimals), (10 ** STRIKE_DECIMALS) * (10 ** collDecimals));
     }
 
     /**
@@ -494,14 +488,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @return Equivalent amount in collateral decimals
      */
     function toCollateral(uint256 consAmount) public view returns (uint256) {
-        uint256 collMultiple =
-            Math.mulDiv((10 ** collDecimals) * (10 ** STRIKE_DECIMALS), 1, strike * (10 ** consDecimals));
-
-        (uint256 high, uint256 low) = Math.mul512(consAmount, collMultiple);
-        if (high != 0) {
-            revert ArithmeticOverflow();
-        }
-        return low;
+        return Math.mulDiv(consAmount, (10 ** collDecimals) * (10 ** STRIKE_DECIMALS), strike * (10 ** consDecimals));
     }
 
     /**
