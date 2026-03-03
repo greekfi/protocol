@@ -277,8 +277,8 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @notice Transfers fees to the owner
      * @param tokens The token addresses to transfer
      */
-    function claimFees(address[] memory options, address[] memory tokens) public {
-        optionsClaimFees(options);
+    function claimFees(address[] memory options_, address[] memory tokens) public {
+        optionsClaimFees(options_);
         claimFees(tokens);
     }
 
@@ -290,17 +290,17 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         for (uint256 i = 0; i < tokens.length; i++) {
             ERC20 token_ = ERC20(tokens[i]);
             uint256 amount = token_.balanceOf(address(this));
-            token_.transfer(owner(), amount);
+            token_.safeTransfer(owner(), amount);
         }
     }
 
     /**
      * @notice Claims fees from multiple option contracts
-     * @param options The options addresses to claim fees from
+     * @param options_ The options addresses to claim fees from
      */
-    function optionsClaimFees(address[] memory options) public nonReentrant {
-        for (uint256 i = 0; i < options.length; i++) {
-            Option(options[i]).claimFees();
+    function optionsClaimFees(address[] memory options_) public nonReentrant {
+        for (uint256 i = 0; i < options_.length; i++) {
+            Option(options_[i]).claimFees();
         }
     }
     /**

@@ -59,6 +59,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint64 public fee;
     string private _tokenName;
     string private _tokenSymbol;
+    uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
@@ -589,18 +590,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Burns both Option and Redemption tokens, returns collateral (pre-expiration only)
      * @param amount Amount of pairs to redeem
      */
-    function redeem(uint256 amount) public notLocked {
-        redeem(msg.sender, amount);
-    }
-
-    /**
-     * @notice Redeems matched Option+Redemption pairs for specified account
-     * @dev Burns both token types from account and returns collateral
-     * @param account Account to redeem from
-     * @param amount Amount of pairs to redeem
-     */
-    function redeem(address account, uint256 amount) public notLocked nonReentrant {
-        redeem_(account, amount);
+    function redeem(uint256 amount) public notLocked nonReentrant nonReentrant {
+        redeem_(msg.sender, amount);
     }
 
     /**
@@ -701,6 +692,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param fee_ Fee amount in 1e18 basis
      */
     function adjustFee(uint64 fee_) public onlyOwner {
+        if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
+        fee = fee_;
         redemption.adjustFee(fee_);
     }
 

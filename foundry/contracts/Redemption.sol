@@ -91,6 +91,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // 23 bytes remaining in this slot
 
     uint8 public constant STRIKE_DECIMALS = 18; // Not stored (constant)
+    uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     // ============ END STORAGE LAYOUT ============
 
@@ -348,6 +349,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /**
      * @notice Redeems redemption tokens for consideration instead of collateral (for msg.sender)
      * @dev Used when collateral is depleted. Burns redemption tokens and returns equivalent consideration.
+     *      Callable both before and after expiration by design.
      * @param amount Amount of redemption tokens to burn
      */
     function redeemConsideration(uint256 amount) public notLocked {
@@ -497,6 +499,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param fee_ Fee amount in 1e18 basis
      */
     function adjustFee(uint64 fee_) public onlyOwner {
+        if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
         fee = fee_;
     }
 
