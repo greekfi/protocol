@@ -4,9 +4,7 @@
   "private": true,
   "workspaces": {
     "packages": [
-      "foundry",
-      "core",
-      "market-maker"
+      "foundry"
     ]
   },
   "scripts": {
@@ -16,15 +14,11 @@
     "chain": "yarn workspace @greek/foundry chain",
     "compile": "yarn workspace @greek/foundry compile",
     "deploy": "yarn workspace @greek/foundry deploy",
-    "format": "yarn workspaces foreach -A run format",
-    "lint": "yarn workspaces foreach -A run lint",
+    "format": "cd foundry && forge fmt",
+    "lint": "cd foundry && forge fmt --check",
     "postinstall": "husky install",
     "precommit": "lint-staged",
-    "start": "yarn workspace @greek/core dev",
-    "build": "yarn workspace @greek/core build",
-    "next:check-types": "yarn workspace @greek/core check-types",
-    "test": "yarn workspace @greek/foundry test",
-    "vercel": "yarn workspace @greek/core vercel"
+    "test": "yarn workspace @greek/foundry test"
   },
   "lint-staged": {
     "foundry/contracts/**/*.sol": "cd foundry && forge fmt",
@@ -37,29 +31,5 @@
   "packageManager": "yarn@4.12.0",
   "engines": {
     "node": ">=20.18.3"
-  },
-  "resolutions": {
-    "typescript": "~5.9.3",
-    "viem": "^2.44.1",
-    "dotenv": "^16.4.5",
-    "ws": "^8.19.0",
-    "@types/node": "^22.10.2",
-    "@types/ws": "^8.5.13",
-    "@types/cors": "^2.8.17",
-    "express": "^5.2.1",
-    "next": "16.0.10",
-    "fast-redact": "3.5.0",
-    "esbuild": "0.25.12",
-    "path-to-regexp": "8.3.0",
-    "undici": "7.16.0",
-    "@walletconnect/ethereum-provider": "2.23.0",
-    "@walletconnect/universal-provider": "2.23.0",
-    "@walletconnect/sign-client": "2.23.0",
-    "@walletconnect/core": "2.23.0",
-    "@walletconnect/utils": "2.23.0",
-    "@walletconnect/types": "2.23.0",
-    "@reown/appkit": "1.8.12",
-    "@noble/curves": "^1.7.0",
-    "@noble/hashes": "^1.6.1"
   }
 }

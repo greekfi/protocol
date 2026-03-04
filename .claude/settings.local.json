@@ -66,7 +66,9 @@
       "Bash(GIT_TRACE=1 git submodule:*)",
       "Bash(chmod:*)",
       "Bash(/Users/mla/_greek/protocol/foundry/setup-abi-submodule.sh:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(gh api:*)",
+      "Bash(git:*)"
     ],
     "deny": [],
     "ask": []
