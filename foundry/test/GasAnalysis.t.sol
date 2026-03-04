@@ -237,7 +237,7 @@ contract GasAnalysis is Test {
 
     function test_Gas_Option_RedeemWithAddress() public {
         option.mint(10);
-        option.redeem(address(this), 5);
+        option.redeem(5);
     }
 
     // ============================================

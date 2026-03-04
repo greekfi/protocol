@@ -11,42 +11,11 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
 
+import { TokenData } from "./interfaces/IOption.sol";
+
 /// @notice Interface for factory contract token transfers
 interface IFactory {
     function transferFrom(address from, address to, uint160 amount, address token) external;
-}
-
-/// @notice Token metadata structure
-struct TokenData {
-    address address_;
-    string name;
-    string symbol;
-    uint8 decimals;
-}
-
-/// @notice Parameters for creating an option contract
-struct OptionParameter {
-    string optionSymbol;
-    string redemptionSymbol;
-    address collateral_;
-    address consideration_;
-    uint40 expiration;
-    uint96 strike;
-    bool isPut;
-}
-
-/// @notice Complete option information including all metadata
-struct OptionInfo {
-    TokenData option;
-    TokenData redemption;
-    TokenData collateral;
-    TokenData consideration;
-    OptionParameter p;
-    address coll;
-    address cons;
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
 }
 
 /**
@@ -148,6 +117,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     event Redeemed(address option, address token, address holder, uint256 amount);
+    event FeeUpdated(uint64 oldFee, uint64 newFee);
 
     /// @notice Ensures contract is not locked
     modifier notLocked() {
@@ -327,7 +297,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param amount Amount to redeem
      */
     function _redeem(address account, uint256 amount) internal sufficientBalance(account, amount) validAmount(amount) {
-        uint256 balance = collateral.balanceOf(address(this));
+        uint256 balance = collateral.balanceOf(address(this)) - fees;
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
         _burn(account, collateralToSend);
@@ -500,7 +470,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function adjustFee(uint64 fee_) public onlyOwner {
         if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
+        uint64 oldFee = fee;
         fee = fee_;
+        emit FeeUpdated(oldFee, fee_);
     }
 
     // ============ METADATA FUNCTIONS ============

@@ -28,7 +28,6 @@ import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import { console } from "forge-std/console.sol";
 
 uint160 constant SQRT_PRICE_X96 = 1 << 96;
 int24 constant TICK_SPACING = type(int16).max;
@@ -301,7 +300,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         IUniswapV3Pool pricePool = IUniswapV3Pool(collateralPricePool[collateral]);
 
         bool collateralIsOne =
-            pricePool.token0() == collateral ? pricePool.token1() == collateral : pricePool.token0() == collateral;
+            pricePool.token1() == collateral;
         uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
         uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
         uint256 power = 10 ** (decimals1 >= decimals0 ? decimals1 - decimals0 : decimals0 - decimals1);
@@ -362,7 +361,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
         IUniswapV3Pool pool = IUniswapV3Pool(pricePool);
-        bool collateralIsOne = pool.token0() == collateral ? pool.token1() == collateral : pool.token0() == collateral;
+        bool collateralIsOne = pool.token1() == collateral;
 
         OptionPool memory optionPool = OptionPool({
             collateral: collateral,
