@@ -20,7 +20,7 @@ contract GasBreakdown is Test {
     string public constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
 
     function setUp() public {
-        vm.createSelectFork(UNICHAIN_RPC_URL);
+        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
 
         stableToken = new StableToken();
         shakyToken = new ShakyToken();

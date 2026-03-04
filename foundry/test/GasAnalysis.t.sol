@@ -41,7 +41,7 @@ contract GasAnalysis is Test {
 
     function setUp() public {
         // Fork Unichain
-        vm.createSelectFork(UNICHAIN_RPC_URL);
+        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
 
         // Deploy test tokens
         stableToken = new StableToken();
