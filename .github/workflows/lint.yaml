@@ -19,8 +19,7 @@ jobs:
           submodules: false
 
       - name: Init foundry submodules only
-        run: |
-          git submodule update --init --recursive foundry/lib
+        run: git submodule update --init foundry/lib
 
       - name: Install foundry-toolchain
         uses: foundry-rs/foundry-toolchain@v1
