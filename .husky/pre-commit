@@ -1,1 +1,3 @@
-yarn lint-staged --verbose
+#!/bin/sh
+
+cd foundry && forge fmt

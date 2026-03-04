@@ -34,7 +34,7 @@ contract OptionTest is Test {
 
     function setUp() public {
         // Fork Unichain at the latest block
-        vm.createSelectFork(UNICHAIN_RPC_URL);
+        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
 
         // Deploy tokens
         stableToken = new StableToken();
@@ -251,7 +251,7 @@ contract OptionTest is Test {
 
     function test_RedeemWithAddress() public t1 {
         option.mint(1);
-        option.redeem(address(this), 1);
+        option.redeem(1);
     }
 
     function test_MultipleUsers() public t1 {

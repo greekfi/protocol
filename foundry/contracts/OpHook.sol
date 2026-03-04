@@ -28,7 +28,6 @@ import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import { console } from "forge-std/console.sol";
 
 uint160 constant SQRT_PRICE_X96 = 1 << 96;
 int24 constant TICK_SPACING = type(int16).max;
@@ -251,20 +250,23 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         bool cashForOption = pool.optionIsOne ? params.zeroForOne : !params.zeroForOne;
         Currency cashCurrency = pool.optionIsOne ? key.currency0 : key.currency1;
         Currency optionCurrency = pool.optionIsOne ? key.currency1 : key.currency0;
-        Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
         IOption option = IOption(pool.optionToken);
         require(option.expirationDate() > block.timestamp, "Option expired");
 
         if (cashForOption) {
-            // Here we JIT create option tokens and let the flash accounting handle transfers
+            // amountSpecified is the cash input amount
+            Price memory a = calculateOption(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(cashCurrency, address(this), a.cashAmount);
             poolManager.sync(optionCurrency);
-            option.mint(a.optionAmount); // this line is optional
-            option.transfer(pm, a.optionAmount);
+            uint256 balBefore = IERC20(pool.optionToken).balanceOf(address(this));
+            option.mint(a.optionAmount);
+            uint256 actualMinted = IERC20(pool.optionToken).balanceOf(address(this)) - balBefore;
+            IERC20(pool.optionToken).safeTransfer(pm, actualMinted);
             poolManager.settle();
-            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(a.optionAmount));
+            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(actualMinted));
         } else {
-            // Here we have to take the option tokens from the caller and auto burn them
+            // amountSpecified is the option input amount
+            Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(optionCurrency, address(this), a.optionAmount);
             poolManager.sync(cashCurrency);
             IERC20(pool.cashToken).safeTransfer(pm, a.cashAmount);
@@ -300,8 +302,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     function getCollateralPrice(address collateral) public view returns (uint256 price) {
         IUniswapV3Pool pricePool = IUniswapV3Pool(collateralPricePool[collateral]);
 
-        bool collateralIsOne =
-            pricePool.token0() == collateral ? pricePool.token1() == collateral : pricePool.token0() == collateral;
+        bool collateralIsOne = pricePool.token1() == collateral;
         uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
         uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
         uint256 power = 10 ** (decimals1 >= decimals0 ? decimals1 - decimals0 : decimals0 - decimals1);
@@ -362,7 +363,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
         IUniswapV3Pool pool = IUniswapV3Pool(pricePool);
-        bool collateralIsOne = pool.token0() == collateral ? pool.token1() == collateral : pool.token0() == collateral;
+        bool collateralIsOne = pool.token1() == collateral;
 
         OptionPool memory optionPool = OptionPool({
             collateral: collateral,

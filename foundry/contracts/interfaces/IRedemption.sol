@@ -2,13 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-struct TokenData {
-    address address_;
-    string name;
-    string symbol;
-    uint8 decimals;
-}
+import { TokenData } from "./IOption.sol";
 
 interface IRedemption {
     // ============ EVENTS ============

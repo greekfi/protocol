@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-// import { OptionBase, OptionInfo, TokenData } from "./OptionBase.sol";
 import { Redemption } from "./Redemption.sol";
+import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
 
 /// @notice Interface for OptionFactory's operator approval functions
 interface IOptionFactory {
@@ -19,33 +19,6 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
 
-/// @notice Token metadata structure
-struct TokenData {
-    address address_;
-    string name;
-    string symbol;
-    uint8 decimals;
-}
-
-/// @notice Balance information for an account across all related tokens
-struct Balances {
-    uint256 collateral;
-    uint256 consideration;
-    uint256 option;
-    uint256 redemption;
-}
-
-/// @notice Complete option contract information including all parameters and token data
-struct OptionInfo {
-    address option;
-    address redemption;
-    TokenData collateral;
-    TokenData consideration;
-    uint256 expiration;
-    uint256 strike;
-    bool isPut;
-}
-
 /**
  * @title Option
  * @notice Represents the long position in an option contract (right to buy/sell)
@@ -59,9 +32,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint64 public fee;
     string private _tokenName;
     string private _tokenSymbol;
+    uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
+    event FeeUpdated(uint64 oldFee, uint64 newFee);
 
     error ContractNotExpired();
     error ContractExpired();
@@ -163,7 +138,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function name() public view override returns (string memory) {
         // For put options, display inverted price (1/strike)
-        uint256 displayStrike = isPut() ? (1e36 / strike()) : strike();
+        uint256 displayStrike = isPut() && strike() > 0 ? (1e36 / strike()) : strike();
 
         return string(
             abi.encodePacked(
@@ -589,18 +564,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Burns both Option and Redemption tokens, returns collateral (pre-expiration only)
      * @param amount Amount of pairs to redeem
      */
-    function redeem(uint256 amount) public notLocked {
-        redeem(msg.sender, amount);
-    }
-
-    /**
-     * @notice Redeems matched Option+Redemption pairs for specified account
-     * @dev Burns both token types from account and returns collateral
-     * @param account Account to redeem from
-     * @param amount Amount of pairs to redeem
-     */
-    function redeem(address account, uint256 amount) public notLocked nonReentrant {
-        redeem_(account, amount);
+    function redeem(uint256 amount) public notLocked nonReentrant {
+        redeem_(msg.sender, amount);
     }
 
     /**
@@ -701,7 +666,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param fee_ Fee amount in 1e18 basis
      */
     function adjustFee(uint64 fee_) public onlyOwner {
+        if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
+        uint64 oldFee = fee;
+        fee = fee_;
         redemption.adjustFee(fee_);
+        emit FeeUpdated(oldFee, fee_);
     }
 
     /**

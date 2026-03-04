@@ -10,18 +10,10 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 
 import { Option } from "./Option.sol";
 import { Redemption } from "./Redemption.sol";
+import { OptionParameter } from "./interfaces/IOptionFactory.sol";
 import { ReentrancyGuardTransient } from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 using SafeERC20 for ERC20;
-
-/// @notice Parameters for creating an option contract
-struct OptionParameter {
-    address collateral_;
-    address consideration_;
-    uint40 expiration;
-    uint96 strike;
-    bool isPut;
-}
 
 /**
  * @title OptionFactory
@@ -159,14 +151,14 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @dev Convenience function for deploying multiple options in a single transaction
      * @param optionParams Array of OptionParameter structs defining each option to create
      */
-    function createOptions(OptionParameter[] memory optionParams) public returns (address[] memory options) {
-        options = new address[](optionParams.length);
+    function createOptions(OptionParameter[] memory optionParams) public returns (address[] memory options_) {
+        options_ = new address[](optionParams.length);
         for (uint256 i = 0; i < optionParams.length; i++) {
             OptionParameter memory param = optionParams[i];
-            options[i] =
+            options_[i] =
                 createOption(param.collateral_, param.consideration_, param.expiration, param.strike, param.isPut);
         }
-        return options;
+        return options_;
     }
 
     // ============ TOKEN TRANSFER FUNCTION ============
@@ -188,7 +180,11 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     {
         // Only redemption contracts can call this (used in mint() and exercise())
         if (!redemptions[msg.sender]) revert InvalidAddress();
-        if (allowance(token, from) < amount) revert InvalidAddress();
+        uint256 currentAllowance = allowance(token, from);
+        if (currentAllowance < amount) revert InvalidAddress();
+        if (currentAllowance != type(uint256).max) {
+            _allowances[token][from] = currentAllowance - amount;
+        }
         ERC20(token).safeTransferFrom(from, to, amount);
         return true;
     }
@@ -277,8 +273,8 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @notice Transfers fees to the owner
      * @param tokens The token addresses to transfer
      */
-    function claimFees(address[] memory options, address[] memory tokens) public {
-        optionsClaimFees(options);
+    function claimFees(address[] memory options_, address[] memory tokens) public {
+        optionsClaimFees(options_);
         claimFees(tokens);
     }
 
@@ -290,17 +286,17 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         for (uint256 i = 0; i < tokens.length; i++) {
             ERC20 token_ = ERC20(tokens[i]);
             uint256 amount = token_.balanceOf(address(this));
-            token_.transfer(owner(), amount);
+            token_.safeTransfer(owner(), amount);
         }
     }
 
     /**
      * @notice Claims fees from multiple option contracts
-     * @param options The options addresses to claim fees from
+     * @param options_ The options addresses to claim fees from
      */
-    function optionsClaimFees(address[] memory options) public nonReentrant {
-        for (uint256 i = 0; i < options.length; i++) {
-            Option(options[i]).claimFees();
+    function optionsClaimFees(address[] memory options_) public nonReentrant {
+        for (uint256 i = 0; i < options_.length; i++) {
+            Option(options_[i]).claimFees();
         }
     }
     /**

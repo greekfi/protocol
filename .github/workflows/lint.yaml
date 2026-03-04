@@ -10,62 +10,30 @@ on:
 
 jobs:
   ci:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        node: [lts/*]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
 
-      - name: Setup node env
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-          cache: yarn
+      - name: Init foundry submodules
+        run: |
+          git -c url."https://github.com/".insteadOf="git@github.com:" \
+            submodule update --init --recursive foundry/lib
 
-      - name: Install dependencies
-        run: yarn install --immutable
-      
       - name: Install foundry-toolchain
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
-      - name: Create .env file for foundry
-        run: |
-          cat > foundry/.env << EOF
-          ALCHEMY_API_KEY=oKxs-03sij-U_N0iOlrSsZFr29-IqbuF
-          ETHERSCAN_API_KEY=${{ secrets.ETHERSCAN_API_KEY }}
-          ETH_KEYSTORE_ACCOUNT=scaffold-eth-default
-          LOCALHOST_KEYSTORE_ACCOUNT=scaffold-eth-default
-          EOF
+      - name: Check formatting
+        working-directory: foundry
+        run: forge fmt --check
 
-      - name: Run foundry node, deploy contracts (& generate contracts typescript output)
-        run: |
-          yarn chain &
-          CHAIN_PID=$!
-          echo "Waiting for anvil to be ready..."
-          for i in {1..30}; do
-            if curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 > /dev/null 2>&1; then
-              echo "Anvil is ready!"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "Timeout waiting for anvil"
-              exit 1
-            fi
-            sleep 1
-          done
-          yarn deploy
+      - name: Build
+        working-directory: foundry
+        run: forge build
 
-      - name: Run nextjs lint
-        run: yarn lint
-
-      - name: Check typings on nextjs
-        run: yarn next:check-types
+      - name: Test
+        working-directory: foundry
+        run: forge test

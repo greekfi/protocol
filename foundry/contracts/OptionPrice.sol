@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import { console } from "forge-std/console.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IUniswapV3Pool {
@@ -22,6 +21,24 @@ interface IUniswapV3Pool {
 }
 
 contract OptionPrice {
+    address public owner;
+    uint256 public volatility = 0.2 * 1e18; // 20% annualized
+    uint256 public riskFreeRate = 0.05 * 1e18; // 5% annualized
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function setVolatility(uint256 volatility_) external {
+        require(msg.sender == owner, "not owner");
+        volatility = volatility_;
+    }
+
+    function setRiskFreeRate(uint256 riskFreeRate_) external {
+        require(msg.sender == owner, "not owner");
+        riskFreeRate = riskFreeRate_;
+    }
+
     // Black-Scholes option pricing formula (returns price with 18 decimals)
     // underlying: price of the underlying asset (18 decimals)
     // strike: strike price (18 decimals)
@@ -502,7 +519,7 @@ contract OptionPrice {
     {
         uint256 timeToExpiration = expiration > block.timestamp ? expiration - block.timestamp : 0;
 
-        uint256 price = blackScholesPrice(collateralPrice, strike, timeToExpiration, 0.2 * 1e18, 0.05 * 1e18, isPut);
+        uint256 price = blackScholesPrice(collateralPrice, strike, timeToExpiration, volatility, riskFreeRate, isPut);
 
         if (inverse && price > 0) {
             return 1e36 / price;
