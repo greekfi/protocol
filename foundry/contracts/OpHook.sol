@@ -299,8 +299,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     function getCollateralPrice(address collateral) public view returns (uint256 price) {
         IUniswapV3Pool pricePool = IUniswapV3Pool(collateralPricePool[collateral]);
 
-        bool collateralIsOne =
-            pricePool.token1() == collateral;
+        bool collateralIsOne = pricePool.token1() == collateral;
         uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
         uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
         uint256 power = 10 ** (decimals1 >= decimals0 ? decimals1 - decimals0 : decimals0 - decimals1);

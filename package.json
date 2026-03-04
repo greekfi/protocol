@@ -26,6 +26,10 @@
     "test": "yarn workspace @greek/foundry test",
     "vercel": "yarn workspace @greek/core vercel"
   },
+  "lint-staged": {
+    "foundry/contracts/**/*.sol": "cd foundry && forge fmt",
+    "foundry/test/**/*.sol": "cd foundry && forge fmt"
+  },
   "devDependencies": {
     "husky": "~9.1.7",
     "lint-staged": "~16.2.7"

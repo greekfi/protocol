@@ -22,8 +22,8 @@ interface IUniswapV3Pool {
 
 contract OptionPrice {
     address public owner;
-    uint256 public volatility = 0.2 * 1e18;    // 20% annualized
-    uint256 public riskFreeRate = 0.05 * 1e18;  // 5% annualized
+    uint256 public volatility = 0.2 * 1e18; // 20% annualized
+    uint256 public riskFreeRate = 0.05 * 1e18; // 5% annualized
 
     constructor() {
         owner = msg.sender;
