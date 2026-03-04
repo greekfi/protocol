@@ -65,12 +65,12 @@ contract SwapCallback is SafeCallback {
             bytes("") // forwarded to the hook's before/afterSwap handlers
         );
 
-        // Settle the input currency (pay the debt) before taking output
-        // The hook already handled the actual settlement via take/sync/settle in beforeSwap
-        // So we just need to take the output tokens that the swap produced
+        // BalanceDelta signs: negative = swapper owes (settle), positive = swapper is owed (take)
         if (zeroForOne) {
+            poolKey.currency0.settle(poolManager, address(this), uint128(-delta.amount0()), false);
             poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
         } else {
+            poolKey.currency1.settle(poolManager, address(this), uint128(-delta.amount1()), false);
             poolKey.currency0.take(poolManager, address(this), uint128(delta.amount0()), false);
         }
 

@@ -250,20 +250,23 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         bool cashForOption = pool.optionIsOne ? params.zeroForOne : !params.zeroForOne;
         Currency cashCurrency = pool.optionIsOne ? key.currency0 : key.currency1;
         Currency optionCurrency = pool.optionIsOne ? key.currency1 : key.currency0;
-        Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
         IOption option = IOption(pool.optionToken);
         require(option.expirationDate() > block.timestamp, "Option expired");
 
         if (cashForOption) {
-            // Here we JIT create option tokens and let the flash accounting handle transfers
+            // amountSpecified is the cash input amount
+            Price memory a = calculateOption(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(cashCurrency, address(this), a.cashAmount);
             poolManager.sync(optionCurrency);
-            option.mint(a.optionAmount); // this line is optional
-            option.transfer(pm, a.optionAmount);
+            uint256 balBefore = IERC20(pool.optionToken).balanceOf(address(this));
+            option.mint(a.optionAmount);
+            uint256 actualMinted = IERC20(pool.optionToken).balanceOf(address(this)) - balBefore;
+            IERC20(pool.optionToken).safeTransfer(pm, actualMinted);
             poolManager.settle();
-            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(a.optionAmount));
+            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(actualMinted));
         } else {
-            // Here we have to take the option tokens from the caller and auto burn them
+            // amountSpecified is the option input amount
+            Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(optionCurrency, address(this), a.optionAmount);
             poolManager.sync(cashCurrency);
             IERC20(pool.cashToken).safeTransfer(pm, a.cashAmount);
