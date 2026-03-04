@@ -404,7 +404,7 @@ function main() {
     });
   });
 
-  const NEXTJS_TARGET_DIR = "./web/abi/";
+  const NEXTJS_TARGET_DIR = "../web/abi/";
   const CHAINS_DIR = join(NEXTJS_TARGET_DIR, "chains");
 
   if (!existsSync(NEXTJS_TARGET_DIR)) {
