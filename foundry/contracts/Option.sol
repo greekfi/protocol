@@ -4,9 +4,10 @@ pragma solidity ^0.8.30;
 import { Redemption } from "./Redemption.sol";
 import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
 
-/// @notice Interface for OptionFactory's operator approval functions
+/// @notice Interface for OptionFactory's operator approval and auto-mint/redeem functions
 interface IOptionFactory {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
+    function autoMintRedeem(address account) external view returns (bool);
 }
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -492,9 +493,12 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
             success = super.transferFrom(from, to, amount);
         }
 
-        uint256 balance = redemption.balanceOf(to);
-        if (balance > 0) {
-            redeem_(to, min(balance, amount));
+        // Auto-redeem: if recipient opted in and holds Redemption tokens, burn matched pairs
+        if (IOptionFactory(factory()).autoMintRedeem(to)) {
+            uint256 balance = redemption.balanceOf(to);
+            if (balance > 0) {
+                redeem_(to, min(balance, amount));
+            }
         }
     }
 
@@ -522,15 +526,20 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     {
         uint256 balance = balanceOf(msg.sender);
         if (balance < amount) {
+            // Auto-mint: only if sender opted in, otherwise revert (standard ERC20)
+            if (!IOptionFactory(factory()).autoMintRedeem(msg.sender)) revert InsufficientBalance();
             mint_(msg.sender, amount - balance);
         }
 
         success = super.transfer(to, amount);
         require(success, "Transfer failed");
 
-        balance = redemption.balanceOf(to);
-        if (balance > 0) {
-            redeem_(to, min(balance, amount));
+        // Auto-redeem: if recipient opted in and holds Redemption tokens, burn matched pairs
+        if (IOptionFactory(factory()).autoMintRedeem(to)) {
+            balance = redemption.balanceOf(to);
+            if (balance > 0) {
+                redeem_(to, min(balance, amount));
+            }
         }
     }
 

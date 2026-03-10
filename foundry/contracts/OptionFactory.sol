@@ -60,6 +60,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     event FeeUpdated(uint64 oldFee, uint64 newFee);
     event TemplateUpdated();
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    event AutoMintRedeemUpdated(address indexed account, bool enabled);
 
     // ============ STORAGE MAPPINGS ============
 
@@ -78,6 +79,11 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     /// @notice Universal operator approvals for option token transfers; owner => operator => approved
     /// @dev When approved, operator can transfer ANY option token created by this factory on behalf of owner
     mapping(address => mapping(address => bool)) private _operatorApprovals;
+
+    /// @notice Opt-in flag for auto-mint and auto-redeem during Option transfers
+    /// @dev When enabled, transferring Options to this address auto-redeems matched Redemption pairs,
+    ///      and transferring more Options than owned auto-mints the difference
+    mapping(address => bool) public autoMintRedeem;
 
     // ============ CONSTRUCTOR & INITIALIZER ============
 
@@ -235,6 +241,18 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         return _operatorApprovals[owner][operator];
     }
 
+    /**
+     * @notice Enables or disables auto-mint and auto-redeem for the caller during Option transfers
+     * @dev When enabled: receiving Option tokens while holding Redemption tokens auto-redeems matched pairs,
+     *      and transferring more Option tokens than owned auto-mints the difference (pulling collateral).
+     *      When disabled (default): transfers behave as standard ERC20.
+     * @param enabled True to enable, false to disable
+     */
+    function enableAutoMintRedeem(bool enabled) external {
+        autoMintRedeem[msg.sender] = enabled;
+        emit AutoMintRedeemUpdated(msg.sender, enabled);
+    }
+
     // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============
 
     /**
@@ -340,5 +358,5 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      *      without affecting the storage layout of child contracts. When adding new
      *      variables, reduce the gap size accordingly (e.g., add 3 vars = reduce to [47]).
      */
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

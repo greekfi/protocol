@@ -235,7 +235,7 @@ contract GasAnalysis is Test {
         option.redeem(50);
     }
 
-    function test_Gas_Option_RedeemWithAddress() public {
+    function test_Gas_Option_Redeem_5Tokens() public {
         option.mint(10);
         option.redeem(5);
     }
@@ -250,7 +250,8 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Option_Transfer_AutoMint() public {
-        // Transfer more than balance triggers auto-mint
+        // Transfer more than balance triggers auto-mint (requires opt-in)
+        factory.enableAutoMintRedeem(true);
         IERC20(address(option)).transfer(address(0x123), 5);
     }
 

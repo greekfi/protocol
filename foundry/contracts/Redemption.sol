@@ -248,10 +248,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Redeems all redemption tokens for an account (post-expiration)
-     * @dev Burns all redemption tokens and returns collateral or equivalent consideration
-     * 		This is safe to do on behalf of others because post-expiration there are no mechanisms
-     *      or advantages to holding redemption tokens and they should immediately be converted back to
-     * 		the underlying collateral (or consideration if exercised).
+     * @dev Burns all redemption tokens and returns pro-rata collateral + strike-based consideration.
+     *      Safe to call on behalf of others — post-expiration there is no advantage to holding.
      * @param account Address to redeem for
      */
     function redeem(address account) public notLocked {
@@ -260,7 +258,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Redeems specified amount for msg.sender (post-expiration)
-     * @dev Burns redemption tokens and returns collateral or equivalent consideration
+     * @dev Burns redemption tokens and returns pro-rata collateral + strike-based consideration
      * @param amount Amount of redemption tokens to burn
      */
     function redeem(uint256 amount) public notLocked {
@@ -269,7 +267,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Redeems redemption tokens after expiration
-     * @dev Burns tokens and returns collateral if available, otherwise equivalent consideration
+     * @dev Pro-rata distribution: collateral share = (amount * collateralBalance / totalSupply),
+     *      remainder converted to consideration at strike price.
+     *      No first-redeemer advantage — every redeemer gets the same rate.
      * @param account Address to redeem for
      * @param amount Amount of redemption tokens to burn
      */
@@ -280,46 +280,71 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /**
      * @notice Redeems matched Option+Redemption pairs before expiration
      * @dev Only callable by the paired Option contract. Burns redemption tokens and returns collateral.
-     * 		Acts like an internal function, hence the underscore. No users should directly call it.
+     *      Uses waterfall: collateral first, consideration fallback if collateral was exercised away.
      * @param account Address to redeem for
      * @param amount Amount to redeem
      */
     function _redeemPair(address account, uint256 amount) public notExpired notLocked onlyOwner {
-        _redeem(account, amount);
+        _redeemPairInternal(account, amount);
     }
 
     /**
-     * @notice Internal redemption logic
-     * @dev Burns tokens and sends collateral. If insufficient collateral,
-     *      fulfills with consideration because collateral was exercised for consideration.
-     *      Same as being called/exercised on your options where consideration is given to you.
+     * @notice Post-expiry pro-rata redemption
+     * @dev collateralToSend = amount * totalCollateral / totalSupply
+     *      remainder = amount - collateralToSend → converted to consideration at strike
+     * @param account Address to redeem for
+     * @param amount Amount of redemption tokens to burn
+     */
+    function _redeem(address account, uint256 amount) internal sufficientBalance(account, amount) validAmount(amount) {
+        uint256 ts = totalSupply();
+        uint256 collateralBalance = collateral.balanceOf(address(this)) - fees;
+        uint256 collateralToSend = Math.mulDiv(amount, collateralBalance, ts);
+        uint256 remainder = amount - collateralToSend;
+
+        _burn(account, amount);
+
+        if (collateralToSend > 0) {
+            collateral.safeTransfer(account, collateralToSend);
+        }
+        if (remainder > 0) {
+            uint256 consToSend = toConsideration(remainder);
+            consideration.safeTransfer(account, consToSend);
+        }
+        emit Redeemed(address(owner()), address(collateral), account, collateralToSend);
+    }
+
+    /**
+     * @notice Pre-expiry waterfall redemption for matched pairs
+     * @dev Returns collateral first, then consideration if collateral was exercised away.
      * @param account Address to redeem for
      * @param amount Amount to redeem
      */
-    function _redeem(address account, uint256 amount) internal sufficientBalance(account, amount) validAmount(amount) {
+    function _redeemPairInternal(address account, uint256 amount)
+        internal
+        sufficientBalance(account, amount)
+        validAmount(amount)
+    {
         uint256 balance = collateral.balanceOf(address(this)) - fees;
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
         _burn(account, collateralToSend);
 
         if (balance < amount) {
-            // fulfill with consideration because not enough collateral
             _redeemConsideration(account, amount - balance);
         }
 
         if (collateralToSend > 0) {
-            // Transfer remaining collateral afterwards
             collateral.safeTransfer(account, collateralToSend);
         }
-        emit Redeemed(address(owner()), address(collateral), account, amount);
+        emit Redeemed(address(owner()), address(collateral), account, collateralToSend);
     }
 
     // ============ CONSIDERATION REDEEM FUNCTIONS ============
 
     /**
-     * @notice Redeems redemption tokens for consideration instead of collateral
-     * @dev Used when collateral is depleted. Burns caller's redemption tokens and returns equivalent consideration.
-     *      Callable both before and after expiration by design.
+     * @notice Redeems redemption tokens for consideration at strike price
+     * @dev Burns caller's redemption tokens and returns equivalent consideration.
+     *      Callable both before and after expiration.
      *      Only msg.sender can redeem their own tokens to prevent forced position closure.
      * @param amount Amount of redemption tokens to burn
      */
@@ -328,8 +353,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /**
-     * @notice Internal logic for redeeming via consideration
-     * @dev Calculates consideration amount based on strike price, burns redemption tokens, sends consideration
+     * @notice Internal consideration redemption at strike price
+     * @dev Converts redemption tokens to consideration using strike-based conversion rate.
      * @param account Address to redeem for
      * @param collAmount Amount of redemption tokens to burn
      */
@@ -377,11 +402,14 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /**
      * @notice Sweeps (redeems) all redemption tokens for a single holder after expiration
-     * @dev Convenience function for post-expiration cleanup
+     * @dev Returns pro-rata collateral + strike-based consideration for remainder.
      * @param holder Address to sweep redemption tokens for
      */
     function sweep(address holder) public expired notLocked nonReentrant {
-        _redeem(holder, balanceOf(holder));
+        uint256 amount = balanceOf(holder);
+        if (amount > 0) {
+            _redeem(holder, amount);
+        }
     }
 
     /**
