@@ -32,7 +32,11 @@
       "Bash(gh:*)",
       "WebSearch",
       "WebFetch(domain:*)",
-      "Bash(do echo:*)"
+      "Bash(do echo:*)",
+      "WebFetch(domain:docs.uniswap.org)",
+      "WebFetch(domain:basescan.org)",
+      "WebFetch(domain:base.blockscout.com)",
+      "WebFetch(domain:app.uniswap.org)"
     ],
     "deny": [],
     "ask": []

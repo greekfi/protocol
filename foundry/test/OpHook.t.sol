@@ -25,7 +25,7 @@ import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { SafeCallback } from "./SafeCallback.sol";
 import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
-import { ConstantsUnichain as uni } from "../contracts/ConstantsUnichain.sol";
+import { ConstantsBase } from "../contracts/ConstantsBase.sol";
 import { OptionPrice } from "../contracts/OptionPrice.sol";
 
 import { IOption } from "../contracts/interfaces/IOption.sol";
@@ -109,6 +109,11 @@ abstract contract OpHookTestBase is Test {
 
     uint256 public networkFork;
 
+    // Strike prices — set per chain before calling _setupCommon
+    uint96 public strike1 = 3600e18;
+    uint96 public strike2 = 4000e18;
+    uint96 public strike3 = 5000e18;
+
     function _setupCommon() internal {
         deal(address(this), 10000e20 ether);
         deal(usdc_, address(this), 1000e6);
@@ -125,11 +130,11 @@ abstract contract OpHookTestBase is Test {
         // Deploy factory
         OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
 
-        option1_ = factory.createOption(weth_, usdc_, expiration, 3600e18, false);
+        option1_ = factory.createOption(weth_, usdc_, expiration, strike1, false);
 
-        option2_ = factory.createOption(weth_, usdc_, expiration, 4000e18, false);
+        option2_ = factory.createOption(weth_, usdc_, expiration, strike2, false);
 
-        option3_ = factory.createOption(weth_, usdc_, expiration, 5000e18, false);
+        option3_ = factory.createOption(weth_, usdc_, expiration, strike3, false);
 
         option1 = IOption(option1_);
         option2 = IOption(option2_);
@@ -456,17 +461,21 @@ contract Mainnet is OpHookTestBase {
     }
 }
 
-// Unichain-specific tests
-contract Unichain is OpHookTestBase {
+// Base-specific tests
+contract Base is OpHookTestBase {
     function setUp() public {
-        string memory rpc = "https://unichain.drpc.org";
-        networkFork = vm.createSelectFork(rpc, 27503100);
-        weth_ = uni.WETH;
-        usdc_ = uni.USDC;
-        permit2_ = uni.PERMIT2;
-        poolManager_ = uni.POOLMANAGER;
-        universalRouter_ = uni.UNIVERSALROUTER;
-        wethUniPool_ = uni.WETH_UNI_POOL;
+        string memory rpc = "https://mainnet.base.org";
+        networkFork = vm.createSelectFork(rpc, 43190000);
+        weth_ = ConstantsBase.WETH;
+        usdc_ = ConstantsBase.USDC;
+        permit2_ = ConstantsBase.PERMIT2;
+        poolManager_ = ConstantsBase.POOLMANAGER;
+        universalRouter_ = ConstantsBase.UNIVERSALROUTER;
+        wethUniPool_ = ConstantsBase.WETH_UNI_POOL;
+        // ETH ~$2039 at block 43190000
+        strike1 = 2100e18;
+        strike2 = 2300e18;
+        strike3 = 2500e18;
         _setupCommon();
     }
 }
