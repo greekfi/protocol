@@ -27,6 +27,7 @@
 - **Description:** `initPool()` is `public` with no `onlyOwner` modifier. Anyone can register arbitrary option pools, overwrite `collateralPricePool` mappings for any collateral, push unlimited entries into `allPools`, and trigger `type(uint256).max` ERC20 approvals to attacker-controlled factories.
 - **Impact:** An attacker can redirect price oracles for existing collateral to manipulated pools, register malicious option contracts, and DoS `getPrices()` by bloating `allPools`.
 - **Fix:** Add `onlyOwner` modifier to `initPool()`. Also validate that `optionToken` is registered with a trusted factory.
+Note: this is supposed to be permissionless. anyone should be able to add a new pool. 
 
 ### C-2: OpHook uses spot price instead of TWAP -- flash loan manipulable
 - [ ] **Fixed**
@@ -34,6 +35,7 @@
 - **Description:** `getCollateralPrice()` reads `slot0().sqrtPriceX96` (instantaneous spot price) from the Uniswap v3 pool, not a TWAP. Spot prices are trivially manipulable within a single transaction using flash loans.
 - **Impact:** Attacker flash-loans tokens, moves the v3 spot price, swaps on the v4 hook at a distorted price, reverses the v3 swap, and profits.
 - **Fix:** Use Uniswap v3 TWAP via `observe()` instead of `slot0()`.
+don't do this yet. the pricing is something that should be added as an external contract or something similar.
 
 ---
 
@@ -45,6 +47,8 @@
 - **Description:** Both transfer functions call `redeem_()` when the recipient holds Redemption tokens. `redeem_()` has a `notExpired` modifier. After expiration, ALL transfers to any recipient holding Redemption tokens revert.
 - **Impact:** Option tokens become non-transferable post-expiration for many recipients. Breaks DEX pools, wallet transfers, and composability.
 - **Fix:**
+Options should actually not be transferable after expiration. They become worthless and should revert.
+Redemption tokens should transfer correctly. but after expiration the redeem function should be called for the new owner because that's basically just the underlying collateral.
   ```solidity
   if (balance > 0 && block.timestamp < expirationDate()) {
       redeem_(to, min(balance, amount));
@@ -52,35 +56,35 @@
   ```
 
 ### H-2: Option.transfer() auto-mint breaks ERC20 standard
-- [ ] **Fixed**
+- [ ] **By Design - no fix needed**
 - **File:** `Option.sol:transfer()` (line 520-522)
 - **Description:** `transfer()` auto-mints Option tokens (pulling collateral) when the sender's balance is insufficient, instead of reverting as ERC20 requires. Any integrated protocol (DEX, lending, aggregator) calling `transfer()` may have collateral silently drained.
 - **Impact:** Silent fund drain from any contract that interacts with Option tokens via standard ERC20 `transfer()`.
-- **Fix:** Remove auto-mint from `transfer()`. Provide a separate `mintAndTransfer()` function.
+- **Fix:** Remove auto-mint from `transfer()`. Provide a separate `mintAndTransfer()` funct
 
 ### H-3: Auto-redeem in transfer burns recipient tokens without consent
-- [ ] **Fixed**
+- [ ] **By Design - add  "permitAutoRedemption" allowance boolean**
 - **File:** `Option.sol:transfer()` (line 530-534), `transferFrom()` (line 495-498)
 - **Description:** When Option tokens are transferred to a recipient holding Redemption tokens, the recipient's Redemption tokens are burned and collateral is returned -- without their consent. Anyone can force-close another user's short position by sending them Option tokens.
 - **Impact:** Forced position closure via griefing. DEX pools holding Redemption tokens would have liquidity destroyed.
-- **Fix:** Make auto-redeem opt-in via a separate function or flag.
+- **Fix:** Make auto-redeem opt-in via a flag 
 
 ### H-4: Redemption.redeemConsideration() callable pre-expiration by anyone for any account
 - [ ] **Fixed**
+RedeemConsideration by design can be done anytime but yes, maybe restricting it by removing the account and only allowing the caller to redeem. that should be the fix
 - **File:** `Redemption.sol:redeemConsideration(address, uint256)` (line 335)
 - **Description:** No `expired` modifier and no caller restriction. Anyone can burn another user's Redemption tokens and send them consideration at any time, even pre-expiration. This bypasses the paired Option/Redemption redemption requirement.
 - **Impact:** Force-close another user's short position at unfavorable timing. Pre-expiration consideration drain affects other Redemption holders who expect that consideration post-expiry.
-- **Fix:** Restrict to self-redemption (`require(account == msg.sender)`) and/or add `expired` modifier.
 
 ### H-5: First-redeemer advantage in post-expiration redemption
-- [ ] **Fixed**
+- [ ] **Save for later**
 - **File:** `Redemption.sol:_redeem()` (line 299-315)
 - **Description:** Post-expiration redemption uses a first-come-first-served waterfall (collateral first, then consideration). When both assets exist in the contract, the first redeemer gets collateral and later redeemers get consideration. If the collateral has appreciated, early redeemers extract more value.
 - **Impact:** MEV bots can front-run other redeemers. `sweep()` array ordering determines who gets the more valuable asset. Unfair distribution.
 - **Fix:** Implement pro-rata distribution: each redeemer receives `(amount / totalSupply) * collateralBalance` collateral AND `(amount / totalSupply) * considerationBalance` consideration simultaneously.
 
 ### H-6: Zero-amount exercise extracts collateral for free
-- [ ] **Fixed**
+- [ ] **Double check this math**
 - **File:** `Redemption.sol:exercise()` (line 366-383), `toConsideration()` (line 452)
 - **Description:** `toConsideration()` uses `Math.mulDiv` which rounds down. For small exercise amounts with large decimal mismatches (e.g., 1 wei WETH at strike 2000e18 with 6-decimal USDC), `toConsideration(1) = 0`. The exerciser pays 0 consideration and receives 1 wei collateral. No check that `consAmount > 0`.
 - **Impact:** Free extraction of dust collateral. Gas makes this unprofitable for standard pairs, but it's a protocol correctness bug.
@@ -100,18 +104,21 @@
 
 ### H-8: Template contracts (Option, Redemption) do not disable initializers
 - [ ] **Fixed**
+Double check this. seems off.
 - **File:** `Option.sol` constructor (line 101), `Redemption.sol` constructor (line 157)
 - **Description:** Neither template constructor calls `_disableInitializers()`. Anyone can call `init()` on the template contracts, gaining ownership. While clones have independent storage, tokens accidentally sent to templates could be stolen.
 - **Fix:** Add `_disableInitializers()` to both constructors.
 
 ### H-9: No slippage protection on OpHook swaps
 - [ ] **Fixed**
+For now this is just an idea. I want to make sure that the hook plays nicely with uniswap v4 etc. I have it working currently. Double check this.
 - **File:** `OpHook.sol:_beforeSwap()`, `swapForOption()`
 - **Description:** Neither the v4 hook path nor `swapForOption()` implements minimum output checks. Users have no protection against oracle manipulation or price changes between submission and execution.
 - **Fix:** Add `minAmountOut` parameter to `swapForOption()`.
 
 ### H-10: No ERC4626 inflation attack protection on OptionPoolVault
 - [ ] **Fixed**
+Remove this completely, unless it's an ok design. I want an OptionPoolVault that's collateral vault that has certain rules etc. make this a placeholder to create a new one
 - **File:** `OptionPoolVault.sol`
 - **Description:** Default OZ ERC4626 without virtual shares/assets offset. Classic first-depositor attack: deposit 1 wei, donate large amount directly, steal from subsequent depositors via rounding.
 - **Fix:** Override `_decimalsOffset()` to return at least 3.
@@ -126,14 +133,14 @@
 - [ ] **Fixed**
 - **File:** `OpHook.sol:_beforeSwap()` (line 262), `swapForOption()` (line 226)
 - **Description:** The hook collects cash (USDC) but needs collateral (WETH) to mint options. No mechanism exists to convert cash to collateral or for LPs to deposit collateral. `option.mint()` will fail unless someone independently deposits collateral.
-- **Fix:** Implement a collateral deposit function for LPs or integrate with OptionPoolVault.
+- **Fix:**  integrate with OptionPoolVault or turn the pool into a vault? .
 
 ---
 
 ## MEDIUM
 
 ### M-1: Redemption._redeemPair() lacks nonReentrant guard
-- [ ] **Fixed**
+- [ ] **Hold off**
 - **File:** `Redemption.sol:_redeemPair()` (line 287)
 - **Description:** Callable only by Option (onlyOwner) but has no `nonReentrant`. Calls `_redeem()` which makes external calls. Defense relies on call-chain composition rather than explicit guard.
 - **Fix:** Add `nonReentrant` modifier.
@@ -147,6 +154,7 @@
 
 ### M-3: Fee-on-transfer check missing in exercise path
 - [ ] **Fixed**
+what the hell are you talking about?
 - **File:** `Redemption.sol:exercise()` (line 366-383)
 - **Description:** `mint()` checks for fee-on-transfer tokens, but `exercise()` does not check the consideration token. A fee-on-transfer consideration token would cause under-collateralization.
 - **Fix:** Add balance-before/after check for consideration in `exercise()`.
@@ -155,7 +163,7 @@
 - [ ] **Fixed**
 - **File:** `Option.sol` (inherits `Ownable`)
 - **Description:** If the owner locks the contract then renounces ownership, all operations (transfer, mint, exercise, redeem) are permanently blocked. Collateral is locked forever.
-- **Fix:** Override `renounceOwnership()` to revert, or require the contract is unlocked before renouncing.
+- **Fix:** Override or remove `renounceOwnership()` to revert.
 
 ### M-5: OptionFactory.claimFees() functions have no access control
 - [ ] **Fixed**
@@ -165,6 +173,7 @@
 
 ### M-6: OpHook Pausable inherited but pause/unpause never exposed
 - [ ] **Fixed**
+I'm not sure what's the ideal here. 
 - **File:** `OpHook.sol`
 - **Description:** Inherits `Pausable` but never exposes `pause()` / `unpause()`. Also, `_beforeSwap()` has no `whenNotPaused` check. The emergency pause feature is completely inoperable.
 - **Fix:** Add `pause()` / `unpause()` owner functions and `whenNotPaused` to `_beforeSwap()`.
@@ -173,16 +182,17 @@
 - [ ] **Fixed**
 - **File:** `OpHook.sol` (line 87), `OptionFactory.sol`
 - **Description:** `PERMIT2` immutable set in OpHook constructor but never called. Factory uses its own allowance system, not Permit2. Creates false assumptions about the approval model.
-- **Fix:** Either implement Permit2 or remove all references.
+- **Fix:**  remove all references and switch to the Factory to do the allowance of Options transfering.
 
 ### M-8: OpHook._beforeAddLiquidity and _beforeDonate possible signature mismatch
 - [ ] **Fixed**
 - **File:** `OpHook.sol:_beforeAddLiquidity()` (line 278), `_beforeDonate()` (line 286)
 - **Description:** Both accept `SwapParams` but BaseHook uses `ModifyLiquidityParams` and `uint256, uint256` respectively. If these don't properly override parent functions, liquidity addition and donation are not actually blocked.
-- **Fix:** Verify correct function signatures against the BaseHook version.
+- **Fix:** Verify correct function signatures against the BaseHook version. also these should not be used
 
 ### M-9: OpHook._beforeSwap() no reentrancy protection in hook callback
 - [ ] **Fixed**
+double check this. 
 - **File:** `OpHook.sol:_beforeSwap()` (line 240)
 - **Description:** Called internally by PoolManager. During `option.mint()`, a malicious collateral token could callback to `OpHook.swapForOption()` which has `nonReentrant` -- but OpHook's guard is NOT set since `_beforeSwap` is internal.
 - **Fix:** Add manual reentrancy flag for hook callbacks.
@@ -195,18 +205,21 @@
 
 ### M-11: Redemption._redeem() balance relies on balanceOf() not internal tracking
 - [ ] **Fixed**
+move this to high
 - **File:** `Redemption.sol:_redeem()` (line 300)
 - **Description:** `balance = collateral.balanceOf(address(this)) - fees` uses live balance. Direct token transfers inflate available collateral; negative rebasing tokens cause insolvency.
 - **Fix:** Consider internal balance tracking. Document that rebasing/deflationary tokens are unsupported.
 
 ### M-12: OptionPrice.blackScholesPrice() underflow reverts
 - [ ] **Fixed**
+don't worry yet. separate check focusing on just this.
 - **File:** `OptionPrice.sol:blackScholesPrice()` (line 109, 115)
 - **Description:** Unsigned subtraction for call/put prices. Approximation errors in `normCdf()`, `expNeg()`, `ln()` can cause the second term to exceed the first, causing revert for deep OTM options.
 - **Fix:** Use saturating subtraction: `price = term1 > term2 ? term1 - term2 : 0;`
 
 ### M-13: OpHook.swapForOption() auto-mint side effect from Option.transfer()
 - [ ] **Fixed**
+double check this
 - **File:** `OpHook.sol:swapForOption()` (line 227)
 - **Description:** After minting, calls `option.transfer(to, p.optionAmount)`. If fees reduced the minted amount, the transfer triggers auto-mint for the deficit, pulling extra collateral from the hook. Also mints unwanted Redemption tokens to the hook.
 - **Fix:** Track actual minted amount (balance before/after) and transfer only that. (Already done in `_beforeSwap` but not in `swapForOption`.)
@@ -230,6 +243,7 @@
 - **Fix:** Document the valid range. Consider extending tables or reverting for out-of-range inputs.
 
 ---
+For now let's focus on Medium and high issues. we'll come back to Low
 
 ## LOW
 

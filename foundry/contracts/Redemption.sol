@@ -284,7 +284,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param account Address to redeem for
      * @param amount Amount to redeem
      */
-    function _redeemPair(address account, uint256 amount) public notExpired notLocked onlyOwner {
+    function _redeemPair(address account, uint256 amount) public notExpired notLocked onlyOwner nonReentrant {
         _redeemPairInternal(account, amount);
     }
 
@@ -435,8 +435,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Only callable by the factory. Transfers all accumulated fees to factory.
      */
     function claimFees() public onlyOwner nonReentrant {
-        collateral.safeTransfer(address(_factory), fees);
+        uint256 f = fees;
         fees = 0;
+        collateral.safeTransfer(address(_factory), f);
     }
 
     /**

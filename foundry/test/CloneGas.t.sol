@@ -50,9 +50,4 @@ contract CloneGas is Test {
         console.log("Clone Option gas:", gasClone2);
         console.log("Total Clone gas:", gasClone1 + gasClone2);
     }
-
-    function test_CreateOptionFullGas() public view {
-        // Just to see current gas
-        console.log("Factory address:", address(factory));
-    }
 }

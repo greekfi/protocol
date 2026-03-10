@@ -131,28 +131,6 @@ contract GasBreakdown is Test {
         console.log("  redemption.considerationData():", gasBefore - gasleft());
     }
 
-    function test_GasBreakdown_Step4_StorageOperations() public {
-        address redemption_ = Clones.clone(address(redemptionTemplate));
-        address option_ = Clones.clone(address(optionTemplate));
-
-        // Simulate the tracking operations
-        uint256 gasBefore = gasleft();
-
-        // Simulate first collateral push
-        address[] memory tempArray = new address[](0);
-        tempArray = new address[](1);
-        tempArray[0] = address(shakyToken);
-
-        uint256 gasArrayPush = gasBefore - gasleft();
-        console.log("Array push (first):", gasArrayPush);
-
-        gasBefore = gasleft();
-        // Simulate mapping write
-        bool tempBool = true;
-        uint256 gasMappingWrite = gasBefore - gasleft();
-        console.log("Mapping write:", gasMappingWrite);
-    }
-
     function test_GasBreakdown_Full() public {
         uint256 gasBefore = gasleft();
 

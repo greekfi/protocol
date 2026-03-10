@@ -31,7 +31,8 @@
       "Bash(pkill:*)",
       "Bash(gh:*)",
       "WebSearch",
-      "WebFetch(domain:*)"
+      "WebFetch(domain:*)",
+      "Bash(do echo:*)"
     ],
     "deny": [],
     "ask": []
