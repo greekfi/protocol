@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Redemption } from "./Redemption.sol";
 import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
+import { OptionUtils } from "./OptionUtils.sol";
 
 /// @notice Interface for OptionFactory's operator approval and auto-mint/redeem functions
 interface IOptionFactory {
@@ -22,17 +23,22 @@ using SafeERC20 for IERC20;
 
 /**
  * @title Option
- * @notice Represents the long position in an option contract (right to buy/sell)
- * @dev This is the "call" side of the option that gives holders the right to exercise.
- *      The contract owns the paired Redemption contract and coordinates all option lifecycle operations.
- *      Implements auto-settling transfers: transferring more options than owned triggers auto-mint,
- *      and receiving options while holding redemptions triggers auto-redeem.
+ * @notice Long position ERC20 in an option contract — gives holders the right to exercise
+ * @dev Deployed as EIP-1167 minimal proxy clones via OptionFactory. Paired 1:1 with a
+ *      Redemption contract (short position) which holds all collateral.
+ *
+ *      Key invariant: available_collateral == total_option_supply (always).
+ *
+ *      Opt-in auto-settling transfers (via factory.autoMintRedeem):
+ *        - Auto-mint: transfer() mints the deficit from collateral if sender balance < amount
+ *        - Auto-redeem: receiving Options while holding Redemptions burns matched pairs
+ *
+ *      Rounding policy: round DOWN on all payouts, round UP on all collections.
+ *      Dust stays in the protocol; no user is ever shorted.
  */
 contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     Redemption public redemption;
     uint64 public fee;
-    string private _tokenName;
-    string private _tokenSymbol;
     uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     event Mint(address longOption, address holder, uint256 amount);
@@ -56,36 +62,32 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ MODIFIERS ============
 
-    /// @notice Ensures contract is not locked
+    /// @notice Ensures contract is not locked (emergency pause)
     modifier notLocked() {
         if (redemption.locked()) revert LockedContract();
         _;
     }
 
-    /// @notice Ensures contract has not expired
+    /// @notice Ensures option has not expired
     modifier notExpired() {
         if (block.timestamp >= expirationDate()) revert ContractExpired();
 
         _;
     }
 
-    /// @notice Validates that amount is non-zero
-    /// @param amount The amount to validate
+    /// @notice Reverts if amount is zero
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert InvalidValue();
         _;
     }
 
-    /// @notice Validates that address is not zero
-    /// @param account The address to validate
+    /// @notice Reverts if address is zero
     modifier validAddress(address account) {
         if (account == address(0)) revert InvalidAddress();
         _;
     }
 
-    /// @notice Ensures account has sufficient balance
-    /// @param contractHolder The account to check
-    /// @param amount The required balance
+    /// @notice Reverts if account's Option balance < amount
     modifier sufficientBalance(address contractHolder, uint256 amount) {
         if (balanceOf(contractHolder) < amount) revert InsufficientBalance();
         _;
@@ -94,10 +96,9 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ CONSTRUCTOR & INITIALIZATION ============
 
     /**
-     * @notice Constructor for template contract (used by clone factory)
-     * @param name_ Token name (not used in clones)
-     * @param symbol_ Token symbol (not used in clones)
-     * @param redemption__ Address of redemption contract
+     * @notice Template constructor — only used for the implementation contract
+     * @dev Clones never execute the constructor; state is set via init().
+     *      Calls _disableInitializers() to prevent init() on the template itself.
      */
     constructor(string memory name_, string memory symbol_, address redemption__)
         ERC20(name_, symbol_)
@@ -108,11 +109,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /**
-     * @notice Initializes a cloned option contract
-     * @dev Called once after cloning by the factory
-     * @param redemption_ Address of the paired Redemption contract
-     * @param owner Address that will own this option contract
-     * @param fee_ Fee percentage (in 1e18 basis, max 1%)
+     * @notice Initializes a cloned Option contract
+     * @dev Called exactly once by OptionFactory.createOption() immediately after cloning.
+     * @param redemption_ Paired Redemption contract address
+     * @param owner Option creator who receives ownership
+     * @param fee_ Protocol fee in 1e18 basis (max 1% = 1e16)
      */
     function init(address redemption_, address owner, uint64 fee_) public initializer {
         if (redemption_ == address(0) || owner == address(0)) revert InvalidAddress();
@@ -125,19 +126,14 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ VIEW FUNCTIONS ============
 
-    /**
-     * @notice Returns the address of the factory contract
-     * @dev The factory contract created this Option contract
-     * @return Address of the factory contract
-     */
+    /// @notice Factory that created this Option (delegated from Redemption)
     function factory() public view returns (address) {
         return redemption.factory();
     }
 
     /**
-     * @notice Returns the token name
-     * @dev Returns empty string as name is dynamically generated by frontend
-     * @return Empty string
+     * @notice Dynamic token name: OPT-{COLL}-{CONS}-{STRIKE}-{YYYY-MM-DD}
+     * @dev For puts, strike is displayed as 1/strike (human-readable price)
      */
     function name() public view override returns (string memory) {
         // For put options, display inverted price (1/strike)
@@ -150,312 +146,59 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
                 "-",
                 IERC20Metadata(address(consideration())).symbol(),
                 "-",
-                strike2str(displayStrike),
+                OptionUtils.strike2str(displayStrike),
                 "-",
-                epoch2str(expirationDate())
+                OptionUtils.epoch2str(expirationDate())
             )
         );
     }
 
-    /**
-     * @notice Returns the token symbol
-     * @dev Returns empty string as symbol is dynamically generated by frontend
-     * @return Empty string
-     */
+    /// @notice Token symbol (same as name)
     function symbol() public view override returns (string memory) {
         return name();
     }
 
-    /**
-     * @notice Converts a uint256 to its string representation
-     * @dev Used for generating token names with expiration timestamps
-     * @param _i The number to convert
-     * @return str The string representation of the number
-     */
-    function uint2str(uint256 _i) internal pure returns (string memory str) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 length;
-        while (j != 0) {
-            length++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(length);
-        uint256 k = length;
-        j = _i;
-        while (j != 0) {
-            // casting to uint8 is safe because (j % 10) is always 0-9, adding 48 gives 48-57 (ASCII digits)
-            // solhint-disable-next-line no-inline-assembly
-            bstr[--k] = bytes1(uint8(48 + j % 10));
-            j /= 10;
-        }
-        str = string(bstr);
-    }
-
-    /**
-     * @notice Converts a uint96 10**18 based strike to its string representation
-     * @dev Used for generating token names with strike prices.
-     *      Handles different cases:
-     *      - Whole numbers: "1000", "2000"
-     *      - Normal decimals: "1.5", "0.01", "3000.25"
-     *      - Scientific notation for >8 zeros: "1e-9", "1e15"
-     *      - Rounds fractional part to max 8 significant digits to avoid floating-point artifacts
-     * @param _i The number to convert (in 18 decimal format)
-     * @return str The string representation of the number
-     */
-    function strike2str(uint256 _i) internal pure returns (string memory str) {
-        uint256 whole = _i / 1e18;
-        uint256 fractional = _i % 1e18;
-
-        // If no fractional part, return just the whole number
-        if (fractional == 0) {
-            return uint2str(whole);
-        }
-
-        // Count leading zeros in fractional part
-        uint256 leadingZeros = 0;
-        uint256 temp = fractional;
-        uint256 divisor = 1e17; // Start from first decimal place
-
-        while (leadingZeros < 18 && (temp / divisor) == 0) {
-            leadingZeros++;
-            divisor /= 10;
-        }
-
-        // Use scientific notation if >8 leading zeros (very small numbers like 0.000000001)
-        if (whole == 0 && leadingZeros > 8) {
-            // Find first non-zero digit
-            uint256 significand = fractional;
-            uint256 exp = leadingZeros + 1;
-
-            // Remove leading zeros
-            while (significand > 0 && significand < 1e17) {
-                significand *= 10;
-            }
-            significand /= 1e17; // Get first digit
-
-            return string(abi.encodePacked(uint2str(significand), "e-", uint2str(exp)));
-        }
-
-        // Use scientific notation if whole number is very large (>8 trailing zeros)
-        if (whole > 0 && fractional == 0) {
-            uint256 tempWhole = whole;
-            uint256 trailingZeros = 0;
-
-            while (tempWhole > 0 && tempWhole % 10 == 0) {
-                trailingZeros++;
-                tempWhole /= 10;
-            }
-
-            if (trailingZeros > 8) {
-                return string(abi.encodePacked(uint2str(tempWhole), "e", uint2str(trailingZeros)));
-            }
-        }
-
-        // Round fractional part to max 8 significant digits to remove floating-point artifacts
-        // This prevents "3000.0000000003" by rounding off insignificant digits
-        uint256 roundedFractional = fractional;
-        if (leadingZeros < 10) {
-            // Keep 8 significant digits, round off the rest
-            uint256 keepDigits = leadingZeros + 8;
-            if (keepDigits < 18) {
-                uint256 divisorForRound = 1;
-                for (uint256 i = 0; i < (18 - keepDigits); i++) {
-                    divisorForRound *= 10;
-                }
-                // Round to nearest: (fractional + divisorForRound/2) / divisorForRound * divisorForRound
-                // Rewritten to avoid divide-before-multiply: round down to nearest multiple
-                uint256 rounded = fractional / divisorForRound;
-                uint256 remainder = fractional % divisorForRound;
-                // Add 1 if remainder >= divisorForRound/2 (rounding up)
-                if (remainder >= divisorForRound / 2) {
-                    rounded += 1;
-                }
-                roundedFractional = rounded * divisorForRound;
-
-                // Check if rounding caused overflow into whole number
-                if (roundedFractional >= 1e18) {
-                    return uint2str(whole + 1);
-                }
-
-                // Check if rounding made it zero
-                if (roundedFractional == 0) {
-                    return uint2str(whole);
-                }
-            }
-        }
-
-        // Convert fractional part to 18-digit string (with leading zeros)
-        bytes memory fracBytes = new bytes(18);
-        temp = roundedFractional;
-        for (uint256 i = 18; i > 0; i--) {
-            // casting to uint8 is safe because (temp % 10) is always 0-9, adding 48 gives 48-57 (ASCII digits)
-            fracBytes[i - 1] = bytes1(uint8(48 + temp % 10));
-            temp /= 10;
-        }
-
-        // Remove trailing zeros from fractional part
-        uint256 len = 18;
-        while (len > 0 && fracBytes[len - 1] == "0") {
-            len--;
-        }
-
-        // If all fractional digits were zeros (shouldn't happen due to check above)
-        if (len == 0) {
-            return uint2str(whole);
-        }
-
-        // Copy non-zero fractional digits to result
-        bytes memory fracResult = new bytes(len);
-        for (uint256 i = 0; i < len; i++) {
-            fracResult[i] = fracBytes[i];
-        }
-
-        // Concatenate whole part + decimal point + fractional part
-        return string(abi.encodePacked(uint2str(whole), ".", string(fracResult)));
-    }
-
-    /**
-     * @notice Converts a uint40 epoch time to ISO representation YYYY-MM-DD
-     * @dev Used for generating token names with expiration timestamps
-     * @param _i The number/time to convert
-     * @return str The string representation of the number
-     */
-    function epoch2str(uint256 _i) internal pure returns (string memory str) {
-        // Convert timestamp to days since epoch
-        uint256 daysSinceEpoch = _i / 86400; // 86400 seconds per day
-
-        // Calculate year
-        uint256 year = 1970;
-        uint256 daysInYear;
-
-        while (true) {
-            daysInYear = isLeapYear(year) ? 366 : 365;
-            if (daysSinceEpoch >= daysInYear) {
-                daysSinceEpoch -= daysInYear;
-                year++;
-            } else {
-                break;
-            }
-        }
-
-        // Calculate month and day
-        uint256 month = 1;
-        uint256[12] memory daysInMonth = [uint256(31), 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-        // Adjust February for leap year
-        if (isLeapYear(year)) {
-            daysInMonth[1] = 29;
-        }
-
-        for (uint256 i = 0; i < 12; i++) {
-            if (daysSinceEpoch >= daysInMonth[i]) {
-                daysSinceEpoch -= daysInMonth[i];
-                month++;
-            } else {
-                break;
-            }
-        }
-
-        uint256 day = daysSinceEpoch + 1; // Days are 1-indexed
-
-        // Format as YYYY-MM-DD
-        return string(
-            abi.encodePacked(
-                uint2str(year),
-                "-",
-                month < 10 ? string(abi.encodePacked("0", uint2str(month))) : uint2str(month),
-                "-",
-                day < 10 ? string(abi.encodePacked("0", uint2str(day))) : uint2str(day)
-            )
-        );
-    }
-
-    /**
-     * @notice Checks if a year is a leap year
-     * @param year The year to check
-     * @return True if the year is a leap year
-     */
-    function isLeapYear(uint256 year) internal pure returns (bool) {
-        if (year % 4 != 0) return false;
-        if (year % 100 != 0) return true;
-        if (year % 400 != 0) return false;
-        return true;
-    }
-
-    /**
-     * @notice Returns the collateral token address
-     * @dev Delegates to the Redemption contract
-     * @return Address of the collateral token
-     */
+    /// @notice Collateral token address (delegated from Redemption)
     function collateral() public view returns (address) {
         return address(redemption.collateral());
     }
 
-    /**
-     * @notice Returns the consideration token address
-     * @dev Delegates to the Redemption contract
-     * @return Address of the consideration token (payment token for exercise)
-     */
+    /// @notice Consideration token address (delegated from Redemption)
     function consideration() public view returns (address) {
         return address(redemption.consideration());
     }
 
-    /**
-     * @notice Returns the expiration timestamp
-     * @dev Delegates to the Redemption contract
-     * @return Unix timestamp of option expiration
-     */
+    /// @notice Expiration unix timestamp (delegated from Redemption)
     function expirationDate() public view returns (uint256) {
         return redemption.expirationDate();
     }
 
-    /**
-     * @notice Returns the strike price
-     * @dev Delegates to the Redemption contract. Strike is encoded with 18 decimals
-     * @return Strike price (18 decimal encoding)
-     */
+    /// @notice Strike price in 18-decimal encoding (delegated from Redemption)
     function strike() public view returns (uint256) {
         return redemption.strike();
     }
 
-    /**
-     * @notice Returns whether this is a put option
-     * @dev Delegates to the Redemption contract
-     * @return True if put option, false if call option
-     */
+    /// @notice True if put option, false if call (delegated from Redemption)
     function isPut() public view returns (bool) {
         return redemption.isPut();
     }
 
     // ============ MINTING FUNCTIONS ============
 
-    /**
-     * @notice Creates new option + redemption token pairs for msg.sender
-     * @dev Deposits collateral and mints equal amounts of Option and Redemption tokens
-     * @param amount Amount of collateral to deposit (in collateral token decimals)
-     */
+    /// @notice Mints Option + Redemption tokens for msg.sender by depositing collateral
     function mint(uint256 amount) public notLocked {
         mint(msg.sender, amount);
     }
 
-    /**
-     * @notice Creates new option + redemption token pairs for a specified account
-     * @dev Deposits collateral from msg.sender and mints tokens to account
-     * @param account The recipient of the minted option and redemption tokens
-     * @param amount Amount of collateral to deposit (in collateral token decimals)
-     */
+    /// @notice Mints Option + Redemption tokens for `account`, pulling collateral from msg.sender
     function mint(address account, uint256 amount) public notLocked nonReentrant {
         mint_(account, amount);
     }
 
     /**
-     * @notice Internal minting logic
-     * @dev First mints Redemption tokens (which pulls collateral), then mints Option tokens minus fees
-     * @param account The recipient of tokens
-     * @param amount Amount of tokens to mint (before fees)
+     * @notice Internal mint: deposits collateral via Redemption, then mints Option tokens minus fee
+     * @dev Fee is deducted from the minted amount (not the collateral deposit).
+     *      Both Option and Redemption apply the same fee formula, keeping supplies equal.
      */
     function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
         redemption.mint(account, amount);
@@ -470,14 +213,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ TRANSFER FUNCTIONS (WITH AUTO-SETTLING) ============
 
     /**
-     * @notice Transfers option tokens from one address to another with auto-redeem
-     * @dev After transfer, automatically redeems any matching Option+Redemption pairs the recipient holds.
-     *      Supports universal operator approval via OptionFactory.isApprovedForAll() - if an operator
-     *      is approved for all option tokens, they can transfer without individual ERC20 approvals.
-     * @param from Address to transfer from
-     * @param to Address to transfer to
-     * @param amount Amount to transfer
-     * @return success True if transfer succeeded
+     * @notice ERC20 transferFrom with universal operator approval and opt-in auto-redeem
+     * @dev Supports factory.isApprovedForAll() — approved operators can transfer any
+     *      Option token created by this factory without individual ERC20 approvals.
+     *      If recipient opted into autoMintRedeem and holds Redemption tokens,
+     *      matched Option+Redemption pairs are automatically redeemed post-transfer.
      */
     function transferFrom(address from, address to, uint256 amount)
         public
@@ -500,24 +240,16 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (IOptionFactory(factory()).autoMintRedeem(to)) {
             uint256 balance = redemption.balanceOf(to);
             if (balance > 0) {
-                redeem_(to, min(balance, amount));
+                redeem_(to, Math.min(balance, amount));
             }
         }
     }
 
     /**
-     * @notice Transfers option tokens with auto-mint and auto-redeem
-     * @dev If sender lacks sufficient balance, auto-mints the difference.
-     *      This should be treated like sending Collateral. The UX is
-     *      designed like this to make the operation seamless when swapping
-     *      Options in a single transfer/swap call.
-     *      After transfer, auto-redeems any matching pairs the recipient holds.
-     *      Auto-redemption is for the fact that you should always cancel out the
-     *      "short" position in the option with the "long" and return back to
-     *      just the collateral.
-     * @param to Address to transfer to
-     * @param amount Amount to transfer
-     * @return success True if transfer succeeded
+     * @notice ERC20 transfer with opt-in auto-mint and auto-redeem
+     * @dev Auto-mint (opt-in): if sender balance < amount, mints the deficit from collateral.
+     *      The mint amount is fee-adjusted (ceil) so the sender ends up with >= amount tokens.
+     *      Auto-redeem (opt-in): if recipient holds Redemption tokens, matched pairs are burned.
      */
     function transfer(address to, uint256 amount)
         public
@@ -532,7 +264,10 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (balance < amount) {
             // Auto-mint: only if sender opted in, otherwise revert (standard ERC20)
             if (!IOptionFactory(factory()).autoMintRedeem(msg.sender)) revert InsufficientBalance();
-            mint_(msg.sender, amount - balance);
+            // Mint fee-adjusted amount so sender has enough tokens after fee deduction
+            uint256 deficit = amount - balance;
+            uint256 mintAmount = fee > 0 ? Math.mulDiv(deficit, 1e18, 1e18 - fee, Math.Rounding.Ceil) : deficit;
+            mint_(msg.sender, mintAmount);
         }
 
         success = super.transfer(to, amount);
@@ -542,27 +277,23 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (IOptionFactory(factory()).autoMintRedeem(to)) {
             balance = redemption.balanceOf(to);
             if (balance > 0) {
-                redeem_(to, min(balance, amount));
+                redeem_(to, Math.min(balance, amount));
             }
         }
     }
 
     // ============ EXERCISE FUNCTIONS ============
 
-    /**
-     * @notice Exercises options for msg.sender
-     * @dev Burns Option tokens, pays consideration, receives collateral
-     * @param amount Amount of options to exercise
-     */
+    /// @notice Exercises options for msg.sender — burns Options, pays consideration, receives collateral
     function exercise(uint256 amount) public notLocked {
         exercise(msg.sender, amount);
     }
 
     /**
-     * @notice Exercises options and sends collateral to specified account
-     * @dev Burns caller's Option tokens, pulls consideration from caller, sends collateral to account
-     * @param account Address to receive the collateral
-     * @param amount Amount of options to exercise
+     * @notice Exercises options — burns caller's Options, sends collateral to `account`
+     * @dev Consideration is collected from msg.sender using toNeededConsideration (rounds UP).
+     * @param account Recipient of the collateral
+     * @param amount Number of Option tokens to exercise
      */
     function exercise(address account, uint256 amount) public notExpired notLocked nonReentrant validAmount(amount) {
         _burn(msg.sender, amount);
@@ -573,19 +304,18 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ REDEEM FUNCTIONS ============
 
     /**
-     * @notice Redeems matched Option+Redemption pairs for msg.sender
-     * @dev Burns both Option and Redemption tokens, returns collateral (pre-expiration only)
-     * @param amount Amount of pairs to redeem
+     * @notice Pre-expiry pair redeem: burns matched Option + Redemption tokens, returns collateral
+     * @param amount Number of pairs to redeem (must hold both tokens)
      */
     function redeem(uint256 amount) public notLocked nonReentrant {
         redeem_(msg.sender, amount);
     }
 
     /**
-     * @notice Internal redeem logic
-     * @dev Burns Option tokens and calls Redemption contract to burn Redemption tokens and return collateral
-     * @param account Account to redeem from
-     * @param amount Amount to redeem
+     * @notice Internal pair redeem — burns Option tokens, delegates to Redemption._redeemPair
+     * @dev Pre-expiry only. The Redemption side burns Redemption tokens and returns collateral.
+     *      Waterfall fallback to consideration exists as defense-in-depth but should never
+     *      trigger because available_collateral == total_option_supply (invariant).
      */
     function redeem_(address account, uint256 amount) internal notExpired sufficientBalance(account, amount) {
         _burn(account, amount);
@@ -594,22 +324,13 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ QUERY FUNCTIONS ============
 
-    /**
-     * @notice Returns the number of decimals for the redemption token
-     * @dev Matches the collateral token decimals
-     * @return Number of decimals
-     */
+    /// @notice Decimals match the collateral token
     function decimals() public view override returns (uint8) {
         IERC20Metadata collMeta = IERC20Metadata(collateral());
         return collMeta.decimals();
     }
 
-    /**
-     * @notice Returns all token balances for an account
-     * @dev Queries balances of collateral, consideration, option, and redemption tokens
-     * @param account Address to query
-     * @return Balances struct containing all four token balances
-     */
+    /// @notice Returns all four token balances (collateral, consideration, option, redemption) for an account
     function balancesOf(address account) public view returns (Balances memory) {
         return Balances({
             collateral: IERC20(collateral()).balanceOf(account),
@@ -619,11 +340,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         });
     }
 
-    /**
-     * @notice Returns complete option contract information
-     * @dev Aggregates all option parameters and token metadata into a single struct
-     * @return OptionInfo struct with complete contract details
-     */
+    /// @notice Returns complete option contract info (tokens, strike, expiry, type)
     function details() public view returns (OptionInfo memory) {
         // Cache addresses to avoid multiple delegatecalls
         address coll = collateral();
@@ -655,28 +372,22 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ ADMIN FUNCTIONS ============
 
-    /**
-     * @notice Locks the contract to prevent transfers
-     * @dev Only owner can call. Prevents all token transfers until unlocked
-     */
+    /// @notice Emergency pause — prevents all mints, exercises, transfers, and redeems
     function lock() public onlyOwner {
         redemption.lock();
         emit ContractLocked();
     }
 
-    /**
-     * @notice Unlocks the contract to allow transfers
-     * @dev Only owner can call. Re-enables token transfers
-     */
+    /// @notice Unpause the contract
     function unlock() public onlyOwner {
         redemption.unlock();
         emit ContractUnlocked();
     }
 
     /**
-     * @notice adjusts fee for protocol
-     * @dev Only Owner can adjust via Option. Fee is calculated as (amount * fee) / 1e18
-     * @param fee_ Fee amount in 1e18 basis
+     * @notice Updates the protocol fee for this option pair
+     * @dev Propagates to the paired Redemption contract. Max 1% (1e16 in 1e18 basis).
+     * @param fee_ New fee in 1e18 basis
      */
     function adjustFee(uint64 fee_) public onlyOwner {
         if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
@@ -687,40 +398,17 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /**
-     * @notice Claims accumulated protocol fees
-     * @dev Only callable by the factory. Transfers all accumulated fees to factory.
+     * @notice Moves accumulated fees from Redemption → Factory
+     * @dev Permissionless — anyone can call. Funds always go to the factory (then to owner).
+     *      Does not transfer to caller; just triggers the Redemption → Factory hop.
      */
     function claimFees() public nonReentrant {
         redemption.claimFees();
     }
 
-    /**
-     * @notice Prevents ownership renunciation to avoid permanent fund lock
-     * @dev Overrides Ownable.renounceOwnership() to always revert
-     */
+    /// @notice Disabled — renouncing ownership would permanently lock funds
     function renounceOwnership() public pure override {
         revert InvalidAddress();
     }
 
-    // ============ UTILITY FUNCTIONS ============
-
-    /**
-     * @notice Returns the minimum of two values
-     * @param a First value
-     * @param b Second value
-     * @return Minimum of a and b
-     */
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-
-    /**
-     * @notice Returns the maximum of two values
-     * @param a First value
-     * @param b Second value
-     * @return Maximum of a and b
-     */
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
 }

@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import { Test } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances, OptionInfo, TokenData } from "../contracts/interfaces/IOption.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
@@ -25,16 +24,16 @@ contract OptionTest is Test {
     address stableToken_;
     address factory_;
 
-    // Unichain RPC URL - replace with actual Unichain RPC endpoint
-    string constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
+    // Base RPC URL
+    string constant BASE_RPC_URL = "https://mainnet.base.org";
 
     uint160 constant MAX160 = type(uint160).max;
     uint48 constant MAX48 = type(uint48).max;
     uint256 constant MAX256 = type(uint256).max;
 
     function setUp() public {
-        // Fork Unichain at the latest block
-        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
+        // Fork Base
+        vm.createSelectFork(BASE_RPC_URL, 43189435);
 
         // Deploy tokens
         stableToken = new StableToken();
@@ -54,18 +53,8 @@ contract OptionTest is Test {
         // Deploy LongOption
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
-        // Deploy OptionFactory implementation
-        OptionFactory implementation = new OptionFactory();
-
-        // Encode initialize call
-        bytes memory initData =
-            abi.encodeCall(OptionFactory.initialize, (address(redemptionClone), address(optionClone), 0.0001e18));
-
-        // Deploy proxy
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-
-        // Cast proxy to OptionFactory interface
-        factory = OptionFactory(address(proxy));
+        // Deploy OptionFactory
+        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
         factory_ = address(factory);
 
         OptionParameter[] memory options = new OptionParameter[](1);
@@ -135,10 +124,10 @@ contract OptionTest is Test {
         assertGt(collBefore - shakyToken.balanceOf(address(this)), 0);
         // Recipient got option tokens
         assertEq(option.balanceOf(address(0x123)), 5);
-        // Sender got redemption tokens from auto-mint
-        assertEq(redemption.balanceOf(address(this)), 5);
-        // Sender has 0 option tokens (all transferred)
-        assertEq(option.balanceOf(address(this)), 0);
+        // Sender got redemption tokens from auto-mint (fee-adjusted: mints slightly more to cover fee)
+        assertGe(redemption.balanceOf(address(this)), 5);
+        // Sender may have dust option tokens from ceiling rounding
+        assertLe(option.balanceOf(address(this)), 1);
     }
 
     function test_TransferTransfer() public {
@@ -388,7 +377,8 @@ contract OptionTest is Test {
         factory.enableAutoMintRedeem(true); // opt-in for auto-mint
         safeTransfer(address(option), address(0x123), 5);
         assertEq(option.balanceOf(address(0x123)), 5);
-        assertEq(redemption.balanceOf(address(this)), 5);
+        // Fee-adjusted: mints slightly more to cover fee, so redemption balance >= 5
+        assertGe(redemption.balanceOf(address(this)), 5);
     }
 
     function test_TransferFromAutoRedeem() public {
