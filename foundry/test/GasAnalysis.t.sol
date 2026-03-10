@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
@@ -33,15 +32,15 @@ contract GasAnalysis is Test {
     IPermit2 public permit2 = IPermit2(PERMIT2);
 
     // Constants
-    string public constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
+    string public constant BASE_RPC_URL = "https://mainnet.base.org";
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     uint160 public constant MAX160 = type(uint160).max;
     uint48 public constant MAX48 = type(uint48).max;
     uint256 public constant MAX256 = type(uint256).max;
 
     function setUp() public {
-        // Fork Unichain
-        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
+        // Fork Base
+        vm.createSelectFork(BASE_RPC_URL, 43189435);
 
         // Deploy test tokens
         stableToken = new StableToken();
@@ -58,13 +57,8 @@ contract GasAnalysis is Test {
 
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
-        // Deploy factory with proxy pattern
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
-        );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        factory = OptionFactory(address(proxy));
+        // Deploy OptionFactory
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
 
         // Create an option pair via factory (required for testing Option/Redemption)
         OptionParameter[] memory params = new OptionParameter[](1);
@@ -235,7 +229,7 @@ contract GasAnalysis is Test {
         option.redeem(50);
     }
 
-    function test_Gas_Option_RedeemWithAddress() public {
+    function test_Gas_Option_Redeem_5Tokens() public {
         option.mint(10);
         option.redeem(5);
     }
@@ -250,7 +244,8 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Option_Transfer_AutoMint() public {
-        // Transfer more than balance triggers auto-mint
+        // Transfer more than balance triggers auto-mint (requires opt-in)
+        factory.enableAutoMintRedeem(true);
         IERC20(address(option)).transfer(address(0x123), 5);
     }
 
@@ -535,10 +530,6 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
-        );
-        new ERC1967Proxy(address(implementation), initData);
+        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
     }
 }

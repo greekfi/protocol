@@ -2,12 +2,11 @@
 pragma solidity ^0.8.33;
 
 import "forge-std/Test.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../contracts/OptionFactory.sol";
 
 /**
  * @title Factory Security Test
- * @notice Demonstrates critical vulnerabilities found in OptionFactory security audit
+ * @notice Tests for OptionFactory security validations
  */
 contract FactorySecurityTest is Test {
     OptionFactory factory;
@@ -22,15 +21,11 @@ contract FactorySecurityTest is Test {
 
     function setUp() public {
         // For this test, we'll use mock addresses for templates
-        // In reality, you'd deploy actual templates
         redemptionTemplate = address(new MockContract());
         optionTemplate = address(new MockContract());
 
-        // Deploy factory with proxy pattern
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (redemptionTemplate, optionTemplate, 0.001e18));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        factory = OptionFactory(address(proxy));
+        // Deploy factory directly
+        factory = new OptionFactory(redemptionTemplate, optionTemplate, 0.001e18);
 
         // Deploy mock tokens
         collateralToken = new MockERC20("Collateral", "COLL", 18);
@@ -38,54 +33,37 @@ contract FactorySecurityTest is Test {
     }
 
     /**
-     * HIGH-01: Template validation - NOW FIXED (both zero)
-     * This test verifies factory now rejects zero address templates
+     * HIGH-01: Template validation - constructor rejects both zero
      */
     function testFIXED_TemplateValidation_BothZero() public {
-        // Now REVERTS when initialized with zero addresses
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(0), address(0), 0.001e18));
-
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new ERC1967Proxy(address(implementation), initData);
+        new OptionFactory(address(0), address(0), 0.001e18);
 
-        console.log("FIXED: Initialize rejects both zero addresses!");
+        console.log("FIXED: Constructor rejects both zero addresses!");
     }
 
     /**
-     * HIGH-01: Template validation - NOW FIXED (one zero)
-     * This test verifies factory rejects if either template is zero
+     * HIGH-01: Template validation - constructor rejects redemption zero
      */
     function testFIXED_TemplateValidation_OneZero() public {
-        // Create valid template first
         address validTemplate = address(new MockContract());
 
-        // Reverts with only redemption as zero
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (address(0), validTemplate, 0.001e18));
-
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new ERC1967Proxy(address(implementation), initData);
+        new OptionFactory(address(0), validTemplate, 0.001e18);
 
-        console.log("FIXED: Initialize rejects redemption zero address!");
+        console.log("FIXED: Constructor rejects redemption zero address!");
     }
 
     /**
-     * HIGH-01: Template validation - NOW FIXED (option zero)
-     * This test verifies factory rejects if option template is zero
+     * HIGH-01: Template validation - constructor rejects option zero
      */
     function testFIXED_TemplateValidation_OptionZero() public {
-        // Create valid template first
         address validTemplate = address(new MockContract());
 
-        // Reverts with only option as zero
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(OptionFactory.initialize, (validTemplate, address(0), 0.001e18));
-
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new ERC1967Proxy(address(implementation), initData);
+        new OptionFactory(validTemplate, address(0), 0.001e18);
 
-        console.log("FIXED: Initialize rejects option zero address!");
+        console.log("FIXED: Constructor rejects option zero address!");
     }
 
     /**

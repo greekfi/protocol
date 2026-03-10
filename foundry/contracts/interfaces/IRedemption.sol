@@ -8,8 +8,6 @@ interface IRedemption {
     // ============ EVENTS ============
 
     event Redeemed(address option, address token, address holder, uint256 amount);
-    event ContractLocked();
-    event ContractUnlocked();
 
     // ============ ERRORS ============
 
@@ -22,7 +20,6 @@ interface IRedemption {
     error FeeOnTransferNotSupported();
     error InsufficientCollateral();
     error InsufficientConsideration();
-    error TokenBlocklisted();
     error ArithmeticOverflow();
 
     // ============ STATE VARIABLES ============
@@ -73,7 +70,6 @@ interface IRedemption {
     function redeem(address account, uint256 amount) external;
     function _redeemPair(address account, uint256 amount) external;
     function redeemConsideration(uint256 amount) external;
-    function redeemConsideration(address account, uint256 amount) external;
     function exercise(address account, uint256 amount, address caller) external;
     function sweep(address holder) external;
     function sweep(address[] calldata holders) external;

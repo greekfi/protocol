@@ -3,7 +3,6 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
@@ -17,10 +16,10 @@ contract GasBreakdown is Test {
     OptionFactory public factory;
 
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-    string public constant UNICHAIN_RPC_URL = "https://unichain.drpc.org";
+    string public constant BASE_RPC_URL = "https://mainnet.base.org";
 
     function setUp() public {
-        vm.createSelectFork(UNICHAIN_RPC_URL, 41858319);
+        vm.createSelectFork(BASE_RPC_URL, 43189435);
 
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
@@ -34,13 +33,8 @@ contract GasBreakdown is Test {
 
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
-        // Deploy factory with proxy pattern
-        OptionFactory implementation = new OptionFactory();
-        bytes memory initData = abi.encodeCall(
-            OptionFactory.initialize, (address(redemptionTemplate), address(optionTemplate), 0.0001e18)
-        );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        factory = OptionFactory(address(proxy));
+        // Deploy OptionFactory
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
 
         IERC20(address(stableToken)).approve(address(factory), type(uint256).max);
         IERC20(address(shakyToken)).approve(address(factory), type(uint256).max);
@@ -129,28 +123,6 @@ contract GasBreakdown is Test {
         gasBefore = gasleft();
         redemption.considerationData();
         console.log("  redemption.considerationData():", gasBefore - gasleft());
-    }
-
-    function test_GasBreakdown_Step4_StorageOperations() public {
-        address redemption_ = Clones.clone(address(redemptionTemplate));
-        address option_ = Clones.clone(address(optionTemplate));
-
-        // Simulate the tracking operations
-        uint256 gasBefore = gasleft();
-
-        // Simulate first collateral push
-        address[] memory tempArray = new address[](0);
-        tempArray = new address[](1);
-        tempArray[0] = address(shakyToken);
-
-        uint256 gasArrayPush = gasBefore - gasleft();
-        console.log("Array push (first):", gasArrayPush);
-
-        gasBefore = gasleft();
-        // Simulate mapping write
-        bool tempBool = true;
-        uint256 gasMappingWrite = gasBefore - gasleft();
-        console.log("Mapping write:", gasMappingWrite);
     }
 
     function test_GasBreakdown_Full() public {
