@@ -5,7 +5,9 @@ interface IOptionVault {
     // ============ EVENTS ============
 
     event OptionWhitelisted(address indexed option, bool allowed);
-    event MintAndDeliver(address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered);
+    event MintAndDeliver(
+        address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered
+    );
     event PairRedeemed(address indexed option, uint256 amount);
     event SettlementReconciled(address indexed option, uint256 settled);
     event PremiumReceived(address indexed token, uint256 amount);

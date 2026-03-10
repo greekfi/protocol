@@ -26,6 +26,7 @@ import { OptionPrice, IUniswapV3Pool } from "./OptionPrice.sol";
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
+import { IOptionVault } from "./interfaces/IOptionVault.sol";
 
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 
@@ -51,6 +52,7 @@ struct OptionPool {
     uint160 sqrtPriceX96;
     uint256 expiration;
     uint256 strike;
+    IOptionVault vault;
 }
 
 struct CurrentOptionPrice {
@@ -81,6 +83,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     event OptionPoolUpdated(address indexed oldPool, address indexed newPool);
     event EmergencyWithdraw(address indexed owner, uint256 amount);
     event Swap(address, address, int256, uint256);
+    event PremiumSwept(address indexed vault, address indexed token, uint256 amount);
 
     IOptionPrice public optionPrice;
 
@@ -95,6 +98,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     mapping(address => bool) public cash;
     mapping(address => bool) public validOptions;
     mapping(address => OptionPool[]) public optionPoolList;
+
 
     modifier validCash(address cash_) {
         require(cash[cash_], "Invalid cash address");
@@ -113,6 +117,15 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
     function setOptionPrice(address optionPrice_) public onlyOwner {
         optionPrice = IOptionPrice(optionPrice_);
+    }
+
+    /// @notice Sweep accumulated premium (cash) to a vault
+    function sweepPremiumToVault(address vault_, address token) external onlyOwner {
+        uint256 amount = IERC20(token).balanceOf(address(this));
+        require(amount > 0, "Nothing to sweep");
+        IERC20(token).forceApprove(vault_, amount);
+        IOptionVault(vault_).receivePremium(token, amount);
+        emit PremiumSwept(vault_, token, amount);
     }
 
     function toId(PoolKey memory k) internal pure returns (bytes32) {
@@ -186,10 +199,6 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         });
     }
 
-    function availableCollateral(address collateral) external view returns (uint256) {
-        return IERC20(collateral).balanceOf(address(this));
-    }
-
     function calculateOption(uint256 cashAmount, uint256 price) public pure returns (uint256) {
         return Math.mulDiv(cashAmount, 1e18, price);
     }
@@ -223,8 +232,9 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         Price memory p = calculateCash(collateral, optionToken, -int256(amount));
 
         transferCash(cashToken, p.cashAmount);
-        option.mint(p.optionAmount);
-        option.transfer(to, p.optionAmount);
+
+        OptionPool memory pool = optionCashPool[optionToken][cashToken];
+        pool.vault.mintAndDeliver(optionToken, p.optionAmount, to);
 
         emit Swap(msg.sender, to, amount, p.price);
     }
@@ -258,16 +268,20 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
             Price memory a = calculateOption(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(cashCurrency, address(this), a.cashAmount);
             poolManager.sync(optionCurrency);
-            uint256 balBefore = IERC20(pool.optionToken).balanceOf(address(this));
-            option.mint(a.optionAmount);
-            uint256 actualMinted = IERC20(pool.optionToken).balanceOf(address(this)) - balBefore;
-            IERC20(pool.optionToken).safeTransfer(pm, actualMinted);
+
+            uint256 delivered = pool.vault.mintAndDeliver(pool.optionToken, a.optionAmount, pm);
+
             poolManager.settle();
-            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(actualMinted));
+            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(delivered));
         } else {
-            // amountSpecified is the option input amount
+            // amountSpecified is the option input amount — buyback
             Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
             poolManager.take(optionCurrency, address(this), a.optionAmount);
+
+            // Send options to vault and pair redeem (returns collateral to vault)
+            IERC20(pool.optionToken).safeTransfer(address(pool.vault), a.optionAmount);
+            pool.vault.pairRedeem(pool.optionToken, a.optionAmount);
+
             poolManager.sync(cashCurrency);
             IERC20(pool.cashToken).safeTransfer(pm, a.cashAmount);
             poolManager.settle();
@@ -343,10 +357,14 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         }
     }
 
-    function initPool(address optionToken, address cashToken, address collateral, address pricePool, uint24 fee)
-        public
-        returns (PoolKey memory)
-    {
+    function initPool(
+        address optionToken,
+        address cashToken,
+        address collateral,
+        address pricePool,
+        uint24 fee,
+        address vault_
+    ) public returns (PoolKey memory) {
         IOption option = IOption(optionToken);
         uint256 expiration = option.expirationDate();
         bool optionIsOne = cashToken < optionToken;
@@ -375,17 +393,17 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
             expiration: expiration,
             strike: option.strike(),
             tickSpacing: TICK_SPACING,
-            sqrtPriceX96: SQRT_PRICE_X96, //todo: verify this
-            fee: fee
+            sqrtPriceX96: SQRT_PRICE_X96,
+            fee: fee,
+            vault: IOptionVault(vault_)
         });
         allPools.push(optionPool);
         optionPools[toId(poolKey)] = optionPool;
+        optionCashPool[optionToken][cashToken] = optionPool;
         collateralPools[collateral].push(optionPool);
         optionPoolList[optionToken].push(optionPool);
         collateralPricePool[collateral] = IUniswapV3Pool(pricePool);
 
-        IERC20(option.collateral()).approve(option.factory(), type(uint256).max);
-        IOptionFactory(option.factory()).approve(option.collateral(), type(uint160).max);
         return poolKey;
     }
 }

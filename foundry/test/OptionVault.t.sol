@@ -43,9 +43,7 @@ contract OptionVaultTest is Test {
         hookAddr = address(this);
 
         // Deploy vault (shakyToken = collateral, e.g. WETH equivalent)
-        vault = new OptionVault(
-            IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory), hookAddr
-        );
+        vault = new OptionVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory), hookAddr);
 
         // Setup factory approvals for vault
         vault.setupFactoryApproval();
@@ -418,7 +416,7 @@ contract OptionVaultTest is Test {
         assertFalse(expired);
 
         vm.warp(block.timestamp + 2 days);
-        (, , expired) = vault.getPositionInfo(address(option));
+        (,, expired) = vault.getPositionInfo(address(option));
         assertTrue(expired);
     }
 

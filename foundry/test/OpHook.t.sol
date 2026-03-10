@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { OpHook, CurrentOptionPrice } from "../contracts/OpHook.sol";
 import { Option, Redemption } from "../contracts/Option.sol";
+import { OptionVault } from "../contracts/OptionVault.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -107,6 +108,8 @@ abstract contract OpHookTestBase is Test {
     PoolKey public poolKey1;
     PoolKey public poolKey2;
 
+    OptionVault public vault;
+
     uint256 public networkFork;
 
     // Strike prices — set per chain before calling _setupCommon
@@ -149,18 +152,31 @@ abstract contract OpHookTestBase is Test {
             HookMiner.find(address(this), flags, type(OpHook).creationCode, constructorArgs);
 
         opHook = new OpHook{ salt: salt }(poolManager_, permit2_);
-        // Use OptionPrice with 64-bit CLZ optimization
         opHook.setOptionPrice(address(new OptionPrice()));
-
-        poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000);
-        poolKey2 = opHook.initPool(option2_, usdc_, weth_, wethUniPool_, 3000);
-
-        console.log("Hook Address (expected)", hookAddress);
-        console.log("Hook Address (actual)", address(opHook));
 
         address opHook_ = address(opHook);
 
-        deal(weth_, opHook_, 1000e18);
+        // Deploy vault: collateral = WETH, hook = opHook
+        vault = new OptionVault(IERC20(weth_), "Greek WETH Vault", "gWETH", address(factory), opHook_);
+        vault.setupFactoryApproval();
+        vault.whitelistOption(option1_, true);
+        vault.whitelistOption(option2_, true);
+        vault.whitelistOption(option3_, true);
+
+        // LP deposits collateral into vault
+        deal(weth_, address(this), 1000e18);
+        weth.approve(address(vault), 1000e18);
+        vault.deposit(1000e18, address(this));
+
+        // Init pools with vault
+        address vault_ = address(vault);
+        poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000, vault_);
+        poolKey2 = opHook.initPool(option2_, usdc_, weth_, wethUniPool_, 3000, vault_);
+
+        console.log("Hook Address (expected)", hookAddress);
+        console.log("Hook Address (actual)", opHook_);
+
+        // Hook holds cash (USDC) for buybacks
         deal(usdc_, opHook_, 1000e18);
         deal(usdc_, poolManager_, 1000e18);
 
@@ -174,12 +190,6 @@ abstract contract OpHookTestBase is Test {
         permit2.approve(usdc_, poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
         permit2.approve(usdc_, opHook_, type(uint160).max, uint48(block.timestamp + 1 days));
 
-        // Hook needs to approve WETH to Permit2 and then to redemption contracts for minting
-        vm.startPrank(opHook_);
-        weth.approve(address(factory), 1000e18);
-        usdc.approve(address(factory), 1000e6);
-        vm.stopPrank();
-
         router = UniversalRouter(payable(universalRouter_));
         deal(usdc_, address(this), 1000e6);
 
@@ -190,7 +200,7 @@ abstract contract OpHookTestBase is Test {
 
     function testPrices() public {
         if (option3_ != address(0)) {
-            opHook.initPool(option3_, usdc_, address(option3.collateral()), wethUniPool_, 3000);
+            opHook.initPool(option3_, usdc_, address(option3.collateral()), wethUniPool_, 3000, address(vault));
         }
         CurrentOptionPrice[] memory prices = opHook.getPrices(weth_);
         console.log("price1", prices[0].price / 1e18);
@@ -205,7 +215,7 @@ abstract contract OpHookTestBase is Test {
     function testPrice() public {
         address testOption = option3_ != address(0) ? option3_ : option1_;
         IOption opt = IOption(testOption);
-        opHook.initPool(testOption, usdc_, address(opt.collateral()), wethUniPool_, 3000);
+        opHook.initPool(testOption, usdc_, address(opt.collateral()), wethUniPool_, 3000, address(vault));
 
         console.log("strike", opt.strike());
         console.log("underlying", address(opt.collateral()));
