@@ -45,17 +45,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     event Exercise(address longOption, address holder, uint256 amount);
     event FeeUpdated(uint64 oldFee, uint64 newFee);
 
-    error ContractNotExpired();
     error ContractExpired();
     error InsufficientBalance();
     error InvalidValue();
     error InvalidAddress();
     error LockedContract();
-    error FeeOnTransferNotSupported();
-    error InsufficientCollateral();
-    error InsufficientConsideration();
-    error TokenBlocklisted();
-    error ArithmeticOverflow();
 
     event ContractLocked();
     event ContractUnlocked();
@@ -410,5 +404,4 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function renounceOwnership() public pure override {
         revert InvalidAddress();
     }
-
 }

@@ -38,8 +38,8 @@ library OptionUtils {
 
     /**
      * @notice Converts an 18-decimal strike price to a human-readable string
-     * @dev Handles whole numbers, decimals (up to 8 significant digits),
-     *      and scientific notation for very small/large values.
+     * @dev Handles whole numbers, decimals (up to 4 significant digits),
+     *      and scientific notation for very small values.
      * @param _i Strike price in 18-decimal fixed-point
      * @return str Human-readable string (e.g. "3000", "0.0005", "1e-9")
      */
@@ -62,6 +62,11 @@ library OptionUtils {
             divisor /= 10;
         }
 
+        // Drop negligible fractional parts (e.g., 3000.000000000003 from 1e36/x artifacts)
+        if (whole > 0 && leadingZeros >= 4) {
+            return uint2str(whole);
+        }
+
         // Use scientific notation if >8 leading zeros (very small numbers like 0.000000001)
         if (whole == 0 && leadingZeros > 8) {
             // Find first non-zero digit
@@ -77,27 +82,10 @@ library OptionUtils {
             return string(abi.encodePacked(uint2str(significand), "e-", uint2str(exp)));
         }
 
-        // Use scientific notation if whole number is very large (>8 trailing zeros)
-        if (whole > 0 && fractional == 0) {
-            uint256 tempWhole = whole;
-            uint256 trailingZeros = 0;
-
-            while (tempWhole > 0 && tempWhole % 10 == 0) {
-                trailingZeros++;
-                tempWhole /= 10;
-            }
-
-            if (trailingZeros > 8) {
-                return string(abi.encodePacked(uint2str(tempWhole), "e", uint2str(trailingZeros)));
-            }
-        }
-
-        // Round fractional part to max 8 significant digits to remove floating-point artifacts
-        // This prevents "3000.0000000003" by rounding off insignificant digits
+        // Round fractional part to 4 significant digits for clean token names
         uint256 roundedFractional = fractional;
-        if (leadingZeros < 10) {
-            // Keep 8 significant digits, round off the rest
-            uint256 keepDigits = leadingZeros + 8;
+        if (leadingZeros < 14) {
+            uint256 keepDigits = leadingZeros + 4;
             if (keepDigits < 18) {
                 uint256 divisorForRound = 1;
                 for (uint256 i = 0; i < (18 - keepDigits); i++) {
@@ -217,5 +205,4 @@ library OptionUtils {
         if (year % 400 != 0) return false;
         return true;
     }
-
 }

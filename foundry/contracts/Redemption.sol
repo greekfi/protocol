@@ -73,11 +73,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error FeeOnTransferNotSupported();
     error InsufficientCollateral();
     error InsufficientConsideration();
-    error TokenBlocklisted();
     error ArithmeticOverflow();
-
-    event ContractLocked();
-    event ContractUnlocked();
 
     // ============ MODIFIERS ============
 
@@ -553,5 +549,4 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function factory() public view returns (address) {
         return address(_factory);
     }
-
 }

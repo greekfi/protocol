@@ -35,17 +35,11 @@ interface IOption {
 
     // ============ ERRORS ============
 
-    error ContractNotExpired();
     error ContractExpired();
     error InsufficientBalance();
     error InvalidValue();
     error InvalidAddress();
     error LockedContract();
-    error FeeOnTransferNotSupported();
-    error InsufficientCollateral();
-    error InsufficientConsideration();
-    error TokenBlocklisted();
-    error ArithmeticOverflow();
 
     // ============ STATE VARIABLES ============
 

@@ -8,8 +8,6 @@ interface IRedemption {
     // ============ EVENTS ============
 
     event Redeemed(address option, address token, address holder, uint256 amount);
-    event ContractLocked();
-    event ContractUnlocked();
 
     // ============ ERRORS ============
 
@@ -22,7 +20,6 @@ interface IRedemption {
     error FeeOnTransferNotSupported();
     error InsufficientCollateral();
     error InsufficientConsideration();
-    error TokenBlocklisted();
     error ArithmeticOverflow();
 
     // ============ STATE VARIABLES ============
