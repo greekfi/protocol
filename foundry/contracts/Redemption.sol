@@ -162,7 +162,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 expirationDate_,
         uint256 strike_,
         bool isPut_
-    ) ERC20(name_, symbol_) Ownable(msg.sender) Initializable() { }
+    ) ERC20(name_, symbol_) Ownable(msg.sender) Initializable() {
+        _disableInitializers();
+    }
 
     /**
      * @notice Initializes a cloned redemption contract
@@ -366,6 +368,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     {
         _burn(account, collAmount);
         uint256 consAmount = toConsideration(collAmount);
+        if (consAmount == 0) revert InvalidValue();
         consideration.safeTransfer(account, consAmount);
         emit Redeemed(address(owner()), address(consideration), account, consAmount);
     }
@@ -390,11 +393,14 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         validAmount(amount)
     {
         uint256 consAmount = toConsideration(amount);
+        if (consAmount == 0) revert InvalidValue();
         // Ensure consideration amount fits in uint160 for Permit2 compatibility
         if (consAmount > type(uint160).max) revert ArithmeticOverflow();
 
+        uint256 consBefore = consideration.balanceOf(address(this));
         // forge-lint: disable-next-line(unsafe-typecast)
         _factory.transferFrom(caller, address(this), uint160(consAmount), address(consideration));
+        if (consideration.balanceOf(address(this)) - consBefore < consAmount) revert FeeOnTransferNotSupported();
         collateral.safeTransfer(account, amount);
     }
 

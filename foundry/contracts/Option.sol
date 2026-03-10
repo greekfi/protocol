@@ -104,6 +104,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         Ownable(msg.sender)
     {
         redemption = Redemption(redemption__);
+        _disableInitializers();
     }
 
     /**
@@ -116,6 +117,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function init(address redemption_, address owner, uint64 fee_) public initializer {
         if (redemption_ == address(0) || owner == address(0)) revert InvalidAddress();
 
+        if (fee_ > MAXFEE) revert InvalidValue();
         _transferOwnership(owner);
         redemption = Redemption(redemption_);
         fee = fee_;
@@ -480,6 +482,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function transferFrom(address from, address to, uint256 amount)
         public
         override
+        notExpired
         notLocked
         nonReentrant
         returns (bool success)
@@ -519,6 +522,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function transfer(address to, uint256 amount)
         public
         override
+        notExpired
         notLocked
         nonReentrant
         validAddress(to)
@@ -688,6 +692,14 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function claimFees() public nonReentrant {
         redemption.claimFees();
+    }
+
+    /**
+     * @notice Prevents ownership renunciation to avoid permanent fund lock
+     * @dev Overrides Ownable.renounceOwnership() to always revert
+     */
+    function renounceOwnership() public pure override {
+        revert InvalidAddress();
     }
 
     // ============ UTILITY FUNCTIONS ============

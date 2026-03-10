@@ -43,6 +43,8 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     error BlocklistedToken();
     error InvalidAddress();
     error InvalidTokens();
+    error InsufficientAllowance();
+    error Unauthorized();
 
     // ============ EVENTS ============
 
@@ -61,6 +63,8 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     event TemplateUpdated();
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
     event AutoMintRedeemUpdated(address indexed account, bool enabled);
+    event ClaimerUpdated(address indexed account, bool enabled);
+    event Approval(address indexed token, address indexed owner, uint256 amount);
 
     // ============ STORAGE MAPPINGS ============
 
@@ -84,6 +88,16 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     /// @dev When enabled, transferring Options to this address auto-redeems matched Redemption pairs,
     ///      and transferring more Options than owned auto-mints the difference
     mapping(address => bool) public autoMintRedeem;
+
+    /// @notice Authorized fee claimers (owner is always authorized)
+    mapping(address => bool) public claimers;
+
+    // ============ MODIFIERS ============
+
+    modifier onlyClaimer() {
+        if (msg.sender != owner() && !claimers[msg.sender]) revert Unauthorized();
+        _;
+    }
 
     // ============ CONSTRUCTOR & INITIALIZER ============
 
@@ -187,7 +201,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         // Only redemption contracts can call this (used in mint() and exercise())
         if (!redemptions[msg.sender]) revert InvalidAddress();
         uint256 currentAllowance = allowance(token, from);
-        if (currentAllowance < amount) revert InvalidAddress();
+        if (currentAllowance < amount) revert InsufficientAllowance();
         if (currentAllowance != type(uint256).max) {
             _allowances[token][from] = currentAllowance - amount;
         }
@@ -213,6 +227,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
     function approve(address token, uint256 amount) public {
         if (token == address(0)) revert InvalidAddress();
         _allowances[token][msg.sender] = amount;
+        emit Approval(token, msg.sender, amount);
     }
 
     // ============ UNIVERSAL OPERATOR APPROVAL FUNCTIONS ============
@@ -253,6 +268,16 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
         emit AutoMintRedeemUpdated(msg.sender, enabled);
     }
 
+    /**
+     * @notice Sets whether an address is authorized to claim fees
+     * @param account Address to authorize/deauthorize
+     * @param enabled True to authorize, false to deauthorize
+     */
+    function setClaimer(address account, bool enabled) external onlyOwner {
+        claimers[account] = enabled;
+        emit ClaimerUpdated(account, enabled);
+    }
+
     // ============ BLOCKLIST MANAGEMENT FUNCTIONS ============
 
     /**
@@ -291,7 +316,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @notice Transfers fees to the owner
      * @param tokens The token addresses to transfer
      */
-    function claimFees(address[] memory options_, address[] memory tokens) public {
+    function claimFees(address[] memory options_, address[] memory tokens) public onlyClaimer {
         optionsClaimFees(options_);
         claimFees(tokens);
     }
@@ -300,7 +325,7 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @notice Transfers fees to the owner
      * @param tokens The token addresses to transfer
      */
-    function claimFees(address[] memory tokens) public nonReentrant {
+    function claimFees(address[] memory tokens) public nonReentrant onlyClaimer {
         for (uint256 i = 0; i < tokens.length; i++) {
             ERC20 token_ = ERC20(tokens[i]);
             uint256 amount = token_.balanceOf(address(this));
@@ -312,8 +337,9 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      * @notice Claims fees from multiple option contracts
      * @param options_ The options addresses to claim fees from
      */
-    function optionsClaimFees(address[] memory options_) public nonReentrant {
+    function optionsClaimFees(address[] memory options_) public nonReentrant onlyClaimer {
         for (uint256 i = 0; i < options_.length; i++) {
+            if (!options[options_[i]]) revert InvalidAddress();
             Option(options_[i]).claimFees();
         }
     }
@@ -358,5 +384,5 @@ contract OptionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, Re
      *      without affecting the storage layout of child contracts. When adding new
      *      variables, reduce the gap size accordingly (e.g., add 3 vars = reduce to [47]).
      */
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }
