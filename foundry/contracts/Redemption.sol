@@ -317,23 +317,14 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ CONSIDERATION REDEEM FUNCTIONS ============
 
     /**
-     * @notice Redeems redemption tokens for consideration instead of collateral (for msg.sender)
-     * @dev Used when collateral is depleted. Burns redemption tokens and returns equivalent consideration.
-     *      Callable both before and after expiration by design.
-     * @param amount Amount of redemption tokens to burn
-     */
-    function redeemConsideration(uint256 amount) public notLocked {
-        redeemConsideration(msg.sender, amount);
-    }
-
-    /**
      * @notice Redeems redemption tokens for consideration instead of collateral
-     * @dev Used when collateral is depleted. Burns tokens and sends equivalent consideration based on strike price.
-     * @param account Address to redeem for
+     * @dev Used when collateral is depleted. Burns caller's redemption tokens and returns equivalent consideration.
+     *      Callable both before and after expiration by design.
+     *      Only msg.sender can redeem their own tokens to prevent forced position closure.
      * @param amount Amount of redemption tokens to burn
      */
-    function redeemConsideration(address account, uint256 amount) public notLocked nonReentrant {
-        _redeemConsideration(account, amount);
+    function redeemConsideration(uint256 amount) public notLocked nonReentrant {
+        _redeemConsideration(msg.sender, amount);
     }
 
     /**

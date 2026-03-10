@@ -73,7 +73,6 @@ interface IRedemption {
     function redeem(address account, uint256 amount) external;
     function _redeemPair(address account, uint256 amount) external;
     function redeemConsideration(uint256 amount) external;
-    function redeemConsideration(address account, uint256 amount) external;
     function exercise(address account, uint256 amount, address caller) external;
     function sweep(address holder) external;
     function sweep(address[] calldata holders) external;
