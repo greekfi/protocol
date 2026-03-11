@@ -137,8 +137,10 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         address cashToken_,
         uint32 twapWindow_
     ) ERC4626(collateral_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        if (factory_ == address(0) || blackScholes_ == address(0) || pricePool_ == address(0) || cashToken_ == address(0))
-        {
+        if (
+            factory_ == address(0) || blackScholes_ == address(0) || pricePool_ == address(0)
+                || cashToken_ == address(0)
+        ) {
             revert InvalidAddress();
         }
         factory = IOptionFactory(factory_);

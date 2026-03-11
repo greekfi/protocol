@@ -29,12 +29,8 @@ contract BlackScholesTest is Test {
         assertApproxEqRel(
             bs.normCdf(1e18), uint256(841344746068542948), uint256(5e16), "CDF(1) should be approximately 0.8413"
         );
-        assertApproxEqRel(
-            bs.normCdf(-1e18), 158655253931457051, 0.05e18, "CDF(-1) should be approximately 0.1587"
-        );
-        assertApproxEqRel(
-            bs.normCdf(2e18), 977249868051820792, 0.05e18, "CDF(2) should be approximately 0.9772"
-        );
+        assertApproxEqRel(bs.normCdf(-1e18), 158655253931457051, 0.05e18, "CDF(-1) should be approximately 0.1587");
+        assertApproxEqRel(bs.normCdf(2e18), 977249868051820792, 0.05e18, "CDF(2) should be approximately 0.9772");
     }
 
     function testBlackScholesATMCall() public view {
@@ -56,9 +52,7 @@ contract BlackScholesTest is Test {
 
     function testBlackScholesExpiredITMCall() public view {
         uint256 itmExpiredCallPrice = bs.price(120e18, 100e18, 100, 0.2e18, 0.05e18, false);
-        assertApproxEqRel(
-            itmExpiredCallPrice, 20e18, 0.3e18, "Expired ITM call should have intrinsic value of $20"
-        );
+        assertApproxEqRel(itmExpiredCallPrice, 20e18, 0.3e18, "Expired ITM call should have intrinsic value of $20");
     }
 
     function testBlackScholesDebug() public view {
@@ -187,8 +181,7 @@ contract BlackScholesTest is Test {
     function testPriceWithSmileOTMPut() public view {
         // OTM put with negative skew should be more expensive than flat vol
         uint256 flatPrice = bs.price(3000e18, 2500e18, 30 days, 0.6e18, 0.04e18, true);
-        uint256 smilePrice =
-            bs.priceWithSmile(3000e18, 2500e18, 30 days, 0.6e18, 0.04e18, true, -0.2e18, 0.1e18);
+        uint256 smilePrice = bs.priceWithSmile(3000e18, 2500e18, 30 days, 0.6e18, 0.04e18, true, -0.2e18, 0.1e18);
         assertGt(smilePrice, flatPrice, "OTM put with neg skew should cost more");
         console.log("OTM put flat:", flatPrice);
         console.log("OTM put smile:", smilePrice);

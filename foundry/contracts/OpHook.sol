@@ -45,9 +45,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
     // ============ Events ============
 
-    event PoolCreated(
-        address indexed optionToken, address indexed cashToken, address indexed vault, bytes32 poolId
-    );
+    event PoolCreated(address indexed optionToken, address indexed cashToken, address indexed vault, bytes32 poolId);
     event PoolDelisted(bytes32 indexed poolId);
     event Swap(address indexed sender, address indexed recipient, address indexed option, int256 amount, uint256 price);
 
@@ -109,10 +107,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
         PoolInfo memory info = PoolInfo({
-            optionToken: optionToken,
-            cashToken: cashToken,
-            optionIsOne: optionIsOne,
-            vault: IStrategyVault(vault_)
+            optionToken: optionToken, cashToken: cashToken, optionIsOne: optionIsOne, vault: IStrategyVault(vault_)
         });
 
         bytes32 poolId = _toId(poolKey);
@@ -132,10 +127,13 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
     // ============ Direct Swap (bypass Uni v4) ============
 
-    function swapForOption(address optionToken, address cashToken_, uint256 cashAmount, uint256 minOptionsOut, address to)
-        public
-        nonReentrant
-    {
+    function swapForOption(
+        address optionToken,
+        address cashToken_,
+        uint256 cashAmount,
+        uint256 minOptionsOut,
+        address to
+    ) public nonReentrant {
         require(to != address(0), "bad to");
 
         PoolInfo memory pool = optionCashPool[optionToken][cashToken_];
