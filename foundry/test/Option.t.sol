@@ -1115,11 +1115,11 @@ contract OptionTest is Test {
         assertEq(redemption.balanceOf(address(0x222)), 0);
     }
 
-    function test_SetApprovalForAll() public {
+    function test_ApproveOperator() public {
         address operator = address(0x789);
 
-        factory.setApprovalForAll(operator, true);
-        assertTrue(factory.isApprovedForAll(address(this), operator));
+        factory.approveOperator(operator, true);
+        assertTrue(factory.approvedOperator(address(this), operator));
 
         // Operator can transfer option tokens without individual approval
         option.mint(10e18);
@@ -1131,13 +1131,13 @@ contract OptionTest is Test {
         assertEq(option.balanceOf(address(0x123)), optBalance / 2);
 
         // Revoke
-        factory.setApprovalForAll(operator, false);
-        assertFalse(factory.isApprovedForAll(address(this), operator));
+        factory.approveOperator(operator, false);
+        assertFalse(factory.approvedOperator(address(this), operator));
     }
 
-    function test_SetApprovalForAllCannotApproveSelf() public {
+    function test_ApproveOperatorCannotApproveSelf() public {
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        factory.setApprovalForAll(address(this), true);
+        factory.approveOperator(address(this), true);
     }
 
     function test_FactoryTransferFromNonRedemption() public {

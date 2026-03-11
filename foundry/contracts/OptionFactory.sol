@@ -28,7 +28,7 @@ using SafeERC20 for ERC20;
  *      Fee flow: fees are collected as collateral in Redemption contracts on mint.
  *      Claiming is permissionless: anyone can trigger Redemption → Factory → Owner.
  *
- *      Operator approvals: ERC-1155-style setApprovalForAll() allows approved operators
+ *      Operator approvals: ERC-1155-style approveOperator() allows approved operators
  *      to transfer ANY option token created by this factory on behalf of an owner.
  *
  *      Auto-mint/redeem: opt-in per-account feature (enableAutoMintRedeem) that enables
@@ -77,7 +77,7 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
 
     event TokenBlocked(address token, bool blocked);
     event FeeUpdated(uint64 oldFee, uint64 newFee);
-    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    event OperatorApproval(address indexed owner, address indexed operator, bool approved);
     event AutoMintRedeemUpdated(address indexed account, bool enabled);
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
@@ -92,13 +92,14 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     /// @notice Blocklist for fee-on-transfer and rebasing tokens
     mapping(address => bool) public blocklist;
 
-    /// @notice Factory-level token allowances: token => owner => amount
-    /// @dev Users approve tokens to the factory once, then all option pairs can pull via transferFrom()
+    /// @notice Collateral/consideration allowances: token => owner => amount
+    /// @dev Users approve underlying tokens (WETH, USDC) to the factory once,
+    ///      then any option pair can pull via transferFrom() during mint/exercise.
     mapping(address => mapping(address => uint256)) private _allowances;
 
     /// @notice Universal operator approvals: owner => operator => approved
     /// @dev When approved, operator can transfer ANY option token created by this factory on behalf of owner
-    mapping(address => mapping(address => bool)) private _operatorApprovals;
+    mapping(address => mapping(address => bool)) private _approvedOperators;
 
     /// @notice Opt-in flag for auto-mint and auto-redeem during Option transfers
     /// @dev When enabled: transferring Options auto-mints deficit from collateral (sender),
@@ -206,8 +207,8 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     }
 
     /**
-     * @notice Returns the factory-level allowance for a token and owner
-     * @param token ERC20 token address
+     * @notice Returns the collateral/consideration allowance for a token and owner
+     * @param token ERC20 token address (e.g. WETH, USDC)
      * @param owner_ Token owner address
      * @return Remaining allowance
      */
@@ -216,10 +217,9 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     }
 
     /**
-     * @notice Sets factory-level allowance for a token
-     * @dev Users call this to allow the factory to pull their tokens during mint/exercise.
-     *      Use type(uint256).max for infinite approval.
-     * @param token ERC20 token to approve
+     * @notice Approves the factory to pull collateral/consideration tokens during mint/exercise
+     * @dev Use type(uint256).max for infinite approval.
+     * @param token ERC20 token to approve (e.g. WETH for minting, USDC for exercising)
      * @param amount Allowance amount
      */
     function approve(address token, uint256 amount) public {
@@ -238,11 +238,11 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @param operator Address to grant or revoke approval for
      * @param approved True to approve, false to revoke
      */
-    function setApprovalForAll(address operator, bool approved) external {
+    function approveOperator(address operator, bool approved) external {
         if (operator == address(0)) revert InvalidAddress();
         if (operator == msg.sender) revert InvalidAddress(); // Can't approve self
-        _operatorApprovals[msg.sender][operator] = approved;
-        emit ApprovalForAll(msg.sender, operator, approved);
+        _approvedOperators[msg.sender][operator] = approved;
+        emit OperatorApproval(msg.sender, operator, approved);
     }
 
     /**
@@ -251,8 +251,8 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @param operator Address to check
      * @return True if operator is approved for all option transfers
      */
-    function isApprovedForAll(address owner_, address operator) external view returns (bool) {
-        return _operatorApprovals[owner_][operator];
+    function approvedOperator(address owner_, address operator) external view returns (bool) {
+        return _approvedOperators[owner_][operator];
     }
 
     /**

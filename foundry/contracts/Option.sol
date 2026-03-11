@@ -7,7 +7,7 @@ import { OptionUtils } from "./OptionUtils.sol";
 
 /// @notice Interface for OptionFactory's operator approval and auto-mint/redeem functions
 interface IOptionFactory {
-    function isApprovedForAll(address owner, address operator) external view returns (bool);
+    function approvedOperator(address owner, address operator) external view returns (bool);
     function autoMintRedeem(address account) external view returns (bool);
 }
 
@@ -207,65 +207,21 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ TRANSFER FUNCTIONS (WITH AUTO-SETTLING) ============
 
     /**
-     * @notice ERC20 transferFrom with universal operator approval and opt-in auto-redeem
-     * @dev Supports factory.isApprovedForAll() — approved operators can transfer any
-     *      Option token created by this factory without individual ERC20 approvals.
-     *      If recipient opted into autoMintRedeem and holds Redemption tokens,
-     *      matched Option+Redemption pairs are automatically redeemed post-transfer.
-     */
-    function transferFrom(address from, address to, uint256 amount)
-        public
-        override
-        notExpired
-        notLocked
-        nonReentrant
-        returns (bool success)
-    {
-        // Check if caller has universal operator approval via factory
-        // If so, use _transfer directly instead of super.transferFrom (which checks allowance)
-        if (msg.sender != from && IOptionFactory(factory()).isApprovedForAll(from, msg.sender)) {
-            _transfer(from, to, amount);
-            success = true;
-        } else {
-            success = super.transferFrom(from, to, amount);
-        }
-
-        // Auto-redeem: if recipient opted in and holds Redemption tokens, burn matched pairs
-        if (IOptionFactory(factory()).autoMintRedeem(to)) {
-            uint256 balance = redemption.balanceOf(to);
-            if (balance > 0) {
-                redeem_(to, Math.min(balance, amount));
-            }
-        }
-    }
-
-    /**
-     * @notice ERC20 transfer with opt-in auto-mint and auto-redeem
-     * @dev Auto-mint (opt-in): if sender balance < amount, mints the deficit from collateral.
-     *      The mint amount is fee-adjusted (ceil) so the sender ends up with >= amount tokens.
+     * @notice Core transfer with auto-mint and auto-redeem
+     * @dev Auto-mint (opt-in): if sender balance < amount, mints the fee-adjusted deficit.
      *      Auto-redeem (opt-in): if recipient holds Redemption tokens, matched pairs are burned.
      */
-    function transfer(address to, uint256 amount)
-        public
-        override
-        notExpired
-        notLocked
-        nonReentrant
-        validAddress(to)
-        returns (bool success)
-    {
-        uint256 balance = balanceOf(msg.sender);
+    function _settledTransfer(address from, address to, uint256 amount) internal {
+        // Auto-mint: if sender opted in and balance < amount, mint the deficit
+        uint256 balance = balanceOf(from);
         if (balance < amount) {
-            // Auto-mint: only if sender opted in, otherwise revert (standard ERC20)
-            if (!IOptionFactory(factory()).autoMintRedeem(msg.sender)) revert InsufficientBalance();
-            // Mint fee-adjusted amount so sender has enough tokens after fee deduction
+            if (!IOptionFactory(factory()).autoMintRedeem(from)) revert InsufficientBalance();
             uint256 deficit = amount - balance;
             uint256 mintAmount = fee > 0 ? Math.mulDiv(deficit, 1e18, 1e18 - fee, Math.Rounding.Ceil) : deficit;
-            mint_(msg.sender, mintAmount);
+            mint_(from, mintAmount);
         }
 
-        success = super.transfer(to, amount);
-        require(success, "Transfer failed");
+        _transfer(from, to, amount);
 
         // Auto-redeem: if recipient opted in and holds Redemption tokens, burn matched pairs
         if (IOptionFactory(factory()).autoMintRedeem(to)) {
@@ -274,6 +230,36 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
                 redeem_(to, Math.min(balance, amount));
             }
         }
+    }
+
+    /// @notice ERC20 transfer with opt-in auto-mint and auto-redeem
+    function transfer(address to, uint256 amount)
+        public
+        override
+        notExpired
+        notLocked
+        nonReentrant
+        returns (bool)
+    {
+        _settledTransfer(msg.sender, to, amount);
+        return true;
+    }
+
+    /// @notice ERC20 transferFrom with universal operator approval, auto-mint, and auto-redeem
+    function transferFrom(address from, address to, uint256 amount)
+        public
+        override
+        notExpired
+        notLocked
+        nonReentrant
+        returns (bool)
+    {
+        // Spend allowance unless caller has universal operator approval via factory
+        if (msg.sender != from && !IOptionFactory(factory()).approvedOperator(from, msg.sender)) {
+            _spendAllowance(from, msg.sender, amount);
+        }
+        _settledTransfer(from, to, amount);
+        return true;
     }
 
     // ============ EXERCISE FUNCTIONS ============
