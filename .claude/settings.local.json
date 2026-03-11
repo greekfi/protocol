@@ -36,7 +36,10 @@
       "WebFetch(domain:docs.uniswap.org)",
       "WebFetch(domain:basescan.org)",
       "WebFetch(domain:base.blockscout.com)",
-      "WebFetch(domain:app.uniswap.org)"
+      "WebFetch(domain:app.uniswap.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:ethskills.com)"
     ],
     "deny": [],
     "ask": []

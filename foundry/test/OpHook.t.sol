@@ -3,9 +3,10 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { OpHook, CurrentOptionPrice } from "../contracts/OpHook.sol";
+import { OpHook } from "../contracts/OpHook.sol";
 import { Option, Redemption } from "../contracts/Option.sol";
-import { OptionVault } from "../contracts/OptionVault.sol";
+import { StrategyVault } from "../contracts/StrategyVault.sol";
+import { BlackScholes } from "../contracts/BlackScholes.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -27,7 +28,6 @@ import { SafeCallback } from "./SafeCallback.sol";
 import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
 import { ConstantsBase } from "../contracts/ConstantsBase.sol";
-import { OptionPrice } from "../contracts/OptionPrice.sol";
 
 import { IOption } from "../contracts/interfaces/IOption.sol";
 import { OptionFactory } from "../contracts/OptionFactory.sol";
@@ -50,22 +50,14 @@ contract SwapCallback is SafeCallback {
     function _unlockCallback(bytes calldata data) internal override returns (bytes memory returnData) {
         (, uint256 amountIn) = abi.decode(data, (address, uint256));
 
-        // Set price limit based on swap direction
-        // zeroForOne: true -> price decreases, use MIN as limit
-        // zeroForOne: false -> price increases, use MAX as limit
         uint160 sqrtPriceLimit = zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1;
 
         SwapParams memory params = SwapParams({
             zeroForOne: zeroForOne, amountSpecified: -int128(int256(amountIn)), sqrtPriceLimitX96: sqrtPriceLimit
         });
 
-        BalanceDelta delta = poolManager.swap(
-            poolKey,
-            params,
-            bytes("") // forwarded to the hook's before/afterSwap handlers
-        );
+        BalanceDelta delta = poolManager.swap(poolKey, params, bytes(""));
 
-        // BalanceDelta signs: negative = swapper owes (settle), positive = swapper is owed (take)
         if (zeroForOne) {
             poolKey.currency0.settle(poolManager, address(this), uint128(-delta.amount0()), false);
             poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
@@ -108,7 +100,7 @@ abstract contract OpHookTestBase is Test {
     PoolKey public poolKey1;
     PoolKey public poolKey2;
 
-    OptionVault public vault;
+    StrategyVault public vault;
 
     uint256 public networkFork;
 
@@ -134,9 +126,7 @@ abstract contract OpHookTestBase is Test {
         OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
 
         option1_ = factory.createOption(weth_, usdc_, expiration, strike1, false);
-
         option2_ = factory.createOption(weth_, usdc_, expiration, strike2, false);
-
         option3_ = factory.createOption(weth_, usdc_, expiration, strike3, false);
 
         option1 = IOption(option1_);
@@ -152,13 +142,25 @@ abstract contract OpHookTestBase is Test {
             HookMiner.find(address(this), flags, type(OpHook).creationCode, constructorArgs);
 
         opHook = new OpHook{ salt: salt }(poolManager_, permit2_);
-        opHook.setOptionPrice(address(new OptionPrice()));
 
         address opHook_ = address(opHook);
 
-        // Deploy vault: collateral = WETH, hook = opHook
-        vault = new OptionVault(IERC20(weth_), "Greek WETH Vault", "gWETH", address(factory), opHook_);
+        // Deploy BlackScholes pricing
+        BlackScholes bs = new BlackScholes();
+
+        // Deploy vault: collateral = WETH, pricing = BlackScholes, oracle = wethUniPool
+        vault = new StrategyVault(
+            IERC20(weth_),
+            "Greek WETH Vault",
+            "gWETH",
+            address(factory),
+            address(bs),
+            wethUniPool_,
+            usdc_,
+            1800 // 30 min TWAP
+        );
         vault.setupFactoryApproval();
+        vault.addHook(opHook_);
         vault.whitelistOption(option1_, true);
         vault.whitelistOption(option2_, true);
         vault.whitelistOption(option3_, true);
@@ -170,14 +172,14 @@ abstract contract OpHookTestBase is Test {
 
         // Init pools with vault
         address vault_ = address(vault);
-        poolKey1 = opHook.initPool(option1_, usdc_, weth_, wethUniPool_, 3000, vault_);
-        poolKey2 = opHook.initPool(option2_, usdc_, weth_, wethUniPool_, 3000, vault_);
+        poolKey1 = opHook.initPool(option1_, usdc_, 3000, vault_);
+        poolKey2 = opHook.initPool(option2_, usdc_, 3000, vault_);
 
         console.log("Hook Address (expected)", hookAddress);
         console.log("Hook Address (actual)", opHook_);
 
-        // Hook holds cash (USDC) for buybacks
-        deal(usdc_, opHook_, 1000e18);
+        // Fund vault with USDC for buybacks
+        deal(usdc_, address(vault), 1000e18);
         deal(usdc_, poolManager_, 1000e18);
 
         usdc.approve(address(factory), 1000e6);
@@ -198,60 +200,37 @@ abstract contract OpHookTestBase is Test {
         permit2.approve(address(usdc), address(router), type(uint160).max, uint48(block.timestamp + 1 days));
     }
 
-    function testPrices() public {
-        if (option3_ != address(0)) {
-            opHook.initPool(option3_, usdc_, address(option3.collateral()), wethUniPool_, 3000, address(vault));
-        }
-        CurrentOptionPrice[] memory prices = opHook.getPrices(weth_);
-        console.log("price1", prices[0].price / 1e18);
-        if (prices.length > 1) {
-            console.log("price2", prices[1].price / 1e18);
-        }
-        if (prices.length > 2) {
-            console.log("price3", prices[2].price / 1e18);
-        }
+    function testQuote() public {
+        (uint256 optionsOut, uint256 unitPrice) = vault.getQuote(option1_, 100e6, true);
+        console.log("Options out for 100 USDC:", optionsOut);
+        console.log("Unit price (USDC):", unitPrice);
+        assertGt(optionsOut, 0);
+        assertGt(unitPrice, 0);
     }
 
-    function testPrice() public {
-        address testOption = option3_ != address(0) ? option3_ : option1_;
-        IOption opt = IOption(testOption);
-        opHook.initPool(testOption, usdc_, address(opt.collateral()), wethUniPool_, 3000, address(vault));
-
-        console.log("strike", opt.strike());
-        console.log("underlying", address(opt.collateral()));
-        console.log("expiration", opt.expirationDate());
-        console.log("isPut", opt.isPut());
-
-        uint256 price = opHook.getPrice(testOption);
-        CurrentOptionPrice[] memory prices = opHook.getPrices(weth_);
-        console.log("price (direct)", price / 1e18);
-        console.log("price1 (array)", prices[0].price / 1e18);
-        if (prices.length > 1) {
-            console.log("price2 (array)", prices[1].price / 1e18);
-        }
+    function testCollateralPrice() public {
+        uint256 price = vault.getCollateralPrice();
+        console.log("Collateral price (TWAP):", price / 1e18);
+        assertGt(price, 0);
     }
 
     function testSwapCallback() public {
-        // Dynamically determine swap direction like in testRouterSwap
         bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
-        bool zeroForOne = usdcIsZero; // If USDC is currency0, we swap 0->1
+        bool zeroForOne = usdcIsZero;
 
         SwapCallback swapCallback = new SwapCallback(poolManager, opHook, poolKey1, zeroForOne);
         address swapcb = address(swapCallback);
 
-        // Set up balances with correct decimals
         deal(usdc_, swapcb, 1000e6);
         deal(usdc_, address(this), 1000e6);
         deal(weth_, address(this), 1000e18);
 
-        // Approve from this address
         usdc.approve(permit2_, type(uint256).max);
         usdc.approve(swapcb, type(uint256).max);
         usdc.approve(poolManager_, type(uint256).max);
         permit2.approve(address(usdc), poolManager_, type(uint160).max, uint48(block.timestamp + 1 days));
         permit2.approve(address(usdc), swapcb, type(uint160).max, uint48(block.timestamp + 1 days));
 
-        // Approve from swapCallback address
         vm.startPrank(swapcb);
         usdc.approve(permit2_, type(uint256).max);
         usdc.approve(poolManager_, type(uint256).max);
@@ -262,9 +241,8 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testRouterSwap() public virtual {
-        // Dynamically determine swap direction based on pool currency ordering
         bool usdcIsZero = Currency.unwrap(poolKey1.currency0) == usdc_;
-        bool zeroForOne = usdcIsZero; // If USDC is currency0, we swap 0->1 (USDC for options)
+        bool zeroForOne = usdcIsZero;
         Currency inputCurrency = usdcIsZero ? poolKey1.currency0 : poolKey1.currency1;
         Currency outputCurrency = usdcIsZero ? poolKey1.currency1 : poolKey1.currency0;
 
@@ -285,176 +263,7 @@ abstract contract OpHookTestBase is Test {
         inputs[0] = abi.encode(actions, params);
 
         router.execute(commands, inputs, block.timestamp + 20);
-
-        // console.log("option1 balance (this)", option1.balanceOf(address(this)));
-        // console.log("option1 balance (hook)", option1.balanceOf(address(opHook)));
-        // console.log("WETH balance (hook)", weth.balanceOf(address(opHook)));
-        // console.log("USDC balance (this)", usdc.balanceOf(address(this)));
-        // console.log("USDC balance (hook)", usdc.balanceOf(address(opHook)));
-        // console.log("USDC balance (poolManager)", usdc.balanceOf(poolManager_));
     }
-
-    /* Removed - using OptionPrice (64-bit) only
-    function testGasComparison() public {
-        OptionPrice optionPriceOriginal = new OptionPrice();
-        OptionPriceMath optionPriceMath = new OptionPriceMath();
-        OptionPriceMathAssm optionPriceMathAssm = new OptionPriceMathAssm();
-
-        console.log("=== Gas Comparison: Original vs 32-bit vs 64-bit Assembly ===");
-        console.log("");
-
-        // Test scenario 1: ATM call (at the money)
-        {
-            uint256 collateralPrice = 3600e18;
-            uint256 strike = 3600e18;
-            uint256 expiration = block.timestamp + 30 days;
-
-            uint256 gasBefore = gasleft();
-            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasOriginal = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasMath = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 priceAssm = optionPriceMathAssm.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasAssm = gasBefore - gasleft();
-
-            console.log("Scenario 1: ATM Call");
-            console.log("  Original:  ", gasOriginal);
-            console.log("  32-bit:    ", gasMath, "saved:", gasOriginal - gasMath);
-            console.log("  64-bit asm:", gasAssm, "saved:", gasOriginal - gasAssm);
-            console.log("");
-        }
-
-        // Test scenario 2: OTM call (out of the money)
-        {
-            uint256 collateralPrice = 3600e18;
-            uint256 strike = 4000e18;
-            uint256 expiration = block.timestamp + 30 days;
-
-            uint256 gasBefore = gasleft();
-            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasOriginal = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasMath = gasBefore - gasleft();
-
-            console.log("Scenario 2: OTM Call (spot = $3600, strike = $4000)");
-            console.log("  Original gas:", gasOriginal);
-            console.log("  Math gas:    ", gasMath);
-            console.log("  Gas saved:   ", gasOriginal - gasMath);
-            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
-            console.log("  Original price:", priceOriginal / 1e16, "cents");
-            console.log("  Math price:    ", priceMath / 1e16, "cents");
-            console.log("");
-        }
-
-        // Test scenario 3: ITM call (in the money)
-        {
-            uint256 collateralPrice = 4200e18;
-            uint256 strike = 4000e18;
-            uint256 expiration = block.timestamp + 30 days;
-
-            uint256 gasBefore = gasleft();
-            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasOriginal = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, false, false);
-            uint256 gasMath = gasBefore - gasleft();
-
-            console.log("Scenario 3: ITM Call (spot = $4200, strike = $4000)");
-            console.log("  Original gas:", gasOriginal);
-            console.log("  Math gas:    ", gasMath);
-            console.log("  Gas saved:   ", gasOriginal - gasMath);
-            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
-            console.log("  Original price:", priceOriginal / 1e18);
-            console.log("  Math price:    ", priceMath / 1e18);
-            console.log("");
-        }
-
-        // Test scenario 4: Put option
-        {
-            uint256 collateralPrice = 3600e18;
-            uint256 strike = 4000e18;
-            uint256 expiration = block.timestamp + 30 days;
-
-            uint256 gasBefore = gasleft();
-            uint256 priceOriginal = optionPriceOriginal.getPrice(collateralPrice, strike, expiration, true, false);
-            uint256 gasOriginal = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 priceMath = optionPriceMath.getPrice(collateralPrice, strike, expiration, true, false);
-            uint256 gasMath = gasBefore - gasleft();
-
-            console.log("Scenario 4: ITM Put (spot = $3600, strike = $4000)");
-            console.log("  Original gas:", gasOriginal);
-            console.log("  Math gas:    ", gasMath);
-            console.log("  Gas saved:   ", gasOriginal - gasMath);
-            console.log("  % saved:     ", ((gasOriginal - gasMath) * 100) / gasOriginal);
-            console.log("  Original price:", priceOriginal / 1e18);
-            console.log("  Math price:    ", priceMath / 1e18);
-            console.log("");
-        }
-
-        console.log("=== Summary ===");
-        console.log("Using OpenZeppelin-style optimizations (sqrt + unchecked log2) saves ~10,600 gas (~31%) per getPrice() call");
-        console.log("Optimizations: OZ Math.sqrt() + unchecked blocks in log2");
-    }
-    */
-
-    /* Removed - using OptionPrice (64-bit) only
-    function testLog2GasComparison() public {
-        OptionPrice optionPriceOriginal = new OptionPrice();
-        OptionPriceMath32 optionPriceMath32 = new OptionPriceMath32();
-        OptionPriceMath64 optionPriceMath64 = new OptionPriceMath64();
-        OptionPriceMathAssm optionPriceMathAssm = new OptionPriceMathAssm();
-
-        console.log("=== log2() Gas Comparison ===");
-        console.log("");
-
-        uint256[5] memory testValues = [
-            uint256(1e18),      // 1.0
-            uint256(2e18),      // 2.0
-            uint256(1536e15),   // 1.536
-            uint256(3600e18),   // 3600
-            uint256(1e24)       // 1,000,000
-        ];
-
-        for (uint256 j = 0; j < testValues.length; j++) {
-            uint256 x = testValues[j];
-
-            uint256 gasBefore = gasleft();
-            uint256 resultOriginal = optionPriceOriginal.log2(x);
-            uint256 gasOriginal = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 resultMath32 = optionPriceMath32.log2(x);
-            uint256 gasMath32 = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 resultMath64 = optionPriceMath64.log2(x);
-            uint256 gasMath64 = gasBefore - gasleft();
-
-            gasBefore = gasleft();
-            uint256 resultAssm = optionPriceMathAssm.log2(x);
-            uint256 gasAssm = gasBefore - gasleft();
-
-            console.log("Test value:", x / 1e18);
-            console.log("  Original:       ", gasOriginal, "gas");
-            console.log("  32-bit Solidity:", gasMath32, "gas, saved:", gasOriginal - gasMath32);
-            console.log("  64-bit Solidity:", gasMath64, "gas, saved:", gasOriginal - gasMath64);
-            console.log("  64-bit Assembly:", gasAssm, "gas, saved:", gasOriginal - gasAssm);
-            console.log("");
-        }
-
-        console.log("=== Summary ===");
-        console.log("32-bit provides best gas/precision tradeoff for Black-Scholes");
-    }
-    */
 }
 
 contract Mainnet is OpHookTestBase {

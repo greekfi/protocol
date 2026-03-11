@@ -4,141 +4,69 @@ pragma solidity ^0.8.29;
 import { BaseHook } from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
 
 import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import { IPoolManager, SwapParams } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { SwapParams, ModifyLiquidityParams } from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 import { PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
 import { BeforeSwapDelta, toBeforeSwapDelta } from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
 import { SafeCast } from "@uniswap/v4-core/src/libraries/SafeCast.sol";
+import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 
-import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { OptionPrice, IUniswapV3Pool } from "./OptionPrice.sol";
-
-import { IPermit2 } from "./interfaces/IPermit2.sol";
 import { IOption } from "./interfaces/IOption.sol";
-import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
-import { IOptionVault } from "./interfaces/IOptionVault.sol";
+import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
+import { IPermit2 } from "./interfaces/IPermit2.sol";
 
-import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+using SafeERC20 for IERC20;
 
 uint160 constant SQRT_PRICE_X96 = 1 << 96;
 int24 constant TICK_SPACING = type(int16).max;
 
-interface IOptionPrice {
-    function getPrice(uint256 collateralPrice, uint256 strike, uint256 expiration, bool isPut, bool inverse)
-        external
-        view
-        returns (uint256);
-}
-
-struct OptionPool {
-    address collateral;
-    address pricePool;
-    bool collateralIsOne;
+/// @notice Simplified pool info — vault owns pricing/strategy
+struct PoolInfo {
     address optionToken;
     address cashToken;
     bool optionIsOne;
-    uint24 fee;
-    int24 tickSpacing;
-    uint160 sqrtPriceX96;
-    uint256 expiration;
-    uint256 strike;
-    IOptionVault vault;
+    IStrategyVault vault;
 }
 
-struct CurrentOptionPrice {
-    address collateral;
-    address optionToken;
-    uint256 price;
-    uint256 collateralPrice;
-}
-
-struct Price {
-    uint256 optionAmount;
-    uint256 cashAmount;
-    uint256 collateralPrice;
-    uint256 price;
-}
-
+/// @title OpHook
+/// @notice Thin Uniswap v4 hook that routes swaps to StrategyVaults.
+///         No pricing logic — delegates everything to the vault.
 contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     using PoolIdLibrary for PoolKey;
-    using Math for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IOption;
 
     // ============ Events ============
 
-    event FeeCollected(address indexed from, uint256 amount);
-    event FeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
-    event FeeRateUpdated(uint256 oldRate, uint256 newRate);
-    event OptionPoolUpdated(address indexed oldPool, address indexed newPool);
-    event EmergencyWithdraw(address indexed owner, uint256 amount);
-    event Swap(address, address, int256, uint256);
-    event PremiumSwept(address indexed vault, address indexed token, uint256 amount);
+    event PoolCreated(
+        address indexed optionToken, address indexed cashToken, address indexed vault, bytes32 poolId
+    );
+    event PoolDelisted(bytes32 indexed poolId);
+    event Swap(address indexed sender, address indexed recipient, address indexed option, int256 amount, uint256 price);
 
-    IOptionPrice public optionPrice;
+    // ============ State ============
 
     IPermit2 public immutable PERMIT2;
     address public pm;
 
-    OptionPool[] public allPools;
-    mapping(address => mapping(address => OptionPool)) public optionCashPool;
-    mapping(bytes32 => OptionPool) public optionPools;
-    mapping(address => OptionPool[]) public collateralPools;
-    mapping(address => IUniswapV3Pool) public collateralPricePool;
-    mapping(address => bool) public cash;
-    mapping(address => bool) public validOptions;
-    mapping(address => OptionPool[]) public optionPoolList;
+    mapping(bytes32 => PoolInfo) public pools;
+    mapping(address => mapping(address => PoolInfo)) public optionCashPool;
 
-
-    modifier validCash(address cash_) {
-        require(cash[cash_], "Invalid cash address");
-        _;
-    }
-
-    modifier validOption(address option_) {
-        require(optionPoolList[option_].length > 0, "Invalid option address");
-        _;
-    }
+    // ============ Constructor ============
 
     constructor(address _poolManager, address permit2) BaseHook(IPoolManager(_poolManager)) Ownable(msg.sender) {
         PERMIT2 = IPermit2(permit2);
         pm = _poolManager;
     }
 
-    function setOptionPrice(address optionPrice_) public onlyOwner {
-        optionPrice = IOptionPrice(optionPrice_);
-    }
-
-    /// @notice Sweep accumulated premium (cash) to a vault
-    function sweepPremiumToVault(address vault_, address token) external onlyOwner {
-        uint256 amount = IERC20(token).balanceOf(address(this));
-        require(amount > 0, "Nothing to sweep");
-        IERC20(token).forceApprove(vault_, amount);
-        IOptionVault(vault_).receivePremium(token, amount);
-        emit PremiumSwept(vault_, token, amount);
-    }
-
-    function toId(PoolKey memory k) internal pure returns (bytes32) {
-        // make sure currency0 < currency1 is already enforced when constructing k
-        // prefer abi.encode (not encodePacked) to avoid any theoretical collisions
-        return keccak256(
-            abi.encode(Currency.unwrap(k.currency0), Currency.unwrap(k.currency1), k.fee, k.tickSpacing, k.hooks)
-        );
-    }
-
-    function addCash(address _cash) external onlyOwner {
-        cash[_cash] = true;
-    }
+    // ============ Hook Permissions ============
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory permissions) {
         return Hooks.Permissions({
@@ -159,214 +87,14 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         });
     }
 
-    function to128(uint256 x) internal pure returns (int128 y) {
-        return SafeCast.toInt128(int256(x));
-    }
+    // ============ Pool Management ============
 
-    function abs(int256 x) internal pure returns (uint256) {
-        return uint256(x < 0 ? -x : x);
-    }
-
-    function calculateOption(address collateral, address option, int256 cashAmount)
-        internal
-        view
-        returns (Price memory amounts)
-    {
-        uint256 collateralPrice = getCollateralPrice(collateral);
-        uint256 price = getPrice(collateralPrice, option);
-
-        amounts = Price({
-            collateralPrice: collateralPrice,
-            price: price,
-            optionAmount: calculateOption(abs(cashAmount), price),
-            cashAmount: abs(cashAmount)
-        });
-    }
-
-    function calculateCash(address collateral, address option, int256 optionAmount)
-        internal
-        view
-        returns (Price memory amounts)
-    {
-        uint256 collateralPrice = getCollateralPrice(collateral);
-        uint256 price = getPrice(collateralPrice, option);
-
-        amounts = Price({
-            collateralPrice: collateralPrice,
-            price: price,
-            optionAmount: abs(optionAmount),
-            cashAmount: calculateCash(abs(optionAmount), price)
-        });
-    }
-
-    function calculateOption(uint256 cashAmount, uint256 price) public pure returns (uint256) {
-        return Math.mulDiv(cashAmount, 1e18, price);
-    }
-
-    function calculateCash(uint256 optionAmount, uint256 price) public pure returns (uint256) {
-        return Math.mulDiv(optionAmount, price, 1e18);
-    }
-
-    function transferCash(address cash_, uint256 cashAmount) internal returns (uint256 cashTransferred) {
-        IERC20 _cash = IERC20(cash_);
-        uint256 initialCash = _cash.balanceOf(address(this));
-        _cash.safeTransferFrom(msg.sender, address(this), cashAmount);
-        cashTransferred = _cash.balanceOf(address(this)) - initialCash;
-        require(cashTransferred > 0, "No Cash Transferred in");
-    }
-
-    function collateralBalance(address collateral) public view returns (uint256) {
-        return IERC20(collateral).balanceOf(address(this));
-    }
-
-    function swapForOption(address optionToken, address cashToken, int256 amount, address to)
+    function initPool(address optionToken, address cashToken, uint24 fee, address vault_)
         public
-        nonReentrant
-        validCash(cashToken)
-        validOption(optionToken)
+        onlyOwner
+        returns (PoolKey memory)
     {
-        require(to != address(0), "bad to");
         IOption option = IOption(optionToken);
-        address collateral = address(option.collateral());
-
-        Price memory p = calculateCash(collateral, optionToken, -int256(amount));
-
-        transferCash(cashToken, p.cashAmount);
-
-        OptionPool memory pool = optionCashPool[optionToken][cashToken];
-        pool.vault.mintAndDeliver(optionToken, p.optionAmount, to);
-
-        emit Swap(msg.sender, to, amount, p.price);
-    }
-
-    function swapForOption(address optionToken, address cashToken, int256 cashAmount)
-        public
-        nonReentrant
-        validCash(cashToken)
-    {
-        swapForOption(optionToken, cashToken, cashAmount, msg.sender);
-    }
-
-    function _beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata)
-        internal
-        override
-        returns (bytes4 selector, BeforeSwapDelta delta, uint24 zeroReturn)
-    {
-        require(params.amountSpecified < 0, "amountSpecified must be negative");
-        zeroReturn = 0;
-        selector = BaseHook.beforeSwap.selector;
-
-        OptionPool memory pool = optionPools[toId(key)];
-        bool cashForOption = pool.optionIsOne ? params.zeroForOne : !params.zeroForOne;
-        Currency cashCurrency = pool.optionIsOne ? key.currency0 : key.currency1;
-        Currency optionCurrency = pool.optionIsOne ? key.currency1 : key.currency0;
-        IOption option = IOption(pool.optionToken);
-        require(option.expirationDate() > block.timestamp, "Option expired");
-
-        if (cashForOption) {
-            // amountSpecified is the cash input amount
-            Price memory a = calculateOption(pool.collateral, pool.optionToken, params.amountSpecified);
-            poolManager.take(cashCurrency, address(this), a.cashAmount);
-            poolManager.sync(optionCurrency);
-
-            uint256 delivered = pool.vault.mintAndDeliver(pool.optionToken, a.optionAmount, pm);
-
-            poolManager.settle();
-            delta = toBeforeSwapDelta(to128(a.cashAmount), -to128(delivered));
-        } else {
-            // amountSpecified is the option input amount — buyback
-            Price memory a = calculateCash(pool.collateral, pool.optionToken, params.amountSpecified);
-            poolManager.take(optionCurrency, address(this), a.optionAmount);
-
-            // Send options to vault and pair redeem (returns collateral to vault)
-            IERC20(pool.optionToken).safeTransfer(address(pool.vault), a.optionAmount);
-            pool.vault.pairRedeem(pool.optionToken, a.optionAmount);
-
-            poolManager.sync(cashCurrency);
-            IERC20(pool.cashToken).safeTransfer(pm, a.cashAmount);
-            poolManager.settle();
-            delta = toBeforeSwapDelta(to128(a.optionAmount), -to128(a.cashAmount));
-        }
-    }
-
-    function _beforeAddLiquidity(address, PoolKey calldata, SwapParams calldata, bytes calldata)
-        internal
-        pure
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
-        revert("Cannot Add Liquidity to This Pool ");
-    }
-
-    function _beforeDonate(address, PoolKey calldata, SwapParams calldata, bytes calldata)
-        internal
-        pure
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
-        revert("Cannot Donate to This Pool");
-    }
-
-    function getPriceX64(uint160 sqrtPriceX96) public pure returns (uint256) {
-        uint256 sqrtPriceX32 = (uint256(sqrtPriceX96) >> 64);
-        // priceX96 is Q64.96, so we square to get the ratio
-        return uint256(sqrtPriceX32) * uint256(sqrtPriceX32);
-    }
-
-    // Returns price of 1 token0 in token1 with 18 decimals precision
-    // How much token1 you need to buy 1 token0 is sqrtPriceX96
-    function getCollateralPrice(address collateral) public view returns (uint256 price) {
-        IUniswapV3Pool pricePool = IUniswapV3Pool(collateralPricePool[collateral]);
-
-        bool collateralIsOne = pricePool.token1() == collateral;
-        uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
-        uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
-        uint256 power = 10 ** (decimals1 >= decimals0 ? decimals1 - decimals0 : decimals0 - decimals1);
-
-        (uint160 sqrtPriceX96,,,,,,) = pricePool.slot0();
-        // Calculate price with proper scaling
-        // priceX192 is in Q192.192 format, we need to extract the integer part
-        // uint256 priceX96 = priceX64 >> 96; // Convert from Q192.192 to Q96.96
-        price = (getPriceX64(sqrtPriceX96) * 10 ** 18) >> 64; // Convert from Q96.96 to 1e18 fixed point
-        price = decimals1 > decimals0 ? (price / power) : (price * power);
-
-        if (collateralIsOne) {
-            require(price > 0, "Price cannot be zero for inverse calculation");
-            price = 1e36 / price;
-        }
-    }
-
-    function getPrice(address option_) public view returns (uint256) {
-        OptionPool memory pool = optionPoolList[option_][0];
-        return getPrice(getCollateralPrice(pool.collateral), option_);
-    }
-
-    function getPrice(uint256 collateralPrice, address option_) public view returns (uint256) {
-        IOption option = IOption(option_);
-        return optionPrice.getPrice(collateralPrice, option.strike(), option.expirationDate(), option.isPut(), false);
-    }
-
-    function getPrices(address collateral) public view returns (CurrentOptionPrice[] memory prices) {
-        prices = new CurrentOptionPrice[](allPools.length);
-        uint256 collateralPrice = getCollateralPrice(collateral);
-        for (uint256 i = 0; i < allPools.length; i++) {
-            prices[i] = CurrentOptionPrice({
-                collateralPrice: collateralPrice,
-                collateral: address(collateral),
-                optionToken: allPools[i].optionToken,
-                price: getPrice(collateralPrice, allPools[i].optionToken)
-            });
-        }
-    }
-
-    function initPool(
-        address optionToken,
-        address cashToken,
-        address collateral,
-        address pricePool,
-        uint24 fee,
-        address vault_
-    ) public returns (PoolKey memory) {
-        IOption option = IOption(optionToken);
-        uint256 expiration = option.expirationDate();
         bool optionIsOne = cashToken < optionToken;
         address token0 = optionIsOne ? cashToken : optionToken;
         address token1 = optionIsOne ? optionToken : cashToken;
@@ -380,30 +108,148 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         });
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
-        IUniswapV3Pool pool = IUniswapV3Pool(pricePool);
-        bool collateralIsOne = pool.token1() == collateral;
-
-        OptionPool memory optionPool = OptionPool({
-            collateral: collateral,
-            collateralIsOne: collateralIsOne,
-            pricePool: pricePool,
-            optionIsOne: optionIsOne,
-            cashToken: cashToken,
+        PoolInfo memory info = PoolInfo({
             optionToken: optionToken,
-            expiration: expiration,
-            strike: option.strike(),
-            tickSpacing: TICK_SPACING,
-            sqrtPriceX96: SQRT_PRICE_X96,
-            fee: fee,
-            vault: IOptionVault(vault_)
+            cashToken: cashToken,
+            optionIsOne: optionIsOne,
+            vault: IStrategyVault(vault_)
         });
-        allPools.push(optionPool);
-        optionPools[toId(poolKey)] = optionPool;
-        optionCashPool[optionToken][cashToken] = optionPool;
-        collateralPools[collateral].push(optionPool);
-        optionPoolList[optionToken].push(optionPool);
-        collateralPricePool[collateral] = IUniswapV3Pool(pricePool);
 
+        bytes32 poolId = _toId(poolKey);
+        pools[poolId] = info;
+        optionCashPool[optionToken][cashToken] = info;
+
+        emit PoolCreated(optionToken, cashToken, vault_, poolId);
         return poolKey;
+    }
+
+    function delistPool(bytes32 poolId) external onlyOwner {
+        PoolInfo memory info = pools[poolId];
+        delete optionCashPool[info.optionToken][info.cashToken];
+        delete pools[poolId];
+        emit PoolDelisted(poolId);
+    }
+
+    // ============ Direct Swap (bypass Uni v4) ============
+
+    function swapForOption(address optionToken, address cashToken_, uint256 cashAmount, uint256 minOptionsOut, address to)
+        public
+        nonReentrant
+    {
+        require(to != address(0), "bad to");
+
+        PoolInfo memory pool = optionCashPool[optionToken][cashToken_];
+        require(address(pool.vault) != address(0), "Pool not found");
+
+        // Get quote from vault
+        (uint256 optionsOut, uint256 unitPrice) = pool.vault.getQuote(optionToken, cashAmount, true);
+        require(optionsOut >= minOptionsOut, "Slippage exceeded");
+
+        // Pull cash from buyer to vault
+        IERC20(cashToken_).safeTransferFrom(msg.sender, address(pool.vault), cashAmount);
+
+        // Vault mints and delivers
+        uint256 delivered = pool.vault.mintAndDeliver(optionToken, optionsOut, to);
+
+        emit Swap(msg.sender, to, optionToken, int256(cashAmount), unitPrice);
+    }
+
+    function swapForOption(address optionToken, address cashToken_, uint256 cashAmount, uint256 minOptionsOut)
+        external
+    {
+        swapForOption(optionToken, cashToken_, cashAmount, minOptionsOut, msg.sender);
+    }
+
+    // ============ Uni v4 Hook: Before Swap ============
+
+    function _beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
+        internal
+        override
+        returns (bytes4 selector, BeforeSwapDelta delta, uint24 zeroReturn)
+    {
+        require(params.amountSpecified < 0, "amountSpecified must be negative");
+        zeroReturn = 0;
+        selector = BaseHook.beforeSwap.selector;
+
+        PoolInfo memory pool = pools[_toId(key)];
+        require(address(pool.vault) != address(0), "Unknown pool");
+
+        bool cashForOption = pool.optionIsOne ? params.zeroForOne : !params.zeroForOne;
+        Currency cashCurrency = pool.optionIsOne ? key.currency0 : key.currency1;
+        Currency optionCurrency = pool.optionIsOne ? key.currency1 : key.currency0;
+
+        IOption option = IOption(pool.optionToken);
+        require(option.expirationDate() > block.timestamp, "Option expired");
+
+        uint256 inputAmount = uint256(-params.amountSpecified);
+
+        if (cashForOption) {
+            // Buying options with cash
+            (uint256 optionsOut,) = pool.vault.getQuote(pool.optionToken, inputAmount, true);
+
+            // Decode min output from hookData if provided
+            if (hookData.length >= 32) {
+                uint256 minOut = abi.decode(hookData, (uint256));
+                require(optionsOut >= minOut, "Slippage exceeded");
+            }
+
+            // Take cash from PM, send directly to vault (premium)
+            poolManager.take(cashCurrency, address(pool.vault), inputAmount);
+
+            // Vault mints and delivers to PM
+            poolManager.sync(optionCurrency);
+            uint256 delivered = pool.vault.mintAndDeliver(pool.optionToken, optionsOut, pm);
+            poolManager.settle();
+
+            delta = toBeforeSwapDelta(_to128(inputAmount), -_to128(delivered));
+        } else {
+            // Selling options for cash (buyback)
+            (uint256 cashOut,) = pool.vault.getQuote(pool.optionToken, inputAmount, false);
+
+            // Take options from PM, send to vault
+            poolManager.take(optionCurrency, address(pool.vault), inputAmount);
+
+            // Vault pair-redeems (burns option + redemption, returns collateral to vault)
+            pool.vault.pairRedeem(pool.optionToken, inputAmount);
+
+            // Vault sends cash to PM
+            poolManager.sync(cashCurrency);
+            pool.vault.transferCash(pool.cashToken, cashOut, pm);
+            poolManager.settle();
+
+            delta = toBeforeSwapDelta(_to128(inputAmount), -_to128(cashOut));
+        }
+    }
+
+    // ============ Liquidity/Donate Guards ============
+
+    function _beforeAddLiquidity(address, PoolKey calldata, ModifyLiquidityParams calldata, bytes calldata)
+        internal
+        pure
+        override
+        returns (bytes4)
+    {
+        revert("Cannot Add Liquidity to This Pool");
+    }
+
+    function _beforeDonate(address, PoolKey calldata, uint256, uint256, bytes calldata)
+        internal
+        pure
+        override
+        returns (bytes4)
+    {
+        revert("Cannot Donate to This Pool");
+    }
+
+    // ============ Internal ============
+
+    function _toId(PoolKey memory k) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(Currency.unwrap(k.currency0), Currency.unwrap(k.currency1), k.fee, k.tickSpacing, k.hooks)
+        );
+    }
+
+    function _to128(uint256 x) internal pure returns (int128 y) {
+        return SafeCast.toInt128(int256(x));
     }
 }
