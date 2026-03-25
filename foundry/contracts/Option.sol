@@ -233,14 +233,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /// @notice ERC20 transfer with opt-in auto-mint and auto-redeem
-    function transfer(address to, uint256 amount)
-        public
-        override
-        notExpired
-        notLocked
-        nonReentrant
-        returns (bool)
-    {
+    function transfer(address to, uint256 amount) public override notExpired notLocked nonReentrant returns (bool) {
         _settledTransfer(msg.sender, to, amount);
         return true;
     }
