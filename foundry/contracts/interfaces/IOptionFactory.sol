@@ -42,7 +42,7 @@ interface IOptionFactory {
     function allowance(address token, address owner) external view returns (uint256);
     function isBlocked(address token) external view returns (bool);
     function autoMintRedeem(address account) external view returns (bool);
-    function isApprovedForAll(address owner, address operator) external view returns (bool);
+    function approvedOperator(address owner, address operator) external view returns (bool);
 
     // ============ STATE-CHANGING FUNCTIONS ============
 
@@ -60,5 +60,5 @@ interface IOptionFactory {
     function optionsClaimFees(address[] memory options) external;
     function adjustFee(uint64 fee_) external;
     function enableAutoMintRedeem(bool enabled) external;
-    function setApprovalForAll(address operator, bool approved) external;
+    function approveOperator(address operator, bool approved) external;
 }
