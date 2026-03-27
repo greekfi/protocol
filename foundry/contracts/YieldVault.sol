@@ -76,7 +76,17 @@ interface IUniswapV3PoolOracle {
 ///      Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
 ///      The hook sells options → vault mints & delivers → options expire → settlement returns collateral.
 ///      Extends ERC4626 with ERC-7540 async redeems and EIP-1271 contract signatures for Bebop settlement.
-contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausable, IYieldVault, IERC7540Redeem, IERC7540Operator, IERC1271 {
+contract YieldVault is
+    ERC4626,
+    ERC165,
+    Ownable,
+    ReentrancyGuardTransient,
+    Pausable,
+    IYieldVault,
+    IERC7540Redeem,
+    IERC7540Operator,
+    IERC1271
+{
     using Math for uint256;
 
     // ============ PRICING ============

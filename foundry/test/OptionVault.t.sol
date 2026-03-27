@@ -964,7 +964,13 @@ contract YieldVaultTest is Test {
         // --- Step 3: Operator signs the order hash (simulating Bebop's toSign) ---
         bytes32 orderHash = keccak256(
             abi.encode(
-                "JamOrder", address(vault), address(option), minted, address(stableToken), cashPayment, block.timestamp + 1 hours
+                "JamOrder",
+                address(vault),
+                address(option),
+                minted,
+                address(stableToken),
+                cashPayment,
+                block.timestamp + 1 hours
             )
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, orderHash);
@@ -976,11 +982,11 @@ contract YieldVaultTest is Test {
         // MM calls settlement (in Bebop, the solver/operator broadcasts the tx)
         vm.prank(mm);
         settlement.mockSettle(
-            address(vault),           // taker = vault (contract)
-            address(option),          // sell token = options
-            minted,                   // sell amount
-            address(stableToken),     // buy token = USDC
-            cashPayment,              // buy amount
+            address(vault), // taker = vault (contract)
+            address(option), // sell token = options
+            minted, // sell amount
+            address(stableToken), // buy token = USDC
+            cashPayment, // buy amount
             orderHash,
             operatorSig
         );
@@ -1021,7 +1027,8 @@ contract YieldVaultTest is Test {
 
         vm.prank(mm);
         vm.expectRevert("Invalid contract signature");
-        settlement.mockSettle(address(vault), address(option), optionAmount, address(stableToken), 5e18, orderHash, badSig);
+        settlement.mockSettle(
+            address(vault), address(option), optionAmount, address(stableToken), 5e18, orderHash, badSig
+        );
     }
-
 }
