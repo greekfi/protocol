@@ -38,11 +38,11 @@ contract YieldVault is
 
     // ============ ERRORS ============
 
-    error NotWhitelisted();
-    error InsufficientIdle();
     error InvalidAddress();
     error ZeroAmount();
     error Unauthorized();
+    error NotWhitelisted();
+    error InsufficientIdle();
     error InsufficientClaimable();
     error WithdrawDisabled();
     error AsyncOnly();
@@ -52,29 +52,21 @@ contract YieldVault is
     event OptionWhitelisted(address indexed option, bool allowed);
     event OptionsBurned(address indexed option, uint256 amount);
 
-    // ============ CORE ============
+    // ============ STATE ============
 
     IOptionFactory public factory;
-
-    // ============ BEBOP INTEGRATION ============
-
-    address public bebopApprovalTarget;
-
-    // ============ BOOKKEEPING ============
-
     address[] public activeOptions;
     mapping(address => bool) public whitelistedOptions;
 
-    // ============ ERC-7540: ASYNC REDEEM ============
+    // ============ ASYNC REDEEM STATE ============
 
     mapping(address => uint256) private _pendingRedeemShares;
     mapping(address => uint256) private _claimableRedeemShares;
     mapping(address => uint256) private _claimableRedeemAssets;
-    uint256 private _totalPendingShares;
     uint256 private _totalClaimableShares;
     uint256 private _totalClaimableAssets;
 
-    // ============ ERC-7540: OPERATORS ============
+    // ============ OPERATORS ============
 
     mapping(address => mapping(address => bool)) private _operators;
 
@@ -107,18 +99,6 @@ contract YieldVault is
         return 3;
     }
 
-    /// @notice Total collateral committed across all active options (computed from redemption balances)
-    function totalCommitted() public view returns (uint256 total) {
-        for (uint256 i = 0; i < activeOptions.length; i++) {
-            total += IERC20(IOption(activeOptions[i]).redemption()).balanceOf(address(this));
-        }
-    }
-
-    /// @notice Collateral committed to a specific option
-    function committed(address option) public view returns (uint256) {
-        return IERC20(IOption(option).redemption()).balanceOf(address(this));
-    }
-
     /// @notice Total assets actively backing shares (excludes assets earmarked for claimable redeems)
     function totalAssets() public view override returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) + totalCommitted() - _totalClaimableAssets;
@@ -145,7 +125,7 @@ contract YieldVault is
         return paused() ? 0 : type(uint256).max;
     }
 
-    /// @notice Withdraw is disabled per ERC-7540 — use requestRedeem + redeem instead
+    /// @notice Withdraw disabled — use requestRedeem + redeem
     function maxWithdraw(address) public pure override returns (uint256) {
         return 0;
     }
@@ -167,7 +147,54 @@ contract YieldVault is
         revert WithdrawDisabled();
     }
 
-    /// @notice Claim assets from a fulfilled redeem request
+    // ============ ASYNC REDEEM (ERC-7540) ============
+    //
+    // Flow: requestRedeem (lock shares) → owner fulfillRedeem (snapshot price) → redeem (claim assets)
+    //
+
+    /// @notice Request to redeem shares. Locks shares in vault until fulfilled.
+    /// @inheritdoc IERC7540Redeem
+    function requestRedeem(uint256 shares, address controller, address owner)
+        external
+        override
+        nonReentrant
+        returns (uint256)
+    {
+        if (msg.sender != owner && !_operators[owner][msg.sender]) revert Unauthorized();
+        if (shares == 0) revert ZeroAmount();
+
+        _transfer(owner, address(this), shares);
+        _pendingRedeemShares[controller] += shares;
+
+        emit RedeemRequest(controller, owner, 0, msg.sender, shares);
+        return 0;
+    }
+
+    /// @notice Fulfill a pending redeem request, snapshotting the asset value at current price
+    function fulfillRedeem(address controller) public onlyOwner nonReentrant {
+        uint256 shares = _pendingRedeemShares[controller];
+        if (shares == 0) revert ZeroAmount();
+
+        uint256 assets = _convertToAssets(shares, Math.Rounding.Floor);
+        uint256 availableIdle = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
+        if (availableIdle < assets) revert InsufficientIdle();
+
+        _pendingRedeemShares[controller] = 0;
+
+        _claimableRedeemShares[controller] += shares;
+        _claimableRedeemAssets[controller] += assets;
+        _totalClaimableShares += shares;
+        _totalClaimableAssets += assets;
+    }
+
+    /// @notice Batch fulfill multiple pending redeem requests
+    function fulfillRedeems(address[] calldata controllers) external onlyOwner {
+        for (uint256 i = 0; i < controllers.length; i++) {
+            fulfillRedeem(controllers[i]);
+        }
+    }
+
+    /// @notice Claim assets from a fulfilled redeem request. Burns shares, transfers assets.
     function redeem(uint256 shares, address receiver, address controller)
         public
         override
@@ -193,51 +220,6 @@ contract YieldVault is
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
-    // ============ ERC-7540: ASYNC REDEEM ============
-
-    /// @inheritdoc IERC7540Redeem
-    function requestRedeem(uint256 shares, address controller, address owner)
-        external
-        override
-        nonReentrant
-        returns (uint256)
-    {
-        if (msg.sender != owner && !_operators[owner][msg.sender]) revert Unauthorized();
-        if (shares == 0) revert ZeroAmount();
-
-        _transfer(owner, address(this), shares);
-        _pendingRedeemShares[controller] += shares;
-        _totalPendingShares += shares;
-
-        emit RedeemRequest(controller, owner, 0, msg.sender, shares);
-        return 0;
-    }
-
-    /// @notice Fulfill a pending redeem request, snapshotting the asset value
-    function fulfillRedeem(address controller) public onlyOwner nonReentrant {
-        uint256 shares = _pendingRedeemShares[controller];
-        if (shares == 0) revert ZeroAmount();
-
-        uint256 assets = _convertToAssets(shares, Math.Rounding.Floor);
-        uint256 availableIdle = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
-        if (availableIdle < assets) revert InsufficientIdle();
-
-        _pendingRedeemShares[controller] = 0;
-        _totalPendingShares -= shares;
-
-        _claimableRedeemShares[controller] += shares;
-        _claimableRedeemAssets[controller] += assets;
-        _totalClaimableShares += shares;
-        _totalClaimableAssets += assets;
-    }
-
-    /// @notice Batch fulfill multiple pending redeem requests
-    function fulfillRedeems(address[] calldata controllers) external onlyOwner {
-        for (uint256 i = 0; i < controllers.length; i++) {
-            fulfillRedeem(controllers[i]);
-        }
-    }
-
     /// @inheritdoc IERC7540Redeem
     function pendingRedeemRequest(uint256, address controller) external view override returns (uint256) {
         return _pendingRedeemShares[controller];
@@ -248,7 +230,7 @@ contract YieldVault is
         return _claimableRedeemShares[controller];
     }
 
-    // ============ ERC-7540: OPERATORS ============
+    // ============ OPERATORS (ERC-7540) ============
 
     /// @inheritdoc IERC7540Operator
     function setOperator(address operator, bool approved) external override returns (bool) {
@@ -263,16 +245,9 @@ contract YieldVault is
         return _operators[controller][operator];
     }
 
-    // ============ ERC-165 ============
+    // ============ OPERATOR ACTIONS ============
 
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
-            || interfaceId == type(IERC1271).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    // ============ OPERATOR ============
-
-    /// @notice Pair-redeem option + redemption tokens to recover collateral
+    /// @notice Pair-redeem option + redemption tokens held by vault to recover collateral
     function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
@@ -280,15 +255,15 @@ contract YieldVault is
         emit OptionsBurned(option, amount);
     }
 
-    /// @notice Enable auto-mint/redeem on the factory for this vault
-    function enableAutoMintRedeem(bool enabled) external onlyOwner {
-        factory.enableAutoMintRedeem(enabled);
+    /// @notice Remove an option from the whitelist (operator or owner)
+    function removeOption(address option) external onlyOperatorOrOwner {
+        whitelistedOptions[option] = false;
+        emit OptionWhitelisted(option, false);
     }
 
-    // ============ EIP-1271: CONTRACT SIGNATURE VALIDATION ============
+    // ============ EIP-1271: CONTRACT SIGNATURE ============
 
-    /// @notice Validates signatures for Bebop settlement — allows authorized operators to sign on behalf of vault
-    /// @inheritdoc IERC1271
+    /// @notice Validates signatures for Bebop settlement — authorized operators can sign on behalf of vault
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns (bytes4) {
         address signer = ECDSA.recover(hash, signature);
         if (signer == owner() || _operators[owner()][signer]) {
@@ -297,26 +272,52 @@ contract YieldVault is
         return 0xffffffff;
     }
 
+    // ============ ERC-165 ============
+
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
+            || interfaceId == type(IERC1271).interfaceId || super.supportsInterface(interfaceId);
+    }
+
     // ============ ADMIN ============
 
-    /// @notice Setup factory approvals so the vault can mint options
-    /// @dev Must be called after deployment by owner
+    /// @notice Setup factory approvals so auto-mint can pull collateral
     function setupFactoryApproval() external onlyOwner {
         IERC20(asset()).forceApprove(address(factory), type(uint256).max);
         factory.approve(asset(), type(uint256).max);
     }
 
-    function whitelistOption(address option, bool allowed) external onlyOwner {
-        if (allowed) {
-            _activateOption(option);
-        } else {
-            whitelistedOptions[option] = false;
-        }
-        emit OptionWhitelisted(option, allowed);
+    /// @notice Enable auto-mint/redeem on the factory for this vault
+    function enableAutoMintRedeem(bool enabled) external onlyOwner {
+        factory.enableAutoMintRedeem(enabled);
     }
 
-    function setBebopApprovalTarget(address target) external onlyOwner {
-        bebopApprovalTarget = target;
+    /// @notice Whitelist an option and approve it for a settlement spender (e.g. Permit2, BalanceManager)
+    /// @param option Option contract address
+    /// @param spender Settlement contract to approve for pulling option tokens (address(0) to skip approval)
+    function whitelistOption(address option, address spender) external onlyOwner {
+        _activateOption(option);
+        if (spender != address(0)) {
+            IERC20(option).forceApprove(spender, type(uint256).max);
+        }
+        emit OptionWhitelisted(option, true);
+    }
+
+    /// @notice Remove expired/settled options from activeOptions to save gas on totalCommitted()
+    function cleanupOptions() external {
+        uint256 len = activeOptions.length;
+        uint256 i = 0;
+        while (i < len) {
+            address opt = activeOptions[i];
+            uint256 bal = IERC20(IOption(opt).redemption()).balanceOf(address(this));
+            if (bal == 0 && block.timestamp >= IOption(opt).expirationDate()) {
+                activeOptions[i] = activeOptions[len - 1];
+                activeOptions.pop();
+                len--;
+            } else {
+                i++;
+            }
+        }
     }
 
     function pause() external onlyOwner {
@@ -329,6 +330,19 @@ contract YieldVault is
 
     // ============ VIEW ============
 
+    /// @notice Total collateral committed across all active options
+    function totalCommitted() public view returns (uint256 total) {
+        for (uint256 i = 0; i < activeOptions.length; i++) {
+            total += IERC20(IOption(activeOptions[i]).redemption()).balanceOf(address(this));
+        }
+    }
+
+    /// @notice Collateral committed to a specific option
+    function committed(address option) public view returns (uint256) {
+        return IERC20(IOption(option).redemption()).balanceOf(address(this));
+    }
+
+    /// @notice Idle collateral available (not committed to options, not earmarked for redeems)
     function idleCollateral() external view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
     }
@@ -349,17 +363,6 @@ contract YieldVault is
         idle_ = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
         committed_ = totalCommitted();
         utilizationBps_ = totalAssets_ > 0 ? (committed_ * 10000) / totalAssets_ : 0;
-    }
-
-    function getPositionInfo(address option)
-        external
-        view
-        returns (uint256 committed_, uint256 redemptionBalance_, bool expired_)
-    {
-        address redemption = IOption(option).redemption();
-        committed_ = IERC20(redemption).balanceOf(address(this));
-        redemptionBalance_ = committed_;
-        expired_ = block.timestamp >= IOption(option).expirationDate();
     }
 
     // ============ INTERNAL ============

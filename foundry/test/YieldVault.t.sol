@@ -59,11 +59,14 @@ struct OldSingleQuote {
 
 interface IJamSettlement {
     function settleInternal(
-        JamOrder calldata order, bytes calldata signature, uint256[] calldata filledAmounts, bytes memory hooksData
+        JamOrder calldata order,
+        bytes calldata signature,
+        uint256[] calldata filledAmounts,
+        bytes memory hooksData
     ) external payable;
-    function settleBebopBlend(
-        address takerAddress, uint8 orderType, bytes memory data, bytes memory hooksData
-    ) external payable;
+    function settleBebopBlend(address takerAddress, uint8 orderType, bytes memory data, bytes memory hooksData)
+        external
+        payable;
     function DOMAIN_SEPARATOR() external view returns (bytes32);
     function balanceManager() external view returns (address);
 }
@@ -71,7 +74,10 @@ interface IJamSettlement {
 interface IBebopBlend {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
     function hashSingleOrder(
-        BlendSingleOrder calldata order, uint64 partnerId, uint256 updatedMakerAmount, uint256 updatedMakerNonce
+        BlendSingleOrder calldata order,
+        uint64 partnerId,
+        uint256 updatedMakerAmount,
+        uint256 updatedMakerNonce
     ) external view returns (bytes32);
 }
 
@@ -85,7 +91,10 @@ contract Solver {
     using SafeERC20 for IERC20;
 
     function settle(
-        address settlement, JamOrder calldata order, bytes calldata signature, uint256[] calldata filledAmounts
+        address settlement,
+        JamOrder calldata order,
+        bytes calldata signature,
+        uint256[] calldata filledAmounts
     ) external {
         IJamSettlement(settlement).settleInternal(order, signature, filledAmounts, "");
     }
@@ -147,7 +156,7 @@ contract YieldVaultTest is Test {
         );
         option = Option(optionAddr);
         redemption = option.redemption();
-        vault.whitelistOption(address(option), true);
+        vault.whitelistOption(address(option), address(0));
 
         shakyToken.mint(address(this), 1_000_000e18);
         shakyToken.mint(lp, 1_000_000e18);
@@ -303,16 +312,23 @@ contract YieldVaultTest is Test {
         // Operator signs the EIP-712 digest
         bytes32 orderHash = keccak256(
             abi.encode(
-                JAM_ORDER_TYPE_HASH, order.taker, order.receiver, order.expiry, order.exclusivityDeadline,
-                order.nonce, order.executor, order.partnerInfo,
-                keccak256(abi.encodePacked(order.sellTokens)), keccak256(abi.encodePacked(order.buyTokens)),
-                keccak256(abi.encodePacked(order.sellAmounts)), keccak256(abi.encodePacked(order.buyAmounts)),
+                JAM_ORDER_TYPE_HASH,
+                order.taker,
+                order.receiver,
+                order.expiry,
+                order.exclusivityDeadline,
+                order.nonce,
+                order.executor,
+                order.partnerInfo,
+                keccak256(abi.encodePacked(order.sellTokens)),
+                keccak256(abi.encodePacked(order.buyTokens)),
+                keccak256(abi.encodePacked(order.sellAmounts)),
+                keccak256(abi.encodePacked(order.buyAmounts)),
                 bytes32(0) // empty hooks hash
             )
         );
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash)
-        );
+        bytes32 digest =
+            keccak256(abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, digest);
 
         uint256[] memory filledAmounts = new uint256[](1);
@@ -367,16 +383,23 @@ contract YieldVaultTest is Test {
         // Sign with unauthorized key
         bytes32 orderHash = keccak256(
             abi.encode(
-                JAM_ORDER_TYPE_HASH, order.taker, order.receiver, order.expiry, order.exclusivityDeadline,
-                order.nonce, order.executor, order.partnerInfo,
-                keccak256(abi.encodePacked(order.sellTokens)), keccak256(abi.encodePacked(order.buyTokens)),
-                keccak256(abi.encodePacked(order.sellAmounts)), keccak256(abi.encodePacked(order.buyAmounts)),
+                JAM_ORDER_TYPE_HASH,
+                order.taker,
+                order.receiver,
+                order.expiry,
+                order.exclusivityDeadline,
+                order.nonce,
+                order.executor,
+                order.partnerInfo,
+                keccak256(abi.encodePacked(order.sellTokens)),
+                keccak256(abi.encodePacked(order.buyTokens)),
+                keccak256(abi.encodePacked(order.sellAmounts)),
+                keccak256(abi.encodePacked(order.buyAmounts)),
                 bytes32(0)
             )
         );
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash)
-        );
+        bytes32 digest =
+            keccak256(abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, digest);
 
         uint256[] memory filledAmounts = new uint256[](1);
@@ -436,9 +459,7 @@ contract YieldVaultTest is Test {
         // Taker (vault) signs via Permit2 witness
         // The witness is the BlendSingleOrder hash used by JamBalanceManager
         OldSingleQuote memory takerQuoteInfo = OldSingleQuote({
-            useOldAmount: false,
-            makerAmount: blendOrder.maker_amount,
-            makerNonce: blendOrder.maker_nonce
+            useOldAmount: false, makerAmount: blendOrder.maker_amount, makerNonce: blendOrder.maker_nonce
         });
 
         // Compute the Permit2 witness (BlendSingleOrder hash from JAM's perspective)
@@ -481,9 +502,8 @@ contract YieldVaultTest is Test {
                 blendOrderWitness
             )
         );
-        bytes32 permit2Digest = keccak256(
-            abi.encodePacked("\x19\x01", IPermit2Full(PERMIT2).DOMAIN_SEPARATOR(), permit2Struct)
-        );
+        bytes32 permit2Digest =
+            keccak256(abi.encodePacked("\x19\x01", IPermit2Full(PERMIT2).DOMAIN_SEPARATOR(), permit2Struct));
         (uint8 tv, bytes32 tr, bytes32 ts) = vm.sign(operatorPk, permit2Digest);
         bytes memory takerSignature = abi.encodePacked(tr, ts, tv);
 
@@ -498,12 +518,13 @@ contract YieldVaultTest is Test {
         );
 
         // Execute through real JamSettlement → BebopBlend
-        IJamSettlement(JAM_SETTLEMENT).settleBebopBlend(
-            address(vault), // takerAddress = vault
-            0, // orderType = Single
-            data,
-            "" // no hooks
-        );
+        IJamSettlement(JAM_SETTLEMENT)
+            .settleBebopBlend(
+                address(vault), // takerAddress = vault
+                0, // orderType = Single
+                data,
+                "" // no hooks
+            );
 
         // Verify
         assertEq(stableToken.balanceOf(address(vault)), cashPayment, "Vault should receive USDC");
@@ -535,7 +556,7 @@ contract YieldVaultTest is Test {
         address opt2 = factory.createOption(
             address(shakyToken), address(stableToken), uint40(block.timestamp + 2 days), 2e18, false
         );
-        vault.whitelistOption(opt2, true);
+        vault.whitelistOption(opt2, address(0));
         assertTrue(vault.whitelistedOptions(opt2));
     }
 
