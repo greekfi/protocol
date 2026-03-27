@@ -15,7 +15,6 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
-import { IYieldVault } from "./interfaces/IYieldVault.sol";
 import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
 using SafeERC20 for IERC20;
@@ -25,8 +24,33 @@ using SafeERC20 for IERC20;
 /// @dev ERC-7540 async redeems (collateral may be locked in active options).
 ///      EIP-1271 contract signatures allow operators to act as Bebop taker on behalf of the vault.
 ///      Auto-mint enabled: Bebop settlement transferFrom auto-mints options from vault collateral.
-contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausable, IYieldVault, IERC7540Redeem, IERC7540Operator, IERC1271 {
+contract YieldVault is
+    ERC4626,
+    ERC165,
+    Ownable,
+    ReentrancyGuardTransient,
+    Pausable,
+    IERC7540Redeem,
+    IERC7540Operator,
+    IERC1271
+{
     using Math for uint256;
+
+    // ============ ERRORS ============
+
+    error NotWhitelisted();
+    error InsufficientIdle();
+    error InvalidAddress();
+    error ZeroAmount();
+    error Unauthorized();
+    error InsufficientClaimable();
+    error WithdrawDisabled();
+    error AsyncOnly();
+
+    // ============ EVENTS ============
+
+    event OptionWhitelisted(address indexed option, bool allowed);
+    event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ CORE ============
 
@@ -39,7 +63,7 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
     // ============ BOOKKEEPING ============
 
     address[] public activeOptions;
-    mapping(address => bool) public override whitelistedOptions;
+    mapping(address => bool) public whitelistedOptions;
 
     // ============ ERC-7540: ASYNC REDEEM ============
 
@@ -67,12 +91,11 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
     /// @param name_ Vault share token name
     /// @param symbol_ Vault share token symbol
     /// @param factory_ OptionFactory address
-    constructor(
-        IERC20 collateral_,
-        string memory name_,
-        string memory symbol_,
-        address factory_
-    ) ERC4626(collateral_) ERC20(name_, symbol_) Ownable(msg.sender) {
+    constructor(IERC20 collateral_, string memory name_, string memory symbol_, address factory_)
+        ERC4626(collateral_)
+        ERC20(name_, symbol_)
+        Ownable(msg.sender)
+    {
         if (factory_ == address(0)) revert InvalidAddress();
         factory = IOptionFactory(factory_);
     }
@@ -85,14 +108,14 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
     }
 
     /// @notice Total collateral committed across all active options (computed from redemption balances)
-    function totalCommitted() public view override returns (uint256 total) {
+    function totalCommitted() public view returns (uint256 total) {
         for (uint256 i = 0; i < activeOptions.length; i++) {
             total += IERC20(IOption(activeOptions[i]).redemption()).balanceOf(address(this));
         }
     }
 
     /// @notice Collateral committed to a specific option
-    function committed(address option) public view override returns (uint256) {
+    function committed(address option) public view returns (uint256) {
         return IERC20(IOption(option).redemption()).balanceOf(address(this));
     }
 
@@ -190,8 +213,8 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
         return 0;
     }
 
-    /// @inheritdoc IYieldVault
-    function fulfillRedeem(address controller) public override onlyOwner nonReentrant {
+    /// @notice Fulfill a pending redeem request, snapshotting the asset value
+    function fulfillRedeem(address controller) public onlyOwner nonReentrant {
         uint256 shares = _pendingRedeemShares[controller];
         if (shares == 0) revert ZeroAmount();
 
@@ -208,8 +231,8 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
         _totalClaimableAssets += assets;
     }
 
-    /// @inheritdoc IYieldVault
-    function fulfillRedeems(address[] calldata controllers) external override onlyOwner {
+    /// @notice Batch fulfill multiple pending redeem requests
+    function fulfillRedeems(address[] calldata controllers) external onlyOwner {
         for (uint256 i = 0; i < controllers.length; i++) {
             fulfillRedeem(controllers[i]);
         }
@@ -249,8 +272,8 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
 
     // ============ OPERATOR ============
 
-    /// @inheritdoc IYieldVault
-    function burn(address option, uint256 amount) external override onlyOperatorOrOwner nonReentrant {
+    /// @notice Pair-redeem option + redemption tokens to recover collateral
+    function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
         IOption(option).redeem(amount);
@@ -292,7 +315,7 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
         emit OptionWhitelisted(option, allowed);
     }
 
-    function setBebopApprovalTarget(address target) external override onlyOwner {
+    function setBebopApprovalTarget(address target) external onlyOwner {
         bebopApprovalTarget = target;
     }
 
@@ -306,11 +329,11 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
 
     // ============ VIEW ============
 
-    function idleCollateral() external view override returns (uint256) {
+    function idleCollateral() external view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
     }
 
-    function utilizationBps() external view override returns (uint256) {
+    function utilizationBps() external view returns (uint256) {
         uint256 total = totalAssets();
         if (total == 0) return 0;
         return (totalCommitted() * 10000) / total;
@@ -319,14 +342,7 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
     function getVaultStats()
         external
         view
-        override
-        returns (
-            uint256 totalAssets_,
-            uint256 totalShares_,
-            uint256 idle_,
-            uint256 committed_,
-            uint256 utilizationBps_
-        )
+        returns (uint256 totalAssets_, uint256 totalShares_, uint256 idle_, uint256 committed_, uint256 utilizationBps_)
     {
         totalAssets_ = totalAssets();
         totalShares_ = _activeSupply();
@@ -338,7 +354,6 @@ contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausa
     function getPositionInfo(address option)
         external
         view
-        override
         returns (uint256 committed_, uint256 redemptionBalance_, bool expired_)
     {
         address redemption = IOption(option).redemption();

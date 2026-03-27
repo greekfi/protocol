@@ -47,13 +47,7 @@ interface IYieldVault {
     function getVaultStats()
         external
         view
-        returns (
-            uint256 totalAssets_,
-            uint256 totalShares_,
-            uint256 idle_,
-            uint256 committed_,
-            uint256 utilizationBps_
-        );
+        returns (uint256 totalAssets_, uint256 totalShares_, uint256 idle_, uint256 committed_, uint256 utilizationBps_);
 
     function getPositionInfo(address option)
         external

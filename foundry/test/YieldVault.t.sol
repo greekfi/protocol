@@ -6,7 +6,6 @@ import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
-import { IYieldVault } from "../contracts/interfaces/IYieldVault.sol";
 import { IERC7540Redeem, IERC7540Operator } from "../contracts/interfaces/IERC7540.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
@@ -165,7 +164,7 @@ contract YieldVaultTest is Test {
     function test_WithdrawReverts() public {
         _depositAsLP(100e18);
         vm.prank(lp);
-        vm.expectRevert(IYieldVault.WithdrawDisabled.selector);
+        vm.expectRevert(YieldVault.WithdrawDisabled.selector);
         vault.withdraw(50e18, lp, lp);
     }
 
@@ -175,12 +174,12 @@ contract YieldVaultTest is Test {
     }
 
     function test_PreviewRedeemReverts() public {
-        vm.expectRevert(IYieldVault.AsyncOnly.selector);
+        vm.expectRevert(YieldVault.AsyncOnly.selector);
         vault.previewRedeem(100e18);
     }
 
     function test_PreviewWithdrawReverts() public {
-        vm.expectRevert(IYieldVault.AsyncOnly.selector);
+        vm.expectRevert(YieldVault.AsyncOnly.selector);
         vault.previewWithdraw(100e18);
     }
 
@@ -248,13 +247,13 @@ contract YieldVaultTest is Test {
         vault.fulfillRedeem(lp);
 
         vm.prank(buyer);
-        vm.expectRevert(IYieldVault.Unauthorized.selector);
+        vm.expectRevert(YieldVault.Unauthorized.selector);
         vault.redeem(shares, buyer, lp);
     }
 
     function test_SetOperator_CannotApproveSelf() public {
         vm.prank(lp);
-        vm.expectRevert(IYieldVault.InvalidAddress.selector);
+        vm.expectRevert(YieldVault.InvalidAddress.selector);
         vault.setOperator(lp, true);
     }
 
@@ -281,7 +280,7 @@ contract YieldVaultTest is Test {
 
     function test_Burn_OnlyOperator() public {
         vm.prank(buyer);
-        vm.expectRevert(IYieldVault.Unauthorized.selector);
+        vm.expectRevert(YieldVault.Unauthorized.selector);
         vault.burn(address(option), 1e18);
     }
 
@@ -336,7 +335,13 @@ contract YieldVaultTest is Test {
         // Settle: options auto-minted from vault → MM, USDC from MM → vault
         vm.prank(mm);
         settlement.mockSettle(
-            address(vault), address(option), optionAmount, address(stableToken), cashPayment, orderHash, abi.encodePacked(r, s, v)
+            address(vault),
+            address(option),
+            optionAmount,
+            address(stableToken),
+            cashPayment,
+            orderHash,
+            abi.encodePacked(r, s, v)
         );
 
         // Vault received USDC
@@ -371,7 +376,13 @@ contract YieldVaultTest is Test {
         vm.prank(mm);
         vm.expectRevert("Invalid contract signature");
         settlement.mockSettle(
-            address(vault), address(option), optionAmount, address(stableToken), 5e18, keccak256("fake"), abi.encodePacked(r, s, v)
+            address(vault),
+            address(option),
+            optionAmount,
+            address(stableToken),
+            5e18,
+            keccak256("fake"),
+            abi.encodePacked(r, s, v)
         );
     }
 

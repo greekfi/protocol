@@ -15,7 +15,6 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
-import { IHookVault } from "./interfaces/IHookVault.sol";
 
 using SafeERC20 for IERC20;
 
@@ -71,8 +70,53 @@ interface IUniswapV3PoolOracle {
 /// @dev Combines LP deposits, Black-Scholes pricing (via external contract), and option lifecycle.
 ///      Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
 ///      The hook sells options → vault mints & delivers → options expire → settlement returns collateral.
-contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IHookVault {
+contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     using Math for uint256;
+
+    // ============ STRUCTS ============
+
+    struct StrikeConfig {
+        uint16 strikeOffsetBps;
+        bool isPut;
+        uint40 duration;
+    }
+
+    // ============ ERRORS ============
+
+    error OnlyHook();
+    error NotWhitelisted();
+    error ExceedsCommitmentCap();
+    error InsufficientIdle();
+    error NothingToSettle();
+    error NoConsiderationToSwap();
+    error SwapFailed();
+    error NoGainFromSwap();
+    error InvalidBps();
+    error InvalidAddress();
+    error ZeroAmount();
+    error OptionNotExpired();
+    error AlreadyRolled();
+    error CollateralMismatch();
+    error InsufficientCash();
+    error NoStrategyConfigured();
+
+    // ============ EVENTS ============
+
+    event MintAndDeliver(address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered);
+    event PairRedeemed(address indexed option, uint256 amount);
+    event SettlementReconciled(address indexed option, uint256 settled);
+    event ConsiderationSwapped(address indexed token, uint256 considerationIn, uint256 collateralOut);
+    event HookUpdated(address indexed hook, bool authorized);
+    event OptionWhitelisted(address indexed option, bool allowed);
+    event MaxCommitmentUpdated(uint256 oldBps, uint256 newBps);
+    event OptionsRolled(address indexed expiredOption, address[] newOptions, address indexed caller, uint256 bounty);
+    event StrategyUpdated();
+    event VolatilityUpdated(uint256 oldVol, uint256 newVol);
+    event RiskFreeRateUpdated(uint256 oldRate, uint256 newRate);
+    event RollBountyUpdated(uint256 oldBounty, uint256 newBounty);
+    event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
+    event SkewUpdated(int256 oldSkew, int256 newSkew);
+    event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
 
     // ============ PRICING ============
 
@@ -215,11 +259,10 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IHoo
         }
     }
 
-    /// @inheritdoc IHookVault
+    /// @notice Get a price quote for an option swap
     function getQuote(address option, uint256 amount, bool cashForOption)
         external
         view
-        override
         returns (uint256 outputAmount, uint256 unitPrice)
     {
         IOption opt = IOption(option);
@@ -261,10 +304,9 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IHoo
 
     // ============ HOOK INTERACTION: MINT AND DELIVER ============
 
-    /// @inheritdoc IHookVault
+    /// @notice Mint options using vault collateral and deliver to buyer
     function mintAndDeliver(address option, uint256 amount, address buyer)
         external
-        override
         onlyHook
         nonReentrant
         whenNotPaused
@@ -305,8 +347,8 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IHoo
 
     // ============ HOOK INTERACTION: PAIR REDEEM ============
 
-    /// @inheritdoc IHookVault
-    function pairRedeem(address option, uint256 amount) external override onlyHook nonReentrant whenNotPaused {
+    /// @notice Pair-redeem matched Option + Redemption tokens
+    function pairRedeem(address option, uint256 amount) external onlyHook nonReentrant whenNotPaused {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
 
@@ -326,8 +368,8 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IHoo
 
     // ============ HOOK INTERACTION: TRANSFER CASH ============
 
-    /// @inheritdoc IHookVault
-    function transferCash(address token, uint256 amount, address to) external override onlyHook nonReentrant {
+    /// @notice Transfer cash tokens from vault to a recipient
+    function transferCash(address token, uint256 amount, address to) external onlyHook nonReentrant {
         if (amount == 0) revert ZeroAmount();
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance < amount) revert InsufficientCash();
