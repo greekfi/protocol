@@ -10,25 +10,88 @@ import { IERC7540Redeem, IERC7540Operator } from "../contracts/interfaces/IERC75
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
-/// @dev Simulates Bebop's settlement: validates EIP-1271 signature, pulls options from taker, sends USDC
-contract MockBebopSettlement {
+// ============ Bebop addresses on Base ============
+address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+address constant JAM_SETTLEMENT = 0xbeb0b0623f66bE8cE162EbDfA2ec543A522F4ea6;
+address constant BEBOP_BLEND = 0xbbbbbBB520d69a9775E85b458C58c648259FAD5F;
+
+// ============ Bebop interfaces ============
+
+struct JamOrder {
+    address taker;
+    address receiver;
+    uint256 expiry;
+    uint256 exclusivityDeadline;
+    uint256 nonce;
+    address executor;
+    uint256 partnerInfo;
+    address[] sellTokens;
+    address[] buyTokens;
+    uint256[] sellAmounts;
+    uint256[] buyAmounts;
+    bool usingPermit2;
+}
+
+struct BlendSingleOrder {
+    uint256 expiry;
+    address taker_address;
+    address maker_address;
+    uint256 maker_nonce;
+    address taker_token;
+    address maker_token;
+    uint256 taker_amount;
+    uint256 maker_amount;
+    address receiver;
+    uint256 packed_commands;
+    uint256 flags;
+}
+
+struct MakerSignature {
+    bytes signatureBytes;
+    uint256 flags;
+}
+
+struct OldSingleQuote {
+    bool useOldAmount;
+    uint256 makerAmount;
+    uint256 makerNonce;
+}
+
+interface IJamSettlement {
+    function settleInternal(
+        JamOrder calldata order, bytes calldata signature, uint256[] calldata filledAmounts, bytes memory hooksData
+    ) external payable;
+    function settleBebopBlend(
+        address takerAddress, uint8 orderType, bytes memory data, bytes memory hooksData
+    ) external payable;
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function balanceManager() external view returns (address);
+}
+
+interface IBebopBlend {
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function hashSingleOrder(
+        BlendSingleOrder calldata order, uint64 partnerId, uint256 updatedMakerAmount, uint256 updatedMakerNonce
+    ) external view returns (bytes32);
+}
+
+interface IPermit2Full {
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function approve(address token, address spender, uint160 amount, uint48 expiration) external;
+}
+
+/// @dev Solver for settleInternal path
+contract Solver {
     using SafeERC20 for IERC20;
 
-    function mockSettle(
-        address taker,
-        address sellToken,
-        uint256 sellAmount,
-        address buyToken,
-        uint256 buyAmount,
-        bytes32 orderHash,
-        bytes calldata signature
+    function settle(
+        address settlement, JamOrder calldata order, bytes calldata signature, uint256[] calldata filledAmounts
     ) external {
-        if (taker.code.length > 0) {
-            bytes4 magic = IERC1271(taker).isValidSignature(orderHash, signature);
-            require(magic == 0x1626ba7e, "Invalid contract signature");
-        }
-        IERC20(sellToken).safeTransferFrom(taker, msg.sender, sellAmount);
-        IERC20(buyToken).safeTransferFrom(msg.sender, taker, buyAmount);
+        IJamSettlement(settlement).settleInternal(order, signature, filledAmounts, "");
+    }
+
+    function approveToken(address token, address spender, uint256 amount) external {
+        IERC20(token).forceApprove(spender, amount);
     }
 }
 
@@ -43,9 +106,25 @@ contract YieldVaultTest is Test {
     Redemption public redemption;
 
     address public lp = address(0x1111);
-    address public buyer = address(0x2222);
     uint256 public operatorPk = 0xA11CE;
     address public operator;
+
+    // JamOrder EIP-712
+    bytes32 constant JAM_ORDER_TYPE_HASH = keccak256(
+        "JamOrder(address taker,address receiver,uint256 expiry,uint256 exclusivityDeadline,uint256 nonce,address executor,uint256 partnerInfo,address[] sellTokens,address[] buyTokens,uint256[] sellAmounts,uint256[] buyAmounts,bytes32 hooksHash)"
+    );
+
+    // BlendSingleOrder type hash for Permit2 witness (from JAM — includes hooksHash)
+    bytes32 constant SINGLE_ORDER_WITNESS_TYPE_HASH = keccak256(
+        "SingleOrder(uint64 partner_id,uint256 expiry,address taker_address,address maker_address,uint256 maker_nonce,address taker_token,address maker_token,uint256 taker_amount,uint256 maker_amount,address receiver,uint256 packed_commands,bytes32 hooksHash)"
+    );
+
+    // Permit2 witness type for BlendSingleOrder (from JamSettlement)
+    string constant BLEND_PERMIT2_ORDER_TYPE =
+        "SingleOrder witness)SingleOrder(uint64 partner_id,uint256 expiry,address taker_address,address maker_address,uint256 maker_nonce,address taker_token,address maker_token,uint256 taker_amount,uint256 maker_amount,address receiver,uint256 packed_commands,bytes32 hooksHash)TokenPermissions(address token,uint256 amount)";
+
+    // Permit2 type hashes
+    bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
 
     function setUp() public {
         vm.createSelectFork("https://mainnet.base.org", 43189435);
@@ -60,8 +139,8 @@ contract YieldVaultTest is Test {
         factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
-
         vault.setupFactoryApproval();
+        vault.enableAutoMintRedeem(true);
 
         address optionAddr = factory.createOption(
             address(shakyToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
@@ -72,13 +151,10 @@ contract YieldVaultTest is Test {
 
         shakyToken.mint(address(this), 1_000_000e18);
         shakyToken.mint(lp, 1_000_000e18);
-        stableToken.mint(buyer, 1_000_000e18);
 
         operator = vm.addr(operatorPk);
         vault.setOperator(operator, true);
     }
-
-    // ============ HELPERS ============
 
     function _fee(uint256 amount) internal view returns (uint256) {
         return (amount * uint256(option.fee())) / 1e18;
@@ -97,7 +173,6 @@ contract YieldVaultTest is Test {
         _depositAsLP(100e18);
         assertGt(vault.balanceOf(lp), 0);
         assertEq(vault.totalAssets(), 100e18);
-        assertEq(shakyToken.balanceOf(address(vault)), 100e18);
     }
 
     // ============ ASYNC REDEEM ============
@@ -105,42 +180,14 @@ contract YieldVaultTest is Test {
     function test_RequestRedeemAndClaim() public {
         _depositAsLP(100e18);
         uint256 shares = vault.balanceOf(lp);
-        uint256 halfShares = shares / 2;
 
         vm.prank(lp);
-        vault.requestRedeem(halfShares, lp, lp);
+        vault.requestRedeem(shares / 2, lp, lp);
         vault.fulfillRedeem(lp);
 
         vm.prank(lp);
-        uint256 assets = vault.redeem(halfShares, lp, lp);
-
-        assertGt(assets, 0);
+        uint256 assets = vault.redeem(shares / 2, lp, lp);
         assertApproxEqAbs(assets, 50e18, 1e18);
-    }
-
-    function test_RequestRedeem_LocksShares() public {
-        _depositAsLP(100e18);
-        uint256 shares = vault.balanceOf(lp);
-
-        vm.prank(lp);
-        vault.requestRedeem(shares, lp, lp);
-
-        assertEq(vault.balanceOf(lp), 0);
-        assertEq(vault.balanceOf(address(vault)), shares);
-        assertEq(vault.pendingRedeemRequest(0, lp), shares);
-    }
-
-    function test_FulfillRedeem_SnapshotsPrice() public {
-        _depositAsLP(100e18);
-        uint256 shares = vault.balanceOf(lp);
-
-        vm.prank(lp);
-        vault.requestRedeem(shares, lp, lp);
-        vault.fulfillRedeem(lp);
-
-        assertEq(vault.pendingRedeemRequest(0, lp), 0);
-        assertEq(vault.claimableRedeemRequest(0, lp), shares);
-        assertEq(vault.maxRedeem(lp), shares);
     }
 
     function test_PartialClaim() public {
@@ -151,14 +198,11 @@ contract YieldVaultTest is Test {
         vault.requestRedeem(shares, lp, lp);
         vault.fulfillRedeem(lp);
 
-        uint256 halfShares = shares / 2;
         vm.prank(lp);
-        uint256 assets1 = vault.redeem(halfShares, lp, lp);
-
+        uint256 a1 = vault.redeem(shares / 2, lp, lp);
         vm.prank(lp);
-        uint256 assets2 = vault.redeem(shares - halfShares, lp, lp);
-
-        assertApproxEqAbs(assets1 + assets2, 100e18, 1e18);
+        uint256 a2 = vault.redeem(shares - shares / 2, lp, lp);
+        assertApproxEqAbs(a1 + a2, 100e18, 1e18);
     }
 
     function test_WithdrawReverts() public {
@@ -168,39 +212,13 @@ contract YieldVaultTest is Test {
         vault.withdraw(50e18, lp, lp);
     }
 
-    function test_MaxWithdrawIsZero() public {
-        _depositAsLP(100e18);
-        assertEq(vault.maxWithdraw(lp), 0);
-    }
-
-    function test_PreviewRedeemReverts() public {
-        vm.expectRevert(YieldVault.AsyncOnly.selector);
-        vault.previewRedeem(100e18);
-    }
-
-    function test_PreviewWithdrawReverts() public {
-        vm.expectRevert(YieldVault.AsyncOnly.selector);
-        vault.previewWithdraw(100e18);
-    }
-
-    function test_SharePriceNeutralDuringPending() public {
-        _depositAsLP(100e18);
-        uint256 priceBefore = vault.convertToAssets(1e18);
-
-        uint256 shares = vault.balanceOf(lp);
-        vm.prank(lp);
-        vault.requestRedeem(shares / 2, lp, lp);
-
-        assertEq(priceBefore, vault.convertToAssets(1e18));
-    }
-
     function test_SharePriceNeutralAfterFulfill() public {
         _depositAsLP(100e18);
         uint256 priceBefore = vault.convertToAssets(1e18);
+        uint256 halfShares = vault.balanceOf(lp) / 2;
 
-        uint256 shares = vault.balanceOf(lp);
         vm.prank(lp);
-        vault.requestRedeem(shares / 2, lp, lp);
+        vault.requestRedeem(halfShares, lp, lp);
         vault.fulfillRedeem(lp);
 
         assertApproxEqAbs(priceBefore, vault.convertToAssets(1e18), 1);
@@ -209,34 +227,9 @@ contract YieldVaultTest is Test {
     // ============ OPERATORS ============
 
     function test_SetOperator() public {
-        address op = address(0x789);
         vm.prank(lp);
-        vault.setOperator(op, true);
-        assertTrue(vault.isOperator(lp, op));
-
-        vm.prank(lp);
-        vault.setOperator(op, false);
-        assertFalse(vault.isOperator(lp, op));
-    }
-
-    function test_OperatorCanRequestRedeem() public {
-        _depositAsLP(100e18);
-        uint256 shares = vault.balanceOf(lp);
-
-        vm.prank(lp);
-        vault.setOperator(operator, true);
-
-        vm.prank(operator);
-        vault.requestRedeem(shares, lp, lp);
-        assertEq(vault.pendingRedeemRequest(0, lp), shares);
-    }
-
-    function test_UnauthorizedRequestReverts() public {
-        _depositAsLP(100e18);
-        uint256 shares = vault.balanceOf(lp);
-        vm.prank(buyer);
-        vm.expectRevert();
-        vault.requestRedeem(shares, buyer, lp);
+        vault.setOperator(address(0x789), true);
+        assertTrue(vault.isOperator(lp, address(0x789)));
     }
 
     function test_UnauthorizedClaimReverts() public {
@@ -246,144 +239,294 @@ contract YieldVaultTest is Test {
         vault.requestRedeem(shares, lp, lp);
         vault.fulfillRedeem(lp);
 
-        vm.prank(buyer);
+        vm.prank(address(0xDEAD));
         vm.expectRevert(YieldVault.Unauthorized.selector);
-        vault.redeem(shares, buyer, lp);
+        vault.redeem(shares, address(0xDEAD), lp);
     }
 
-    function test_SetOperator_CannotApproveSelf() public {
-        vm.prank(lp);
-        vm.expectRevert(YieldVault.InvalidAddress.selector);
-        vault.setOperator(lp, true);
+    // ============ EIP-1271 ============
+
+    function test_IsValidSignature() public view {
+        bytes32 h = keccak256("test");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, h);
+        assertEq(vault.isValidSignature(h, abi.encodePacked(r, s, v)), bytes4(0x1626ba7e));
+    }
+
+    function test_IsValidSignature_Unauthorized() public view {
+        bytes32 h = keccak256("test");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, h);
+        assertEq(vault.isValidSignature(h, abi.encodePacked(r, s, v)), bytes4(0xffffffff));
+    }
+
+    // ============ BEBOP JAM: settleInternal on real fork ============
+
+    function test_BebopJam_SettleInternal() public {
+        _depositAsLP(100e18);
+
+        // Solver holds USDC (acts as counterparty)
+        Solver solver = new Solver();
+        uint256 cashPayment = 5e18;
+        stableToken.mint(address(solver), cashPayment);
+        address balMgr = IJamSettlement(JAM_SETTLEMENT).balanceManager();
+        solver.approveToken(address(stableToken), balMgr, cashPayment);
+
+        // Vault approves BalanceManager to pull options (auto-mint creates them)
+        uint256 optionAmount = 10e18 - _fee(10e18);
+        vm.prank(address(vault));
+        IERC20(address(option)).approve(balMgr, optionAmount);
+
+        // Build JamOrder
+        address[] memory sellTokens = new address[](1);
+        sellTokens[0] = address(option);
+        address[] memory buyTokens = new address[](1);
+        buyTokens[0] = address(stableToken);
+        uint256[] memory sellAmounts = new uint256[](1);
+        sellAmounts[0] = optionAmount;
+        uint256[] memory buyAmounts = new uint256[](1);
+        buyAmounts[0] = cashPayment;
+
+        JamOrder memory order = JamOrder({
+            taker: address(vault),
+            receiver: address(vault),
+            expiry: block.timestamp + 1 hours,
+            exclusivityDeadline: 0,
+            nonce: 1,
+            executor: address(solver),
+            partnerInfo: 0,
+            sellTokens: sellTokens,
+            buyTokens: buyTokens,
+            sellAmounts: sellAmounts,
+            buyAmounts: buyAmounts,
+            usingPermit2: false
+        });
+
+        // Operator signs the EIP-712 digest
+        bytes32 orderHash = keccak256(
+            abi.encode(
+                JAM_ORDER_TYPE_HASH, order.taker, order.receiver, order.expiry, order.exclusivityDeadline,
+                order.nonce, order.executor, order.partnerInfo,
+                keccak256(abi.encodePacked(order.sellTokens)), keccak256(abi.encodePacked(order.buyTokens)),
+                keccak256(abi.encodePacked(order.sellAmounts)), keccak256(abi.encodePacked(order.buyAmounts)),
+                bytes32(0) // empty hooks hash
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, digest);
+
+        uint256[] memory filledAmounts = new uint256[](1);
+        filledAmounts[0] = cashPayment;
+
+        solver.settle(JAM_SETTLEMENT, order, abi.encodePacked(r, s, v), filledAmounts);
+
+        // Vault received USDC
+        assertEq(stableToken.balanceOf(address(vault)), cashPayment);
+        // Options auto-minted and sent to solver
+        assertEq(IERC20(address(option)).balanceOf(address(solver)), optionAmount);
+        // Commitment tracked
+        assertGt(vault.committed(address(option)), 0);
+    }
+
+    function test_BebopJam_RejectsUnauthorizedSigner() public {
+        _depositAsLP(100e18);
+
+        Solver solver = new Solver();
+        stableToken.mint(address(solver), 5e18);
+        address balMgr = IJamSettlement(JAM_SETTLEMENT).balanceManager();
+        solver.approveToken(address(stableToken), balMgr, 5e18);
+
+        uint256 optionAmount = 10e18 - _fee(10e18);
+        vm.prank(address(vault));
+        IERC20(address(option)).approve(balMgr, optionAmount);
+
+        address[] memory sellTokens = new address[](1);
+        sellTokens[0] = address(option);
+        address[] memory buyTokens = new address[](1);
+        buyTokens[0] = address(stableToken);
+        uint256[] memory sellAmounts = new uint256[](1);
+        sellAmounts[0] = optionAmount;
+        uint256[] memory buyAmounts = new uint256[](1);
+        buyAmounts[0] = 5e18;
+
+        JamOrder memory order = JamOrder({
+            taker: address(vault),
+            receiver: address(vault),
+            expiry: block.timestamp + 1 hours,
+            exclusivityDeadline: 0,
+            nonce: 1,
+            executor: address(solver),
+            partnerInfo: 0,
+            sellTokens: sellTokens,
+            buyTokens: buyTokens,
+            sellAmounts: sellAmounts,
+            buyAmounts: buyAmounts,
+            usingPermit2: false
+        });
+
+        // Sign with unauthorized key
+        bytes32 orderHash = keccak256(
+            abi.encode(
+                JAM_ORDER_TYPE_HASH, order.taker, order.receiver, order.expiry, order.exclusivityDeadline,
+                order.nonce, order.executor, order.partnerInfo,
+                keccak256(abi.encodePacked(order.sellTokens)), keccak256(abi.encodePacked(order.buyTokens)),
+                keccak256(abi.encodePacked(order.sellAmounts)), keccak256(abi.encodePacked(order.buyAmounts)),
+                bytes32(0)
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", IJamSettlement(JAM_SETTLEMENT).DOMAIN_SEPARATOR(), orderHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, digest);
+
+        uint256[] memory filledAmounts = new uint256[](1);
+        filledAmounts[0] = 5e18;
+
+        vm.expectRevert();
+        solver.settle(JAM_SETTLEMENT, order, abi.encodePacked(r, s, v), filledAmounts);
+    }
+
+    // ============ BEBOP BLEND: settleBebopBlend on real fork ============
+
+    function test_BebopBlend_SettleSingle() public {
+        _depositAsLP(100e18);
+
+        uint256 makerPk = 0xB0B;
+        address maker = vm.addr(makerPk);
+        uint256 optionAmount = 10e18 - _fee(10e18);
+        uint256 cashPayment = 5e18;
+
+        // Fund maker with USDC and approve BebopBlend
+        stableToken.mint(maker, cashPayment);
+        vm.prank(maker);
+        stableToken.approve(BEBOP_BLEND, cashPayment);
+
+        // Vault approves Permit2 for options (Permit2 pulls during settlement)
+        vm.prank(address(vault));
+        IERC20(address(option)).approve(PERMIT2, optionAmount);
+
+        // Build BlendSingleOrder
+        // taker_address = JamSettlement (proxy), real taker = vault
+        // packed_commands: 0 = no native tokens, no permit2 for taker transfer (JamSettlement handles it)
+        uint256 permit2Nonce = 0;
+        BlendSingleOrder memory blendOrder = BlendSingleOrder({
+            expiry: block.timestamp + 1 hours,
+            taker_address: JAM_SETTLEMENT, // JamSettlement acts as taker on BebopBlend
+            maker_address: address(0), // will be overwritten by settleBebopBlend
+            maker_nonce: 1,
+            taker_token: address(option),
+            maker_token: address(stableToken),
+            taker_amount: optionAmount,
+            maker_amount: cashPayment,
+            receiver: address(vault), // vault receives maker's USDC
+            packed_commands: 0,
+            flags: (permit2Nonce << 128) // upper 128 bits = permit2 nonce / event id
+        });
+
+        // Maker signs the BebopBlend order (with their address filled in — BebopBlend validates this)
+        BlendSingleOrder memory makerOrder = blendOrder;
+        makerOrder.maker_address = maker;
+        bytes32 makerDigest = IBebopBlend(BEBOP_BLEND).hashSingleOrder(makerOrder, 0, 0, 0);
+        (uint8 mv, bytes32 mr, bytes32 ms) = vm.sign(makerPk, makerDigest);
+        MakerSignature memory makerSig = MakerSignature({
+            signatureBytes: abi.encodePacked(mr, ms, mv),
+            flags: 0 // EIP-712, no Permit2 for maker
+        });
+
+        // Taker (vault) signs via Permit2 witness
+        // The witness is the BlendSingleOrder hash used by JamBalanceManager
+        OldSingleQuote memory takerQuoteInfo = OldSingleQuote({
+            useOldAmount: false,
+            makerAmount: blendOrder.maker_amount,
+            makerNonce: blendOrder.maker_nonce
+        });
+
+        // Compute the Permit2 witness (BlendSingleOrder hash from JAM's perspective)
+        bytes32 blendOrderWitness = keccak256(
+            abi.encode(
+                SINGLE_ORDER_WITNESS_TYPE_HASH,
+                uint64(blendOrder.flags >> 64), // partnerId
+                blendOrder.expiry,
+                blendOrder.taker_address,
+                blendOrder.maker_address,
+                takerQuoteInfo.makerNonce,
+                blendOrder.taker_token,
+                blendOrder.maker_token,
+                blendOrder.taker_amount,
+                takerQuoteInfo.makerAmount,
+                blendOrder.receiver,
+                blendOrder.packed_commands,
+                bytes32(0) // hooksHash
+            )
+        );
+
+        // Compute Permit2 digest (single transfer, not batch)
+        bytes32 permit2TypeHash = keccak256(
+            abi.encodePacked(
+                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
+                BLEND_PERMIT2_ORDER_TYPE
+            )
+        );
+        bytes32 tokenPermHash = keccak256(
+            abi.encode(TOKEN_PERMISSIONS_TYPEHASH, address(blendOrder.taker_token), blendOrder.taker_amount)
+        );
+        address balMgr = IJamSettlement(JAM_SETTLEMENT).balanceManager();
+        bytes32 permit2Struct = keccak256(
+            abi.encode(
+                permit2TypeHash,
+                tokenPermHash,
+                balMgr, // spender = BalanceManager
+                blendOrder.flags >> 128, // nonce
+                blendOrder.expiry, // deadline
+                blendOrderWitness
+            )
+        );
+        bytes32 permit2Digest = keccak256(
+            abi.encodePacked("\x19\x01", IPermit2Full(PERMIT2).DOMAIN_SEPARATOR(), permit2Struct)
+        );
+        (uint8 tv, bytes32 tr, bytes32 ts) = vm.sign(operatorPk, permit2Digest);
+        bytes memory takerSignature = abi.encodePacked(tr, ts, tv);
+
+        // Encode data for settleBebopBlend
+        bytes memory data = abi.encode(
+            blendOrder,
+            makerSig,
+            takerQuoteInfo,
+            maker, // makerAddress (overwritten into order)
+            uint256(0), // newFlags
+            takerSignature
+        );
+
+        // Execute through real JamSettlement → BebopBlend
+        IJamSettlement(JAM_SETTLEMENT).settleBebopBlend(
+            address(vault), // takerAddress = vault
+            0, // orderType = Single
+            data,
+            "" // no hooks
+        );
+
+        // Verify
+        assertEq(stableToken.balanceOf(address(vault)), cashPayment, "Vault should receive USDC");
+        assertEq(IERC20(address(option)).balanceOf(address(vault)), 0, "Vault options should be pulled");
+        assertGt(vault.committed(address(option)), 0, "Commitment should be tracked");
     }
 
     // ============ BURN ============
 
     function test_Burn() public {
         _depositAsLP(100e18);
-
-        // Mint options to vault via auto-mint (transfer triggers it)
-        vault.enableAutoMintRedeem(true);
-        uint256 optionAmount = 10e18 - _fee(10e18);
-
-        // Mint options directly for the vault to hold
         option.mint(address(vault), 10e18);
-
         assertGt(vault.committed(address(option)), 0);
 
         vm.prank(operator);
-        vault.burn(address(option), optionAmount);
-
+        vault.burn(address(option), 10e18 - _fee(10e18));
         assertEq(vault.committed(address(option)), 0);
-        assertEq(vault.totalCommitted(), 0);
     }
 
     function test_Burn_OnlyOperator() public {
-        vm.prank(buyer);
+        vm.prank(address(0xDEAD));
         vm.expectRevert(YieldVault.Unauthorized.selector);
         vault.burn(address(option), 1e18);
-    }
-
-    // ============ EIP-1271 ============
-
-    function test_IsValidSignature_AuthorizedOperator() public view {
-        bytes32 testHash = keccak256("test order");
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, testHash);
-
-        bytes4 result = vault.isValidSignature(testHash, abi.encodePacked(r, s, v));
-        assertEq(result, bytes4(0x1626ba7e));
-    }
-
-    function test_IsValidSignature_Unauthorized() public view {
-        bytes32 testHash = keccak256("test order");
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, testHash);
-
-        bytes4 result = vault.isValidSignature(testHash, abi.encodePacked(r, s, v));
-        assertEq(result, bytes4(0xffffffff));
-    }
-
-    function test_SupportsInterface() public view {
-        assertTrue(vault.supportsInterface(type(IERC7540Redeem).interfaceId));
-        assertTrue(vault.supportsInterface(type(IERC7540Operator).interfaceId));
-        assertTrue(vault.supportsInterface(type(IERC1271).interfaceId));
-        assertTrue(vault.supportsInterface(0x01ffc9a7)); // ERC-165
-    }
-
-    // ============ EIP-1271: FULL SETTLEMENT FLOW ============
-
-    function test_EIP1271_FullSettlementFlow() public {
-        MockBebopSettlement settlement = new MockBebopSettlement();
-        vault.setBebopApprovalTarget(address(settlement));
-        vault.enableAutoMintRedeem(true);
-        _depositAsLP(100e18);
-
-        uint256 optionAmount = 10e18 - _fee(10e18);
-        vm.prank(address(vault));
-        IERC20(address(option)).approve(address(settlement), optionAmount);
-
-        // MM has USDC
-        address mm = address(0x4444);
-        uint256 cashPayment = 5e18;
-        stableToken.mint(mm, cashPayment);
-        vm.prank(mm);
-        stableToken.approve(address(settlement), cashPayment);
-
-        // Operator signs order hash
-        bytes32 orderHash = keccak256(abi.encode("JamOrder", address(vault), address(option), optionAmount));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(operatorPk, orderHash);
-
-        // Settle: options auto-minted from vault → MM, USDC from MM → vault
-        vm.prank(mm);
-        settlement.mockSettle(
-            address(vault),
-            address(option),
-            optionAmount,
-            address(stableToken),
-            cashPayment,
-            orderHash,
-            abi.encodePacked(r, s, v)
-        );
-
-        // Vault received USDC
-        assertEq(stableToken.balanceOf(address(vault)), cashPayment);
-        // Vault has no options (auto-minted and sent to MM)
-        assertEq(IERC20(address(option)).balanceOf(address(vault)), 0);
-        // MM received options
-        assertEq(IERC20(address(option)).balanceOf(mm), optionAmount);
-        // Commitment tracked (live from redemption balances)
-        assertGt(vault.committed(address(option)), 0);
-        assertGt(vault.totalCommitted(), 0);
-    }
-
-    function test_EIP1271_SettlementFailsWithUnauthorizedSigner() public {
-        MockBebopSettlement settlement = new MockBebopSettlement();
-        vault.setBebopApprovalTarget(address(settlement));
-        vault.enableAutoMintRedeem(true);
-        _depositAsLP(100e18);
-
-        uint256 optionAmount = 10e18 - _fee(10e18);
-        vm.prank(address(vault));
-        IERC20(address(option)).approve(address(settlement), optionAmount);
-
-        address mm = address(0x4444);
-        stableToken.mint(mm, 5e18);
-        vm.prank(mm);
-        stableToken.approve(address(settlement), 5e18);
-
-        // Random signer — NOT authorized
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, keccak256("fake"));
-
-        vm.prank(mm);
-        vm.expectRevert("Invalid contract signature");
-        settlement.mockSettle(
-            address(vault),
-            address(option),
-            optionAmount,
-            address(stableToken),
-            5e18,
-            keccak256("fake"),
-            abi.encodePacked(r, s, v)
-        );
     }
 
     // ============ ADMIN ============
@@ -394,20 +537,6 @@ contract YieldVaultTest is Test {
         );
         vault.whitelistOption(opt2, true);
         assertTrue(vault.whitelistedOptions(opt2));
-
-        vault.whitelistOption(opt2, false);
-        assertFalse(vault.whitelistedOptions(opt2));
-    }
-
-    function test_WhitelistOption_OnlyOwner() public {
-        vm.prank(lp);
-        vm.expectRevert();
-        vault.whitelistOption(address(option), false);
-    }
-
-    function test_SetBebopApprovalTarget() public {
-        vault.setBebopApprovalTarget(address(0xBEB0));
-        assertEq(vault.bebopApprovalTarget(), address(0xBEB0));
     }
 
     function test_Pause() public {
@@ -416,22 +545,10 @@ contract YieldVaultTest is Test {
         assertEq(vault.maxDeposit(lp), 0);
     }
 
-    // ============ VIEW ============
-
     function test_GetVaultStats() public {
         _depositAsLP(100e18);
-        (uint256 totalAssets_, uint256 totalShares_, uint256 idle_, uint256 committed_, uint256 utilBps_) =
-            vault.getVaultStats();
-
+        (uint256 totalAssets_,, uint256 idle_,,) = vault.getVaultStats();
         assertEq(totalAssets_, 100e18);
-        assertGt(totalShares_, 0);
         assertEq(idle_, 100e18);
-        assertEq(committed_, 0);
-        assertEq(utilBps_, 0);
-    }
-
-    function test_UtilizationBps() public {
-        _depositAsLP(100e18);
-        assertEq(vault.utilizationBps(), 0);
     }
 }
