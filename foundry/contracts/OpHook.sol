@@ -20,7 +20,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { IYieldVault } from "./interfaces/IYieldVault.sol";
+import { IHookVault } from "./interfaces/IHookVault.sol";
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 
 using SafeERC20 for IERC20;
@@ -33,7 +33,7 @@ struct PoolInfo {
     address optionToken;
     address cashToken;
     bool optionIsOne;
-    IYieldVault vault;
+    IHookVault vault;
 }
 
 /// @title OpHook
@@ -107,7 +107,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
         PoolInfo memory info = PoolInfo({
-            optionToken: optionToken, cashToken: cashToken, optionIsOne: optionIsOne, vault: IYieldVault(vault_)
+            optionToken: optionToken, cashToken: cashToken, optionIsOne: optionIsOne, vault: IHookVault(vault_)
         });
 
         bytes32 poolId = _toId(poolKey);

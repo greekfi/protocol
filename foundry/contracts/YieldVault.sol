@@ -19,6 +19,7 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 import { IYieldVault } from "./interfaces/IYieldVault.sol";
+import { IHookVault } from "./interfaces/IHookVault.sol";
 import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
 using SafeERC20 for IERC20;
@@ -83,6 +84,7 @@ contract YieldVault is
     ReentrancyGuardTransient,
     Pausable,
     IYieldVault,
+    IHookVault,
     IERC7540Redeem,
     IERC7540Operator,
     IERC1271
@@ -434,7 +436,7 @@ contract YieldVault is
         }
     }
 
-    /// @inheritdoc IYieldVault
+    /// @inheritdoc IHookVault
     function getQuote(address option, uint256 amount, bool cashForOption)
         external
         view
@@ -470,7 +472,7 @@ contract YieldVault is
 
     // ============ HOOK INTERACTION: MINT AND DELIVER ============
 
-    /// @inheritdoc IYieldVault
+    /// @inheritdoc IHookVault
     function mintAndDeliver(address option, uint256 amount, address buyer)
         external
         override
@@ -501,7 +503,7 @@ contract YieldVault is
 
     // ============ HOOK INTERACTION: PAIR REDEEM ============
 
-    /// @inheritdoc IYieldVault
+    /// @inheritdoc IHookVault
     function pairRedeem(address option, uint256 amount) external override onlyHook nonReentrant whenNotPaused {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
@@ -511,7 +513,7 @@ contract YieldVault is
 
     // ============ HOOK INTERACTION: TRANSFER CASH ============
 
-    /// @inheritdoc IYieldVault
+    /// @inheritdoc IHookVault
     function transferCash(address token, uint256 amount, address to) external override onlyHook nonReentrant {
         if (amount == 0) revert ZeroAmount();
         uint256 balance = IERC20(token).balanceOf(address(this));

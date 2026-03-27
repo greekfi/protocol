@@ -79,37 +79,6 @@ interface IYieldVault {
     /// @notice Batch fulfill multiple pending redeem requests
     function fulfillRedeems(address[] calldata controllers) external;
 
-    // ============ HOOK INTERACTION ============
-
-    /// @notice Get a price quote for an option swap
-    /// @param option Option contract address
-    /// @param amount Input amount (cash if cashForOption=true, options if false)
-    /// @param cashForOption True = buying options with cash, false = selling options for cash
-    /// @return outputAmount Amount of output tokens
-    /// @return unitPrice Price per option in cash-token units
-    function getQuote(address option, uint256 amount, bool cashForOption)
-        external
-        view
-        returns (uint256 outputAmount, uint256 unitPrice);
-
-    /// @notice Mint options using vault collateral and deliver to buyer
-    /// @param option Option contract address (must be whitelisted)
-    /// @param amount Collateral amount to commit
-    /// @param buyer Recipient of the Option tokens
-    /// @return delivered Number of Option tokens delivered
-    function mintAndDeliver(address option, uint256 amount, address buyer) external returns (uint256 delivered);
-
-    /// @notice Pair-redeem matched Option + Redemption tokens
-    /// @param option Option contract address
-    /// @param amount Number of option tokens to pair-redeem
-    function pairRedeem(address option, uint256 amount) external;
-
-    /// @notice Transfer cash tokens from vault to a recipient (for buyback settlements)
-    /// @param token Cash token address
-    /// @param amount Amount to transfer
-    /// @param to Recipient
-    function transferCash(address token, uint256 amount, address to) external;
-
     // ============ PERMISSIONLESS ============
 
     /// @notice Roll expired options into new ones per strategy config. First caller gets bounty.
