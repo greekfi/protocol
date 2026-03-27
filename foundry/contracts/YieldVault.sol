@@ -10,12 +10,16 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
-import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
+import { IYieldVault } from "./interfaces/IYieldVault.sol";
+import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
 using SafeERC20 for IERC20;
 
@@ -66,12 +70,13 @@ interface IUniswapV3PoolOracle {
         returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
 }
 
-/// @title StrategyVault
+/// @title YieldVault
 /// @notice ERC4626 vault that writes covered options with integrated pricing and strategy.
 /// @dev Combines LP deposits, Black-Scholes pricing (via external contract), and option lifecycle.
 ///      Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
 ///      The hook sells options → vault mints & delivers → options expire → settlement returns collateral.
-contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IStrategyVault {
+///      Extends ERC4626 with ERC-7540 async redeems and EIP-1271 contract signatures for Bebop settlement.
+contract YieldVault is ERC4626, ERC165, Ownable, ReentrancyGuardTransient, Pausable, IYieldVault, IERC7540Redeem, IERC7540Operator, IERC1271 {
     using Math for uint256;
 
     // ============ PRICING ============
@@ -98,22 +103,42 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     mapping(address => bool) public override authorizedHooks;
 
+    // ============ BEBOP INTEGRATION ============
+
+    address public bebopApprovalTarget;
+
     // ============ COMMITMENT CAP ============
 
     uint256 public maxCommitmentBps;
 
     // ============ BOOKKEEPING ============
 
-    uint256 public override totalCommitted;
-    mapping(address => uint256) public override committed;
-    mapping(address => uint256) public trackedRedemptionBalance;
+    address[] public activeOptions;
     mapping(address => bool) public override whitelistedOptions;
     uint256 public totalPremiumsCollected;
+
+    // ============ ERC-7540: ASYNC REDEEM ============
+
+    mapping(address => uint256) private _pendingRedeemShares;
+    mapping(address => uint256) private _claimableRedeemShares;
+    mapping(address => uint256) private _claimableRedeemAssets;
+    uint256 private _totalPendingShares;
+    uint256 private _totalClaimableShares;
+    uint256 private _totalClaimableAssets;
+
+    // ============ ERC-7540: OPERATORS ============
+
+    mapping(address => mapping(address => bool)) private _operators;
 
     // ============ MODIFIERS ============
 
     modifier onlyHook() {
         if (!authorizedHooks[msg.sender]) revert OnlyHook();
+        _;
+    }
+
+    modifier onlyOperatorOrOwner() {
+        if (msg.sender != owner() && !_operators[owner()][msg.sender]) revert Unauthorized();
         _;
     }
 
@@ -162,20 +187,208 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         return 3;
     }
 
+    /// @notice Total collateral committed across all active options (computed from redemption balances)
+    function totalCommitted() public view override returns (uint256 total) {
+        for (uint256 i = 0; i < activeOptions.length; i++) {
+            total += IERC20(IOption(activeOptions[i]).redemption()).balanceOf(address(this));
+        }
+    }
+
+    /// @notice Collateral committed to a specific option
+    function committed(address option) public view override returns (uint256) {
+        return IERC20(IOption(option).redemption()).balanceOf(address(this));
+    }
+
+    /// @notice Total assets actively backing shares (excludes assets earmarked for claimable redeems)
     function totalAssets() public view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + totalCommitted;
+        return IERC20(asset()).balanceOf(address(this)) + totalCommitted() - _totalClaimableAssets;
     }
 
-    function maxWithdraw(address owner_) public view override returns (uint256) {
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
-        uint256 ownerAssets = _convertToAssets(balanceOf(owner_), Math.Rounding.Floor);
-        return Math.min(idle, ownerAssets);
+    /// @dev Active supply excludes claimable shares (locked in vault, awaiting claim)
+    function _activeSupply() internal view returns (uint256) {
+        return totalSupply() - _totalClaimableShares;
     }
 
-    function maxRedeem(address owner_) public view override returns (uint256) {
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
-        uint256 idleShares = _convertToShares(idle, Math.Rounding.Floor);
-        return Math.min(idleShares, balanceOf(owner_));
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256) {
+        return assets.mulDiv(_activeSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
+        return shares.mulDiv(totalAssets() + 1, _activeSupply() + 10 ** _decimalsOffset(), rounding);
+    }
+
+    /// @dev Sync deposits remain available. maxDeposit is uncapped (minus paused check).
+    function maxDeposit(address) public view override returns (uint256) {
+        return paused() ? 0 : type(uint256).max;
+    }
+
+    function maxMint(address) public view override returns (uint256) {
+        return paused() ? 0 : type(uint256).max;
+    }
+
+    /// @notice Withdraw is disabled per ERC-7540 — use requestRedeem + redeem instead
+    function maxWithdraw(address) public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @notice Returns claimable shares (fulfilled redeem requests ready to claim)
+    function maxRedeem(address controller) public view override returns (uint256) {
+        return _claimableRedeemShares[controller];
+    }
+
+    /// @dev Preview functions revert for async redeems per ERC-7540
+    function previewRedeem(uint256) public pure override returns (uint256) {
+        revert AsyncOnly();
+    }
+
+    function previewWithdraw(uint256) public pure override returns (uint256) {
+        revert AsyncOnly();
+    }
+
+    /// @notice Disabled — use requestRedeem + redeem
+    function withdraw(uint256, address, address) public pure override returns (uint256) {
+        revert WithdrawDisabled();
+    }
+
+    /// @notice Claim assets from a fulfilled redeem request (ERC-7540 claim function)
+    /// @param shares Number of claimable shares to claim
+    /// @param receiver Address to receive the assets
+    /// @param controller Address that controls the claim (was `owner` in ERC-4626)
+    function redeem(uint256 shares, address receiver, address controller)
+        public
+        override
+        nonReentrant
+        returns (uint256 assets)
+    {
+        if (msg.sender != controller && !_operators[controller][msg.sender]) revert Unauthorized();
+        if (shares == 0) revert ZeroAmount();
+
+        uint256 claimableShares = _claimableRedeemShares[controller];
+        if (claimableShares < shares) revert InsufficientClaimable();
+
+        // Pro-rata assets for partial claims
+        assets = Math.mulDiv(_claimableRedeemAssets[controller], shares, claimableShares, Math.Rounding.Floor);
+
+        _claimableRedeemShares[controller] -= shares;
+        _claimableRedeemAssets[controller] -= assets;
+        _totalClaimableShares -= shares;
+        _totalClaimableAssets -= assets;
+
+        _burn(address(this), shares);
+        IERC20(asset()).safeTransfer(receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, controller, assets, shares);
+    }
+
+    // ============ ERC-7540: ASYNC REDEEM ============
+
+    /// @inheritdoc IERC7540Redeem
+    function requestRedeem(uint256 shares, address controller, address owner)
+        external
+        override
+        nonReentrant
+        returns (uint256)
+    {
+        if (msg.sender != owner && !_operators[owner][msg.sender]) revert Unauthorized();
+        if (shares == 0) revert ZeroAmount();
+
+        _transfer(owner, address(this), shares);
+        _pendingRedeemShares[controller] += shares;
+        _totalPendingShares += shares;
+
+        emit RedeemRequest(controller, owner, 0, msg.sender, shares);
+        return 0;
+    }
+
+    /// @inheritdoc IYieldVault
+    function fulfillRedeem(address controller) public override onlyOwner nonReentrant {
+        uint256 shares = _pendingRedeemShares[controller];
+        if (shares == 0) revert ZeroAmount();
+
+        uint256 assets = _convertToAssets(shares, Math.Rounding.Floor);
+        uint256 availableIdle = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
+        if (availableIdle < assets) revert InsufficientIdle();
+
+        _pendingRedeemShares[controller] = 0;
+        _totalPendingShares -= shares;
+
+        _claimableRedeemShares[controller] += shares;
+        _claimableRedeemAssets[controller] += assets;
+        _totalClaimableShares += shares;
+        _totalClaimableAssets += assets;
+    }
+
+    /// @inheritdoc IYieldVault
+    function fulfillRedeems(address[] calldata controllers) external override onlyOwner {
+        for (uint256 i = 0; i < controllers.length; i++) {
+            fulfillRedeem(controllers[i]);
+        }
+    }
+
+    /// @inheritdoc IERC7540Redeem
+    function pendingRedeemRequest(uint256, address controller) external view override returns (uint256) {
+        return _pendingRedeemShares[controller];
+    }
+
+    /// @inheritdoc IERC7540Redeem
+    function claimableRedeemRequest(uint256, address controller) external view override returns (uint256) {
+        return _claimableRedeemShares[controller];
+    }
+
+    // ============ ERC-7540: OPERATORS ============
+
+    /// @inheritdoc IERC7540Operator
+    function setOperator(address operator, bool approved) external override returns (bool) {
+        if (operator == msg.sender) revert InvalidAddress();
+        _operators[msg.sender][operator] = approved;
+        emit OperatorSet(msg.sender, operator, approved);
+        return true;
+    }
+
+    /// @inheritdoc IERC7540Operator
+    function isOperator(address controller, address operator) external view override returns (bool) {
+        return _operators[controller][operator];
+    }
+
+    // ============ ERC-165 ============
+
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
+            || interfaceId == type(IERC1271).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    // ============ OPERATOR ============
+
+    /// @inheritdoc IYieldVault
+    function burn(address option, uint256 amount) external override onlyOperatorOrOwner nonReentrant {
+        if (!whitelistedOptions[option]) revert NotWhitelisted();
+        if (amount == 0) revert ZeroAmount();
+        IOption(option).redeem(amount);
+        emit OptionsBurned(option, amount);
+    }
+
+    /// @notice Enable auto-mint/redeem on the factory for this vault
+    function enableAutoMintRedeem(bool enabled) external onlyOwner {
+        factory.enableAutoMintRedeem(enabled);
+    }
+
+    function _activateOption(address option) internal {
+        if (!whitelistedOptions[option]) {
+            whitelistedOptions[option] = true;
+            activeOptions.push(option);
+        }
+    }
+
+    // ============ EIP-1271: CONTRACT SIGNATURE VALIDATION ============
+
+    /// @notice Validates signatures for Bebop settlement — allows authorized operators to sign on behalf of vault
+    /// @inheritdoc IERC1271
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns (bytes4) {
+        address signer = ECDSA.recover(hash, signature);
+        if (signer == owner() || _operators[owner()][signer]) {
+            return 0x1626ba7e; // IERC1271.isValidSignature.selector
+        }
+        return 0xffffffff;
     }
 
     // ============ PRICING ============
@@ -192,13 +405,10 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         int24 meanTick = int24((tickCumulatives[1] - tickCumulatives[0]) / int56(int32(twapWindow)));
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(meanTick);
 
-        // Convert sqrtPriceX96 to price (token0 in terms of token1)
-        // Use shifted multiplication to avoid overflow
         uint256 sqrtPriceX32 = uint256(sqrtPriceX96) >> 64;
         uint256 priceX64 = sqrtPriceX32 * sqrtPriceX32;
         price_ = (priceX64 * 1e18) >> 64;
 
-        // Decimal adjustment
         uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
         uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
         if (decimals1 > decimals0) {
@@ -207,7 +417,6 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
             price_ = price_ * (10 ** (decimals0 - decimals1));
         }
 
-        // If collateral is token1, invert (price was token0-in-token1)
         bool collateralIsToken1 = pricePool.token1() == asset();
         if (collateralIsToken1) {
             require(price_ > 0, "Price cannot be zero for inverse");
@@ -215,7 +424,7 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         }
     }
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
     function getQuote(address option, uint256 amount, bool cashForOption)
         external
         view
@@ -230,38 +439,28 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
             spot, opt.strike(), timeToExpiry, volatility, riskFreeRate, opt.isPut(), skew, kurtosis
         );
 
-        // Apply spread: ask = mid * (10000 + halfSpread) / 10000
-        //               bid = mid * (10000 - halfSpread) / 10000
         uint256 halfSpread = spreadBps / 2;
         uint256 bsPrice;
         if (cashForOption) {
-            // Buying options → ask (higher price, fewer options per cash)
             bsPrice = Math.mulDiv(midPrice, 10000 + halfSpread, 10000);
         } else {
-            // Selling options → bid (lower price, less cash per option)
             bsPrice = Math.mulDiv(midPrice, 10000 - halfSpread, 10000);
         }
 
-        // bsPrice is in 1e18 "dollar" terms
-        // Scale factor converts between 18-decimal option amounts and cash-decimal amounts
-        // scaleFactor = 10^(36 - cashDecimals)
         uint256 scaleFactor = 10 ** (36 - uint256(_cashDecimals));
 
         if (cashForOption) {
-            // amount = cash input (cash decimals), outputAmount = options out (18 decimals)
             outputAmount = Math.mulDiv(amount, scaleFactor, bsPrice);
         } else {
-            // amount = options input (18 decimals), outputAmount = cash out (cash decimals)
             outputAmount = Math.mulDiv(amount, bsPrice, scaleFactor);
         }
 
-        // unitPrice = price per option in cash-token units (spread-adjusted)
         unitPrice = Math.mulDiv(bsPrice, 10 ** uint256(_cashDecimals), 1e18);
     }
 
     // ============ HOOK INTERACTION: MINT AND DELIVER ============
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
     function mintAndDeliver(address option, uint256 amount, address buyer)
         external
         override
@@ -274,59 +473,35 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         if (amount == 0) revert ZeroAmount();
         if (IOption(option).collateral() != asset()) revert CollateralMismatch();
 
-        // Check commitment cap
         uint256 total = totalAssets();
-        if (totalCommitted + amount > (total * maxCommitmentBps) / 10000) revert ExceedsCommitmentCap();
+        if (totalCommitted() + amount > (total * maxCommitmentBps) / 10000) revert ExceedsCommitmentCap();
 
-        // Check idle collateral
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
+        uint256 idle = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
         if (amount > idle) revert InsufficientIdle();
 
-        // Snapshot option balance BEFORE mint (fix: only deliver the delta)
         uint256 optBefore = IERC20(option).balanceOf(address(this));
 
-        // Mint: pulls collateral from vault → Redemption contract
         IOption(option).mint(address(this), amount);
 
-        // Deliver only the newly minted option tokens
         delivered = IERC20(option).balanceOf(address(this)) - optBefore;
         IERC20(option).safeTransfer(buyer, delivered);
-
-        // Bookkeeping: track committed via Redemption token delta (fee-adjusted)
-        address redemption = IOption(option).redemption();
-        uint256 newRedBalance = IERC20(redemption).balanceOf(address(this));
-        uint256 redMinted = newRedBalance - trackedRedemptionBalance[option];
-        committed[option] += redMinted;
-        totalCommitted += redMinted;
-        trackedRedemptionBalance[option] = newRedBalance;
 
         emit MintAndDeliver(option, buyer, amount, delivered);
     }
 
     // ============ HOOK INTERACTION: PAIR REDEEM ============
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
     function pairRedeem(address option, uint256 amount) external override onlyHook nonReentrant whenNotPaused {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
-
-        address redemption = IOption(option).redemption();
-        uint256 redBefore = IERC20(redemption).balanceOf(address(this));
-
         IOption(option).redeem(amount);
-
-        uint256 redAfter = IERC20(redemption).balanceOf(address(this));
-        uint256 redeemed = redBefore - redAfter;
-        committed[option] -= redeemed;
-        totalCommitted -= redeemed;
-        trackedRedemptionBalance[option] = redAfter;
-
         emit PairRedeemed(option, amount);
     }
 
     // ============ HOOK INTERACTION: TRANSFER CASH ============
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
     function transferCash(address token, uint256 amount, address to) external override onlyHook nonReentrant {
         if (amount == 0) revert ZeroAmount();
         uint256 balance = IERC20(token).balanceOf(address(this));
@@ -336,27 +511,16 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ SETTLEMENT ============
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
+    /// @dev With live commitment tracking, this is just a no-op event emitter for off-chain indexing.
     function handleSettlement(address option) external override nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
-
-        address redemption = IOption(option).redemption();
-        uint256 previous = trackedRedemptionBalance[option];
-        uint256 current = IERC20(redemption).balanceOf(address(this));
-
-        uint256 settled = previous - current;
-        if (settled == 0) revert NothingToSettle();
-
-        committed[option] -= settled;
-        totalCommitted -= settled;
-        trackedRedemptionBalance[option] = current;
-
-        emit SettlementReconciled(option, settled);
+        emit SettlementReconciled(option, committed(option));
     }
 
     // ============ STRATEGY: ROLLING ============
 
-    /// @inheritdoc IStrategyVault
+    /// @inheritdoc IYieldVault
     function rollOptions(address expiredOption) external override nonReentrant returns (address[] memory newOptions) {
         if (!whitelistedOptions[expiredOption]) revert NotWhitelisted();
         if (block.timestamp < IOption(expiredOption).expirationDate()) revert OptionNotExpired();
@@ -372,23 +536,19 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         for (uint256 i = 0; i < strikeConfigs.length; i++) {
             StrikeConfig memory cfg = strikeConfigs[i];
 
-            // Compute strike from spot + offset
             uint96 newStrike = uint96(Math.mulDiv(spot, uint256(cfg.strikeOffsetBps), 10000));
             uint40 newExpiry = uint40(block.timestamp + uint256(cfg.duration));
 
-            // Create option via factory
             address newOption = factory.createOption(collateral_, cashToken, newExpiry, newStrike, cfg.isPut);
 
-            // Auto-whitelist
-            whitelistedOptions[newOption] = true;
+            _activateOption(newOption);
             newOptions[i] = newOption;
 
             emit OptionWhitelisted(newOption, true);
         }
 
-        // Pay bounty to caller
         if (rollBounty > 0) {
-            uint256 idle = IERC20(asset()).balanceOf(address(this));
+            uint256 idle = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
             uint256 bounty = rollBounty > idle ? idle : rollBounty;
             if (bounty > 0) {
                 IERC20(asset()).safeTransfer(msg.sender, bounty);
@@ -417,7 +577,6 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         (bool success,) = router.call(swapData);
         if (!success) revert SwapFailed();
 
-        // Reset approval
         IERC20(considerationToken).forceApprove(router, 0);
 
         uint256 collGained = IERC20(asset()).balanceOf(address(this)) - collBefore;
@@ -450,7 +609,11 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     }
 
     function whitelistOption(address option, bool allowed) external onlyOwner {
-        whitelistedOptions[option] = allowed;
+        if (allowed) {
+            _activateOption(option); // pushes to activeOptions + sets whitelistedOptions
+        } else {
+            whitelistedOptions[option] = false;
+        }
         emit OptionWhitelisted(option, allowed);
     }
 
@@ -478,7 +641,7 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     }
 
     function setSpreadBps(uint256 bps) external onlyOwner {
-        if (bps > 5000) revert InvalidBps(); // max 50% spread
+        if (bps > 5000) revert InvalidBps();
         uint256 old = spreadBps;
         spreadBps = bps;
         emit SpreadUpdated(old, bps);
@@ -513,9 +676,13 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     /// @notice Manually create an option via factory
     function createOption(uint96 strike, uint40 expiration, bool isPut) external onlyOwner returns (address) {
         address opt = factory.createOption(asset(), cashToken, expiration, strike, isPut);
-        whitelistedOptions[opt] = true;
+        _activateOption(opt);
         emit OptionWhitelisted(opt, true);
         return opt;
+    }
+
+    function setBebopApprovalTarget(address target) external override onlyOwner {
+        bebopApprovalTarget = target;
     }
 
     function setBlackScholes(address bs) external onlyOwner {
@@ -539,13 +706,13 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     // ============ VIEW ============
 
     function idleCollateral() external view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this));
+        return IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
     }
 
     function utilizationBps() external view override returns (uint256) {
         uint256 total = totalAssets();
         if (total == 0) return 0;
-        return (totalCommitted * 10000) / total;
+        return (totalCommitted() * 10000) / total;
     }
 
     function getVaultStats()
@@ -562,10 +729,10 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         )
     {
         totalAssets_ = totalAssets();
-        totalShares_ = totalSupply();
-        idle_ = IERC20(asset()).balanceOf(address(this));
-        committed_ = totalCommitted;
-        utilizationBps_ = totalAssets_ > 0 ? (totalCommitted * 10000) / totalAssets_ : 0;
+        totalShares_ = _activeSupply();
+        idle_ = IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
+        committed_ = totalCommitted();
+        utilizationBps_ = totalAssets_ > 0 ? (committed_ * 10000) / totalAssets_ : 0;
         totalPremiums_ = totalPremiumsCollected;
     }
 
@@ -575,9 +742,9 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         override
         returns (uint256 committed_, uint256 redemptionBalance_, bool expired_)
     {
-        committed_ = committed[option];
         address redemption = IOption(option).redemption();
-        redemptionBalance_ = IERC20(redemption).balanceOf(address(this));
+        committed_ = IERC20(redemption).balanceOf(address(this));
+        redemptionBalance_ = committed_;
         expired_ = block.timestamp >= IOption(option).expirationDate();
     }
 

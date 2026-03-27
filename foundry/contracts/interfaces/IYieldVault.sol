@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-/// @title IStrategyVault
+/// @title IYieldVault
 /// @notice Interface for strategy vaults that combine LP deposits, option pricing, and strategy.
 ///         The OpHook programs against this interface.
-interface IStrategyVault {
+interface IYieldVault {
     // ============ STRUCTS ============
 
     /// @notice Defines an option strike to auto-create on roll
@@ -36,6 +36,7 @@ interface IStrategyVault {
     event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
     event SkewUpdated(int256 oldSkew, int256 newSkew);
     event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
+    event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ ERRORS ============
 
@@ -55,6 +56,28 @@ interface IStrategyVault {
     error CollateralMismatch();
     error InsufficientCash();
     error NoStrategyConfigured();
+    error Unauthorized();
+    error InsufficientClaimable();
+    error WithdrawDisabled();
+    error AsyncOnly();
+    error BebopNotConfigured();
+
+    // ============ OPERATOR ============
+
+    /// @notice Pair-redeem option + redemption tokens to recover collateral
+    function burn(address option, uint256 amount) external;
+
+    /// @notice Set the Bebop approval target (BalanceManager) for option token transfers
+    function setBebopApprovalTarget(address target) external;
+
+    // ============ ASYNC REDEEM (ERC-7540) ============
+
+    /// @notice Fulfill a pending redeem request, snapshotting the asset value
+    /// @param controller The controller whose request to fulfill
+    function fulfillRedeem(address controller) external;
+
+    /// @notice Batch fulfill multiple pending redeem requests
+    function fulfillRedeems(address[] calldata controllers) external;
 
     // ============ HOOK INTERACTION ============
 

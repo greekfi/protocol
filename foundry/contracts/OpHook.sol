@@ -20,7 +20,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
+import { IYieldVault } from "./interfaces/IYieldVault.sol";
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 
 using SafeERC20 for IERC20;
@@ -33,11 +33,11 @@ struct PoolInfo {
     address optionToken;
     address cashToken;
     bool optionIsOne;
-    IStrategyVault vault;
+    IYieldVault vault;
 }
 
 /// @title OpHook
-/// @notice Thin Uniswap v4 hook that routes swaps to StrategyVaults.
+/// @notice Thin Uniswap v4 hook that routes swaps to YieldVaults.
 ///         No pricing logic — delegates everything to the vault.
 contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     using PoolIdLibrary for PoolKey;
@@ -107,7 +107,7 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         poolManager.initialize(poolKey, SQRT_PRICE_X96);
 
         PoolInfo memory info = PoolInfo({
-            optionToken: optionToken, cashToken: cashToken, optionIsOne: optionIsOne, vault: IStrategyVault(vault_)
+            optionToken: optionToken, cashToken: cashToken, optionIsOne: optionIsOne, vault: IYieldVault(vault_)
         });
 
         bytes32 poolId = _toId(poolKey);
