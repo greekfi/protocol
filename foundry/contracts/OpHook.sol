@@ -20,10 +20,19 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { IHookVault } from "./interfaces/IHookVault.sol";
 import { IPermit2 } from "./interfaces/IPermit2.sol";
 
 using SafeERC20 for IERC20;
+
+interface IHookVault {
+    function getQuote(address option, uint256 amount, bool cashForOption)
+        external
+        view
+        returns (uint256 outputAmount, uint256 unitPrice);
+    function mintAndDeliver(address option, uint256 amount, address buyer) external returns (uint256 delivered);
+    function pairRedeem(address option, uint256 amount) external;
+    function transferCash(address token, uint256 amount, address to) external;
+}
 
 uint160 constant SQRT_PRICE_X96 = 1 << 96;
 int24 constant TICK_SPACING = type(int16).max;
