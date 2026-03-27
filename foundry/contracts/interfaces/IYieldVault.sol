@@ -2,65 +2,23 @@
 pragma solidity ^0.8.33;
 
 /// @title IYieldVault
-/// @notice Interface for strategy vaults that combine LP deposits, option pricing, and strategy.
-///         The OpHook programs against this interface.
+/// @notice Interface for the yield vault — ERC4626 + ERC-7540 async redeems + EIP-1271 Bebop signing.
 interface IYieldVault {
-    // ============ STRUCTS ============
-
-    /// @notice Defines an option strike to auto-create on roll
-    /// @param strikeOffsetBps Strike relative to spot (10000 = ATM, 11000 = 10% OTM call, 9000 = 10% ITM)
-    /// @param isPut True for put, false for call
-    /// @param duration Seconds until expiry for newly created options
-    struct StrikeConfig {
-        uint16 strikeOffsetBps;
-        bool isPut;
-        uint40 duration;
-    }
-
     // ============ EVENTS ============
 
-    event MintAndDeliver(
-        address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered
-    );
-    event PairRedeemed(address indexed option, uint256 amount);
-    event SettlementReconciled(address indexed option, uint256 settled);
-    event ConsiderationSwapped(address indexed token, uint256 considerationIn, uint256 collateralOut);
-    event HookUpdated(address indexed hook, bool authorized);
     event OptionWhitelisted(address indexed option, bool allowed);
-    event MaxCommitmentUpdated(uint256 oldBps, uint256 newBps);
-    event OptionsRolled(address indexed expiredOption, address[] newOptions, address indexed caller, uint256 bounty);
-    event StrategyUpdated();
-    event VolatilityUpdated(uint256 oldVol, uint256 newVol);
-    event RiskFreeRateUpdated(uint256 oldRate, uint256 newRate);
-    event RollBountyUpdated(uint256 oldBounty, uint256 newBounty);
-    event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
-    event SkewUpdated(int256 oldSkew, int256 newSkew);
-    event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
     event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ ERRORS ============
 
-    error OnlyHook();
     error NotWhitelisted();
-    error ExceedsCommitmentCap();
     error InsufficientIdle();
-    error NothingToSettle();
-    error NoConsiderationToSwap();
-    error SwapFailed();
-    error NoGainFromSwap();
-    error InvalidBps();
     error InvalidAddress();
     error ZeroAmount();
-    error OptionNotExpired();
-    error AlreadyRolled();
-    error CollateralMismatch();
-    error InsufficientCash();
-    error NoStrategyConfigured();
     error Unauthorized();
     error InsufficientClaimable();
     error WithdrawDisabled();
     error AsyncOnly();
-    error BebopNotConfigured();
 
     // ============ OPERATOR ============
 
@@ -73,39 +31,18 @@ interface IYieldVault {
     // ============ ASYNC REDEEM (ERC-7540) ============
 
     /// @notice Fulfill a pending redeem request, snapshotting the asset value
-    /// @param controller The controller whose request to fulfill
     function fulfillRedeem(address controller) external;
 
     /// @notice Batch fulfill multiple pending redeem requests
     function fulfillRedeems(address[] calldata controllers) external;
 
-    // ============ PERMISSIONLESS ============
-
-    /// @notice Roll expired options into new ones per strategy config. First caller gets bounty.
-    /// @param expiredOption The expired option to roll from
-    /// @return newOptions Array of newly created option addresses
-    function rollOptions(address expiredOption) external returns (address[] memory newOptions);
-
-    /// @notice Reconcile bookkeeping after sweep() on the Redemption contract
-    /// @param option Option whose Redemption was swept
-    function handleSettlement(address option) external;
-
     // ============ VIEW ============
 
-    function getCollateralPrice() external view returns (uint256);
-    function cashToken() external view returns (address);
-    function volatility() external view returns (uint256);
-    function riskFreeRate() external view returns (uint256);
     function idleCollateral() external view returns (uint256);
     function utilizationBps() external view returns (uint256);
     function totalCommitted() external view returns (uint256);
     function committed(address option) external view returns (uint256);
     function whitelistedOptions(address option) external view returns (bool);
-    function authorizedHooks(address hook) external view returns (bool);
-    function rollBounty() external view returns (uint256);
-    function spreadBps() external view returns (uint256);
-    function skew() external view returns (int256);
-    function kurtosis() external view returns (int256);
 
     function getVaultStats()
         external
@@ -115,8 +52,7 @@ interface IYieldVault {
             uint256 totalShares_,
             uint256 idle_,
             uint256 committed_,
-            uint256 utilizationBps_,
-            uint256 totalPremiums_
+            uint256 utilizationBps_
         );
 
     function getPositionInfo(address option)
