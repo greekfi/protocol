@@ -14,6 +14,7 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
+import { IRedemption } from "./interfaces/IRedemption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
@@ -41,7 +42,6 @@ contract YieldVault is
     error InvalidAddress();
     error ZeroAmount();
     error Unauthorized();
-    error NotWhitelisted();
     error InsufficientIdle();
     error InsufficientClaimable();
     error WithdrawDisabled();
@@ -49,14 +49,14 @@ contract YieldVault is
 
     // ============ EVENTS ============
 
-    event OptionWhitelisted(address indexed option, bool allowed);
+    event OptionAdded(address indexed option);
+    event OptionRemoved(address indexed option);
     event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ STATE ============
 
     IOptionFactory public factory;
     address[] public activeOptions;
-    mapping(address => bool) public whitelistedOptions;
 
     // ============ ASYNC REDEEM STATE ============
 
@@ -247,18 +247,41 @@ contract YieldVault is
 
     // ============ OPERATOR ACTIONS ============
 
-    /// @notice Pair-redeem option + redemption tokens held by vault to recover collateral
+    /// @notice Execute a call from the vault (e.g. BebopSettlement.swapSingle for RFQ-T)
+    function execute(address target, bytes calldata data) external onlyOperatorOrOwner returns (bytes memory) {
+        (bool ok, bytes memory result) = target.call(data);
+        if (!ok) {
+            assembly { revert(add(result, 32), mload(result)) }
+        }
+        return result;
+    }
+
+    /// @notice Pair-redeem option + redemption tokens held by vault to recover collateral (pre-expiry)
     function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
-        if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
         IOption(option).redeem(amount);
         emit OptionsBurned(option, amount);
     }
 
-    /// @notice Remove an option from the whitelist (operator or owner)
+    /// @notice Redeem expired Redemption tokens to recover collateral (post-expiry)
+    function redeemExpired(address option) external onlyOperatorOrOwner {
+        address r = IOption(option).redemption();
+        uint256 balance = IERC20(r).balanceOf(address(this));
+        if (balance == 0) revert ZeroAmount();
+        IRedemption(r).redeem(address(this), balance);
+    }
+
+    /// @notice Remove an option from active tracking (operator or owner)
     function removeOption(address option) external onlyOperatorOrOwner {
-        whitelistedOptions[option] = false;
-        emit OptionWhitelisted(option, false);
+        uint256 len = activeOptions.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (activeOptions[i] == option) {
+                activeOptions[i] = activeOptions[len - 1];
+                activeOptions.pop();
+                emit OptionRemoved(option);
+                return;
+            }
+        }
     }
 
     // ============ EIP-1271: CONTRACT SIGNATURE ============
@@ -292,15 +315,19 @@ contract YieldVault is
         factory.enableAutoMintRedeem(enabled);
     }
 
-    /// @notice Whitelist an option and approve it for a settlement spender (e.g. Permit2, BalanceManager)
+    /// @notice Approve any token for a spender (e.g. collateral for Permit2 so vault can buy options)
+    function approveToken(address token, address spender, uint256 amount) external onlyOwner {
+        IERC20(token).forceApprove(spender, amount);
+    }
+
+    /// @notice Add an option and approve it for a settlement spender (e.g. Permit2, BalanceManager)
     /// @param option Option contract address
     /// @param spender Settlement contract to approve for pulling option tokens (address(0) to skip approval)
-    function whitelistOption(address option, address spender) external onlyOwner {
+    function addOption(address option, address spender) external onlyOwner {
         _activateOption(option);
         if (spender != address(0)) {
             IERC20(option).forceApprove(spender, type(uint256).max);
         }
-        emit OptionWhitelisted(option, true);
     }
 
     /// @notice Remove expired/settled options from activeOptions to save gas on totalCommitted()
@@ -368,9 +395,10 @@ contract YieldVault is
     // ============ INTERNAL ============
 
     function _activateOption(address option) internal {
-        if (!whitelistedOptions[option]) {
-            whitelistedOptions[option] = true;
-            activeOptions.push(option);
+        for (uint256 i = 0; i < activeOptions.length; i++) {
+            if (activeOptions[i] == option) return;
         }
+        activeOptions.push(option);
+        emit OptionAdded(option);
     }
 }
