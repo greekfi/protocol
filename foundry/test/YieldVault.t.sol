@@ -81,6 +81,21 @@ interface IBebopBlend {
     ) external view returns (bytes32);
 }
 
+interface IBebopSettlement {
+    function swapSingle(
+        BlendSingleOrder calldata order,
+        MakerSignature calldata makerSignature,
+        uint256 filledTakerAmount
+    ) external payable;
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function hashSingleOrder(
+        BlendSingleOrder calldata order,
+        uint64 partnerId,
+        uint256 updatedMakerAmount,
+        uint256 updatedMakerNonce
+    ) external view returns (bytes32);
+}
+
 interface IPermit2Full {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
     function approve(address token, address spender, uint160 amount, uint48 expiration) external;
@@ -156,7 +171,7 @@ contract YieldVaultTest is Test {
         );
         option = Option(optionAddr);
         redemption = option.redemption();
-        vault.whitelistOption(address(option), address(0));
+        vault.addOption(address(option), address(0));
 
         shakyToken.mint(address(this), 1_000_000e18);
         shakyToken.mint(lp, 1_000_000e18);
@@ -532,6 +547,57 @@ contract YieldVaultTest is Test {
         assertGt(vault.committed(address(option)), 0, "Commitment should be tracked");
     }
 
+    // ============ BEBOP RFQ-T: swapSingle via vault.execute (no taker signature) ============
+
+    function test_BebopSwapSingle_OperatorSubmits() public {
+        _depositAsLP(100e18);
+
+        // MM signs a quote to sell USDC for options
+        uint256 makerPk = 0xB0B;
+        address maker = vm.addr(makerPk);
+        uint256 optionAmount = 10e18 - _fee(10e18);
+        uint256 cashPayment = 5e18;
+
+        // Fund MM and approve BebopSettlement
+        stableToken.mint(maker, cashPayment);
+        vm.prank(maker);
+        stableToken.approve(BEBOP_BLEND, cashPayment);
+
+        // Owner pre-approves BebopSettlement to pull option tokens from vault
+        vault.approveToken(address(option), BEBOP_BLEND, optionAmount);
+
+        // Build order: vault is taker (sells options), MM is maker (sells USDC)
+        BlendSingleOrder memory order = BlendSingleOrder({
+            expiry: block.timestamp + 1 hours,
+            taker_address: address(vault),
+            maker_address: maker,
+            maker_nonce: 1,
+            taker_token: address(option),
+            maker_token: address(stableToken),
+            taker_amount: optionAmount,
+            maker_amount: cashPayment,
+            receiver: address(vault),
+            packed_commands: 0,
+            flags: 0
+        });
+
+        // MM signs the order — only signature needed
+        bytes32 makerDigest = IBebopSettlement(BEBOP_BLEND).hashSingleOrder(order, 0, 0, 0);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(makerPk, makerDigest);
+        MakerSignature memory makerSig = MakerSignature({ signatureBytes: abi.encodePacked(r, s, v), flags: 0 });
+
+        // Operator submits via vault.execute — vault is msg.sender so swapSingle accepts it
+        vm.prank(operator);
+        vault.execute(
+            BEBOP_BLEND,
+            abi.encodeCall(IBebopSettlement.swapSingle, (order, makerSig, 0))
+        );
+
+        // Verify
+        assertEq(stableToken.balanceOf(address(vault)), cashPayment, "Vault should receive USDC");
+        assertGt(vault.committed(address(option)), 0, "Commitment should be tracked");
+    }
+
     // ============ BURN ============
 
     function test_Burn() public {
@@ -552,12 +618,12 @@ contract YieldVaultTest is Test {
 
     // ============ ADMIN ============
 
-    function test_WhitelistOption() public {
+    function test_AddOption() public {
         address opt2 = factory.createOption(
             address(shakyToken), address(stableToken), uint40(block.timestamp + 2 days), 2e18, false
         );
-        vault.whitelistOption(opt2, address(0));
-        assertTrue(vault.whitelistedOptions(opt2));
+        vault.addOption(opt2, address(0));
+        assertEq(vault.activeOptions(1), opt2);
     }
 
     function test_Pause() public {
@@ -571,5 +637,56 @@ contract YieldVaultTest is Test {
         (uint256 totalAssets_,, uint256 idle_,,) = vault.getVaultStats();
         assertEq(totalAssets_, 100e18);
         assertEq(idle_, 100e18);
+    }
+
+    // ============ REDEEM EXPIRED ============
+
+    function test_RedeemExpired() public {
+        _depositAsLP(100e18);
+        option.mint(address(vault), 10e18);
+        assertGt(vault.committed(address(option)), 0);
+
+        vm.warp(block.timestamp + 2 days);
+        vault.redeemExpired(address(option));
+        assertEq(vault.committed(address(option)), 0);
+    }
+
+    // ============ END-TO-END DEMO ============
+
+    function test_Demo_DepositSellOptionsExpireWithdrawProfit() public {
+        // 1. LP deposits 100 collateral
+        _depositAsLP(100e18);
+        uint256 shares = vault.balanceOf(lp);
+        uint256 assetsBefore = vault.totalAssets();
+
+        // 2. Mint options from vault collateral (simulates auto-mint during Bebop settlement)
+        option.mint(address(vault), 10e18);
+        uint256 optionAmount = 10e18 - _fee(10e18);
+
+        // 3. Simulate selling options: options leave vault, premium arrives in collateral token
+        vm.prank(address(vault));
+        IERC20(address(option)).transfer(address(0xBEEF), optionAmount);
+        uint256 premium = 0.5e18;
+        shakyToken.mint(address(vault), premium);
+
+        // totalAssets reflects premium (premium in collateral token adds to idle balance)
+        assertGt(vault.totalAssets(), assetsBefore);
+
+        // 4. Options expire OTM (no exercise)
+        vm.warp(block.timestamp + 2 days);
+
+        // 5. Vault recovers collateral from expired Redemption tokens
+        vault.redeemExpired(address(option));
+        assertEq(vault.committed(address(option)), 0);
+
+        // 6. LP redeems all shares via async flow
+        vm.prank(lp);
+        vault.requestRedeem(shares, lp, lp);
+        vault.fulfillRedeem(lp);
+        vm.prank(lp);
+        uint256 assetsOut = vault.redeem(shares, lp, lp);
+
+        // 7. LP got more than deposited (premium minus mint fees)
+        assertGt(assetsOut, 100e18, "LP should profit from premium");
     }
 }
