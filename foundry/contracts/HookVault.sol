@@ -102,7 +102,9 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
     // ============ EVENTS ============
 
-    event MintAndDeliver(address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered);
+    event MintAndDeliver(
+        address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered
+    );
     event PairRedeemed(address indexed option, uint256 amount);
     event SettlementReconciled(address indexed option, uint256 settled);
     event ConsiderationSwapped(address indexed token, uint256 considerationIn, uint256 collateralOut);

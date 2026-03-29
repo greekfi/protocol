@@ -39,7 +39,10 @@
       "WebFetch(domain:app.uniswap.org)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:ethskills.com)"
+      "WebFetch(domain:ethskills.com)",
+      "WebFetch(domain:docs.bebop.xyz)",
+      "Bash(cast call:*)",
+      "Bash(cast sig:*)"
     ],
     "deny": [],
     "ask": []
