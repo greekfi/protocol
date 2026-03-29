@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { OpHook } from "../contracts/OpHook.sol";
 import { Option, Redemption } from "../contracts/Option.sol";
-import { StrategyVault } from "../contracts/StrategyVault.sol";
+import { HookVault } from "../contracts/HookVault.sol";
 import { BlackScholes } from "../contracts/BlackScholes.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
@@ -100,7 +100,7 @@ abstract contract OpHookTestBase is Test {
     PoolKey public poolKey1;
     PoolKey public poolKey2;
 
-    StrategyVault public vault;
+    HookVault public vault;
 
     uint256 public networkFork;
 
@@ -149,7 +149,7 @@ abstract contract OpHookTestBase is Test {
         BlackScholes bs = new BlackScholes();
 
         // Deploy vault: collateral = WETH, pricing = BlackScholes, oracle = wethUniPool
-        vault = new StrategyVault(
+        vault = new HookVault(
             IERC20(weth_),
             "Greek WETH Vault",
             "gWETH",

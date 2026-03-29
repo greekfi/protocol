@@ -15,7 +15,6 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
-import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
 
 using SafeERC20 for IERC20;
 
@@ -66,37 +65,84 @@ interface IUniswapV3PoolOracle {
         returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
 }
 
-/// @title StrategyVault
-/// @notice ERC4626 vault that writes covered options with integrated pricing and strategy.
+/// @title HookVault
+/// @notice ERC4626 vault with integrated pricing and strategy for the Uniswap v4 hook.
 /// @dev Combines LP deposits, Black-Scholes pricing (via external contract), and option lifecycle.
 ///      Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
 ///      The hook sells options → vault mints & delivers → options expire → settlement returns collateral.
-contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IStrategyVault {
+contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     using Math for uint256;
+
+    // ============ STRUCTS ============
+
+    struct StrikeConfig {
+        uint16 strikeOffsetBps;
+        bool isPut;
+        uint40 duration;
+    }
+
+    // ============ ERRORS ============
+
+    error OnlyHook();
+    error NotWhitelisted();
+    error ExceedsCommitmentCap();
+    error InsufficientIdle();
+    error NothingToSettle();
+    error NoConsiderationToSwap();
+    error SwapFailed();
+    error NoGainFromSwap();
+    error InvalidBps();
+    error InvalidAddress();
+    error ZeroAmount();
+    error OptionNotExpired();
+    error AlreadyRolled();
+    error CollateralMismatch();
+    error InsufficientCash();
+    error NoStrategyConfigured();
+
+    // ============ EVENTS ============
+
+    event MintAndDeliver(
+        address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered
+    );
+    event PairRedeemed(address indexed option, uint256 amount);
+    event SettlementReconciled(address indexed option, uint256 settled);
+    event ConsiderationSwapped(address indexed token, uint256 considerationIn, uint256 collateralOut);
+    event HookUpdated(address indexed hook, bool authorized);
+    event OptionWhitelisted(address indexed option, bool allowed);
+    event MaxCommitmentUpdated(uint256 oldBps, uint256 newBps);
+    event OptionsRolled(address indexed expiredOption, address[] newOptions, address indexed caller, uint256 bounty);
+    event StrategyUpdated();
+    event VolatilityUpdated(uint256 oldVol, uint256 newVol);
+    event RiskFreeRateUpdated(uint256 oldRate, uint256 newRate);
+    event RollBountyUpdated(uint256 oldBounty, uint256 newBounty);
+    event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
+    event SkewUpdated(int256 oldSkew, int256 newSkew);
+    event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
 
     // ============ PRICING ============
 
     IBlackScholes public blackScholes;
     IUniswapV3PoolOracle public pricePool;
-    uint256 public override volatility;
-    uint256 public override riskFreeRate;
+    uint256 public volatility;
+    uint256 public riskFreeRate;
     uint32 public twapWindow;
     uint8 internal _cashDecimals;
 
     // ============ STRATEGY ============
 
-    address public override cashToken;
+    address public cashToken;
     IOptionFactory public factory;
     StrikeConfig[] public strikeConfigs;
-    uint256 public override rollBounty;
-    uint256 public override spreadBps; // total spread in bps (e.g. 100 = 1%, half applied each side)
-    int256 public override skew; // vol smile skew (1e18 scale, typically negative for crypto)
-    int256 public override kurtosis; // vol smile kurtosis (1e18 scale, typically positive)
+    uint256 public rollBounty;
+    uint256 public spreadBps; // total spread in bps (e.g. 100 = 1%, half applied each side)
+    int256 public skew; // vol smile skew (1e18 scale, typically negative for crypto)
+    int256 public kurtosis; // vol smile kurtosis (1e18 scale, typically positive)
     mapping(address => bool) public rolled; // tracks which expired options have been rolled
 
     // ============ HOOKS ============
 
-    mapping(address => bool) public override authorizedHooks;
+    mapping(address => bool) public authorizedHooks;
 
     // ============ COMMITMENT CAP ============
 
@@ -104,10 +150,10 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ BOOKKEEPING ============
 
-    uint256 public override totalCommitted;
-    mapping(address => uint256) public override committed;
+    uint256 public totalCommitted;
+    mapping(address => uint256) public committed;
     mapping(address => uint256) public trackedRedemptionBalance;
-    mapping(address => bool) public override whitelistedOptions;
+    mapping(address => bool) public whitelistedOptions;
     uint256 public totalPremiumsCollected;
 
     // ============ MODIFIERS ============
@@ -182,7 +228,7 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     /// @notice Get collateral price via Uniswap v3 TWAP
     /// @return price_ Price of collateral in cash terms, 18 decimals
-    function getCollateralPrice() public view override returns (uint256 price_) {
+    function getCollateralPrice() public view returns (uint256 price_) {
         uint32[] memory secondsAgos = new uint32[](2);
         secondsAgos[0] = twapWindow;
         secondsAgos[1] = 0;
@@ -215,11 +261,10 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
         }
     }
 
-    /// @inheritdoc IStrategyVault
+    /// @notice Get a price quote for an option swap
     function getQuote(address option, uint256 amount, bool cashForOption)
         external
         view
-        override
         returns (uint256 outputAmount, uint256 unitPrice)
     {
         IOption opt = IOption(option);
@@ -261,10 +306,9 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ HOOK INTERACTION: MINT AND DELIVER ============
 
-    /// @inheritdoc IStrategyVault
+    /// @notice Mint options using vault collateral and deliver to buyer
     function mintAndDeliver(address option, uint256 amount, address buyer)
         external
-        override
         onlyHook
         nonReentrant
         whenNotPaused
@@ -305,8 +349,8 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ HOOK INTERACTION: PAIR REDEEM ============
 
-    /// @inheritdoc IStrategyVault
-    function pairRedeem(address option, uint256 amount) external override onlyHook nonReentrant whenNotPaused {
+    /// @notice Pair-redeem matched Option + Redemption tokens
+    function pairRedeem(address option, uint256 amount) external onlyHook nonReentrant whenNotPaused {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
 
@@ -326,8 +370,8 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ HOOK INTERACTION: TRANSFER CASH ============
 
-    /// @inheritdoc IStrategyVault
-    function transferCash(address token, uint256 amount, address to) external override onlyHook nonReentrant {
+    /// @notice Transfer cash tokens from vault to a recipient
+    function transferCash(address token, uint256 amount, address to) external onlyHook nonReentrant {
         if (amount == 0) revert ZeroAmount();
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance < amount) revert InsufficientCash();
@@ -336,8 +380,8 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ SETTLEMENT ============
 
-    /// @inheritdoc IStrategyVault
-    function handleSettlement(address option) external override nonReentrant {
+    /// @notice Reconcile bookkeeping after sweep() on the Redemption contract
+    function handleSettlement(address option) external nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
 
         address redemption = IOption(option).redemption();
@@ -356,8 +400,8 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ STRATEGY: ROLLING ============
 
-    /// @inheritdoc IStrategyVault
-    function rollOptions(address expiredOption) external override nonReentrant returns (address[] memory newOptions) {
+    /// @notice Roll expired options into new ones per strategy config
+    function rollOptions(address expiredOption) external nonReentrant returns (address[] memory newOptions) {
         if (!whitelistedOptions[expiredOption]) revert NotWhitelisted();
         if (block.timestamp < IOption(expiredOption).expirationDate()) revert OptionNotExpired();
         if (rolled[expiredOption]) revert AlreadyRolled();
@@ -538,11 +582,11 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
 
     // ============ VIEW ============
 
-    function idleCollateral() external view override returns (uint256) {
+    function idleCollateral() external view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this));
     }
 
-    function utilizationBps() external view override returns (uint256) {
+    function utilizationBps() external view returns (uint256) {
         uint256 total = totalAssets();
         if (total == 0) return 0;
         return (totalCommitted * 10000) / total;
@@ -551,7 +595,6 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     function getVaultStats()
         external
         view
-        override
         returns (
             uint256 totalAssets_,
             uint256 totalShares_,
@@ -572,7 +615,6 @@ contract StrategyVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, 
     function getPositionInfo(address option)
         external
         view
-        override
         returns (uint256 committed_, uint256 redemptionBalance_, bool expired_)
     {
         committed_ = committed[option];
