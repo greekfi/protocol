@@ -12,6 +12,8 @@ import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { YieldVault } from "../contracts/YieldVault.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mines the address and deploys the PointsHook.sol Hook contract
 contract DeployOp is Script, ScaffoldETHDeploy {
@@ -31,6 +33,22 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         OptionFactory factory = new OptionFactory(address(short), address(long), 0.0001e18);
 
         console.log("OptionFactory deployed at:", address(factory));
+
+        YieldVault shakyVault = new YieldVault(
+            IERC20(address(shakyToken)),
+            "Greek Shaky Vault",
+            "gSHAKY",
+            address(factory)
+        );
+        console.log("Shaky Vault deployed at:", address(shakyVault));
+
+        YieldVault stableVault = new YieldVault(
+            IERC20(address(stableToken)),
+            "Greek Stable Vault",
+            "gSTABLE",
+            address(factory)
+        );
+        console.log("Stable Vault deployed at:", address(stableVault));
 
         // address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         // // Deploy OpHook using HookMiner to get correct address
