@@ -25,19 +25,18 @@ import { IPermit2 } from "./interfaces/IPermit2.sol";
 using SafeERC20 for IERC20;
 
 interface IHookVault {
-    function getQuote(address option, uint256 amount, bool cashForOption)
+    function price(address option, uint256 amount, bool isBuy)
         external
         view
         returns (uint256 outputAmount, uint256 unitPrice);
-    function mintAndDeliver(address option, uint256 amount, address buyer) external returns (uint256 delivered);
-    function pairRedeem(address option, uint256 amount) external;
-    function transferCash(address token, uint256 amount, address to) external;
+    function sellOptions(address option, address to, uint256 amount) external;
+    function recordBuyback(address option, uint256 amount) external;
+    function swap(address cashToken, bool cashToCollateral, uint256 amount) external returns (uint256 amountOut);
 }
 
 uint160 constant SQRT_PRICE_X96 = 1 << 96;
 int24 constant TICK_SPACING = type(int16).max;
 
-/// @notice Simplified pool info — vault owns pricing/strategy
 struct PoolInfo {
     address optionToken;
     address cashToken;
@@ -46,8 +45,9 @@ struct PoolInfo {
 }
 
 /// @title OpHook
-/// @notice Thin Uniswap v4 hook that routes swaps to YieldVaults.
-///         No pricing logic — delegates everything to the vault.
+/// @notice Uniswap v4 hook that swaps Option tokens from HookVaults.
+///         No pricing logic — delegates everything to the vault/propAMM style.
+///         Sell: vault auto-mints options via transferFrom. Buy: auto-redeem + v3 swap.
 contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
     using PoolIdLibrary for PoolKey;
     using SafeERC20 for IERC20;
@@ -101,7 +101,6 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         onlyOwner
         returns (PoolKey memory)
     {
-        IOption option = IOption(optionToken);
         bool optionIsOne = cashToken < optionToken;
         address token0 = optionIsOne ? cashToken : optionToken;
         address token1 = optionIsOne ? optionToken : cashToken;
@@ -148,15 +147,17 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         PoolInfo memory pool = optionCashPool[optionToken][cashToken_];
         require(address(pool.vault) != address(0), "Pool not found");
 
-        // Get quote from vault
-        (uint256 optionsOut, uint256 unitPrice) = pool.vault.getQuote(optionToken, cashAmount, true);
+        (uint256 optionsOut, uint256 unitPrice) = pool.vault.price(optionToken, cashAmount, true);
         require(optionsOut >= minOptionsOut, "Slippage exceeded");
 
         // Pull cash from buyer to vault
         IERC20(cashToken_).safeTransferFrom(msg.sender, address(pool.vault), cashAmount);
 
-        // Vault mints and delivers
-        uint256 delivered = pool.vault.mintAndDeliver(optionToken, optionsOut, to);
+        // Vault sells options via auto-mint
+        pool.vault.sellOptions(optionToken, to, optionsOut);
+
+        // Vault swaps received cash → collateral
+        pool.vault.swap(pool.cashToken, true, 0);
 
         emit Swap(msg.sender, to, optionToken, int256(cashAmount), unitPrice);
     }
@@ -191,37 +192,42 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
         uint256 inputAmount = uint256(-params.amountSpecified);
 
         if (cashForOption) {
-            // Buying options with cash
-            (uint256 optionsOut,) = pool.vault.getQuote(pool.optionToken, inputAmount, true);
+            // User buys options with cash
+            (uint256 optionsOut,) = pool.vault.price(pool.optionToken, inputAmount, true);
 
-            // Decode min output from hookData if provided
             if (hookData.length >= 32) {
                 uint256 minOut = abi.decode(hookData, (uint256));
                 require(optionsOut >= minOut, "Slippage exceeded");
             }
 
-            // Take cash from PM, send directly to vault (premium)
+            // Cash → vault
             poolManager.take(cashCurrency, address(pool.vault), inputAmount);
 
-            // Vault mints and delivers to PM
+            // Vault auto-mints and delivers options to PM
             poolManager.sync(optionCurrency);
-            uint256 delivered = pool.vault.mintAndDeliver(pool.optionToken, optionsOut, pm);
+            pool.vault.sellOptions(pool.optionToken, pm, optionsOut);
             poolManager.settle();
 
-            delta = toBeforeSwapDelta(_to128(inputAmount), -_to128(delivered));
-        } else {
-            // Selling options for cash (buyback)
-            (uint256 cashOut,) = pool.vault.getQuote(pool.optionToken, inputAmount, false);
+            // Vault swaps cash → collateral
+            pool.vault.swap(pool.cashToken, true, 0);
 
-            // Take options from PM, send to vault
+            delta = toBeforeSwapDelta(_to128(inputAmount), -_to128(optionsOut));
+        } else {
+            // User sells options for cash (buyback)
+            (uint256 cashOut,) = pool.vault.price(pool.optionToken, inputAmount, false);
+
+            // Options → vault (auto-redeem fires, returns collateral)
             poolManager.take(optionCurrency, address(pool.vault), inputAmount);
 
-            // Vault pair-redeems (burns option + redemption, returns collateral to vault)
-            pool.vault.pairRedeem(pool.optionToken, inputAmount);
+            // Record buyback for bookkeeping + inventory
+            pool.vault.recordBuyback(pool.optionToken, inputAmount);
 
-            // Vault sends cash to PM
+            // Vault swaps collateral → cash
+            pool.vault.swap(pool.cashToken, false, cashOut);
+
+            // Hook pulls cash from vault to PM
             poolManager.sync(cashCurrency);
-            pool.vault.transferCash(pool.cashToken, cashOut, pm);
+            IERC20(pool.cashToken).safeTransferFrom(address(pool.vault), pm, cashOut);
             poolManager.settle();
 
             delta = toBeforeSwapDelta(_to128(inputAmount), -_to128(cashOut));

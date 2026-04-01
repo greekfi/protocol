@@ -156,11 +156,13 @@ abstract contract OpHookTestBase is Test {
             address(factory),
             address(bs),
             wethUniPool_,
-            usdc_,
             1800 // 30 min TWAP
         );
         vault.setupFactoryApproval();
         vault.addHook(opHook_);
+        vault.setupHookApproval(opHook_);
+        vault.setSwapPool(usdc_, wethUniPool_);
+        vault.approveCashForHook(usdc_, opHook_);
         vault.whitelistOption(option1_, true);
         vault.whitelistOption(option2_, true);
         vault.whitelistOption(option3_, true);
@@ -201,7 +203,7 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testQuote() public {
-        (uint256 optionsOut, uint256 unitPrice) = vault.getQuote(option1_, 100e6, true);
+        (uint256 optionsOut, uint256 unitPrice) = vault.price(option1_, 100e6, true);
         console.log("Options out for 100 USDC:", optionsOut);
         console.log("Unit price (USDC):", unitPrice);
         assertGt(optionsOut, 0);

@@ -12,6 +12,8 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3SwapCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
@@ -67,10 +69,10 @@ interface IUniswapV3PoolOracle {
 
 /// @title HookVault
 /// @notice ERC4626 vault with integrated pricing and strategy for the Uniswap v4 hook.
-/// @dev Combines LP deposits, Black-Scholes pricing (via external contract), and option lifecycle.
-///      Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
-///      The hook sells options → vault mints & delivers → options expire → settlement returns collateral.
-contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
+/// @dev Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
+///      Hook sells/buys options via auto-mint/redeem. Cash auto-swapped via Uniswap v3.
+///      Inventory-based spread: wider ask when vault is more short, tighter bid to encourage buyback.
+contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUniswapV3SwapCallback {
     using Math for uint256;
 
     // ============ STRUCTS ============
@@ -83,31 +85,26 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
     // ============ ERRORS ============
 
-    error OnlyHook();
+    error OnlyHookOrOwner();
     error NotWhitelisted();
     error ExceedsCommitmentCap();
     error InsufficientIdle();
     error NothingToSettle();
-    error NoConsiderationToSwap();
-    error SwapFailed();
-    error NoGainFromSwap();
     error InvalidBps();
     error InvalidAddress();
+    error InvalidCallback();
     error ZeroAmount();
     error OptionNotExpired();
     error AlreadyRolled();
     error CollateralMismatch();
-    error InsufficientCash();
     error NoStrategyConfigured();
 
     // ============ EVENTS ============
 
-    event MintAndDeliver(
-        address indexed option, address indexed buyer, uint256 collateralUsed, uint256 optionsDelivered
-    );
-    event PairRedeemed(address indexed option, uint256 amount);
+    event OptionsSold(address indexed option, address indexed buyer, uint256 amount, uint256 committed);
+    event OptionsBoughtBack(address indexed option, uint256 amount, uint256 freed);
+    event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut);
     event SettlementReconciled(address indexed option, uint256 settled);
-    event ConsiderationSwapped(address indexed token, uint256 considerationIn, uint256 collateralOut);
     event HookUpdated(address indexed hook, bool authorized);
     event OptionWhitelisted(address indexed option, bool allowed);
     event MaxCommitmentUpdated(uint256 oldBps, uint256 newBps);
@@ -119,6 +116,8 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
     event SkewUpdated(int256 oldSkew, int256 newSkew);
     event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
+    event InventorySkewFactorUpdated(uint256 oldFactor, uint256 newFactor);
+    event SwapPoolUpdated(address indexed cashToken, address pool);
 
     // ============ PRICING ============
 
@@ -127,18 +126,16 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     uint256 public volatility;
     uint256 public riskFreeRate;
     uint32 public twapWindow;
-    uint8 internal _cashDecimals;
 
     // ============ STRATEGY ============
 
-    address public cashToken;
     IOptionFactory public factory;
     StrikeConfig[] public strikeConfigs;
     uint256 public rollBounty;
-    uint256 public spreadBps; // total spread in bps (e.g. 100 = 1%, half applied each side)
-    int256 public skew; // vol smile skew (1e18 scale, typically negative for crypto)
-    int256 public kurtosis; // vol smile kurtosis (1e18 scale, typically positive)
-    mapping(address => bool) public rolled; // tracks which expired options have been rolled
+    uint256 public spreadBps;
+    int256 public skew;
+    int256 public kurtosis;
+    mapping(address => bool) public rolled;
 
     // ============ HOOKS ============
 
@@ -156,23 +153,29 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     mapping(address => bool) public whitelistedOptions;
     uint256 public totalPremiumsCollected;
 
+    // ============ INVENTORY ============
+
+    int256 public netInventory;
+    uint256 public inventorySkewFactor;
+
+    // ============ SWAP ============
+
+    mapping(address => IUniswapV3Pool) public swapPools; // cashToken → v3 pool
+
     // ============ MODIFIERS ============
 
     modifier onlyHook() {
-        if (!authorizedHooks[msg.sender]) revert OnlyHook();
+        if (!authorizedHooks[msg.sender]) revert OnlyHookOrOwner();
+        _;
+    }
+
+    modifier onlyHookOrOwner() {
+        if (!authorizedHooks[msg.sender] && msg.sender != owner()) revert OnlyHookOrOwner();
         _;
     }
 
     // ============ CONSTRUCTOR ============
 
-    /// @param collateral_ Underlying collateral token (e.g. WETH)
-    /// @param name_ Vault share token name
-    /// @param symbol_ Vault share token symbol
-    /// @param factory_ OptionFactory address
-    /// @param blackScholes_ BlackScholes pricing contract
-    /// @param pricePool_ Uniswap v3 pool for TWAP oracle
-    /// @param cashToken_ Cash/consideration token (e.g. USDC)
-    /// @param twapWindow_ TWAP window in seconds (e.g. 1800 for 30 min)
     constructor(
         IERC20 collateral_,
         string memory name_,
@@ -180,30 +183,23 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         address factory_,
         address blackScholes_,
         address pricePool_,
-        address cashToken_,
         uint32 twapWindow_
     ) ERC4626(collateral_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        if (
-            factory_ == address(0) || blackScholes_ == address(0) || pricePool_ == address(0)
-                || cashToken_ == address(0)
-        ) {
+        if (factory_ == address(0) || blackScholes_ == address(0) || pricePool_ == address(0)) {
             revert InvalidAddress();
         }
         factory = IOptionFactory(factory_);
         blackScholes = IBlackScholes(blackScholes_);
         pricePool = IUniswapV3PoolOracle(pricePool_);
-        cashToken = cashToken_;
         twapWindow = twapWindow_;
-        _cashDecimals = IERC20Metadata(cashToken_).decimals();
 
-        volatility = 0.2e18; // 20% default
-        riskFreeRate = 0.05e18; // 5% default
-        maxCommitmentBps = 8000; // 80%
+        volatility = 0.2e18;
+        riskFreeRate = 0.05e18;
+        maxCommitmentBps = 8000;
     }
 
     // ============ ERC4626 OVERRIDES ============
 
-    /// @dev Virtual share offset to prevent first-depositor attack
     function _decimalsOffset() internal pure override returns (uint8) {
         return 3;
     }
@@ -226,8 +222,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
     // ============ PRICING ============
 
-    /// @notice Get collateral price via Uniswap v3 TWAP
-    /// @return price_ Price of collateral in cash terms, 18 decimals
     function getCollateralPrice() public view returns (uint256 price_) {
         uint32[] memory secondsAgos = new uint32[](2);
         secondsAgos[0] = twapWindow;
@@ -238,13 +232,10 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         int24 meanTick = int24((tickCumulatives[1] - tickCumulatives[0]) / int56(int32(twapWindow)));
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(meanTick);
 
-        // Convert sqrtPriceX96 to price (token0 in terms of token1)
-        // Use shifted multiplication to avoid overflow
         uint256 sqrtPriceX32 = uint256(sqrtPriceX96) >> 64;
         uint256 priceX64 = sqrtPriceX32 * sqrtPriceX32;
         price_ = (priceX64 * 1e18) >> 64;
 
-        // Decimal adjustment
         uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
         uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
         if (decimals1 > decimals0) {
@@ -253,7 +244,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
             price_ = price_ * (10 ** (decimals0 - decimals1));
         }
 
-        // If collateral is token1, invert (price was token0-in-token1)
         bool collateralIsToken1 = pricePool.token1() == asset();
         if (collateralIsToken1) {
             require(price_ > 0, "Price cannot be zero for inverse");
@@ -261,8 +251,20 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         }
     }
 
-    /// @notice Get a price quote for an option swap
-    function getQuote(address option, uint256 amount, bool cashForOption)
+    /// @notice Calculate inventory-aware half spread
+    function _calculateHalfSpread() internal view returns (uint256) {
+        uint256 baseHalf = spreadBps / 2;
+        uint256 total = totalAssets();
+        if (total == 0 || inventorySkewFactor == 0) return baseHalf;
+        uint256 absInventory = netInventory >= 0 ? uint256(netInventory) : uint256(-netInventory);
+        return baseHalf + (inventorySkewFactor * absInventory) / total;
+    }
+
+    /// @notice Get price quote with inventory-based spread
+    /// @param option Option contract address
+    /// @param amount Input amount (cash decimals if isBuy, 18 decimals if !isBuy)
+    /// @param isBuy true = user buying options (vault selling, ask), false = user selling (vault buying, bid)
+    function price(address option, uint256 amount, bool isBuy)
         external
         view
         returns (uint256 outputAmount, uint256 unitPrice)
@@ -275,112 +277,142 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
             spot, opt.strike(), timeToExpiry, volatility, riskFreeRate, opt.isPut(), skew, kurtosis
         );
 
-        // Apply spread: ask = mid * (10000 + halfSpread) / 10000
-        //               bid = mid * (10000 - halfSpread) / 10000
-        uint256 halfSpread = spreadBps / 2;
+        uint256 halfSpread = _calculateHalfSpread();
         uint256 bsPrice;
-        if (cashForOption) {
-            // Buying options → ask (higher price, fewer options per cash)
+        if (isBuy) {
             bsPrice = Math.mulDiv(midPrice, 10000 + halfSpread, 10000);
         } else {
-            // Selling options → bid (lower price, less cash per option)
             bsPrice = Math.mulDiv(midPrice, 10000 - halfSpread, 10000);
         }
 
-        // bsPrice is in 1e18 "dollar" terms
-        // Scale factor converts between 18-decimal option amounts and cash-decimal amounts
-        // scaleFactor = 10^(36 - cashDecimals)
-        uint256 scaleFactor = 10 ** (36 - uint256(_cashDecimals));
+        uint8 cashDecimals = IERC20Metadata(opt.consideration()).decimals();
+        uint256 scaleFactor = 10 ** (36 - uint256(cashDecimals));
 
-        if (cashForOption) {
-            // amount = cash input (cash decimals), outputAmount = options out (18 decimals)
+        if (isBuy) {
             outputAmount = Math.mulDiv(amount, scaleFactor, bsPrice);
         } else {
-            // amount = options input (18 decimals), outputAmount = cash out (cash decimals)
             outputAmount = Math.mulDiv(amount, bsPrice, scaleFactor);
         }
 
-        // unitPrice = price per option in cash-token units (spread-adjusted)
-        unitPrice = Math.mulDiv(bsPrice, 10 ** uint256(_cashDecimals), 1e18);
+        unitPrice = Math.mulDiv(bsPrice, 10 ** uint256(cashDecimals), 1e18);
     }
 
-    // ============ HOOK INTERACTION: MINT AND DELIVER ============
+    // ============ HOOK INTERACTION ============
 
-    /// @notice Mint options using vault collateral and deliver to buyer
-    function mintAndDeliver(address option, uint256 amount, address buyer)
+    /// @notice Sell options: auto-mint via transferFrom, track commitment + inventory
+    /// @param option Option address (must be whitelisted)
+    /// @param to Recipient of options
+    /// @param amount Number of option tokens to deliver (18 decimals)
+    function sellOptions(address option, address to, uint256 amount)
         external
         onlyHook
         nonReentrant
         whenNotPaused
-        returns (uint256 delivered)
     {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
         if (IOption(option).collateral() != asset()) revert CollateralMismatch();
 
-        // Check commitment cap
         uint256 total = totalAssets();
         if (totalCommitted + amount > (total * maxCommitmentBps) / 10000) revert ExceedsCommitmentCap();
-
-        // Check idle collateral
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
-        if (amount > idle) revert InsufficientIdle();
-
-        // Snapshot option balance BEFORE mint (fix: only deliver the delta)
-        uint256 optBefore = IERC20(option).balanceOf(address(this));
-
-        // Mint: pulls collateral from vault → Redemption contract
-        IOption(option).mint(address(this), amount);
-
-        // Deliver only the newly minted option tokens
-        delivered = IERC20(option).balanceOf(address(this)) - optBefore;
-        IERC20(option).safeTransfer(buyer, delivered);
-
-        // Bookkeeping: track committed via Redemption token delta (fee-adjusted)
-        address redemption = IOption(option).redemption();
-        uint256 newRedBalance = IERC20(redemption).balanceOf(address(this));
-        uint256 redMinted = newRedBalance - trackedRedemptionBalance[option];
-        committed[option] += redMinted;
-        totalCommitted += redMinted;
-        trackedRedemptionBalance[option] = newRedBalance;
-
-        emit MintAndDeliver(option, buyer, amount, delivered);
-    }
-
-    // ============ HOOK INTERACTION: PAIR REDEEM ============
-
-    /// @notice Pair-redeem matched Option + Redemption tokens
-    function pairRedeem(address option, uint256 amount) external onlyHook nonReentrant whenNotPaused {
-        if (!whitelistedOptions[option]) revert NotWhitelisted();
-        if (amount == 0) revert ZeroAmount();
 
         address redemption = IOption(option).redemption();
         uint256 redBefore = IERC20(redemption).balanceOf(address(this));
 
-        IOption(option).redeem(amount);
+        // transferFrom triggers auto-mint: vault's collateral → Redemption, options minted to `to`
+        IOption(option).transferFrom(address(this), to, amount);
 
         uint256 redAfter = IERC20(redemption).balanceOf(address(this));
-        uint256 redeemed = redBefore - redAfter;
-        committed[option] -= redeemed;
-        totalCommitted -= redeemed;
+        uint256 redMinted = redAfter - redBefore;
+        committed[option] += redMinted;
+        totalCommitted += redMinted;
         trackedRedemptionBalance[option] = redAfter;
 
-        emit PairRedeemed(option, amount);
+        netInventory += int256(amount);
+
+        emit OptionsSold(option, to, amount, redMinted);
     }
 
-    // ============ HOOK INTERACTION: TRANSFER CASH ============
+    /// @notice Record a buyback after options arrived at vault (auto-redeem already fired)
+    /// @param option Option address
+    /// @param amount Number of options that were bought back
+    function recordBuyback(address option, uint256 amount) external onlyHook nonReentrant {
+        if (!whitelistedOptions[option]) revert NotWhitelisted();
 
-    /// @notice Transfer cash tokens from vault to a recipient
-    function transferCash(address token, uint256 amount, address to) external onlyHook nonReentrant {
-        if (amount == 0) revert ZeroAmount();
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        if (balance < amount) revert InsufficientCash();
-        IERC20(token).safeTransfer(to, amount);
+        address redemption = IOption(option).redemption();
+        uint256 redBefore = trackedRedemptionBalance[option];
+        uint256 redAfter = IERC20(redemption).balanceOf(address(this));
+
+        if (redAfter < redBefore) {
+            uint256 redeemed = redBefore - redAfter;
+            committed[option] -= redeemed;
+            totalCommitted -= redeemed;
+        }
+        trackedRedemptionBalance[option] = redAfter;
+
+        netInventory -= int256(amount);
+
+        emit OptionsBoughtBack(option, amount, redBefore > redAfter ? redBefore - redAfter : 0);
+    }
+
+    // ============ SWAP (Uniswap v3) ============
+
+    /// @notice Swap between a cash token and collateral via Uniswap v3
+    /// @param cashToken_ The cash token to swap (e.g. USDC, USDT)
+    /// @param cashToCollateral true = swap cash→collateral, false = swap collateral→cash
+    /// @param amount Input amount (0 = swap all cash when cashToCollateral)
+    function swap(address cashToken_, bool cashToCollateral, uint256 amount)
+        external
+        onlyHookOrOwner
+        nonReentrant
+        returns (uint256 amountOut)
+    {
+        address tokenIn = cashToCollateral ? cashToken_ : asset();
+        address tokenOut = cashToCollateral ? asset() : cashToken_;
+
+        if (amount == 0) {
+            if (!cashToCollateral) revert ZeroAmount();
+            amount = IERC20(tokenIn).balanceOf(address(this));
+        }
+        if (amount == 0) return 0;
+
+        IUniswapV3Pool pool = swapPools[cashToken_];
+        require(address(pool) != address(0), "No swap pool for token");
+
+        bool zeroForOne = tokenIn < tokenOut;
+        uint160 sqrtPriceLimitX96 = zeroForOne
+            ? TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1)
+            : TickMath.getSqrtPriceAtTick(TickMath.MAX_TICK - 1);
+
+        uint256 balBefore = IERC20(tokenOut).balanceOf(address(this));
+
+        pool.swap(address(this), zeroForOne, int256(amount), sqrtPriceLimitX96, abi.encode(tokenIn));
+
+        amountOut = IERC20(tokenOut).balanceOf(address(this)) - balBefore;
+
+        if (cashToCollateral) {
+            totalPremiumsCollected += amountOut;
+        }
+
+        emit Swapped(tokenIn, tokenOut, amount, amountOut);
+    }
+
+    /// @inheritdoc IUniswapV3SwapCallback
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        if (!_isSwapPool(msg.sender)) revert InvalidCallback();
+        address tokenIn = abi.decode(data, (address));
+        uint256 amountToPay = amount0Delta > 0 ? uint256(amount0Delta) : uint256(amount1Delta);
+        IERC20(tokenIn).safeTransfer(msg.sender, amountToPay);
+    }
+
+    function _isSwapPool(address caller) internal view returns (bool) {
+        // Check all registered swap pools
+        return caller == address(swapPools[IUniswapV3Pool(caller).token0()])
+            || caller == address(swapPools[IUniswapV3Pool(caller).token1()]);
     }
 
     // ============ SETTLEMENT ============
 
-    /// @notice Reconcile bookkeeping after sweep() on the Redemption contract
     function handleSettlement(address option) external nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
 
@@ -400,7 +432,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
     // ============ STRATEGY: ROLLING ============
 
-    /// @notice Roll expired options into new ones per strategy config
     function rollOptions(address expiredOption) external nonReentrant returns (address[] memory newOptions) {
         if (!whitelistedOptions[expiredOption]) revert NotWhitelisted();
         if (block.timestamp < IOption(expiredOption).expirationDate()) revert OptionNotExpired();
@@ -415,22 +446,15 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
         for (uint256 i = 0; i < strikeConfigs.length; i++) {
             StrikeConfig memory cfg = strikeConfigs[i];
-
-            // Compute strike from spot + offset
             uint96 newStrike = uint96(Math.mulDiv(spot, uint256(cfg.strikeOffsetBps), 10000));
             uint40 newExpiry = uint40(block.timestamp + uint256(cfg.duration));
-
-            // Create option via factory
-            address newOption = factory.createOption(collateral_, cashToken, newExpiry, newStrike, cfg.isPut);
-
-            // Auto-whitelist
+            address newOption =
+                factory.createOption(collateral_, IOption(expiredOption).consideration(), newExpiry, newStrike, cfg.isPut);
             whitelistedOptions[newOption] = true;
             newOptions[i] = newOption;
-
             emit OptionWhitelisted(newOption, true);
         }
 
-        // Pay bounty to caller
         if (rollBounty > 0) {
             uint256 idle = IERC20(asset()).balanceOf(address(this));
             uint256 bounty = rollBounty > idle ? idle : rollBounty;
@@ -442,44 +466,22 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         emit OptionsRolled(expiredOption, newOptions, msg.sender, rollBounty);
     }
 
-    // ============ PREMIUM MANAGEMENT ============
-
-    /// @notice Swap accumulated cash tokens to collateral via external DEX
-    /// @dev Only callable by owner. Verifies collateral increased. Resets approval after.
-    function swapToCollateral(address considerationToken, address router, bytes calldata swapData)
-        external
-        onlyOwner
-        nonReentrant
-    {
-        uint256 consBalance = IERC20(considerationToken).balanceOf(address(this));
-        if (consBalance == 0) revert NoConsiderationToSwap();
-
-        IERC20(considerationToken).forceApprove(router, consBalance);
-
-        uint256 collBefore = IERC20(asset()).balanceOf(address(this));
-
-        (bool success,) = router.call(swapData);
-        if (!success) revert SwapFailed();
-
-        // Reset approval
-        IERC20(considerationToken).forceApprove(router, 0);
-
-        uint256 collGained = IERC20(asset()).balanceOf(address(this)) - collBefore;
-        if (collGained == 0) revert NoGainFromSwap();
-
-        uint256 consSpent = consBalance - IERC20(considerationToken).balanceOf(address(this));
-        totalPremiumsCollected += collGained;
-
-        emit ConsiderationSwapped(considerationToken, consSpent, collGained);
-    }
-
     // ============ ADMIN ============
 
-    /// @notice Setup factory approvals so the vault can mint options
-    /// @dev Must be called after deployment by owner
     function setupFactoryApproval() external onlyOwner {
         IERC20(asset()).forceApprove(address(factory), type(uint256).max);
         factory.approve(asset(), type(uint256).max);
+    }
+
+    /// @notice Setup hook permissions: auto-mint + operator approval
+    function setupHookApproval(address hook_) external onlyOwner {
+        factory.enableAutoMintRedeem(true);
+        factory.approveOperator(hook_, true);
+    }
+
+    /// @notice Approve a hook to pull a cash token from the vault (for buyback flow)
+    function approveCashForHook(address cashToken_, address hook_) external onlyOwner {
+        IERC20(cashToken_).forceApprove(hook_, type(uint256).max);
     }
 
     function addHook(address hook_) external onlyOwner {
@@ -522,7 +524,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     }
 
     function setSpreadBps(uint256 bps) external onlyOwner {
-        if (bps > 5000) revert InvalidBps(); // max 50% spread
+        if (bps > 5000) revert InvalidBps();
         uint256 old = spreadBps;
         spreadBps = bps;
         emit SpreadUpdated(old, bps);
@@ -540,6 +542,19 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         emit KurtosisUpdated(old, kurtosis_);
     }
 
+    function setInventorySkewFactor(uint256 factor) external onlyOwner {
+        uint256 old = inventorySkewFactor;
+        inventorySkewFactor = factor;
+        emit InventorySkewFactorUpdated(old, factor);
+    }
+
+    /// @notice Register a Uniswap v3 pool for swapping a cash token ↔ collateral
+    function setSwapPool(address cashToken_, address pool) external onlyOwner {
+        if (pool == address(0)) revert InvalidAddress();
+        swapPools[cashToken_] = IUniswapV3Pool(pool);
+        emit SwapPoolUpdated(cashToken_, pool);
+    }
+
     function setRollBounty(uint256 bounty) external onlyOwner {
         uint256 old = rollBounty;
         rollBounty = bounty;
@@ -554,9 +569,12 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         emit StrategyUpdated();
     }
 
-    /// @notice Manually create an option via factory
-    function createOption(uint96 strike, uint40 expiration, bool isPut) external onlyOwner returns (address) {
-        address opt = factory.createOption(asset(), cashToken, expiration, strike, isPut);
+    function createOption(address cashToken_, uint96 strike, uint40 expiration, bool isPut)
+        external
+        onlyOwner
+        returns (address)
+    {
+        address opt = factory.createOption(asset(), cashToken_, expiration, strike, isPut);
         whitelistedOptions[opt] = true;
         emit OptionWhitelisted(opt, true);
         return opt;
