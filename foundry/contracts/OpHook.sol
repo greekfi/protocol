@@ -256,10 +256,12 @@ contract OpHook is BaseHook, Ownable, ReentrancyGuard, Pausable {
 
     // ============ Internal ============
 
-    function _toId(PoolKey memory k) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encode(Currency.unwrap(k.currency0), Currency.unwrap(k.currency1), k.fee, k.tickSpacing, k.hooks)
-        );
+    function _toId(PoolKey memory k) internal pure returns (bytes32 id) {
+        assembly ("memory-safe") {
+            // PoolKey in memory: currency0(32) | currency1(32) | fee(32) | tickSpacing(32) | hooks(32)
+            // k points to the start of the struct in memory
+            id := keccak256(k, 160)
+        }
     }
 
     function _to128(uint256 x) internal pure returns (int128 y) {
