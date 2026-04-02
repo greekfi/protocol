@@ -4,13 +4,12 @@ pragma solidity ^0.8.19;
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
-import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
 /**
  * @notice Deploy script for YourContract contract
  * @dev Inherits ScaffoldETHDeploy which:
  *      - Includes forge-std/Script.sol for deployment
- *      - Includes ScaffoldEthDeployerRunner modifier
+ *      - Includes scaffoldEthDeployerRunner modifier
  *      - Provides `deployer` variable
  * Example:
  * yarn deploy --file DeployYourContract.s.sol  # local anvil chain
@@ -22,11 +21,11 @@ contract DeployYourContract is ScaffoldETHDeploy {
      *      - "scaffold-eth-default": Uses Anvil's account #9 (0xa0Ee7A142d267C1f36714E4a8F75612F20a79720), no password prompt
      *      - "scaffold-eth-custom": requires password used while creating keystore
      *
-     * Note: Must use ScaffoldEthDeployerRunner modifier to:
+     * Note: Must use scaffoldEthDeployerRunner modifier to:
      *      - Setup correct `deployer` account and fund it
      *      - Export contract addresses & ABIs to `nextjs` packages
      */
-    function run() external ScaffoldEthDeployerRunner {
+    function run() external scaffoldEthDeployerRunner {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 

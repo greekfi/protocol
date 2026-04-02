@@ -65,12 +65,9 @@ contract OptionPricer is Ownable {
 
     // ============ CONSTRUCTOR ============
 
-    constructor(
-        address blackScholes_,
-        address pricePool_,
-        address collateral_,
-        uint32 twapWindow_
-    ) Ownable(msg.sender) {
+    constructor(address blackScholes_, address pricePool_, address collateral_, uint32 twapWindow_)
+        Ownable(msg.sender)
+    {
         if (blackScholes_ == address(0) || pricePool_ == address(0) || collateral_ == address(0)) {
             revert InvalidAddress();
         }
@@ -91,13 +88,11 @@ contract OptionPricer is Ownable {
     /// @param isBuy true = user buying options (ask), false = user selling (bid)
     /// @param netInventory Vault's net inventory (positive = net short)
     /// @param totalAssets Vault's total assets for inventory normalization
-    function price(
-        address option,
-        uint256 amount,
-        bool isBuy,
-        int256 netInventory,
-        uint256 totalAssets
-    ) external view returns (uint256 outputAmount, uint256 unitPrice) {
+    function price(address option, uint256 amount, bool isBuy, int256 netInventory, uint256 totalAssets)
+        external
+        view
+        returns (uint256 outputAmount, uint256 unitPrice)
+    {
         IOption opt = IOption(option);
         uint256 spot = getCollateralPrice();
         uint256 timeToExpiry = opt.expirationDate() > block.timestamp ? opt.expirationDate() - block.timestamp : 0;

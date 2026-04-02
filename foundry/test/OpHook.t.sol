@@ -56,21 +56,21 @@ contract SwapCallback is SafeCallback {
             zeroForOne: zeroForOne, amountSpecified: -int128(int256(amountIn)), sqrtPriceLimitX96: sqrtPriceLimit
         });
 
-        BalanceDelta delta = poolManager.swap(poolKey, params, bytes(""));
+        BalanceDelta delta = POOL_MANAGER.swap(poolKey, params, bytes(""));
 
         if (zeroForOne) {
-            poolKey.currency0.settle(poolManager, address(this), uint128(-delta.amount0()), false);
-            poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
+            poolKey.currency0.settle(POOL_MANAGER, address(this), uint128(-delta.amount0()), false);
+            poolKey.currency1.take(POOL_MANAGER, address(this), uint128(delta.amount1()), false);
         } else {
-            poolKey.currency1.settle(poolManager, address(this), uint128(-delta.amount1()), false);
-            poolKey.currency0.take(poolManager, address(this), uint128(delta.amount0()), false);
+            poolKey.currency1.settle(POOL_MANAGER, address(this), uint128(-delta.amount1()), false);
+            poolKey.currency0.take(POOL_MANAGER, address(this), uint128(delta.amount0()), false);
         }
 
         returnData = abi.encode(delta.amount0(), delta.amount1());
     }
 
     function swap(address sender, uint256 amountIn) public {
-        poolManager.unlock(abi.encode(sender, amountIn));
+        POOL_MANAGER.unlock(abi.encode(sender, amountIn));
     }
 }
 

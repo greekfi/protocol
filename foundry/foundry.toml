@@ -10,7 +10,7 @@ solc = "0.8.33"
 evm_version = "osaka"
 
 [lint]
-exclude_lints = ["unsafe-cheatcode", "unwrapped-modifier-logic"]
+exclude_lints = ["unsafe-cheatcode", "unwrapped-modifier-logic", "unsafe-typecast"]
 
 
 [rpc_endpoints]

@@ -91,11 +91,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Clones never execute the constructor; state is set via init().
      *      Calls _disableInitializers() to prevent init() on the template itself.
      */
-    constructor(string memory name_, string memory symbol_, address redemption__)
+    constructor(string memory name_, string memory symbol_, address redemption_)
         ERC20(name_, symbol_)
         Ownable(msg.sender)
     {
-        redemption = Redemption(redemption__);
+        redemption = Redemption(redemption_);
         _disableInitializers();
     }
 

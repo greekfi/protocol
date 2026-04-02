@@ -32,14 +32,22 @@ struct JamOrder {
 
 struct BlendSingleOrder {
     uint256 expiry;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address taker_address;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address maker_address;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 maker_nonce;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address taker_token;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address maker_token;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 taker_amount;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 maker_amount;
     address receiver;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 packed_commands;
     uint256 flags;
 }
@@ -182,7 +190,7 @@ contract YieldVaultTest is Test {
         return 0;
     }
 
-    function _depositAsLP(uint256 amount) internal {
+    function _depositAsLp(uint256 amount) internal {
         vm.startPrank(lp);
         shakyToken.approve(address(vault), amount);
         vault.deposit(amount, lp);
@@ -192,7 +200,7 @@ contract YieldVaultTest is Test {
     // ============ DEPOSIT ============
 
     function test_Deposit() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         assertGt(vault.balanceOf(lp), 0);
         assertEq(vault.totalAssets(), 100e18);
     }
@@ -200,7 +208,7 @@ contract YieldVaultTest is Test {
     // ============ ASYNC REDEEM ============
 
     function test_RequestRedeemAndClaim() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
 
         vm.prank(lp);
@@ -213,7 +221,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_PartialClaim() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
 
         vm.prank(lp);
@@ -228,14 +236,14 @@ contract YieldVaultTest is Test {
     }
 
     function test_WithdrawReverts() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         vm.prank(lp);
         vm.expectRevert(YieldVault.WithdrawDisabled.selector);
         vault.withdraw(50e18, lp, lp);
     }
 
     function test_SharePriceNeutralAfterFulfill() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 priceBefore = vault.convertToAssets(1e18);
         uint256 halfShares = vault.balanceOf(lp) / 2;
 
@@ -255,7 +263,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_UnauthorizedClaimReverts() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
         vm.prank(lp);
         vault.requestRedeem(shares, lp, lp);
@@ -283,7 +291,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP JAM: settleInternal on real fork ============
 
     function test_BebopJam_SettleInternal() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         // Solver holds USDC (acts as counterparty)
         Solver solver = new Solver();
@@ -358,7 +366,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_BebopJam_RejectsUnauthorizedSigner() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         Solver solver = new Solver();
         stableToken.mint(address(solver), 5e18);
@@ -425,7 +433,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP BLEND: settleBebopBlend on real fork ============
 
     function test_BebopBlend_SettleSingle() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         uint256 makerPk = 0xB0B;
         address maker = vm.addr(makerPk);
@@ -548,7 +556,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP RFQ-T: swapSingle via vault.execute (no taker signature) ============
 
     function test_BebopSwapSingle_OperatorSubmits() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         // MM signs a quote to sell USDC for options
         uint256 makerPk = 0xB0B;
@@ -596,7 +604,7 @@ contract YieldVaultTest is Test {
     // ============ BURN ============
 
     function test_Burn() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         option.mint(address(vault), 10e18);
         assertGt(vault.committed(address(option)), 0);
 
@@ -622,13 +630,13 @@ contract YieldVaultTest is Test {
     }
 
     function test_Pause() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         vault.pause();
         assertEq(vault.maxDeposit(lp), 0);
     }
 
     function test_GetVaultStats() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         (uint256 totalAssets_,, uint256 idle_,,) = vault.getVaultStats();
         assertEq(totalAssets_, 100e18);
         assertEq(idle_, 100e18);
@@ -637,7 +645,7 @@ contract YieldVaultTest is Test {
     // ============ REDEEM EXPIRED ============
 
     function test_RedeemExpired() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         option.mint(address(vault), 10e18);
         assertGt(vault.committed(address(option)), 0);
 
@@ -650,7 +658,7 @@ contract YieldVaultTest is Test {
 
     function test_Demo_DepositSellOptionsExpireWithdrawProfit() public {
         // 1. LP deposits 100 collateral
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
         uint256 assetsBefore = vault.totalAssets();
 

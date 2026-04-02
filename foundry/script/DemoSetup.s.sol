@@ -5,7 +5,6 @@ import { Script, console } from "forge-std/Script.sol";
 import { OptionFactory } from "../contracts/OptionFactory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Post-deploy setup: create option, configure vault, fund accounts
 /// @dev Run after `yarn deploy` on a forked chain with BebopSettlement
@@ -17,13 +16,9 @@ contract DemoSetup is Script {
     address constant MAKER = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     uint256 constant MAKER_PK = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d;
 
-    function run(
-        address factoryAddr,
-        address vaultAddr,
-        address shakyAddr,
-        address stableAddr,
-        address operator
-    ) external {
+    function run(address factoryAddr, address vaultAddr, address shakyAddr, address stableAddr, address operator)
+        external
+    {
         OptionFactory factory = OptionFactory(factoryAddr);
         YieldVault vault = YieldVault(vaultAddr);
         ShakyToken shaky = ShakyToken(shakyAddr);
@@ -45,7 +40,9 @@ contract DemoSetup is Script {
         vault.approveToken(address(shaky), BEBOP, type(uint256).max);
 
         // Factory internal approval (vault needs factory.approve so auto-mint can pull collateral)
-        vault.execute(address(factory), abi.encodeWithSignature("approve(address,uint256)", address(shaky), type(uint256).max));
+        vault.execute(
+            address(factory), abi.encodeWithSignature("approve(address,uint256)", address(shaky), type(uint256).max)
+        );
 
         // 3. Set operator
         if (operator != address(0)) {

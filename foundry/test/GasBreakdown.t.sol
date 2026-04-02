@@ -3,9 +3,8 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract GasBreakdown is Test {

@@ -4,12 +4,6 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 
-import { Hooks } from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
-
-import { OpHook } from "../contracts/OpHook.sol";
-import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
-
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
@@ -19,7 +13,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract DeployOp is Script, ScaffoldETHDeploy {
     function setUp() public { }
 
-    function run() public ScaffoldEthDeployerRunner {
+    function run() public scaffoldEthDeployerRunner {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 

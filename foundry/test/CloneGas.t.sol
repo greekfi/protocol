@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
 contract CloneGas is Test {

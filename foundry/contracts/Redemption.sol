@@ -448,7 +448,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return Math.mulDiv(consAmount, (10 ** collDecimals) * (10 ** STRIKE_DECIMALS), strike * (10 ** consDecimals));
     }
 
-
     // ============ METADATA FUNCTIONS ============
 
     /**
