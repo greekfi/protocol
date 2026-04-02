@@ -17,7 +17,7 @@ import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 contract DeployUpgradeable is Script, ScaffoldETHDeploy {
     function setUp() public { }
 
-    function run() public scaffoldEthDeployerRunner {
+    function run() public broadcast {
         // Deploy test tokens
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
