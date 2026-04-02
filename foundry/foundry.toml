@@ -9,6 +9,9 @@ optimizer_runs = 200
 solc = "0.8.33"
 evm_version = "osaka"
 
+[lint]
+exclude_lints = ["unsafe-cheatcode", "unwrapped-modifier-logic"]
+
 
 [rpc_endpoints]
 default_network = "http://127.0.0.1:8545"

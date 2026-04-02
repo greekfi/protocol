@@ -249,11 +249,11 @@ contract BlackScholesTest is Test {
 
     function testGammaHighestATM() public view {
         // Gamma is highest at ATM
-        uint256 gATM = bs.gamma(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
-        uint256 gOTM = bs.gamma(100e18, 130e18, 31536000, 0.3e18, 0.05e18);
-        uint256 gITM = bs.gamma(100e18, 70e18, 31536000, 0.3e18, 0.05e18);
-        assertGt(gATM, gOTM, "ATM gamma should exceed OTM gamma");
-        assertGt(gATM, gITM, "ATM gamma should exceed ITM gamma");
+        uint256 gAtm = bs.gamma(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
+        uint256 gOtm = bs.gamma(100e18, 130e18, 31536000, 0.3e18, 0.05e18);
+        uint256 gItm = bs.gamma(100e18, 70e18, 31536000, 0.3e18, 0.05e18);
+        assertGt(gAtm, gOtm, "ATM gamma should exceed OTM gamma");
+        assertGt(gAtm, gItm, "ATM gamma should exceed ITM gamma");
     }
 
     // ============ GREEKS: VEGA ============

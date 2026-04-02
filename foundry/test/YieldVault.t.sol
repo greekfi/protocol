@@ -2,12 +2,10 @@
 pragma solidity ^0.8.33;
 
 import { Test } from "forge-std/Test.sol";
-import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
-import { IERC7540Redeem, IERC7540Operator } from "../contracts/interfaces/IERC7540.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
 // ============ Bebop addresses on Base ============
@@ -662,6 +660,7 @@ contract YieldVaultTest is Test {
 
         // 3. Simulate selling options: options leave vault, premium arrives in collateral token
         vm.prank(address(vault));
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0xBEEF), optionAmount);
         uint256 premium = 0.5e18;
         shakyToken.mint(address(vault), premium);

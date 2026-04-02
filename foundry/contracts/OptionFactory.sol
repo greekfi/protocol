@@ -45,11 +45,10 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     // ============ STATE VARIABLES ============
 
     /// @notice Address of the Redemption template contract used for EIP-1167 cloning
-    address public immutable redemptionClone;
+    address public immutable REDEMPTION_CLONE;
 
     /// @notice Address of the Option template contract used for EIP-1167 cloning
-    address public immutable optionClone;
-
+    address public immutable OPTION_CLONE;
 
     // ============ ERRORS ============
 
@@ -110,8 +109,8 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     constructor(address redemption_, address option_) Ownable(msg.sender) {
         if (redemption_ == address(0) || option_ == address(0)) revert InvalidAddress();
 
-        redemptionClone = redemption_;
-        optionClone = option_;
+        REDEMPTION_CLONE = redemption_;
+        OPTION_CLONE = option_;
     }
 
     // ============ OPTION CREATION FUNCTIONS ============
@@ -137,8 +136,8 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
         if (blocklist[collateral] || blocklist[consideration]) revert BlocklistedToken();
         if (collateral == consideration) revert InvalidTokens();
 
-        address redemption_ = Clones.clone(redemptionClone);
-        address option_ = Clones.clone(optionClone);
+        address redemption_ = Clones.clone(REDEMPTION_CLONE);
+        address option_ = Clones.clone(OPTION_CLONE);
 
         Redemption redemption = Redemption(redemption_);
         Option option = Option(option_);
@@ -288,5 +287,4 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     function isBlocked(address token) external view returns (bool) {
         return blocklist[token];
     }
-
 }

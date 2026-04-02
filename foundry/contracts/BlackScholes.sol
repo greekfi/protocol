@@ -38,7 +38,7 @@ contract BlackScholes {
             else return pvStrike > spot ? pvStrike - spot : 0;
         }
 
-        (int256 d1, int256 d2, uint256 expRt) = _computeD1D2(spot, strike, timeToExpiry, vol, rate);
+        (int256 d1, int256 d2, uint256 expRt) = _computeD1d2(spot, strike, timeToExpiry, vol, rate);
         uint256 s = spot == 0 ? 1 : spot;
 
         uint256 bsPrice;
@@ -124,7 +124,7 @@ contract BlackScholes {
             if (!isPut) return spot > strike ? int256(1e18) : int256(0);
             else return spot < strike ? -int256(1e18) : int256(0);
         }
-        (int256 d1,,) = _computeD1D2(spot, strike, timeToExpiry, vol, rate);
+        (int256 d1,,) = _computeD1d2(spot, strike, timeToExpiry, vol, rate);
         return !isPut ? int256(normCdf(d1)) : int256(normCdf(d1)) - 1e18;
     }
 
@@ -136,7 +136,7 @@ contract BlackScholes {
         returns (uint256)
     {
         if (timeToExpiry == 0 || spot == 0 || vol == 0) return 0;
-        (int256 d1,,) = _computeD1D2(spot, strike, timeToExpiry, vol, rate);
+        (int256 d1,,) = _computeD1d2(spot, strike, timeToExpiry, vol, rate);
         uint256 t = (timeToExpiry * 1e18) / YEAR;
         uint256 sqrtT = Math.sqrt(t) * 1e9;
         // γ = φ(d1) / (S · σ · √T)
@@ -152,7 +152,7 @@ contract BlackScholes {
         returns (uint256)
     {
         if (timeToExpiry == 0) return 0;
-        (int256 d1,,) = _computeD1D2(spot, strike, timeToExpiry, vol, rate);
+        (int256 d1,,) = _computeD1d2(spot, strike, timeToExpiry, vol, rate);
         uint256 t = (timeToExpiry * 1e18) / YEAR;
         uint256 sqrtT = Math.sqrt(t) * 1e9;
         // ν = S · φ(d1) · √T
@@ -167,7 +167,7 @@ contract BlackScholes {
         returns (int256)
     {
         if (timeToExpiry == 0 || vol == 0) return 0;
-        (int256 d1, int256 d2, uint256 expRt) = _computeD1D2(spot, strike, timeToExpiry, vol, rate);
+        (int256 d1, int256 d2, uint256 expRt) = _computeD1d2(spot, strike, timeToExpiry, vol, rate);
         uint256 t = (timeToExpiry * 1e18) / YEAR;
         uint256 sqrtT = Math.sqrt(t) * 1e9;
         uint256 pdf = normalPdf(d1);
@@ -186,7 +186,7 @@ contract BlackScholes {
 
     // ============ INTERNAL: D1/D2 ============
 
-    function _computeD1D2(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate)
+    function _computeD1d2(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate)
         internal
         pure
         returns (int256 d1, int256 d2, uint256 expRt)
@@ -248,12 +248,12 @@ contract BlackScholes {
     function _ln(uint256 x) internal pure returns (int256 y) {
         unchecked {
             uint256 log2x = log2(x);
-            uint256 LOG2_1E18 = 59794705707972522261;
-            uint256 LN_2 = 693147180559945309;
-            if (log2x >= LOG2_1E18) {
-                y = int256((log2x - LOG2_1E18) * LN_2 / 1e18);
+            uint256 log2_1e18 = 59794705707972522261;
+            uint256 ln2 = 693147180559945309;
+            if (log2x >= log2_1e18) {
+                y = int256((log2x - log2_1e18) * ln2 / 1e18);
             } else {
-                y = -int256((LOG2_1E18 - log2x) * LN_2 / 1e18);
+                y = -int256((log2_1e18 - log2x) * ln2 / 1e18);
             }
         }
     }

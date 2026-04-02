@@ -10,7 +10,7 @@ import { BytesLib } from "solidity-bytes-utils/BytesLib.sol";
  * @notice will be deleted once the forge/std is updated
  */
 struct FfiResult {
-    int32 exit_code;
+    int32 exitCode;
     bytes stdout;
     bytes stderr;
 }

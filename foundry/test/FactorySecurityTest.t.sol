@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import "forge-std/Test.sol";
-import "../contracts/OptionFactory.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { OptionFactory } from "../contracts/OptionFactory.sol";
 
 /**
  * @title Factory Security Test

@@ -7,7 +7,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances, OptionInfo, TokenData } from "../contracts/interfaces/IOption.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;
@@ -272,6 +271,7 @@ contract OptionTest is Test {
         option.mint(1);
         option.lock();
         vm.expectRevert(Option.LockedContract.selector);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 1);
     }
 
@@ -497,6 +497,7 @@ contract OptionTest is Test {
         option.lock();
 
         vm.expectRevert(Option.LockedContract.selector);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transferFrom(address(0x123), address(this), 3);
     }
 
@@ -1058,6 +1059,7 @@ contract OptionTest is Test {
         uint256 optBalance = option.balanceOf(address(this));
 
         vm.prank(operator);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         option.transferFrom(address(this), address(0x123), optBalance / 2);
 
         assertEq(option.balanceOf(address(0x123)), optBalance / 2);

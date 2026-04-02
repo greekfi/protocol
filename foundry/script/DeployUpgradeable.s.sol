@@ -34,8 +34,8 @@ contract DeployUpgradeable is Script, ScaffoldETHDeploy {
 
         console.log("OptionFactory deployed at:", address(factory));
         console.log("Factory owner:", factory.owner());
-        console.log("Redemption template:", factory.redemptionClone());
-        console.log("Option template:", factory.optionClone());
+        console.log("Redemption template:", factory.REDEMPTION_CLONE());
+        console.log("Option template:", factory.OPTION_CLONE());
 
         // Deploy OpHook using HookMiner to get correct address
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
