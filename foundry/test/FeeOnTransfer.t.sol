@@ -92,7 +92,7 @@ contract FeeOnTransferTest is Test {
         optionClone = new Option("Option Template", "OPTT", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone));
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted collateral
@@ -211,9 +211,9 @@ contract FeeOnTransferTest is Test {
         // Mint should succeed with normal tokens
         option.mint(mintAmount);
 
-        // Verify tokens were minted (minus fees)
-        assertNotEq(option.balanceOf(address(this)), mintAmount);
-        assertNotEq(redemption.balanceOf(address(this)), mintAmount);
+        // Verify tokens were minted 1:1 (no fees)
+        assertEq(option.balanceOf(address(this)), mintAmount);
+        assertEq(redemption.balanceOf(address(this)), mintAmount);
     }
 
     /// @notice Test blocklist event emission

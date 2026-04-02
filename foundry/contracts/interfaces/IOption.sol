@@ -44,11 +44,10 @@ interface IOption {
     // ============ STATE VARIABLES ============
 
     function redemption() external view returns (address);
-    function fee() external view returns (uint64);
 
     // ============ INITIALIZATION ============
 
-    function init(address redemption_, address owner, uint64 fee_) external;
+    function init(address redemption_, address owner) external;
 
     // ============ VIEW FUNCTIONS ============
 
@@ -76,6 +75,4 @@ interface IOption {
     function redeem(address account, uint256 amount) external;
     function lock() external;
     function unlock() external;
-    function adjustFee(uint64 fee_) external;
-    function claimFees() external;
 }

@@ -160,7 +160,7 @@ contract YieldVaultTest is Test {
             "Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
         Option optionClone = new Option("Long Option", "LONG", address(redemptionClone));
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone));
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         vault.setupFactoryApproval();
@@ -180,8 +180,8 @@ contract YieldVaultTest is Test {
         vault.setOperator(operator, true);
     }
 
-    function _fee(uint256 amount) internal view returns (uint256) {
-        return (amount * uint256(option.fee())) / 1e18;
+    function _fee(uint256) internal pure returns (uint256) {
+        return 0;
     }
 
     function _depositAsLP(uint256 amount) internal {
@@ -588,10 +588,7 @@ contract YieldVaultTest is Test {
 
         // Operator submits via vault.execute — vault is msg.sender so swapSingle accepts it
         vm.prank(operator);
-        vault.execute(
-            BEBOP_BLEND,
-            abi.encodeCall(IBebopSettlement.swapSingle, (order, makerSig, 0))
-        );
+        vault.execute(BEBOP_BLEND, abi.encodeCall(IBebopSettlement.swapSingle, (order, makerSig, 0)));
 
         // Verify
         assertEq(stableToken.balanceOf(address(vault)), cashPayment, "Vault should receive USDC");

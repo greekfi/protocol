@@ -34,7 +34,7 @@ contract GasBreakdown is Test {
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         IERC20(address(stableToken)).approve(address(factory), type(uint256).max);
         IERC20(address(shakyToken)).approve(address(factory), type(uint256).max);
@@ -69,14 +69,13 @@ contract GasBreakdown is Test {
             1e18,
             false,
             option_,
-            address(factory),
-            0.0001e18
+            address(factory)
         );
         uint256 gasRedemptionInit = gasBefore - gasleft();
         console.log("Redemption.init():", gasRedemptionInit);
 
         gasBefore = gasleft();
-        option.init(redemption_, msg.sender, 0.0001e18);
+        option.init(redemption_, msg.sender);
         uint256 gasOptionInit = gasBefore - gasleft();
         console.log("Option.init():", gasOptionInit);
 
@@ -97,10 +96,9 @@ contract GasBreakdown is Test {
             1e18,
             false,
             option_,
-            address(factory),
-            0.0001e18
+            address(factory)
         );
-        option.init(redemption_, msg.sender, 0.0001e18);
+        option.init(redemption_, msg.sender);
 
         uint256 gasBefore = gasleft();
 

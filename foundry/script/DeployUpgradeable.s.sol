@@ -30,11 +30,10 @@ contract DeployUpgradeable is Script, ScaffoldETHDeploy {
         Option optionTemplate = new Option("Option", "OPT", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        OptionFactory factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         console.log("OptionFactory deployed at:", address(factory));
         console.log("Factory owner:", factory.owner());
-        console.log("Factory fee:", factory.fee());
         console.log("Redemption template:", factory.redemptionClone());
         console.log("Option template:", factory.optionClone());
 

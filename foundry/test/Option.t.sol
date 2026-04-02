@@ -54,7 +54,7 @@ contract OptionTest is Test {
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone));
         factory_ = address(factory);
 
         OptionParameter[] memory options = new OptionParameter[](1);
@@ -102,14 +102,10 @@ contract OptionTest is Test {
 
         // Collateral deposited
         assertEq(collBefore - collAfter, mintAmount);
-        // Redemption minted (full amount minus fee on redemption side)
-        uint256 feeOnRedemption = (mintAmount * redemption.fee()) / 1e18;
-        uint256 expectedRedemption = mintAmount - feeOnRedemption;
-        assertEq(redemption.balanceOf(address(this)), expectedRedemption);
-        // Option minted (full amount minus fee on option side)
-        uint256 feeOnOption = (mintAmount * option.fee()) / 1e18;
-        uint256 expectedOption = mintAmount - feeOnOption;
-        assertEq(option.balanceOf(address(this)), expectedOption);
+        // Redemption minted 1:1 (no fees)
+        assertEq(redemption.balanceOf(address(this)), mintAmount);
+        // Option minted 1:1 (no fees)
+        assertEq(option.balanceOf(address(this)), mintAmount);
         // Collateral held by redemption contract
         assertEq(shakyToken.balanceOf(address(redemption)), mintAmount);
     }
@@ -681,10 +677,9 @@ contract OptionTest is Test {
         IERC20(token6_).approve(factory_, MAX256);
         factory.approve(token6_, MAX160);
 
-        // Mint: deposit 1e6 (= 1 token with 6 decimals), fee deducted from option tokens
+        // Mint: deposit 1e6 (= 1 token with 6 decimals), 1:1 no fees
         opt.mint(1e6);
-        // Fee = 1e6 * 0.0001e18 / 1e18 = 100, so option balance = 1e6 - 100 = 999900
-        assertEq(opt.balanceOf(address(this)), 999900);
+        assertEq(opt.balanceOf(address(this)), 1e6);
 
         // Verify conversion: 1 collateral token at strike 2000 = 2000 consideration tokens
         uint256 consAmount = red.toConsideration(1e6);
@@ -730,9 +725,8 @@ contract OptionTest is Test {
         IERC20(token6_).approve(factory_, MAX256);
         factory.approve(token6_, MAX160);
 
-        // Mint 1e18 (1 full collateral token)
+        // Mint 1e18 (1 full collateral token), 1:1 no fees
         opt.mint(1e18);
-        // Fee deducted: option balance = 1e18 - (1e18 * 0.0001e18 / 1e18) = 1e18 - 1e14 = 999900000000000000
         uint256 optBalance = opt.balanceOf(address(this));
 
         // Exercise the amount we actually have
@@ -789,69 +783,7 @@ contract OptionTest is Test {
         assertEq(red.toCollateral(10000e18), 5e18);
     }
 
-    // ============ FEE MECHANICS TESTS ============
-
-    function test_AdjustFee() public {
-        uint64 newFee = 0.005e18; // 0.5%
-        option.adjustFee(newFee);
-        assertEq(option.fee(), newFee);
-
-        // Verify new fee applies on next mint
-        option.mint(10000);
-        // Fee = 10000 * 0.005e18 / 1e18 = 50
-        assertEq(option.balanceOf(address(this)), 10000 - 50);
-    }
-
-    function test_AdjustFeeMaxExceeded() public {
-        vm.expectRevert(Option.InvalidValue.selector);
-        option.adjustFee(uint64(1e16 + 1)); // Just above MAXFEE
-    }
-
-    function test_AdjustFeeEvent() public {
-        uint64 oldFee = option.fee();
-        uint64 newFee = 0.005e18;
-
-        vm.expectEmit(false, false, false, true);
-        emit Option.FeeUpdated(oldFee, newFee);
-        option.adjustFee(newFee);
-    }
-
-    function test_ClaimFees() public {
-        // Mint to accumulate fees
-        option.mint(1_000_000);
-        uint256 accumulatedFees = redemption.fees();
-        assertGt(accumulatedFees, 0);
-
-        // Claim fees via option (transfers to factory)
-        option.claimFees();
-        assertEq(redemption.fees(), 0);
-
-        // Factory should have received the fees
-        uint256 factoryBalance = shakyToken.balanceOf(factory_);
-        assertEq(factoryBalance, accumulatedFees);
-    }
-
-    function test_FeeSegregation() public {
-        // Mint tokens — fees accumulate in redemption contract
-        option.mint(1_000_000);
-        uint256 fees = redemption.fees();
-        assertGt(fees, 0);
-
-        // Redeem all option+redemption pairs — should NOT consume fee balance
-        uint256 optBalance = option.balanceOf(address(this));
-        option.redeem(optBalance);
-
-        // Fees should still be intact
-        assertEq(redemption.fees(), fees);
-    }
-
     // ============ ACCESS CONTROL TESTS ============
-
-    function test_NonOwnerCannotAdjustFee() public {
-        vm.prank(address(0x123));
-        vm.expectRevert();
-        option.adjustFee(0.005e18);
-    }
 
     function test_NonOwnerCannotLock() public {
         vm.prank(address(0x123));
@@ -1050,14 +982,14 @@ contract OptionTest is Test {
     function test_ReinitCloneReverts() public {
         // Cloned option is already initialized — calling init again should revert
         vm.expectRevert();
-        option.init(address(redemption), address(this), 0);
+        option.init(address(redemption), address(this));
     }
 
     function test_ReinitRedemptionCloneReverts() public {
         vm.prank(address(option));
         vm.expectRevert();
         redemption.init(
-            shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 1e18, false, address(option), factory_, 0
+            shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 1e18, false, address(option), factory_
         );
     }
 
@@ -1144,28 +1076,6 @@ contract OptionTest is Test {
         // Non-redemption contract cannot call factory.transferFrom
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
         factory.transferFrom(address(this), address(0x123), 100, shakyToken_);
-    }
-
-    function test_FeeMaxBoundary() public {
-        // Set fee to exactly MAXFEE (1%)
-        option.adjustFee(uint64(option.MAXFEE()));
-        assertEq(option.fee(), option.MAXFEE());
-
-        // Mint and verify exact 1% fee
-        option.mint(10000);
-        // Fee = 10000 * 1e16 / 1e18 = 100
-        assertEq(option.balanceOf(address(this)), 9900);
-    }
-
-    function test_FeeZero() public {
-        // Set fee to 0
-        option.adjustFee(0);
-        assertEq(option.fee(), 0);
-
-        // Mint — no fee deducted
-        option.mint(10000);
-        assertEq(option.balanceOf(address(this)), 10000);
-        assertEq(redemption.fees(), 0);
     }
 
     function test_ShortRedeemMixedCollateralExactAmounts() public {

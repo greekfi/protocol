@@ -23,7 +23,6 @@ interface IOptionFactory {
     );
 
     event TokenBlocked(address token, bool blocked);
-    event FeeUpdated(uint64 oldFee, uint64 newFee);
     event TemplateUpdated();
 
     // ============ ERRORS ============
@@ -36,8 +35,6 @@ interface IOptionFactory {
 
     function redemptionClone() external view returns (address);
     function optionClone() external view returns (address);
-    function fee() external view returns (uint64);
-    function MAX_FEE() external view returns (uint256);
     function blocklist(address token) external view returns (bool);
     function allowance(address token, address owner) external view returns (uint256);
     function isBlocked(address token) external view returns (bool);
@@ -55,10 +52,6 @@ interface IOptionFactory {
     function approve(address token, uint256 amount) external;
     function blockToken(address token) external;
     function unblockToken(address token) external;
-    function claimFees(address[] memory options, address[] memory tokens) external;
-    function claimFees(address[] memory tokens) external;
-    function optionsClaimFees(address[] memory options) external;
-    function adjustFee(uint64 fee_) external;
     function enableAutoMintRedeem(bool enabled) external;
     function approveOperator(address operator, bool approved) external;
 }

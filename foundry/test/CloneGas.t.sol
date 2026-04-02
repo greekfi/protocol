@@ -29,7 +29,7 @@ contract CloneGas is Test {
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
     }
 
     function test_CloneGas() public {

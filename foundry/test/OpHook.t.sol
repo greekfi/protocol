@@ -123,7 +123,7 @@ abstract contract OpHookTestBase is Test {
         Option o = new Option("", "", address(r));
 
         // Deploy factory
-        OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(r), address(o));
 
         option1_ = factory.createOption(weth_, usdc_, expiration, strike1, false);
         option2_ = factory.createOption(weth_, usdc_, expiration, strike2, false);

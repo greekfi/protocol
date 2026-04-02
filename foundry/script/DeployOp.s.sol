@@ -30,24 +30,16 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         Option long = new Option("Option", "OPT", address(short));
 
         // Deploy factory directly
-        OptionFactory factory = new OptionFactory(address(short), address(long), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(short), address(long));
 
         console.log("OptionFactory deployed at:", address(factory));
 
-        YieldVault shakyVault = new YieldVault(
-            IERC20(address(shakyToken)),
-            "Greek Shaky Vault",
-            "gSHAKY",
-            address(factory)
-        );
+        YieldVault shakyVault =
+            new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         console.log("Shaky Vault deployed at:", address(shakyVault));
 
-        YieldVault stableVault = new YieldVault(
-            IERC20(address(stableToken)),
-            "Greek Stable Vault",
-            "gSTABLE",
-            address(factory)
-        );
+        YieldVault stableVault =
+            new YieldVault(IERC20(address(stableToken)), "Greek Stable Vault", "gSTABLE", address(factory));
         console.log("Stable Vault deployed at:", address(stableVault));
 
         // address deployer = ConstantsUnichain.CREATE2_DEPLOYER;

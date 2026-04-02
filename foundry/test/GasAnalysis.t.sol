@@ -58,7 +58,7 @@ contract GasAnalysis is Test {
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         // Create an option pair via factory (required for testing Option/Redemption)
         OptionParameter[] memory params = new OptionParameter[](1);
@@ -530,6 +530,6 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        new OptionFactory(address(redemptionTemplate), address(optionTemplate));
     }
 }
