@@ -89,6 +89,7 @@ abstract contract OpHookTestBase is Test {
     address public poolManager_;
     address public universalRouter_;
     address public wethUniPool_;
+    address public swapRouter_;
 
     IOption public option1;
     IOption public option2;
@@ -150,17 +151,12 @@ abstract contract OpHookTestBase is Test {
         OptionPricer pricer = new OptionPricer(address(bs), wethUniPool_, weth_, 1800);
 
         // Deploy vault
-        vault = new HookVault(
-            IERC20(weth_),
-            "Greek WETH Vault",
-            "gWETH",
-            address(factory),
-            address(pricer)
-        );
+        vault = new HookVault(IERC20(weth_), "Greek WETH Vault", "gWETH", address(factory), address(pricer));
         vault.setupFactoryApproval();
         vault.addHook(opHook_);
         vault.setupHookApproval(opHook_);
-        vault.setSwapPool(usdc_, wethUniPool_);
+        vault.setSwapRouter(swapRouter_);
+        vault.setSwapFee(usdc_, 500); // 0.05% fee tier
         vault.approveCashForHook(usdc_, opHook_);
         vault.whitelistOption(option1_, true);
         vault.whitelistOption(option2_, true);
@@ -277,6 +273,7 @@ contract Mainnet is OpHookTestBase {
         poolManager_ = ConstantsMainnet.POOLMANAGER;
         universalRouter_ = ConstantsMainnet.UNIVERSALROUTER;
         wethUniPool_ = ConstantsMainnet.WETH_UNI_POOL;
+        swapRouter_ = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45; // SwapRouter02 on mainnet
         _setupCommon();
     }
 }
@@ -292,6 +289,7 @@ contract Base is OpHookTestBase {
         poolManager_ = ConstantsBase.POOLMANAGER;
         universalRouter_ = ConstantsBase.UNIVERSALROUTER;
         wethUniPool_ = ConstantsBase.WETH_UNI_POOL;
+        swapRouter_ = 0x2626664c2603336E57B271c5C0b26F421741e481; // SwapRouter02 on Base
         // ETH ~$2039 at block 43190000
         strike1 = 2100e18;
         strike2 = 2300e18;

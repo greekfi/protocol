@@ -10,10 +10,6 @@ import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/Reentran
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3SwapCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-
 import { IOption } from "./interfaces/IOption.sol";
 import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
@@ -27,12 +23,26 @@ interface IOptionPricer {
     function getCollateralPrice() external view returns (uint256);
 }
 
+interface ISwapRouter02 {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+}
+
 /// @title HookVault
 /// @notice ERC4626 vault with integrated pricing and strategy for the Uniswap v4 hook.
 /// @dev Depositors provide collateral (e.g. WETH) and earn yield from option premiums.
 ///      Hook sells/buys options via auto-mint/redeem. Cash auto-swapped via Uniswap v3.
 ///      Inventory-based spread: wider ask when vault is more short, tighter bid to encourage buyback.
-contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUniswapV3SwapCallback {
+contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     using Math for uint256;
 
     // ============ STRUCTS ============
@@ -52,7 +62,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     error NothingToSettle();
     error InvalidAddress();
     error InvalidBps();
-    error InvalidCallback();
     error ZeroAmount();
     error OptionNotExpired();
     error AlreadyRolled();
@@ -71,7 +80,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     event OptionsRolled(address indexed expiredOption, address[] newOptions, address indexed caller, uint256 bounty);
     event StrategyUpdated();
     event RollBountyUpdated(uint256 oldBounty, uint256 newBounty);
-    event SwapPoolUpdated(address indexed cashToken, address pool);
     event PricerUpdated(address oldPricer, address newPricer);
 
     // ============ PRICING ============
@@ -107,7 +115,8 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
 
     // ============ SWAP ============
 
-    mapping(address => IUniswapV3Pool) public swapPools; // cashToken → v3 pool
+    ISwapRouter02 public swapRouter;
+    mapping(address => uint24) public swapFees; // cashToken → v3 pool fee tier
 
     // ============ MODIFIERS ============
 
@@ -123,13 +132,11 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
 
     // ============ CONSTRUCTOR ============
 
-    constructor(
-        IERC20 collateral_,
-        string memory name_,
-        string memory symbol_,
-        address factory_,
-        address pricer_
-    ) ERC4626(collateral_) ERC20(name_, symbol_) Ownable(msg.sender) {
+    constructor(IERC20 collateral_, string memory name_, string memory symbol_, address factory_, address pricer_)
+        ERC4626(collateral_)
+        ERC20(name_, symbol_)
+        Ownable(msg.sender)
+    {
         if (factory_ == address(0) || pricer_ == address(0)) revert InvalidAddress();
         factory = IOptionFactory(factory_);
         pricer = IOptionPricer(pricer_);
@@ -223,7 +230,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
 
     // ============ SWAP (Uniswap v3) ============
 
-    /// @notice Swap between a cash token and collateral via Uniswap v3
+    /// @notice Swap between a cash token and collateral via Uniswap v3 router
     /// @param cashToken_ The cash token to swap (e.g. USDC, USDT)
     /// @param cashToCollateral true = swap cash→collateral, false = swap collateral→cash
     /// @param amount Input amount (0 = swap all cash when cashToCollateral)
@@ -242,39 +249,28 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
         }
         if (amount == 0) return 0;
 
-        IUniswapV3Pool pool = swapPools[cashToken_];
-        require(address(pool) != address(0), "No swap pool for token");
+        uint24 fee = swapFees[cashToken_];
+        require(fee > 0, "No swap fee for token");
 
-        bool zeroForOne = tokenIn < tokenOut;
-        uint160 sqrtPriceLimitX96 = zeroForOne
-            ? TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK + 1)
-            : TickMath.getSqrtPriceAtTick(TickMath.MAX_TICK - 1);
+        IERC20(tokenIn).forceApprove(address(swapRouter), amount);
 
-        uint256 balBefore = IERC20(tokenOut).balanceOf(address(this));
-
-        pool.swap(address(this), zeroForOne, int256(amount), sqrtPriceLimitX96, abi.encode(tokenIn));
-
-        amountOut = IERC20(tokenOut).balanceOf(address(this)) - balBefore;
+        amountOut = swapRouter.exactInputSingle(
+            ISwapRouter02.ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: fee,
+                recipient: address(this),
+                amountIn: amount,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
 
         if (cashToCollateral) {
             totalPremiumsCollected += amountOut;
         }
 
         emit Swapped(tokenIn, tokenOut, amount, amountOut);
-    }
-
-    /// @inheritdoc IUniswapV3SwapCallback
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        if (!_isSwapPool(msg.sender)) revert InvalidCallback();
-        address tokenIn = abi.decode(data, (address));
-        uint256 amountToPay = amount0Delta > 0 ? uint256(amount0Delta) : uint256(amount1Delta);
-        IERC20(tokenIn).safeTransfer(msg.sender, amountToPay);
-    }
-
-    function _isSwapPool(address caller) internal view returns (bool) {
-        // Check all registered swap pools
-        return caller == address(swapPools[IUniswapV3Pool(caller).token0()])
-            || caller == address(swapPools[IUniswapV3Pool(caller).token1()]);
     }
 
     // ============ SETTLEMENT ============
@@ -381,11 +377,14 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
         emit PricerUpdated(old, pricer_);
     }
 
-    /// @notice Register a Uniswap v3 pool for swapping a cash token <> collateral
-    function setSwapPool(address cashToken_, address pool) external onlyOwner {
-        if (pool == address(0)) revert InvalidAddress();
-        swapPools[cashToken_] = IUniswapV3Pool(pool);
-        emit SwapPoolUpdated(cashToken_, pool);
+    function setSwapRouter(address router) external onlyOwner {
+        if (router == address(0)) revert InvalidAddress();
+        swapRouter = ISwapRouter02(router);
+    }
+
+    /// @notice Register a v3 fee tier for swapping a cash token <> collateral
+    function setSwapFee(address cashToken_, uint24 fee) external onlyOwner {
+        swapFees[cashToken_] = fee;
     }
 
     function setRollBounty(uint256 bounty) external onlyOwner {
