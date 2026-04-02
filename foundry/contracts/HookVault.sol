@@ -4,7 +4,6 @@ pragma solidity ^0.8.33;
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
@@ -20,51 +19,12 @@ import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
 
 using SafeERC20 for IERC20;
 
-interface IBlackScholes {
-    function price(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate, bool isPut)
-        external
-        pure
-        returns (uint256);
-
-    function priceWithSmile(
-        uint256 spot,
-        uint256 strike,
-        uint256 timeToExpiry,
-        uint256 atmVol,
-        uint256 rate,
-        bool isPut,
-        int256 skew,
-        int256 kurtosis
-    ) external pure returns (uint256);
-
-    function delta(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate, bool isPut)
-        external
-        pure
-        returns (int256);
-
-    function gamma(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate)
-        external
-        pure
-        returns (uint256);
-
-    function vega(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate)
-        external
-        pure
-        returns (uint256);
-
-    function theta(uint256 spot, uint256 strike, uint256 timeToExpiry, uint256 vol, uint256 rate, bool isPut)
-        external
-        pure
-        returns (int256);
-}
-
-interface IUniswapV3PoolOracle {
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function observe(uint32[] calldata secondsAgos)
+interface IOptionPricer {
+    function price(address option, uint256 amount, bool isBuy, int256 netInventory, uint256 totalAssets)
         external
         view
-        returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
+        returns (uint256 outputAmount, uint256 unitPrice);
+    function getCollateralPrice() external view returns (uint256);
 }
 
 /// @title HookVault
@@ -90,8 +50,8 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     error ExceedsCommitmentCap();
     error InsufficientIdle();
     error NothingToSettle();
-    error InvalidBps();
     error InvalidAddress();
+    error InvalidBps();
     error InvalidCallback();
     error ZeroAmount();
     error OptionNotExpired();
@@ -110,31 +70,19 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     event MaxCommitmentUpdated(uint256 oldBps, uint256 newBps);
     event OptionsRolled(address indexed expiredOption, address[] newOptions, address indexed caller, uint256 bounty);
     event StrategyUpdated();
-    event VolatilityUpdated(uint256 oldVol, uint256 newVol);
-    event RiskFreeRateUpdated(uint256 oldRate, uint256 newRate);
     event RollBountyUpdated(uint256 oldBounty, uint256 newBounty);
-    event SpreadUpdated(uint256 oldSpread, uint256 newSpread);
-    event SkewUpdated(int256 oldSkew, int256 newSkew);
-    event KurtosisUpdated(int256 oldKurtosis, int256 newKurtosis);
-    event InventorySkewFactorUpdated(uint256 oldFactor, uint256 newFactor);
     event SwapPoolUpdated(address indexed cashToken, address pool);
+    event PricerUpdated(address oldPricer, address newPricer);
 
     // ============ PRICING ============
 
-    IBlackScholes public blackScholes;
-    IUniswapV3PoolOracle public pricePool;
-    uint256 public volatility;
-    uint256 public riskFreeRate;
-    uint32 public twapWindow;
+    IOptionPricer public pricer;
 
     // ============ STRATEGY ============
 
     IOptionFactory public factory;
     StrikeConfig[] public strikeConfigs;
     uint256 public rollBounty;
-    uint256 public spreadBps;
-    int256 public skew;
-    int256 public kurtosis;
     mapping(address => bool) public rolled;
 
     // ============ HOOKS ============
@@ -156,7 +104,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     // ============ INVENTORY ============
 
     int256 public netInventory;
-    uint256 public inventorySkewFactor;
 
     // ============ SWAP ============
 
@@ -181,20 +128,11 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
         string memory name_,
         string memory symbol_,
         address factory_,
-        address blackScholes_,
-        address pricePool_,
-        uint32 twapWindow_
+        address pricer_
     ) ERC4626(collateral_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        if (factory_ == address(0) || blackScholes_ == address(0) || pricePool_ == address(0)) {
-            revert InvalidAddress();
-        }
+        if (factory_ == address(0) || pricer_ == address(0)) revert InvalidAddress();
         factory = IOptionFactory(factory_);
-        blackScholes = IBlackScholes(blackScholes_);
-        pricePool = IUniswapV3PoolOracle(pricePool_);
-        twapWindow = twapWindow_;
-
-        volatility = 0.2e18;
-        riskFreeRate = 0.05e18;
+        pricer = IOptionPricer(pricer_);
         maxCommitmentBps = 8000;
     }
 
@@ -222,79 +160,12 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
 
     // ============ PRICING ============
 
-    function getCollateralPrice() public view returns (uint256 price_) {
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = twapWindow;
-        secondsAgos[1] = 0;
-
-        (int56[] memory tickCumulatives,) = pricePool.observe(secondsAgos);
-
-        int24 meanTick = int24((tickCumulatives[1] - tickCumulatives[0]) / int56(int32(twapWindow)));
-        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(meanTick);
-
-        uint256 sqrtPriceX32 = uint256(sqrtPriceX96) >> 64;
-        uint256 priceX64 = sqrtPriceX32 * sqrtPriceX32;
-        price_ = (priceX64 * 1e18) >> 64;
-
-        uint8 decimals0 = IERC20Metadata(pricePool.token0()).decimals();
-        uint8 decimals1 = IERC20Metadata(pricePool.token1()).decimals();
-        if (decimals1 > decimals0) {
-            price_ = price_ / (10 ** (decimals1 - decimals0));
-        } else if (decimals0 > decimals1) {
-            price_ = price_ * (10 ** (decimals0 - decimals1));
-        }
-
-        bool collateralIsToken1 = pricePool.token1() == asset();
-        if (collateralIsToken1) {
-            require(price_ > 0, "Price cannot be zero for inverse");
-            price_ = 1e36 / price_;
-        }
-    }
-
-    /// @notice Calculate inventory-aware half spread
-    function _calculateHalfSpread() internal view returns (uint256) {
-        uint256 baseHalf = spreadBps / 2;
-        uint256 total = totalAssets();
-        if (total == 0 || inventorySkewFactor == 0) return baseHalf;
-        uint256 absInventory = netInventory >= 0 ? uint256(netInventory) : uint256(-netInventory);
-        return baseHalf + (inventorySkewFactor * absInventory) / total;
-    }
-
-    /// @notice Get price quote with inventory-based spread
-    /// @param option Option contract address
-    /// @param amount Input amount (cash decimals if isBuy, 18 decimals if !isBuy)
-    /// @param isBuy true = user buying options (vault selling, ask), false = user selling (vault buying, bid)
     function price(address option, uint256 amount, bool isBuy)
         external
         view
         returns (uint256 outputAmount, uint256 unitPrice)
     {
-        IOption opt = IOption(option);
-        uint256 spot = getCollateralPrice();
-        uint256 timeToExpiry = opt.expirationDate() > block.timestamp ? opt.expirationDate() - block.timestamp : 0;
-
-        uint256 midPrice = blackScholes.priceWithSmile(
-            spot, opt.strike(), timeToExpiry, volatility, riskFreeRate, opt.isPut(), skew, kurtosis
-        );
-
-        uint256 halfSpread = _calculateHalfSpread();
-        uint256 bsPrice;
-        if (isBuy) {
-            bsPrice = Math.mulDiv(midPrice, 10000 + halfSpread, 10000);
-        } else {
-            bsPrice = Math.mulDiv(midPrice, 10000 - halfSpread, 10000);
-        }
-
-        uint8 cashDecimals = IERC20Metadata(opt.consideration()).decimals();
-        uint256 scaleFactor = 10 ** (36 - uint256(cashDecimals));
-
-        if (isBuy) {
-            outputAmount = Math.mulDiv(amount, scaleFactor, bsPrice);
-        } else {
-            outputAmount = Math.mulDiv(amount, bsPrice, scaleFactor);
-        }
-
-        unitPrice = Math.mulDiv(bsPrice, 10 ** uint256(cashDecimals), 1e18);
+        return pricer.price(option, amount, isBuy, netInventory, totalAssets());
     }
 
     // ============ HOOK INTERACTION ============
@@ -303,12 +174,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
     /// @param option Option address (must be whitelisted)
     /// @param to Recipient of options
     /// @param amount Number of option tokens to deliver (18 decimals)
-    function sellOptions(address option, address to, uint256 amount)
-        external
-        onlyHook
-        nonReentrant
-        whenNotPaused
-    {
+    function sellOptions(address option, address to, uint256 amount) external onlyHook nonReentrant whenNotPaused {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
         if (amount == 0) revert ZeroAmount();
         if (IOption(option).collateral() != asset()) revert CollateralMismatch();
@@ -440,7 +306,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
 
         rolled[expiredOption] = true;
 
-        uint256 spot = getCollateralPrice();
+        uint256 spot = pricer.getCollateralPrice();
         address collateral_ = asset();
         newOptions = new address[](strikeConfigs.length);
 
@@ -448,8 +314,9 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
             StrikeConfig memory cfg = strikeConfigs[i];
             uint96 newStrike = uint96(Math.mulDiv(spot, uint256(cfg.strikeOffsetBps), 10000));
             uint40 newExpiry = uint40(block.timestamp + uint256(cfg.duration));
-            address newOption =
-                factory.createOption(collateral_, IOption(expiredOption).consideration(), newExpiry, newStrike, cfg.isPut);
+            address newOption = factory.createOption(
+                collateral_, IOption(expiredOption).consideration(), newExpiry, newStrike, cfg.isPut
+            );
             whitelistedOptions[newOption] = true;
             newOptions[i] = newOption;
             emit OptionWhitelisted(newOption, true);
@@ -507,48 +374,14 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
         emit MaxCommitmentUpdated(old, bps);
     }
 
-    function setVolatility(uint256 vol) external onlyOwner {
-        uint256 old = volatility;
-        volatility = vol;
-        emit VolatilityUpdated(old, vol);
+    function setPricer(address pricer_) external onlyOwner {
+        if (pricer_ == address(0)) revert InvalidAddress();
+        address old = address(pricer);
+        pricer = IOptionPricer(pricer_);
+        emit PricerUpdated(old, pricer_);
     }
 
-    function setRiskFreeRate(uint256 rate) external onlyOwner {
-        uint256 old = riskFreeRate;
-        riskFreeRate = rate;
-        emit RiskFreeRateUpdated(old, rate);
-    }
-
-    function setTwapWindow(uint32 window) external onlyOwner {
-        twapWindow = window;
-    }
-
-    function setSpreadBps(uint256 bps) external onlyOwner {
-        if (bps > 5000) revert InvalidBps();
-        uint256 old = spreadBps;
-        spreadBps = bps;
-        emit SpreadUpdated(old, bps);
-    }
-
-    function setSkew(int256 skew_) external onlyOwner {
-        int256 old = skew;
-        skew = skew_;
-        emit SkewUpdated(old, skew_);
-    }
-
-    function setKurtosis(int256 kurtosis_) external onlyOwner {
-        int256 old = kurtosis;
-        kurtosis = kurtosis_;
-        emit KurtosisUpdated(old, kurtosis_);
-    }
-
-    function setInventorySkewFactor(uint256 factor) external onlyOwner {
-        uint256 old = inventorySkewFactor;
-        inventorySkewFactor = factor;
-        emit InventorySkewFactorUpdated(old, factor);
-    }
-
-    /// @notice Register a Uniswap v3 pool for swapping a cash token ↔ collateral
+    /// @notice Register a Uniswap v3 pool for swapping a cash token <> collateral
     function setSwapPool(address cashToken_, address pool) external onlyOwner {
         if (pool == address(0)) revert InvalidAddress();
         swapPools[cashToken_] = IUniswapV3Pool(pool);
@@ -578,16 +411,6 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable, IUni
         whitelistedOptions[opt] = true;
         emit OptionWhitelisted(opt, true);
         return opt;
-    }
-
-    function setBlackScholes(address bs) external onlyOwner {
-        if (bs == address(0)) revert InvalidAddress();
-        blackScholes = IBlackScholes(bs);
-    }
-
-    function setPricePool(address pool) external onlyOwner {
-        if (pool == address(0)) revert InvalidAddress();
-        pricePool = IUniswapV3PoolOracle(pool);
     }
 
     function pause() external onlyOwner {

@@ -7,6 +7,7 @@ import { OpHook } from "../contracts/OpHook.sol";
 import { Option, Redemption } from "../contracts/Option.sol";
 import { HookVault } from "../contracts/HookVault.sol";
 import { BlackScholes } from "../contracts/BlackScholes.sol";
+import { OptionPricer } from "../contracts/OptionPricer.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -25,7 +26,6 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { SafeCallback } from "./SafeCallback.sol";
-import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
 import { ConstantsBase } from "../contracts/ConstantsBase.sol";
 
@@ -145,18 +145,17 @@ abstract contract OpHookTestBase is Test {
 
         address opHook_ = address(opHook);
 
-        // Deploy BlackScholes pricing
+        // Deploy pricing
         BlackScholes bs = new BlackScholes();
+        OptionPricer pricer = new OptionPricer(address(bs), wethUniPool_, weth_, 1800);
 
-        // Deploy vault: collateral = WETH, pricing = BlackScholes, oracle = wethUniPool
+        // Deploy vault
         vault = new HookVault(
             IERC20(weth_),
             "Greek WETH Vault",
             "gWETH",
             address(factory),
-            address(bs),
-            wethUniPool_,
-            1800 // 30 min TWAP
+            address(pricer)
         );
         vault.setupFactoryApproval();
         vault.addHook(opHook_);
@@ -211,7 +210,7 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testCollateralPrice() public {
-        uint256 price = vault.getCollateralPrice();
+        uint256 price = vault.pricer().getCollateralPrice();
         console.log("Collateral price (TWAP):", price / 1e18);
         assertGt(price, 0);
     }
