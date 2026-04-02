@@ -569,7 +569,8 @@ contract OptionTest is Test {
     function test_PutMintAndExercise() public {
         // Put: collateral=stableToken, consideration=shakyToken
         // Exercising a put = selling collateral at strike price
-        address putAddr = factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
@@ -617,7 +618,8 @@ contract OptionTest is Test {
     }
 
     function test_PutRedeem() public {
-        address putAddr = factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
@@ -637,7 +639,8 @@ contract OptionTest is Test {
     }
 
     function test_PutPostExpirationRedeem() public {
-        address putAddr = factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
@@ -670,7 +673,8 @@ contract OptionTest is Test {
         address token6Addr = address(token6);
 
         // Create option: 6-decimal collateral, 18-decimal consideration
-        address optAddr = factory.createOption(token6Addr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(token6Addr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
@@ -697,7 +701,8 @@ contract OptionTest is Test {
         address token6Addr = address(token6);
 
         // Create option: 18-decimal collateral, 6-decimal consideration
-        address optAddr = factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
@@ -719,7 +724,8 @@ contract OptionTest is Test {
         address token6Addr = address(token6);
 
         // 18-decimal collateral, 6-decimal consideration, strike=2000
-        address optAddr = factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
@@ -888,9 +894,27 @@ contract OptionTest is Test {
 
     function test_CreateOptionsBatch() public {
         OptionParameter[] memory params = new OptionParameter[](3);
-        params[0] = OptionParameter(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 1e18, false);
-        params[1] = OptionParameter(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 7 days), 2e18, false);
-        params[2] = OptionParameter(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 30 days), 5e18, true);
+        params[0] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false
+        });
+        params[1] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 7 days),
+            strike: 2e18,
+            isPut: false
+        });
+        params[2] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 30 days),
+            strike: 5e18,
+            isPut: true
+        });
 
         address[] memory addrs = factory.createOptions(params);
         assertEq(addrs.length, 3);
