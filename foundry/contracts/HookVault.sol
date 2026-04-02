@@ -193,8 +193,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         uint256 redBefore = IERC20(redemption).balanceOf(address(this));
 
         // transferFrom triggers auto-mint: vault's collateral → Redemption, options minted to `to`
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        IOption(option).transferFrom(address(this), to, amount);
+        require(IOption(option).transferFrom(address(this), to, amount), "transferFrom failed");
 
         uint256 redAfter = IERC20(redemption).balanceOf(address(this));
         uint256 redMinted = redAfter - redBefore;
