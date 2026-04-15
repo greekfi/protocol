@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {TickMath} from "./libraries/TickMath.sol";
+import { TickMath } from "./libraries/TickMath.sol";
 
 interface IToken {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -23,7 +23,6 @@ interface INuFactorySetup {
 ///         Pro-rata fills within each level. Lazy settlement via accumulators.
 ///         Prices use log-spaced ticks (1.0001^tick) for uniform 1-bip resolution at all scales.
 contract NuAMMv2 {
-
     // ============================================================
     //                       REENTRANCY LOCK
     // ============================================================
@@ -101,7 +100,8 @@ contract NuAMMv2 {
         address fac = IOption(optionToken).factory();
         INuFactorySetup(fac).enableAutoMintRedeem(true);
         INuFactorySetup(fac).approve(col, type(uint256).max);
-        (bool ok, bytes memory ret) = col.call(abi.encodeWithSignature("approve(address,uint256)", fac, type(uint256).max));
+        (bool ok, bytes memory ret) =
+            col.call(abi.encodeWithSignature("approve(address,uint256)", fac, type(uint256).max));
         if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) revert TransferFailed();
     }
 
@@ -128,13 +128,7 @@ contract NuAMMv2 {
     //                      QUOTE / CANCEL / REQUOTE
     // ============================================================
 
-    function quote(
-        address sellToken,
-        address buyToken,
-        int24 tick,
-        uint256 amount,
-        bool isOption
-    ) external lock {
+    function quote(address sellToken, address buyToken, int24 tick, uint256 amount, bool isOption) external lock {
         uint256 remaining = _maybeCross(msg.sender, sellToken, buyToken, tick, amount);
         if (remaining > 0) {
             _quote(msg.sender, sellToken, buyToken, tick, remaining, isOption);
@@ -145,14 +139,10 @@ contract NuAMMv2 {
         _cancel(msg.sender, sellToken, buyToken, tick, isOption);
     }
 
-    function requote(
-        address sellToken,
-        address buyToken,
-        int24 oldTick,
-        int24 newTick,
-        uint256 amount,
-        bool isOption
-    ) external lock {
+    function requote(address sellToken, address buyToken, int24 oldTick, int24 newTick, uint256 amount, bool isOption)
+        external
+        lock
+    {
         _cancel(msg.sender, sellToken, buyToken, oldTick, isOption);
         uint256 remaining = _maybeCross(msg.sender, sellToken, buyToken, newTick, amount);
         if (remaining > 0) {
@@ -166,7 +156,10 @@ contract NuAMMv2 {
         int24[] calldata ticks,
         bool[] calldata isOptions
     ) external lock {
-        if (sellTokens.length != buyTokens.length || sellTokens.length != ticks.length || sellTokens.length != isOptions.length) revert ArrayLengthMismatch();
+        if (
+            sellTokens.length != buyTokens.length || sellTokens.length != ticks.length
+                || sellTokens.length != isOptions.length
+        ) revert ArrayLengthMismatch();
         for (uint256 i = 0; i < sellTokens.length; i++) {
             bytes32 lid = _levelId(sellTokens[i], buyTokens[i], ticks[i]);
             Position storage pos = positions[msg.sender][lid];
@@ -184,12 +177,7 @@ contract NuAMMv2 {
     /// @param tokenOut Token the taker wants
     /// @param amountIn Amount of tokenIn the taker sends
     /// @param minOut Minimum tokenOut the taker accepts (slippage protection)
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minOut
-    ) external lock {
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut) external lock {
         if (amountIn == 0) revert ZeroAmount();
 
         // Makers sell tokenOut, want tokenIn
@@ -229,12 +217,10 @@ contract NuAMMv2 {
     //                         SETTLE
     // ============================================================
 
-    function settle(
-        address maker,
-        address[] calldata sellTokens,
-        address[] calldata buyTokens,
-        int24[] calldata ticks
-    ) external lock {
+    function settle(address maker, address[] calldata sellTokens, address[] calldata buyTokens, int24[] calldata ticks)
+        external
+        lock
+    {
         if (sellTokens.length != buyTokens.length || sellTokens.length != ticks.length) revert ArrayLengthMismatch();
         for (uint256 i = 0; i < sellTokens.length; i++) {
             bytes32 lid = _levelId(sellTokens[i], buyTokens[i], ticks[i]);
@@ -249,7 +235,9 @@ contract NuAMMv2 {
         address[] calldata buyTokens,
         int24[] calldata ticks
     ) external lock {
-        if (sellTokens.length != buyTokens.length || sellTokens.length != ticks.length) revert ArrayLengthMismatch();
+        if (sellTokens.length != buyTokens.length || sellTokens.length != ticks.length) {
+            revert ArrayLengthMismatch();
+        }
         for (uint256 i = 0; i < sellTokens.length; i++) {
             if (buyTokens[i] != token) continue;
             bytes32 lid = _levelId(sellTokens[i], buyTokens[i], ticks[i]);
@@ -292,7 +280,11 @@ contract NuAMMv2 {
         return TickMath.getTickAtSqrtPrice(sqrtPriceX96);
     }
 
-    function pendingProceeds(address maker, address sellToken, address buyToken, int24 tick) external view returns (uint256) {
+    function pendingProceeds(address maker, address sellToken, address buyToken, int24 tick)
+        external
+        view
+        returns (uint256)
+    {
         bytes32 lid = _levelId(sellToken, buyToken, tick);
         Level storage level = levels[lid];
         Position storage pos = positions[maker][lid];
@@ -301,7 +293,11 @@ contract NuAMMv2 {
         return (pos.shares * accDiff) / ACC_PRECISION;
     }
 
-    function makerBalanceAtLevel(address maker, address sellToken, address buyToken, int24 tick) external view returns (uint256) {
+    function makerBalanceAtLevel(address maker, address sellToken, address buyToken, int24 tick)
+        external
+        view
+        returns (uint256)
+    {
         bytes32 lid = _levelId(sellToken, buyToken, tick);
         Level storage level = levels[lid];
         Position storage pos = positions[maker][lid];
@@ -330,17 +326,20 @@ contract NuAMMv2 {
     }
 
     /// @notice Return up to N ticks starting from bestTick
-    function getBook(
-        address sellToken,
-        address buyToken,
-        uint256 n
-    ) external view returns (int24[] memory ticks, uint128[] memory amounts) {
+    function getBook(address sellToken, address buyToken, uint256 n)
+        external
+        view
+        returns (int24[] memory ticks, uint128[] memory amounts)
+    {
         ticks = new int24[](n);
         amounts = new uint128[](n);
 
         int24 current = bestTick[_pairKey(sellToken, buyToken)];
         if (current == NO_TICK) {
-            assembly { mstore(ticks, 0) mstore(amounts, 0) }
+            assembly {
+                mstore(ticks, 0)
+                mstore(amounts, 0)
+            }
             return (ticks, amounts);
         }
 
@@ -367,7 +366,10 @@ contract NuAMMv2 {
             }
         }
 
-        assembly { mstore(ticks, found) mstore(amounts, found) }
+        assembly {
+            mstore(ticks, found)
+            mstore(amounts, found)
+        }
     }
 
     function getPositions(address maker) external view returns (bytes32[] memory) {
@@ -393,12 +395,10 @@ contract NuAMMv2 {
     // ============================================================
 
     /// @notice Fill a single level, returns (amountOut, amountIn consumed)
-    function _fillLevel(
-        address sellToken,
-        address buyToken,
-        int24 tick,
-        uint256 maxIn
-    ) internal returns (uint256 fillOut, uint256 fillIn) {
+    function _fillLevel(address sellToken, address buyToken, int24 tick, uint256 maxIn)
+        internal
+        returns (uint256 fillOut, uint256 fillIn)
+    {
         bytes32 lid = _levelId(sellToken, buyToken, tick);
         Level storage level = levels[lid];
         if (level.balance == 0) return (0, 0);
@@ -426,13 +426,10 @@ contract NuAMMv2 {
     }
 
     /// @notice Quick crossing check + fill if needed
-    function _maybeCross(
-        address maker,
-        address sellToken,
-        address buyToken,
-        int24 makerTick,
-        uint256 amount
-    ) internal returns (uint256) {
+    function _maybeCross(address maker, address sellToken, address buyToken, int24 makerTick, uint256 amount)
+        internal
+        returns (uint256)
+    {
         bytes32 oppPairKey = _pairKey(buyToken, sellToken);
         int24 oppBest = bestTick[oppPairKey];
         if (oppBest == NO_TICK || oppBest > -makerTick) {
@@ -442,13 +439,10 @@ contract NuAMMv2 {
     }
 
     /// @notice Fill against crossing levels on the opposite side of the book
-    function _fillCrossing(
-        address maker,
-        address sellToken,
-        address buyToken,
-        int24 makerTick,
-        uint256 amount
-    ) internal returns (uint256 remaining) {
+    function _fillCrossing(address maker, address sellToken, address buyToken, int24 makerTick, uint256 amount)
+        internal
+        returns (uint256 remaining)
+    {
         // Cap amount to available balance
         uint256 available = balances[maker][sellToken];
         if (amount > available) amount = available;
@@ -488,14 +482,9 @@ contract NuAMMv2 {
     //                     INTERNAL: QUOTE / CANCEL
     // ============================================================
 
-    function _quote(
-        address maker,
-        address sellToken,
-        address buyToken,
-        int24 tick,
-        uint256 amount,
-        bool isOption
-    ) internal {
+    function _quote(address maker, address sellToken, address buyToken, int24 tick, uint256 amount, bool isOption)
+        internal
+    {
         if (amount == 0) revert ZeroAmount();
         if (sellToken == address(0) || buyToken == address(0)) revert ZeroAmount();
         if (sellToken == buyToken) revert SameToken();
@@ -537,16 +526,9 @@ contract NuAMMv2 {
 
         _setBit(sellToken, buyToken, tick);
         _updateBestTickOnAdd(sellToken, buyToken, tick);
-
     }
 
-    function _cancel(
-        address maker,
-        address sellToken,
-        address buyToken,
-        int24 tick,
-        bool isOption
-    ) internal {
+    function _cancel(address maker, address sellToken, address buyToken, int24 tick, bool isOption) internal {
         bytes32 lid = _levelId(sellToken, buyToken, tick);
         Level storage level = levels[lid];
         Position storage pos = positions[maker][lid];
@@ -572,7 +554,6 @@ contract NuAMMv2 {
             _clearBit(sellToken, buyToken, tick);
             _updateBestTickAfterRemoval(sellToken, buyToken, tick);
         }
-
     }
 
     // ============================================================

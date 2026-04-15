@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {TickMath} from "./libraries/TickMath.sol";
+import { TickMath } from "./libraries/TickMath.sol";
 
 interface IToken2 {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -23,7 +23,6 @@ interface IFactorySetup {
 ///         One balance backs everything. Fills check balance at execution time.
 ///         FIFO within each level. No shares, no accumulator, no settle.
 contract CLOBAMM {
-
     modifier lock() {
         assembly ("memory-safe") {
             if tload(0) { revert(0, 0) }
@@ -98,7 +97,8 @@ contract CLOBAMM {
         IFactorySetup(fac).enableAutoMintRedeem(true);
         IFactorySetup(fac).approve(col, type(uint256).max);
         // Standard ERC20 approval of collateral to factory (for factory.transferFrom during auto-mint)
-        (bool ok, bytes memory ret) = col.call(abi.encodeWithSignature("approve(address,uint256)", fac, type(uint256).max));
+        (bool ok, bytes memory ret) =
+            col.call(abi.encodeWithSignature("approve(address,uint256)", fac, type(uint256).max));
         if (!ok || (ret.length > 0 && !abi.decode(ret, (bool)))) revert TransferFailed();
     }
 
@@ -138,7 +138,10 @@ contract CLOBAMM {
         _cancel(msg.sender, sellToken, buyToken, tick);
     }
 
-    function requote(address sellToken, address buyToken, int24 oldTick, int24 newTick, uint256 amount, bool isOption) external lock {
+    function requote(address sellToken, address buyToken, int24 oldTick, int24 newTick, uint256 amount, bool isOption)
+        external
+        lock
+    {
         _cancel(msg.sender, sellToken, buyToken, oldTick);
         _quote(msg.sender, sellToken, buyToken, newTick, amount, isOption);
     }
@@ -210,13 +213,20 @@ contract CLOBAMM {
         return _availableAt(sellToken, buyToken, tick);
     }
 
-    function getBook(address sellToken, address buyToken, uint256 n) external view returns (int24[] memory ticks, uint256[] memory amounts) {
+    function getBook(address sellToken, address buyToken, uint256 n)
+        external
+        view
+        returns (int24[] memory ticks, uint256[] memory amounts)
+    {
         ticks = new int24[](n);
         amounts = new uint256[](n);
 
         int24 current = bestTick[_pairKey(sellToken, buyToken)];
         if (current == NO_TICK) {
-            assembly { mstore(ticks, 0) mstore(amounts, 0) }
+            assembly {
+                mstore(ticks, 0)
+                mstore(amounts, 0)
+            }
             return (ticks, amounts);
         }
 
@@ -239,7 +249,10 @@ contract CLOBAMM {
                 }
             }
         }
-        assembly { mstore(ticks, found) mstore(amounts, found) }
+        assembly {
+            mstore(ticks, found)
+            mstore(amounts, found)
+        }
     }
 
     // ============================================================
@@ -281,7 +294,9 @@ contract CLOBAMM {
     //                     INTERNAL: QUOTE / CANCEL
     // ============================================================
 
-    function _quote(address maker, address sellToken, address buyToken, int24 tick, uint256 amount, bool isOption) internal {
+    function _quote(address maker, address sellToken, address buyToken, int24 tick, uint256 amount, bool isOption)
+        internal
+    {
         if (amount == 0) revert ZeroAmount();
         if (sellToken == address(0) || buyToken == address(0)) revert ZeroAmount();
         if (sellToken == buyToken) revert SameToken();
@@ -325,7 +340,10 @@ contract CLOBAMM {
     //                     INTERNAL: FILL
     // ============================================================
 
-    function _fillLevel(address sellToken, address buyToken, int24 tick, uint256 maxIn) internal returns (uint256 fillOut, uint256 fillIn) {
+    function _fillLevel(address sellToken, address buyToken, int24 tick, uint256 maxIn)
+        internal
+        returns (uint256 fillOut, uint256 fillIn)
+    {
         bytes32 lid = _levelId(sellToken, buyToken, tick);
         address[] storage makers = levelMakers[lid];
         if (makers.length == 0) return (0, 0);
@@ -497,10 +515,16 @@ contract CLOBAMM {
 
         (int16 w, uint8 bp) = _tickPos(tick);
         uint256 word = bitmap[_bitmapKey(a, b, w)] & ~((1 << (uint256(bp) + 1)) - 1);
-        if (word != 0) { bestTick[pk] = int24(int16(w)) * 256 + int24(uint24(_lsb(word))); return; }
+        if (word != 0) {
+            bestTick[pk] = int24(int16(w)) * 256 + int24(uint24(_lsb(word)));
+            return;
+        }
 
         word = bitmap[_bitmapKey(a, b, w + 1)];
-        if (word != 0) { bestTick[pk] = int24(int16(w + 1)) * 256 + int24(uint24(_lsb(word))); return; }
+        if (word != 0) {
+            bestTick[pk] = int24(int16(w + 1)) * 256 + int24(uint24(_lsb(word)));
+            return;
+        }
 
         bestTick[pk] = NO_TICK;
     }

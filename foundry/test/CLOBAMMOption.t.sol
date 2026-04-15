@@ -26,16 +26,13 @@ contract CLOBAMMOptionTest is Test {
         stable = new StableToken();
         shaky = new ShakyToken();
 
-        Redemption redemptionClone = new Redemption(
-            "Short", "SHORT", address(stable), address(shaky), block.timestamp + 1 days, 1e18, false
-        );
+        Redemption redemptionClone =
+            new Redemption("Short", "SHORT", address(stable), address(shaky), block.timestamp + 1 days, 1e18, false);
         Option optionClone = new Option("Long", "LONG", address(redemptionClone));
         factory = new OptionFactory(address(redemptionClone), address(optionClone));
 
         option = Option(
-            factory.createOption(
-                address(shaky), address(stable), uint40(block.timestamp + 1 days), 2000e18, false
-            )
+            factory.createOption(address(shaky), address(stable), uint40(block.timestamp + 1 days), 2000e18, false)
         );
 
         // Deploy book

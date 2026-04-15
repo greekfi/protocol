@@ -19,9 +19,9 @@ contract NuAMMv2Test is Test {
     // For simplicity in tests, use small ticks near 0 (price ≈ 1.0)
     // tick 0 = 1.0, tick 100 = 1.01, tick 1000 = 1.105, tick 10000 = 2.718
 
-    int24 constant TICK_A = 1000;   // price ≈ 1.1052
-    int24 constant TICK_B = 2000;   // price ≈ 1.2214
-    int24 constant TICK_C = 3000;   // price ≈ 1.3499
+    int24 constant TICK_A = 1000; // price ≈ 1.1052
+    int24 constant TICK_B = 2000; // price ≈ 1.2214
+    int24 constant TICK_C = 3000; // price ≈ 1.3499
 
     function setUp() public {
         book = new NuAMMv2();
@@ -439,8 +439,16 @@ contract NuAMMv2Test is Test {
 
     function test_gas_bounce_10_ticks() public {
         int24[10] memory tickLadder = [
-            int24(900), int24(920), int24(940), int24(960), int24(980),
-            int24(1000), int24(1020), int24(1040), int24(1060), int24(1080)
+            int24(900),
+            int24(920),
+            int24(940),
+            int24(960),
+            int24(980),
+            int24(1000),
+            int24(1020),
+            int24(1040),
+            int24(1060),
+            int24(1080)
         ];
 
         vm.startPrank(maker1);
@@ -482,22 +490,22 @@ contract NuAMMv2Test is Test {
     function test_gas_granular() public {
         vm.startPrank(maker1);
         book.deposit(address(tokenB), 100e18);
-        
+
         // Warm up tick A and B fully
         book.quote(address(tokenB), address(tokenA), TICK_A, 10e18, false);
         book.requote(address(tokenB), address(tokenA), TICK_A, TICK_B, 10e18, false);
         book.requote(address(tokenB), address(tokenA), TICK_B, TICK_A, 10e18, false);
         book.cancel(address(tokenB), address(tokenA), TICK_A, false);
-        
+
         // Now everything is warm. Measure quote in isolation.
         uint256 g = gasleft();
         book.quote(address(tokenB), address(tokenA), TICK_A, 10e18, false);
         emit log_named_uint("quote into warm (existing array slot)", g - gasleft());
-        
+
         g = gasleft();
         book.cancel(address(tokenB), address(tokenA), TICK_A, false);
         emit log_named_uint("cancel warm", g - gasleft());
-        
+
         // Quote into tick B — array slot should be warm from earlier use
         g = gasleft();
         book.quote(address(tokenB), address(tokenA), TICK_B, 10e18, false);
@@ -511,7 +519,7 @@ contract NuAMMv2Test is Test {
         emit log_named_uint("quote into cold (new array slot)", g - gasleft());
 
         book.cancel(address(tokenB), address(tokenA), int24(9999), false);
-        
+
         vm.stopPrank();
     }
 }
