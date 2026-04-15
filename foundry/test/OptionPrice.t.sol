@@ -249,11 +249,11 @@ contract BlackScholesTest is Test {
 
     function testGammaHighestATM() public view {
         // Gamma is highest at ATM
-        uint256 gATM = bs.gamma(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
-        uint256 gOTM = bs.gamma(100e18, 130e18, 31536000, 0.3e18, 0.05e18);
-        uint256 gITM = bs.gamma(100e18, 70e18, 31536000, 0.3e18, 0.05e18);
-        assertGt(gATM, gOTM, "ATM gamma should exceed OTM gamma");
-        assertGt(gATM, gITM, "ATM gamma should exceed ITM gamma");
+        uint256 gAtm = bs.gamma(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
+        uint256 gOtm = bs.gamma(100e18, 130e18, 31536000, 0.3e18, 0.05e18);
+        uint256 gItm = bs.gamma(100e18, 70e18, 31536000, 0.3e18, 0.05e18);
+        assertGt(gAtm, gOtm, "ATM gamma should exceed OTM gamma");
+        assertGt(gAtm, gItm, "ATM gamma should exceed ITM gamma");
     }
 
     // ============ GREEKS: VEGA ============
@@ -269,9 +269,9 @@ contract BlackScholesTest is Test {
     }
 
     function testVegaHighestATM() public view {
-        uint256 vATM = bs.vega(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
-        uint256 vOTM = bs.vega(100e18, 140e18, 31536000, 0.3e18, 0.05e18);
-        assertGt(vATM, vOTM, "ATM vega should exceed OTM vega");
+        uint256 vegaAtm = bs.vega(100e18, 100e18, 31536000, 0.3e18, 0.05e18);
+        uint256 vegaOtm = bs.vega(100e18, 140e18, 31536000, 0.3e18, 0.05e18);
+        assertGt(vegaAtm, vegaOtm, "ATM vega should exceed OTM vega");
     }
 
     // ============ GREEKS: THETA ============
@@ -309,8 +309,8 @@ contract BlackScholesTest is Test {
 
     function testIntrinsicFloor() public view {
         // Deep ITM call should never price below intrinsic
-        uint256 deepITM = bs.price(200e18, 100e18, 31536000, 0.2e18, 0.05e18, false);
-        assertGe(deepITM, 100e18, "Deep ITM call should be at least intrinsic value");
+        uint256 deepItm = bs.price(200e18, 100e18, 31536000, 0.2e18, 0.05e18, false);
+        assertGe(deepItm, 100e18, "Deep ITM call should be at least intrinsic value");
     }
 
     function testPutCallParity() public view {

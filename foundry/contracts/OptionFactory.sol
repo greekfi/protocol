@@ -45,16 +45,10 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     // ============ STATE VARIABLES ============
 
     /// @notice Address of the Redemption template contract used for EIP-1167 cloning
-    address public immutable redemptionClone;
+    address public immutable REDEMPTION_CLONE;
 
     /// @notice Address of the Option template contract used for EIP-1167 cloning
-    address public immutable optionClone;
-
-    /// @notice Protocol fee in 1e18 basis (e.g., 0.0001e18 = 0.01%). Applied on mint.
-    uint64 public fee;
-
-    /// @notice Maximum allowed fee: 1% (0.01e18)
-    uint256 public constant MAX_FEE = 0.01e18; // 1%
+    address public immutable OPTION_CLONE;
 
     // ============ ERRORS ============
 
@@ -76,7 +70,6 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     );
 
     event TokenBlocked(address token, bool blocked);
-    event FeeUpdated(uint64 oldFee, uint64 newFee);
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
     event AutoMintRedeemUpdated(address indexed account, bool enabled);
     event Approval(address indexed token, address indexed owner, uint256 amount);
@@ -112,15 +105,12 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
      * @notice Deploys the factory with template contracts and fee
      * @param redemption_ Redemption template to clone
      * @param option_ Option template to clone
-     * @param fee_ Protocol fee in 1e18 basis (must be <= MAX_FEE)
      */
-    constructor(address redemption_, address option_, uint64 fee_) Ownable(msg.sender) {
-        require(fee_ <= MAX_FEE, "fee too high");
+    constructor(address redemption_, address option_) Ownable(msg.sender) {
         if (redemption_ == address(0) || option_ == address(0)) revert InvalidAddress();
 
-        redemptionClone = redemption_;
-        optionClone = option_;
-        fee = fee_;
+        REDEMPTION_CLONE = redemption_;
+        OPTION_CLONE = option_;
     }
 
     // ============ OPTION CREATION FUNCTIONS ============
@@ -146,14 +136,14 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
         if (blocklist[collateral] || blocklist[consideration]) revert BlocklistedToken();
         if (collateral == consideration) revert InvalidTokens();
 
-        address redemption_ = Clones.clone(redemptionClone);
-        address option_ = Clones.clone(optionClone);
+        address redemption_ = Clones.clone(REDEMPTION_CLONE);
+        address option_ = Clones.clone(OPTION_CLONE);
 
         Redemption redemption = Redemption(redemption_);
         Option option = Option(option_);
 
-        redemption.init(collateral, consideration, expirationDate, strike, isPut, option_, address(this), fee);
-        option.init(redemption_, msg.sender, fee);
+        redemption.init(collateral, consideration, expirationDate, strike, isPut, option_, address(this));
+        option.init(redemption_, msg.sender);
         redemptions[redemption_] = true;
         options[option_] = true;
 
@@ -296,60 +286,5 @@ contract OptionFactory is Ownable, ReentrancyGuardTransient {
     /// @notice Returns true if the token is blocklisted
     function isBlocked(address token) external view returns (bool) {
         return blocklist[token];
-    }
-
-    // ============ FEE MANAGEMENT FUNCTIONS ============
-
-    /**
-     * @notice Combined fee claim: pulls fees from option contracts, then forwards all factory balances to owner
-     * @dev Permissionless — anyone can trigger. Funds always go to the factory owner.
-     *      Two-hop flow: Redemption → Factory (via optionsClaimFees), then Factory → Owner (via claimFees).
-     * @param options_ Option contract addresses to claim fees from
-     * @param tokens Token addresses to forward from factory to owner
-     */
-    function claimFees(address[] memory options_, address[] memory tokens) public {
-        optionsClaimFees(options_);
-        claimFees(tokens);
-    }
-
-    /**
-     * @notice Forwards all factory-held token balances to the owner
-     * @dev Permissionless — anyone can trigger. The factory accumulates fees from Redemption
-     *      contracts; this function sends them to the owner.
-     * @param tokens Token addresses to forward
-     */
-    function claimFees(address[] memory tokens) public nonReentrant {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            ERC20 token_ = ERC20(tokens[i]);
-            uint256 amount = token_.balanceOf(address(this));
-            token_.safeTransfer(owner(), amount);
-        }
-    }
-
-    /**
-     * @notice Triggers fee transfer from Redemption → Factory for multiple option contracts
-     * @dev Permissionless — anyone can trigger. Each Option.claimFees() moves accumulated
-     *      collateral fees from the Redemption contract to this factory. Only works for
-     *      options created by this factory (validates against the options registry).
-     * @param options_ Option contract addresses to claim fees from
-     */
-    function optionsClaimFees(address[] memory options_) public nonReentrant {
-        for (uint256 i = 0; i < options_.length; i++) {
-            if (!options[options_[i]]) revert InvalidAddress();
-            Option(options_[i]).claimFees();
-        }
-    }
-
-    /**
-     * @notice Adjusts the protocol fee for future option pair deployments
-     * @dev Only affects options created after this call. Existing pairs keep their fee
-     *      (use Option.adjustFee() to change individual pairs). Only callable by owner.
-     * @param fee_ New fee in 1e18 basis (must be <= MAX_FEE = 1%)
-     */
-    function adjustFee(uint64 fee_) public onlyOwner nonReentrant {
-        require(fee_ <= MAX_FEE, "fee exceeds maximum");
-        uint64 oldFee = fee;
-        fee = fee_;
-        emit FeeUpdated(oldFee, fee_);
     }
 }

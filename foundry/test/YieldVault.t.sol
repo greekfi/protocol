@@ -2,12 +2,10 @@
 pragma solidity ^0.8.33;
 
 import { Test } from "forge-std/Test.sol";
-import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
-import { IERC7540Redeem, IERC7540Operator } from "../contracts/interfaces/IERC7540.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
 // ============ Bebop addresses on Base ============
@@ -34,14 +32,22 @@ struct JamOrder {
 
 struct BlendSingleOrder {
     uint256 expiry;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address taker_address;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address maker_address;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 maker_nonce;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address taker_token;
+    // forge-lint: disable-next-line(mixed-case-variable)
     address maker_token;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 taker_amount;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 maker_amount;
     address receiver;
+    // forge-lint: disable-next-line(mixed-case-variable)
     uint256 packed_commands;
     uint256 flags;
 }
@@ -160,7 +166,7 @@ contract YieldVaultTest is Test {
             "Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
         );
         Option optionClone = new Option("Long Option", "LONG", address(redemptionClone));
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone));
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         vault.setupFactoryApproval();
@@ -180,11 +186,11 @@ contract YieldVaultTest is Test {
         vault.setOperator(operator, true);
     }
 
-    function _fee(uint256 amount) internal view returns (uint256) {
-        return (amount * uint256(option.fee())) / 1e18;
+    function _fee(uint256) internal pure returns (uint256) {
+        return 0;
     }
 
-    function _depositAsLP(uint256 amount) internal {
+    function _depositAsLp(uint256 amount) internal {
         vm.startPrank(lp);
         shakyToken.approve(address(vault), amount);
         vault.deposit(amount, lp);
@@ -194,7 +200,7 @@ contract YieldVaultTest is Test {
     // ============ DEPOSIT ============
 
     function test_Deposit() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         assertGt(vault.balanceOf(lp), 0);
         assertEq(vault.totalAssets(), 100e18);
     }
@@ -202,7 +208,7 @@ contract YieldVaultTest is Test {
     // ============ ASYNC REDEEM ============
 
     function test_RequestRedeemAndClaim() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
 
         vm.prank(lp);
@@ -215,7 +221,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_PartialClaim() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
 
         vm.prank(lp);
@@ -230,14 +236,14 @@ contract YieldVaultTest is Test {
     }
 
     function test_WithdrawReverts() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         vm.prank(lp);
         vm.expectRevert(YieldVault.WithdrawDisabled.selector);
         vault.withdraw(50e18, lp, lp);
     }
 
     function test_SharePriceNeutralAfterFulfill() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 priceBefore = vault.convertToAssets(1e18);
         uint256 halfShares = vault.balanceOf(lp) / 2;
 
@@ -257,7 +263,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_UnauthorizedClaimReverts() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
         vm.prank(lp);
         vault.requestRedeem(shares, lp, lp);
@@ -285,7 +291,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP JAM: settleInternal on real fork ============
 
     function test_BebopJam_SettleInternal() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         // Solver holds USDC (acts as counterparty)
         Solver solver = new Solver();
@@ -360,7 +366,7 @@ contract YieldVaultTest is Test {
     }
 
     function test_BebopJam_RejectsUnauthorizedSigner() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         Solver solver = new Solver();
         stableToken.mint(address(solver), 5e18);
@@ -427,7 +433,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP BLEND: settleBebopBlend on real fork ============
 
     function test_BebopBlend_SettleSingle() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         uint256 makerPk = 0xB0B;
         address maker = vm.addr(makerPk);
@@ -550,7 +556,7 @@ contract YieldVaultTest is Test {
     // ============ BEBOP RFQ-T: swapSingle via vault.execute (no taker signature) ============
 
     function test_BebopSwapSingle_OperatorSubmits() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
 
         // MM signs a quote to sell USDC for options
         uint256 makerPk = 0xB0B;
@@ -588,10 +594,7 @@ contract YieldVaultTest is Test {
 
         // Operator submits via vault.execute — vault is msg.sender so swapSingle accepts it
         vm.prank(operator);
-        vault.execute(
-            BEBOP_BLEND,
-            abi.encodeCall(IBebopSettlement.swapSingle, (order, makerSig, 0))
-        );
+        vault.execute(BEBOP_BLEND, abi.encodeCall(IBebopSettlement.swapSingle, (order, makerSig, 0)));
 
         // Verify
         assertEq(stableToken.balanceOf(address(vault)), cashPayment, "Vault should receive USDC");
@@ -601,7 +604,7 @@ contract YieldVaultTest is Test {
     // ============ BURN ============
 
     function test_Burn() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         option.mint(address(vault), 10e18);
         assertGt(vault.committed(address(option)), 0);
 
@@ -627,13 +630,13 @@ contract YieldVaultTest is Test {
     }
 
     function test_Pause() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         vault.pause();
         assertEq(vault.maxDeposit(lp), 0);
     }
 
     function test_GetVaultStats() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         (uint256 totalAssets_,, uint256 idle_,,) = vault.getVaultStats();
         assertEq(totalAssets_, 100e18);
         assertEq(idle_, 100e18);
@@ -642,7 +645,7 @@ contract YieldVaultTest is Test {
     // ============ REDEEM EXPIRED ============
 
     function test_RedeemExpired() public {
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         option.mint(address(vault), 10e18);
         assertGt(vault.committed(address(option)), 0);
 
@@ -655,7 +658,7 @@ contract YieldVaultTest is Test {
 
     function test_Demo_DepositSellOptionsExpireWithdrawProfit() public {
         // 1. LP deposits 100 collateral
-        _depositAsLP(100e18);
+        _depositAsLp(100e18);
         uint256 shares = vault.balanceOf(lp);
         uint256 assetsBefore = vault.totalAssets();
 
@@ -665,6 +668,7 @@ contract YieldVaultTest is Test {
 
         // 3. Simulate selling options: options leave vault, premium arrives in collateral token
         vm.prank(address(vault));
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0xBEEF), optionAmount);
         uint256 premium = 0.5e18;
         shakyToken.mint(address(vault), premium);

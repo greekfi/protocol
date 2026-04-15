@@ -7,7 +7,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
 import { Balances, OptionInfo, TokenData } from "../contracts/interfaces/IOption.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;
@@ -20,9 +19,9 @@ contract OptionTest is Test {
 
     Option option;
     Redemption redemption;
-    address shakyToken_;
-    address stableToken_;
-    address factory_;
+    address shakyTokenAddr;
+    address stableTokenAddr;
+    address factoryAddr;
 
     // Base RPC URL
     string constant BASE_RPC_URL = "https://mainnet.base.org";
@@ -38,8 +37,8 @@ contract OptionTest is Test {
         // Deploy tokens
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
-        shakyToken_ = address(shakyToken);
-        stableToken_ = address(stableToken);
+        shakyTokenAddr = address(shakyToken);
+        stableTokenAddr = address(stableToken);
 
         // Mint tokens to test address
         stableToken.mint(address(this), 1_000_000 * 10 ** 18);
@@ -54,8 +53,8 @@ contract OptionTest is Test {
         optionClone = new Option("Long Option", "LONG", address(redemptionClone));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone), 0.0001e18);
-        factory_ = address(factory);
+        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        factoryAddr = address(factory);
 
         OptionParameter[] memory options = new OptionParameter[](1);
         options[0] = OptionParameter({
@@ -77,12 +76,12 @@ contract OptionTest is Test {
 
         redemption = option.redemption();
 
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
     }
 
     function approve1(address token) public {
-        IERC20(token).approve(factory_, MAX256);
+        IERC20(token).approve(factoryAddr, MAX256);
         factory.approve(token, MAX160);
     }
 
@@ -102,14 +101,10 @@ contract OptionTest is Test {
 
         // Collateral deposited
         assertEq(collBefore - collAfter, mintAmount);
-        // Redemption minted (full amount minus fee on redemption side)
-        uint256 feeOnRedemption = (mintAmount * redemption.fee()) / 1e18;
-        uint256 expectedRedemption = mintAmount - feeOnRedemption;
-        assertEq(redemption.balanceOf(address(this)), expectedRedemption);
-        // Option minted (full amount minus fee on option side)
-        uint256 feeOnOption = (mintAmount * option.fee()) / 1e18;
-        uint256 expectedOption = mintAmount - feeOnOption;
-        assertEq(option.balanceOf(address(this)), expectedOption);
+        // Redemption minted 1:1 (no fees)
+        assertEq(redemption.balanceOf(address(this)), mintAmount);
+        // Option minted 1:1 (no fees)
+        assertEq(option.balanceOf(address(this)), mintAmount);
         // Collateral held by redemption contract
         assertEq(shakyToken.balanceOf(address(redemption)), mintAmount);
     }
@@ -276,6 +271,7 @@ contract OptionTest is Test {
         option.mint(1);
         option.lock();
         vm.expectRevert(Option.LockedContract.selector);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 1);
     }
 
@@ -299,21 +295,21 @@ contract OptionTest is Test {
         OptionInfo memory info = option.details();
         assertEq(info.option, address(option));
         assertEq(info.redemption, address(redemption));
-        assertEq(info.collateral.address_, shakyToken_);
-        assertEq(info.consideration.address_, stableToken_);
+        assertEq(info.collateral.address_, shakyTokenAddr);
+        assertEq(info.consideration.address_, stableTokenAddr);
         assertEq(info.strike, 1e18);
         assertFalse(info.isPut);
     }
 
     function test_CollateralData() public view {
         TokenData memory data = redemption.collateralData();
-        assertEq(data.address_, shakyToken_);
+        assertEq(data.address_, shakyTokenAddr);
         assertEq(data.decimals, 18);
     }
 
     function test_ConsiderationData() public view {
         TokenData memory data = redemption.considerationData();
-        assertEq(data.address_, stableToken_);
+        assertEq(data.address_, stableTokenAddr);
         assertEq(data.decimals, 18);
     }
 
@@ -324,8 +320,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
         option.exercise(3);
         vm.stopPrank();
 
@@ -412,8 +408,8 @@ contract OptionTest is Test {
     }
 
     function test_RedeemConsiderationInsufficientBalance() public {
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
 
         option.mint(10);
 
@@ -425,7 +421,7 @@ contract OptionTest is Test {
         shakyToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_);
+        approve1(shakyTokenAddr);
         option.mint(address(0x123), 5);
         vm.stopPrank();
 
@@ -479,13 +475,13 @@ contract OptionTest is Test {
     }
 
     function test_ExerciseWithInsufficientConsideration() public {
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
 
         option.mint(100);
 
         uint256 stableBalance = stableToken.balanceOf(address(this));
-        safeTransfer(stableToken_, address(0x999), stableBalance);
+        safeTransfer(stableTokenAddr, address(0x999), stableBalance);
 
         vm.expectRevert(Redemption.InsufficientConsideration.selector);
         option.exercise(100);
@@ -501,6 +497,7 @@ contract OptionTest is Test {
         option.lock();
 
         vm.expectRevert(Option.LockedContract.selector);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transferFrom(address(0x123), address(this), 3);
     }
 
@@ -512,8 +509,8 @@ contract OptionTest is Test {
         stableToken.mint(address(0x123), 1000e18);
 
         vm.startPrank(address(0x123));
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
         option.exercise(3);
         redemption.redeemConsideration(2);
         vm.stopPrank();
@@ -572,12 +569,13 @@ contract OptionTest is Test {
     function test_PutMintAndExercise() public {
         // Put: collateral=stableToken, consideration=shakyToken
         // Exercising a put = selling collateral at strike price
-        address putAddr = factory.createOption(stableToken_, shakyToken_, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
-        approve1(stableToken_);
-        approve1(shakyToken_);
+        approve1(stableTokenAddr);
+        approve1(shakyTokenAddr);
 
         // Mint deposits stableToken as collateral
         uint256 stableBefore = stableToken.balanceOf(address(this));
@@ -604,7 +602,7 @@ contract OptionTest is Test {
     function test_PutNameDisplay() public {
         // Create put with strike=2000e18. For puts, name shows inverted: 1e36/2000e18 = 0.0005e18
         address putAddr =
-            factory.createOption(stableToken_, shakyToken_, uint40(block.timestamp + 1 days), 2000e18, true);
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 2000e18, true);
         Option putOption = Option(putAddr);
 
         assertTrue(putOption.isPut());
@@ -620,12 +618,13 @@ contract OptionTest is Test {
     }
 
     function test_PutRedeem() public {
-        address putAddr = factory.createOption(stableToken_, shakyToken_, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
-        approve1(stableToken_);
-        approve1(shakyToken_);
+        approve1(stableTokenAddr);
+        approve1(shakyTokenAddr);
 
         putOption.mint(1e18);
         uint256 putBalance = putOption.balanceOf(address(this));
@@ -640,12 +639,13 @@ contract OptionTest is Test {
     }
 
     function test_PutPostExpirationRedeem() public {
-        address putAddr = factory.createOption(stableToken_, shakyToken_, uint40(block.timestamp + 1 days), 1e18, true);
+        address putAddr =
+            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
         Option putOption = Option(putAddr);
         Redemption putRedemption = putOption.redemption();
 
-        approve1(stableToken_);
-        approve1(shakyToken_);
+        approve1(stableTokenAddr);
+        approve1(shakyTokenAddr);
 
         putOption.mint(1e18);
         uint256 redBalance = putRedemption.balanceOf(address(this));
@@ -670,21 +670,21 @@ contract OptionTest is Test {
         // Create 6-decimal token
         Token6 token6 = new Token6();
         token6.mint(address(this), 1_000_000e6);
-        address token6_ = address(token6);
+        address token6Addr = address(token6);
 
         // Create option: 6-decimal collateral, 18-decimal consideration
-        address optAddr = factory.createOption(token6_, stableToken_, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(token6Addr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
         // Approve
-        IERC20(token6_).approve(factory_, MAX256);
-        factory.approve(token6_, MAX160);
+        IERC20(token6Addr).approve(factoryAddr, MAX256);
+        factory.approve(token6Addr, MAX160);
 
-        // Mint: deposit 1e6 (= 1 token with 6 decimals), fee deducted from option tokens
+        // Mint: deposit 1e6 (= 1 token with 6 decimals), 1:1 no fees
         opt.mint(1e6);
-        // Fee = 1e6 * 0.0001e18 / 1e18 = 100, so option balance = 1e6 - 100 = 999900
-        assertEq(opt.balanceOf(address(this)), 999900);
+        assertEq(opt.balanceOf(address(this)), 1e6);
 
         // Verify conversion: 1 collateral token at strike 2000 = 2000 consideration tokens
         uint256 consAmount = red.toConsideration(1e6);
@@ -698,16 +698,17 @@ contract OptionTest is Test {
     function test_MixedDecimals_18_6() public {
         Token6 token6 = new Token6();
         token6.mint(address(this), 1_000_000e6);
-        address token6_ = address(token6);
+        address token6Addr = address(token6);
 
         // Create option: 18-decimal collateral, 6-decimal consideration
-        address optAddr = factory.createOption(shakyToken_, token6_, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
         // Approve
-        IERC20(token6_).approve(factory_, MAX256);
-        factory.approve(token6_, MAX160);
+        IERC20(token6Addr).approve(factoryAddr, MAX256);
+        factory.approve(token6Addr, MAX160);
 
         // Verify conversion: 1e18 collateral at strike 2000 = 2000e6 consideration
         uint256 consAmount = red.toConsideration(1e18);
@@ -720,19 +721,19 @@ contract OptionTest is Test {
     function test_MixedDecimals_ExerciseFlow() public {
         Token6 token6 = new Token6();
         token6.mint(address(this), 1_000_000e6);
-        address token6_ = address(token6);
+        address token6Addr = address(token6);
 
         // 18-decimal collateral, 6-decimal consideration, strike=2000
-        address optAddr = factory.createOption(shakyToken_, token6_, uint40(block.timestamp + 1 days), 2000e18, false);
+        address optAddr =
+            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
-        IERC20(token6_).approve(factory_, MAX256);
-        factory.approve(token6_, MAX160);
+        IERC20(token6Addr).approve(factoryAddr, MAX256);
+        factory.approve(token6Addr, MAX160);
 
-        // Mint 1e18 (1 full collateral token)
+        // Mint 1e18 (1 full collateral token), 1:1 no fees
         opt.mint(1e18);
-        // Fee deducted: option balance = 1e18 - (1e18 * 0.0001e18 / 1e18) = 1e18 - 1e14 = 999900000000000000
         uint256 optBalance = opt.balanceOf(address(this));
 
         // Exercise the amount we actually have
@@ -751,12 +752,12 @@ contract OptionTest is Test {
     function test_Strike2000_Exercise() public {
         // ETH/USDC-like: strike=2000, both 18 decimals
         address optAddr =
-            factory.createOption(shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
         Option opt = Option(optAddr);
         Redemption red = opt.redemption();
 
-        approve1(shakyToken_);
-        approve1(stableToken_);
+        approve1(shakyTokenAddr);
+        approve1(stableTokenAddr);
 
         // Mint 1e18 (1 option token), fee deducted
         opt.mint(1e18);
@@ -773,7 +774,7 @@ contract OptionTest is Test {
 
     function test_Strike2000_ToConsideration() public {
         address optAddr =
-            factory.createOption(shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
         Redemption red = Option(optAddr).redemption();
 
         assertEq(red.toConsideration(1e18), 2000e18);
@@ -782,76 +783,14 @@ contract OptionTest is Test {
 
     function test_Strike2000_ToCollateral() public {
         address optAddr =
-            factory.createOption(shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
         Redemption red = Option(optAddr).redemption();
 
         assertEq(red.toCollateral(2000e18), 1e18);
         assertEq(red.toCollateral(10000e18), 5e18);
     }
 
-    // ============ FEE MECHANICS TESTS ============
-
-    function test_AdjustFee() public {
-        uint64 newFee = 0.005e18; // 0.5%
-        option.adjustFee(newFee);
-        assertEq(option.fee(), newFee);
-
-        // Verify new fee applies on next mint
-        option.mint(10000);
-        // Fee = 10000 * 0.005e18 / 1e18 = 50
-        assertEq(option.balanceOf(address(this)), 10000 - 50);
-    }
-
-    function test_AdjustFeeMaxExceeded() public {
-        vm.expectRevert(Option.InvalidValue.selector);
-        option.adjustFee(uint64(1e16 + 1)); // Just above MAXFEE
-    }
-
-    function test_AdjustFeeEvent() public {
-        uint64 oldFee = option.fee();
-        uint64 newFee = 0.005e18;
-
-        vm.expectEmit(false, false, false, true);
-        emit Option.FeeUpdated(oldFee, newFee);
-        option.adjustFee(newFee);
-    }
-
-    function test_ClaimFees() public {
-        // Mint to accumulate fees
-        option.mint(1_000_000);
-        uint256 accumulatedFees = redemption.fees();
-        assertGt(accumulatedFees, 0);
-
-        // Claim fees via option (transfers to factory)
-        option.claimFees();
-        assertEq(redemption.fees(), 0);
-
-        // Factory should have received the fees
-        uint256 factoryBalance = shakyToken.balanceOf(factory_);
-        assertEq(factoryBalance, accumulatedFees);
-    }
-
-    function test_FeeSegregation() public {
-        // Mint tokens — fees accumulate in redemption contract
-        option.mint(1_000_000);
-        uint256 fees = redemption.fees();
-        assertGt(fees, 0);
-
-        // Redeem all option+redemption pairs — should NOT consume fee balance
-        uint256 optBalance = option.balanceOf(address(this));
-        option.redeem(optBalance);
-
-        // Fees should still be intact
-        assertEq(redemption.fees(), fees);
-    }
-
     // ============ ACCESS CONTROL TESTS ============
-
-    function test_NonOwnerCannotAdjustFee() public {
-        vm.prank(address(0x123));
-        vm.expectRevert();
-        option.adjustFee(0.005e18);
-    }
 
     function test_NonOwnerCannotLock() public {
         vm.prank(address(0x123));
@@ -870,29 +809,29 @@ contract OptionTest is Test {
 
     function test_FactoryAllowanceDecrement() public {
         // Set specific allowance
-        factory.approve(shakyToken_, 1000);
+        factory.approve(shakyTokenAddr, 1000);
 
-        uint256 allowanceBefore = factory.allowance(shakyToken_, address(this));
+        uint256 allowanceBefore = factory.allowance(shakyTokenAddr, address(this));
         assertEq(allowanceBefore, 1000);
 
         option.mint(500);
 
-        uint256 allowanceAfter = factory.allowance(shakyToken_, address(this));
+        uint256 allowanceAfter = factory.allowance(shakyTokenAddr, address(this));
         assertEq(allowanceAfter, 500);
     }
 
     function test_FactoryAllowanceInfinite() public {
         // MAX256 allowance should not be decremented
-        factory.approve(shakyToken_, MAX256);
+        factory.approve(shakyTokenAddr, MAX256);
 
         option.mint(1000);
 
-        assertEq(factory.allowance(shakyToken_, address(this)), MAX256);
+        assertEq(factory.allowance(shakyTokenAddr, address(this)), MAX256);
     }
 
     function test_FactoryAllowanceInsufficient() public {
         // Set allowance too low
-        factory.approve(shakyToken_, 10);
+        factory.approve(shakyTokenAddr, 10);
 
         vm.expectRevert();
         option.mint(100);
@@ -955,9 +894,27 @@ contract OptionTest is Test {
 
     function test_CreateOptionsBatch() public {
         OptionParameter[] memory params = new OptionParameter[](3);
-        params[0] = OptionParameter(shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 1e18, false);
-        params[1] = OptionParameter(shakyToken_, stableToken_, uint40(block.timestamp + 7 days), 2e18, false);
-        params[2] = OptionParameter(shakyToken_, stableToken_, uint40(block.timestamp + 30 days), 5e18, true);
+        params[0] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false
+        });
+        params[1] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 7 days),
+            strike: 2e18,
+            isPut: false
+        });
+        params[2] = OptionParameter({
+            collateral_: shakyTokenAddr,
+            consideration_: stableTokenAddr,
+            expiration: uint40(block.timestamp + 30 days),
+            strike: 5e18,
+            isPut: true
+        });
 
         address[] memory addrs = factory.createOptions(params);
         assertEq(addrs.length, 3);
@@ -1034,30 +991,30 @@ contract OptionTest is Test {
 
     function test_CreateOptionSameTokenReverts() public {
         vm.expectRevert(OptionFactory.InvalidTokens.selector);
-        factory.createOption(shakyToken_, shakyToken_, uint40(block.timestamp + 1 days), 1e18, false);
+        factory.createOption(shakyTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, false);
     }
 
     function test_CreateOptionPastExpirationReverts() public {
         vm.expectRevert(Redemption.InvalidValue.selector);
-        factory.createOption(shakyToken_, stableToken_, uint40(block.timestamp - 1), 1e18, false);
+        factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp - 1), 1e18, false);
     }
 
     function test_CreateOptionZeroStrikeReverts() public {
         vm.expectRevert(Redemption.InvalidValue.selector);
-        factory.createOption(shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 0, false);
+        factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 0, false);
     }
 
     function test_ReinitCloneReverts() public {
         // Cloned option is already initialized — calling init again should revert
         vm.expectRevert();
-        option.init(address(redemption), address(this), 0);
+        option.init(address(redemption), address(this));
     }
 
     function test_ReinitRedemptionCloneReverts() public {
         vm.prank(address(option));
         vm.expectRevert();
         redemption.init(
-            shakyToken_, stableToken_, uint40(block.timestamp + 1 days), 1e18, false, address(option), factory_, 0
+            shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 1e18, false, address(option), factoryAddr
         );
     }
 
@@ -1126,6 +1083,7 @@ contract OptionTest is Test {
         uint256 optBalance = option.balanceOf(address(this));
 
         vm.prank(operator);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         option.transferFrom(address(this), address(0x123), optBalance / 2);
 
         assertEq(option.balanceOf(address(0x123)), optBalance / 2);
@@ -1143,29 +1101,7 @@ contract OptionTest is Test {
     function test_FactoryTransferFromNonRedemption() public {
         // Non-redemption contract cannot call factory.transferFrom
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        factory.transferFrom(address(this), address(0x123), 100, shakyToken_);
-    }
-
-    function test_FeeMaxBoundary() public {
-        // Set fee to exactly MAXFEE (1%)
-        option.adjustFee(uint64(option.MAXFEE()));
-        assertEq(option.fee(), option.MAXFEE());
-
-        // Mint and verify exact 1% fee
-        option.mint(10000);
-        // Fee = 10000 * 1e16 / 1e18 = 100
-        assertEq(option.balanceOf(address(this)), 9900);
-    }
-
-    function test_FeeZero() public {
-        // Set fee to 0
-        option.adjustFee(0);
-        assertEq(option.fee(), 0);
-
-        // Mint — no fee deducted
-        option.mint(10000);
-        assertEq(option.balanceOf(address(this)), 10000);
-        assertEq(redemption.fees(), 0);
+        factory.transferFrom(address(this), address(0x123), 100, shakyTokenAddr);
     }
 
     function test_ShortRedeemMixedCollateralExactAmounts() public {

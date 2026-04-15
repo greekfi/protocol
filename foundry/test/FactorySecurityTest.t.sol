@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import "forge-std/Test.sol";
-import "../contracts/OptionFactory.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { OptionFactory } from "../contracts/OptionFactory.sol";
 
 /**
  * @title Factory Security Test
@@ -25,7 +25,7 @@ contract FactorySecurityTest is Test {
         optionTemplate = address(new MockContract());
 
         // Deploy factory directly
-        factory = new OptionFactory(redemptionTemplate, optionTemplate, 0.001e18);
+        factory = new OptionFactory(redemptionTemplate, optionTemplate);
 
         // Deploy mock tokens
         collateralToken = new MockERC20("Collateral", "COLL", 18);
@@ -37,7 +37,7 @@ contract FactorySecurityTest is Test {
      */
     function testFIXED_TemplateValidation_BothZero() public {
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(address(0), address(0), 0.001e18);
+        new OptionFactory(address(0), address(0));
 
         console.log("FIXED: Constructor rejects both zero addresses!");
     }
@@ -49,7 +49,7 @@ contract FactorySecurityTest is Test {
         address validTemplate = address(new MockContract());
 
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(address(0), validTemplate, 0.001e18);
+        new OptionFactory(address(0), validTemplate);
 
         console.log("FIXED: Constructor rejects redemption zero address!");
     }
@@ -61,7 +61,7 @@ contract FactorySecurityTest is Test {
         address validTemplate = address(new MockContract());
 
         vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(validTemplate, address(0), 0.001e18);
+        new OptionFactory(validTemplate, address(0));
 
         console.log("FIXED: Constructor rejects option zero address!");
     }

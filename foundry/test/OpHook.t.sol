@@ -7,6 +7,7 @@ import { OpHook } from "../contracts/OpHook.sol";
 import { Option, Redemption } from "../contracts/Option.sol";
 import { HookVault } from "../contracts/HookVault.sol";
 import { BlackScholes } from "../contracts/BlackScholes.sol";
+import { OptionPricer } from "../contracts/OptionPricer.sol";
 import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -25,7 +26,6 @@ import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { SafeCallback } from "./SafeCallback.sol";
-import { NonzeroDeltaCount } from "@uniswap/v4-core/src/libraries/NonzeroDeltaCount.sol";
 import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
 import { ConstantsBase } from "../contracts/ConstantsBase.sol";
 
@@ -56,21 +56,21 @@ contract SwapCallback is SafeCallback {
             zeroForOne: zeroForOne, amountSpecified: -int128(int256(amountIn)), sqrtPriceLimitX96: sqrtPriceLimit
         });
 
-        BalanceDelta delta = poolManager.swap(poolKey, params, bytes(""));
+        BalanceDelta delta = POOL_MANAGER.swap(poolKey, params, bytes(""));
 
         if (zeroForOne) {
-            poolKey.currency0.settle(poolManager, address(this), uint128(-delta.amount0()), false);
-            poolKey.currency1.take(poolManager, address(this), uint128(delta.amount1()), false);
+            poolKey.currency0.settle(POOL_MANAGER, address(this), uint128(-delta.amount0()), false);
+            poolKey.currency1.take(POOL_MANAGER, address(this), uint128(delta.amount1()), false);
         } else {
-            poolKey.currency1.settle(poolManager, address(this), uint128(-delta.amount1()), false);
-            poolKey.currency0.take(poolManager, address(this), uint128(delta.amount0()), false);
+            poolKey.currency1.settle(POOL_MANAGER, address(this), uint128(-delta.amount1()), false);
+            poolKey.currency0.take(POOL_MANAGER, address(this), uint128(delta.amount0()), false);
         }
 
         returnData = abi.encode(delta.amount0(), delta.amount1());
     }
 
     function swap(address sender, uint256 amountIn) public {
-        poolManager.unlock(abi.encode(sender, amountIn));
+        POOL_MANAGER.unlock(abi.encode(sender, amountIn));
     }
 }
 
@@ -89,6 +89,7 @@ abstract contract OpHookTestBase is Test {
     address public poolManager_;
     address public universalRouter_;
     address public wethUniPool_;
+    address public swapRouter_;
 
     IOption public option1;
     IOption public option2;
@@ -123,7 +124,7 @@ abstract contract OpHookTestBase is Test {
         Option o = new Option("", "", address(r));
 
         // Deploy factory
-        OptionFactory factory = new OptionFactory(address(r), address(o), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(r), address(o));
 
         option1_ = factory.createOption(weth_, usdc_, expiration, strike1, false);
         option2_ = factory.createOption(weth_, usdc_, expiration, strike2, false);
@@ -145,22 +146,18 @@ abstract contract OpHookTestBase is Test {
 
         address opHook_ = address(opHook);
 
-        // Deploy BlackScholes pricing
+        // Deploy pricing
         BlackScholes bs = new BlackScholes();
+        OptionPricer pricer = new OptionPricer(address(bs), wethUniPool_, weth_, 1800);
 
-        // Deploy vault: collateral = WETH, pricing = BlackScholes, oracle = wethUniPool
-        vault = new HookVault(
-            IERC20(weth_),
-            "Greek WETH Vault",
-            "gWETH",
-            address(factory),
-            address(bs),
-            wethUniPool_,
-            usdc_,
-            1800 // 30 min TWAP
-        );
+        // Deploy vault
+        vault = new HookVault(IERC20(weth_), "Greek WETH Vault", "gWETH", address(factory), address(pricer));
         vault.setupFactoryApproval();
         vault.addHook(opHook_);
+        vault.setupHookApproval(opHook_);
+        vault.setSwapRouter(swapRouter_);
+        vault.setSwapFee(usdc_, 500); // 0.05% fee tier
+        vault.approveCashForHook(usdc_, opHook_);
         vault.whitelistOption(option1_, true);
         vault.whitelistOption(option2_, true);
         vault.whitelistOption(option3_, true);
@@ -201,7 +198,7 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testQuote() public {
-        (uint256 optionsOut, uint256 unitPrice) = vault.getQuote(option1_, 100e6, true);
+        (uint256 optionsOut, uint256 unitPrice) = vault.price(option1_, 100e6, true);
         console.log("Options out for 100 USDC:", optionsOut);
         console.log("Unit price (USDC):", unitPrice);
         assertGt(optionsOut, 0);
@@ -209,7 +206,7 @@ abstract contract OpHookTestBase is Test {
     }
 
     function testCollateralPrice() public {
-        uint256 price = vault.getCollateralPrice();
+        uint256 price = vault.pricer().getCollateralPrice();
         console.log("Collateral price (TWAP):", price / 1e18);
         assertGt(price, 0);
     }
@@ -276,6 +273,7 @@ contract Mainnet is OpHookTestBase {
         poolManager_ = ConstantsMainnet.POOLMANAGER;
         universalRouter_ = ConstantsMainnet.UNIVERSALROUTER;
         wethUniPool_ = ConstantsMainnet.WETH_UNI_POOL;
+        swapRouter_ = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45; // SwapRouter02 on mainnet
         _setupCommon();
     }
 }
@@ -291,6 +289,7 @@ contract Base is OpHookTestBase {
         poolManager_ = ConstantsBase.POOLMANAGER;
         universalRouter_ = ConstantsBase.UNIVERSALROUTER;
         wethUniPool_ = ConstantsBase.WETH_UNI_POOL;
+        swapRouter_ = 0x2626664c2603336E57B271c5C0b26F421741e481; // SwapRouter02 on Base
         // ETH ~$2039 at block 43190000
         strike1 = 2100e18;
         strike2 = 2300e18;

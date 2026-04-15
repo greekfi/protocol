@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Test, console } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
-import { Balances } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
@@ -58,7 +57,7 @@ contract GasAnalysis is Test {
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         // Create an option pair via factory (required for testing Option/Redemption)
         OptionParameter[] memory params = new OptionParameter[](1);
@@ -240,29 +239,34 @@ contract GasAnalysis is Test {
 
     function test_Gas_Option_Transfer() public {
         option.mint(10);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 5);
     }
 
     function test_Gas_Option_Transfer_AutoMint() public {
         // Transfer more than balance triggers auto-mint (requires opt-in)
         factory.enableAutoMintRedeem(true);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 5);
     }
 
     function test_Gas_Option_TransferFrom() public {
         option.mint(10);
         option.approve(address(this), 10);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         option.transferFrom(address(this), address(0x123), 5);
     }
 
     function test_Gas_Option_TransferFrom_AutoRedeem() public {
         option.mint(10);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 5);
 
         vm.prank(address(0x123));
         option.approve(address(this), 10);
 
         // TransferFrom back triggers auto-redeem
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         option.transferFrom(address(0x123), address(this), 3);
     }
 
@@ -374,7 +378,9 @@ contract GasAnalysis is Test {
         option.mint(10);
 
         // Distribute to multiple users
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(redemption)).transfer(address(0x123), 3);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(redemption)).transfer(address(0x456), 3);
 
         // Warp past expiration
@@ -399,12 +405,14 @@ contract GasAnalysis is Test {
 
     function test_Gas_Redemption_Transfer() public {
         option.mint(10);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(redemption)).transfer(address(0x123), 5);
     }
 
     function test_Gas_Redemption_TransferFrom() public {
         option.mint(10);
         redemption.approve(address(this), 10);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         redemption.transferFrom(address(this), address(0x123), 5);
     }
 
@@ -461,6 +469,7 @@ contract GasAnalysis is Test {
         option.mint(100);
 
         // Transfer some options
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 30);
 
         // Exercise some
@@ -478,6 +487,7 @@ contract GasAnalysis is Test {
         option.mint(100);
 
         // Transfer to user 2
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 50);
 
         // User 2 exercises
@@ -530,6 +540,6 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        new OptionFactory(address(redemptionTemplate), address(optionTemplate));
     }
 }

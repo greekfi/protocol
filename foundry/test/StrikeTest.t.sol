@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
 import { OptionUtils } from "../contracts/OptionUtils.sol";
 
 contract StrikeTest is Test {

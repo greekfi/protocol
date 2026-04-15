@@ -38,12 +38,9 @@ using SafeERC20 for IERC20;
  */
 contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     Redemption public redemption;
-    uint64 public fee;
-    uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
-    event FeeUpdated(uint64 oldFee, uint64 newFee);
 
     error ContractExpired();
     error InsufficientBalance();
@@ -94,11 +91,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Clones never execute the constructor; state is set via init().
      *      Calls _disableInitializers() to prevent init() on the template itself.
      */
-    constructor(string memory name_, string memory symbol_, address redemption__)
+    constructor(string memory name_, string memory symbol_, address redemption_)
         ERC20(name_, symbol_)
         Ownable(msg.sender)
     {
-        redemption = Redemption(redemption__);
+        redemption = Redemption(redemption_);
         _disableInitializers();
     }
 
@@ -107,15 +104,11 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @dev Called exactly once by OptionFactory.createOption() immediately after cloning.
      * @param redemption_ Paired Redemption contract address
      * @param owner Option creator who receives ownership
-     * @param fee_ Protocol fee in 1e18 basis (max 1% = 1e16)
      */
-    function init(address redemption_, address owner, uint64 fee_) public initializer {
+    function init(address redemption_, address owner) public initializer {
         if (redemption_ == address(0) || owner == address(0)) revert InvalidAddress();
-
-        if (fee_ > MAXFEE) revert InvalidValue();
         _transferOwnership(owner);
         redemption = Redemption(redemption_);
-        fee = fee_;
     }
 
     // ============ VIEW FUNCTIONS ============
@@ -190,25 +183,20 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /**
-     * @notice Internal mint: deposits collateral via Redemption, then mints Option tokens minus fee
-     * @dev Fee is deducted from the minted amount (not the collateral deposit).
-     *      Both Option and Redemption apply the same fee formula, keeping supplies equal.
+     * @notice Internal mint: deposits collateral via Redemption, then mints Option tokens
+     * @dev 1:1 minting — no fees. Collateral deposited equals tokens minted.
      */
     function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
         redemption.mint(account, amount);
-        // Inline fee calculation (safe: max fee is 1%, can't overflow)
-        unchecked {
-            uint256 amountMinusFees = amount - ((amount * fee) / 1e18);
-            _mint(account, amountMinusFees);
-            emit Mint(address(this), account, amountMinusFees);
-        }
+        _mint(account, amount);
+        emit Mint(address(this), account, amount);
     }
 
     // ============ TRANSFER FUNCTIONS (WITH AUTO-SETTLING) ============
 
     /**
      * @notice Core transfer with auto-mint and auto-redeem
-     * @dev Auto-mint (opt-in): if sender balance < amount, mints the fee-adjusted deficit.
+     * @dev Auto-mint (opt-in): if sender balance < amount, mints the deficit (1:1, no fees).
      *      Auto-redeem (opt-in): if recipient holds Redemption tokens, matched pairs are burned.
      */
     function _settledTransfer(address from, address to, uint256 amount) internal {
@@ -217,8 +205,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (balance < amount) {
             if (!IOptionFactory(factory()).autoMintRedeem(from)) revert InsufficientBalance();
             uint256 deficit = amount - balance;
-            uint256 mintAmount = fee > 0 ? Math.mulDiv(deficit, 1e18, 1e18 - fee, Math.Rounding.Ceil) : deficit;
-            mint_(from, mintAmount);
+            mint_(from, deficit);
         }
 
         _transfer(from, to, amount);
@@ -355,28 +342,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function unlock() public onlyOwner {
         redemption.unlock();
         emit ContractUnlocked();
-    }
-
-    /**
-     * @notice Updates the protocol fee for this option pair
-     * @dev Propagates to the paired Redemption contract. Max 1% (1e16 in 1e18 basis).
-     * @param fee_ New fee in 1e18 basis
-     */
-    function adjustFee(uint64 fee_) public onlyOwner {
-        if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
-        uint64 oldFee = fee;
-        fee = fee_;
-        redemption.adjustFee(fee_);
-        emit FeeUpdated(oldFee, fee_);
-    }
-
-    /**
-     * @notice Moves accumulated fees from Redemption → Factory
-     * @dev Permissionless — anyone can call. Funds always go to the factory (then to owner).
-     *      Does not transfer to caller; just triggers the Redemption → Factory hop.
-     */
-    function claimFees() public nonReentrant {
-        redemption.claimFees();
     }
 
     /// @notice Disabled — renouncing ownership would permanently lock funds

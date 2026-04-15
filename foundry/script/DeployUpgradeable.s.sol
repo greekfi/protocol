@@ -17,7 +17,7 @@ import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 contract DeployUpgradeable is Script, ScaffoldETHDeploy {
     function setUp() public { }
 
-    function run() public ScaffoldEthDeployerRunner {
+    function run() public broadcast {
         // Deploy test tokens
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
@@ -30,13 +30,12 @@ contract DeployUpgradeable is Script, ScaffoldETHDeploy {
         Option optionTemplate = new Option("Option", "OPT", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        OptionFactory factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        OptionFactory factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         console.log("OptionFactory deployed at:", address(factory));
         console.log("Factory owner:", factory.owner());
-        console.log("Factory fee:", factory.fee());
-        console.log("Redemption template:", factory.redemptionClone());
-        console.log("Option template:", factory.optionClone());
+        console.log("Redemption template:", factory.REDEMPTION_CLONE());
+        console.log("Option template:", factory.OPTION_CLONE());
 
         // Deploy OpHook using HookMiner to get correct address
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;

@@ -15,26 +15,26 @@ interface IUnlockCallback {
 /// @notice Interface for the ImmutableState contract
 interface IImmutableState {
     /// @notice The Uniswap v4 PoolManager contract
-    function poolManager() external view returns (IPoolManager);
+    function POOL_MANAGER() external view returns (IPoolManager);
 }
 
 /// @title Immutable State
 /// @notice A collection of immutable state variables, commonly used across multiple contracts
 contract ImmutableState is IImmutableState {
     /// @inheritdoc IImmutableState
-    IPoolManager public immutable poolManager;
+    IPoolManager public immutable POOL_MANAGER;
 
     /// @notice Thrown when the caller is not PoolManager
     error NotPoolManager();
 
     /// @notice Only allow calls from the PoolManager contract
     modifier onlyPoolManager() {
-        if (msg.sender != address(poolManager)) revert NotPoolManager();
+        if (msg.sender != address(POOL_MANAGER)) revert NotPoolManager();
         _;
     }
 
     constructor(IPoolManager _poolManager) {
-        poolManager = _poolManager;
+        POOL_MANAGER = _poolManager;
     }
 }
 /// @title Safe Callback

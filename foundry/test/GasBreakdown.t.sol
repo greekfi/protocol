@@ -3,9 +3,8 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract GasBreakdown is Test {
@@ -34,7 +33,7 @@ contract GasBreakdown is Test {
         optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
 
         // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate), 0.0001e18);
+        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
 
         IERC20(address(stableToken)).approve(address(factory), type(uint256).max);
         IERC20(address(shakyToken)).approve(address(factory), type(uint256).max);
@@ -69,14 +68,13 @@ contract GasBreakdown is Test {
             1e18,
             false,
             option_,
-            address(factory),
-            0.0001e18
+            address(factory)
         );
         uint256 gasRedemptionInit = gasBefore - gasleft();
         console.log("Redemption.init():", gasRedemptionInit);
 
         gasBefore = gasleft();
-        option.init(redemption_, msg.sender, 0.0001e18);
+        option.init(redemption_, msg.sender);
         uint256 gasOptionInit = gasBefore - gasleft();
         console.log("Option.init():", gasOptionInit);
 
@@ -97,10 +95,9 @@ contract GasBreakdown is Test {
             1e18,
             false,
             option_,
-            address(factory),
-            0.0001e18
+            address(factory)
         );
-        option.init(redemption_, msg.sender, 0.0001e18);
+        option.init(redemption_, msg.sender);
 
         uint256 gasBefore = gasleft();
 

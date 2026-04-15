@@ -39,7 +39,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ STORAGE LAYOUT (OPTIMIZED FOR PACKING) ============
 
     // Slot N: uint256 values (32 bytes each, separate slots)
-    uint256 public fees;
     uint256 public strike;
 
     // Slot N+2: address (20 bytes)
@@ -48,9 +47,8 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // Slot N+3: address (20 bytes)
     IERC20 public consideration;
 
-    // Slot N+4: _factory (20 bytes) + fee (8 bytes) — packed
+    // Slot N+4: _factory (20 bytes)
     IFactory public _factory;
-    uint64 public fee;
 
     // Slot N+5: expirationDate (5) + isPut (1) + locked (1) + consDecimals (1) + collDecimals (1) = 9 bytes
     uint40 public expirationDate;
@@ -60,7 +58,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint8 public collDecimals;
 
     uint8 public constant STRIKE_DECIMALS = 18; // Not stored (constant)
-    uint64 public constant MAXFEE = 1e16; // Max fee is 1% (1e16 in 1e18 basis)
 
     // ============ END STORAGE LAYOUT ============
 
@@ -109,7 +106,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     event Redeemed(address option, address token, address holder, uint256 amount);
-    event FeeUpdated(uint64 oldFee, uint64 newFee);
 
     /// @notice Reverts if contract is locked (emergency pause)
     modifier notLocked() {
@@ -117,9 +113,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    /// @notice Reverts if available collateral (balance minus fees) < amount
+    /// @notice Reverts if available collateral < amount
     modifier sufficientCollateral(uint256 amount) {
-        if (collateral.balanceOf(address(this)) - fees < amount) revert InsufficientCollateral();
+        if (collateral.balanceOf(address(this)) < amount) revert InsufficientCollateral();
         _;
     }
 
@@ -160,7 +156,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      * @param isPut_ True for put, false for call
      * @param option_ Paired Option contract (becomes owner)
      * @param factory_ OptionFactory address
-     * @param fee_ Protocol fee in 1e18 basis (max 1% = 1e16)
      */
     function init(
         address collateral_,
@@ -169,8 +164,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 strike_,
         bool isPut_,
         address option_,
-        address factory_,
-        uint64 fee_
+        address factory_
     ) public initializer {
         if (collateral_ == address(0)) revert InvalidAddress();
         if (consideration_ == address(0)) revert InvalidAddress();
@@ -184,7 +178,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         strike = strike_;
         isPut = isPut_;
         _factory = IFactory(factory_);
-        fee = fee_;
         consDecimals = IERC20Metadata(consideration_).decimals();
         collDecimals = IERC20Metadata(collateral_).decimals();
         _transferOwnership(option_);
@@ -193,10 +186,9 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     // ============ MINTING FUNCTIONS ============
 
     /**
-     * @notice Mints Redemption tokens by depositing collateral
+     * @notice Mints Redemption tokens by depositing collateral (1:1, no fees)
      * @dev Only callable by the paired Option contract. Pulls collateral from `account` via
-     *      factory.transferFrom(), verifies no fee-on-transfer, mints tokens minus fee.
-     *      Fee stays in the contract as collateral, tracked by the `fees` state variable.
+     *      factory.transferFrom(), verifies no fee-on-transfer.
      * @param account Address to receive Redemption tokens (and whose collateral is pulled)
      * @param amount Collateral to deposit (in collateral token decimals)
      */
@@ -218,17 +210,12 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         // forge-lint: disable-next-line(unsafe-typecast)
         _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
 
-        // Verify full amount received (costs ~3.2k gas but provides important safety)
+        // Verify full amount received
         if (collateral.balanceOf(address(this)) - balanceBefore != amount) {
             revert FeeOnTransferNotSupported();
         }
 
-        // Calculate fee and mint (safe: max fee is 1%, can't overflow with unchecked)
-        unchecked {
-            uint256 fee_ = (amount * fee) / 1e18; // Inline fee calculation
-            fees += fee_;
-            _mint(account, amount - fee_);
-        }
+        _mint(account, amount);
     }
 
     // ============ REDEEM FUNCTIONS ============
@@ -276,7 +263,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function _redeem(address account, uint256 amount) internal sufficientBalance(account, amount) validAmount(amount) {
         uint256 ts = totalSupply();
-        uint256 collateralBalance = collateral.balanceOf(address(this)) - fees;
+        uint256 collateralBalance = collateral.balanceOf(address(this));
         uint256 collateralToSend = Math.mulDiv(amount, collateralBalance, ts);
         uint256 remainder = amount - collateralToSend;
 
@@ -305,7 +292,7 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         // Under normal operations collateral always covers `amount` because
         // available_collateral == total_option_supply. This fallback exists
         // as defense-in-depth if the collateral token misbehaves.
-        uint256 balance = collateral.balanceOf(address(this)) - fees;
+        uint256 balance = collateral.balanceOf(address(this));
         uint256 collateralToSend = amount <= balance ? amount : balance;
 
         _burn(account, collateralToSend);
@@ -416,17 +403,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ ADMIN FUNCTIONS ============
 
-    /**
-     * @notice Moves accumulated fees from this contract to the factory
-     * @dev Only callable by the paired Option contract (owner). Fees are held as collateral.
-     *      Factory owner can then withdraw via factory.claimFees().
-     */
-    function claimFees() public onlyOwner nonReentrant {
-        uint256 f = fees;
-        fees = 0;
-        collateral.safeTransfer(address(_factory), f);
-    }
-
     /// @notice Emergency pause — called by Option.lock()
     function lock() public onlyOwner {
         locked = true;
@@ -470,18 +446,6 @@ contract Redemption is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
      */
     function toCollateral(uint256 consAmount) public view returns (uint256) {
         return Math.mulDiv(consAmount, (10 ** collDecimals) * (10 ** STRIKE_DECIMALS), strike * (10 ** consDecimals));
-    }
-
-    /**
-     * @notice Updates the protocol fee
-     * @dev Only callable by the paired Option contract. Max 1% (1e16 in 1e18 basis).
-     * @param fee_ New fee in 1e18 basis
-     */
-    function adjustFee(uint64 fee_) public onlyOwner {
-        if (fee_ > MAXFEE) revert InvalidValue(); // Max fee is 1% (1e16 in 1e18 basis)
-        uint64 oldFee = fee;
-        fee = fee_;
-        emit FeeUpdated(oldFee, fee_);
     }
 
     // ============ METADATA FUNCTIONS ============

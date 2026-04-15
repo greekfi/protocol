@@ -322,7 +322,8 @@ function processAllDeployments(broadcastPath) {
         const timestamp = parseInt(
           deployment.deploymentFile.match(/run-(\d+)/)?.[1] || "0",
         );
-        const key = `${chainId}-${deployment.contractName}`;
+        // Key by address so multiple instances of the same contract type are preserved
+        const key = `${chainId}-${deployment.address.toLowerCase()}`;
 
         if (
           !allDeployments.has(key) ||
@@ -341,22 +342,34 @@ function processAllDeployments(broadcastPath) {
 
   const allContracts = {};
 
+  // Group deployments by (chainId, contractName), keeping only entries from the latest run
+  const latestRun = new Map();
   allDeployments.forEach((deployment) => {
-    const { chainId, contractName } = deployment;
-    const artifact = getArtifactOfContract(contractName);
-
-    if (artifact) {
-      if (!allContracts[chainId]) allContracts[chainId] = {};
-
-      const filtered = filterAbi(artifact.abi);
-      const minimal = filtered.map(minimalAbi);
-
-      allContracts[chainId][contractName] = {
-        address: deployment.address,
-        abi: minimal,
-        inheritedFunctions: getInheritedFunctions(artifact),
-      };
+    const key = `${deployment.chainId}-${deployment.contractName}`;
+    const existing = latestRun.get(key);
+    if (!existing || deployment.timestamp > existing.timestamp) {
+      latestRun.set(key, { timestamp: deployment.timestamp, entries: [deployment] });
+    } else if (deployment.timestamp === existing.timestamp) {
+      existing.entries.push(deployment);
     }
+  });
+
+  latestRun.forEach(({ entries }) => {
+    const { chainId, contractName } = entries[0];
+    const artifact = getArtifactOfContract(contractName);
+    if (!artifact) return;
+    if (!allContracts[chainId]) allContracts[chainId] = {};
+
+    const filtered = filterAbi(artifact.abi);
+    const minimal = filtered.map(minimalAbi);
+    const addresses = entries.map((e) => e.address);
+
+    allContracts[chainId][contractName] = {
+      address: addresses[0],
+      ...(addresses.length > 1 ? { addresses } : {}),
+      abi: minimal,
+      inheritedFunctions: getInheritedFunctions(artifact),
+    };
   });
 
   return {
@@ -375,7 +388,7 @@ const CHAIN_NAMES = {
   1301: "unichain",
 };
 
-function main() {
+async function main() {
   const current_path_to_broadcast = join(__dirname, "..", "broadcast");
   const current_path_to_deployments = join(__dirname, "..", "deployments");
 
@@ -419,16 +432,14 @@ function main() {
   let totalLines = 0;
 
   // Write individual chain files
-  const chainFilePromises = chainIds.map((chainId) => {
+  const chainFiles = [];
+  for (const chainId of chainIds) {
     const chainConfig = allGeneratedContracts[chainId];
     const chainName = CHAIN_NAMES[chainId] || `chain${chainId}`;
     const contractCount = Object.keys(chainConfig).length;
     totalContracts += contractCount;
 
-    // Get deployment block for this chain (default to 0 if not found)
     const deploymentBlock = chainMinBlocks[chainId] || 0;
-
-    // Add chainId and deploymentBlock at the top of the config object
     const chainConfigWithId = {
       chainId: parseInt(chainId),
       deploymentBlock,
@@ -438,95 +449,39 @@ function main() {
     const fileContent = `
       ${generatedContractComment}
       const ${chainName}Contracts = ${JSON.stringify(chainConfigWithId, null, 2)} as const;
-
       export default ${chainName}Contracts;
     `;
 
-    return format(fileContent, { parser: "typescript" }).then((result) => {
-      const filename = `${chainName}.ts`;
-      writeFileSync(join(CHAINS_DIR, filename), result);
-      const lines = result.split("\n").length;
-      totalLines += lines;
-      return { chainId, chainName, filename, lines, contractCount };
-    });
+    const result = await format(fileContent, { parser: "typescript" });
+    const filename = `${chainName}.ts`;
+    writeFileSync(join(CHAINS_DIR, filename), result);
+    const lines = result.split("\n").length;
+    totalLines += lines;
+    chainFiles.push({ chainId, chainName, filename, lines, contractCount });
+  }
+
+  // Write index file
+  const indexContent = `
+    ${generatedContractComment}
+    import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
+    ${chainFiles.map(({ chainName }) => `import ${chainName}Contracts from "./chains/${chainName}";`).join("\n")}
+    const deployedContracts = {
+      ${chainFiles.map(({ chainId, chainName }) => `${parseInt(chainId).toFixed(0)}: ${chainName}Contracts`).join(",\n  ")}
+    } as const;
+    export default deployedContracts satisfies GenericContractsDeclaration;
+  `;
+  const indexResult = await format(indexContent, { parser: "typescript" });
+  writeFileSync(join(NEXTJS_TARGET_DIR, "deployedContracts.ts"), indexResult);
+
+  console.log(`\n✨ Generated ABI files:`);
+  chainFiles.forEach(({ filename, lines, contractCount, chainId }) => {
+    console.log(`   ${filename.padEnd(20)} ${lines.toString().padStart(4)} lines, ${contractCount} contracts (Chain ${chainId})`);
   });
-
-  // Write index file that re-exports all chains
-  Promise.all(chainFilePromises).then((chainFiles) => {
-    const indexContent = `
-      ${generatedContractComment}
-      import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
-
-      ${chainFiles
-        .map(
-          ({ chainName }) =>
-            `import ${chainName}Contracts from "./chains/${chainName}";`,
-        )
-        .join("\n")}
-
-      const deployedContracts = {
-        ${chainFiles
-          .map(
-            ({ chainId, chainName }) =>
-              `${parseInt(chainId).toFixed(0)}: ${chainName}Contracts`,
-          )
-          .join(",\n  ")}
-      } as const;
-
-      export default deployedContracts satisfies GenericContractsDeclaration;
-    `;
-
-    return format(indexContent, { parser: "typescript" }).then((result) => {
-      writeFileSync(join(NEXTJS_TARGET_DIR, "deployedContracts.ts"), result);
-
-      const indexLines = result.split("\n").length;
-      const originalLines = 10962;
-      const reduction = (
-        ((originalLines - totalLines) / originalLines) *
-        100
-      ).toFixed(1);
-
-      console.log(`\n✨ SPLIT BY CHAIN - Individual files per chain!`);
-      console.log(`\n📁 Generated files:`);
-      chainFiles.forEach(
-        ({ chainId, chainName, filename, lines, contractCount }) => {
-          console.log(
-            `   ${filename.padEnd(20)} ${lines.toString().padStart(4)} lines, ${contractCount} contracts (Chain ${chainId})`,
-          );
-        },
-      );
-      console.log(
-        `   ${"deployedContracts.ts".padEnd(20)} ${indexLines.toString().padStart(4)} lines (index)`,
-      );
-
-      console.log(`\n📊 Summary:`);
-      console.log(`   Total contracts: ${totalContracts}`);
-      console.log(
-        `   Total lines: ${totalLines} (${reduction}% reduction from ${originalLines})`,
-      );
-      console.log(
-        `   Average lines/chain: ${Math.round(totalLines / chainFiles.length)}`,
-      );
-
-      console.log(`\n💾 Saved to: ${NEXTJS_TARGET_DIR}`);
-      console.log(`   ├── deployedContracts.ts (index file)`);
-      console.log(`   └── chains/`);
-      chainFiles.forEach(({ filename }) => {
-        console.log(`       ├── ${filename}`);
-      });
-
-      console.log(`\n🎯 Benefits:`);
-      console.log(`   ✅ Smaller per-chain files (easier to review)`);
-      console.log(`   ✅ Better tree-shaking (unused chains can be dropped)`);
-      console.log(`   ✅ Faster TypeScript compilation`);
-      console.log(`   ✅ Can dynamically import only chains you need\n`);
-    });
-  });
+  console.log(`   ${"deployedContracts.ts".padEnd(20)} ${indexResult.split("\n").length.toString().padStart(4)} lines (index)`);
+  console.log(`\n   Total: ${totalContracts} contracts, ${totalLines} lines\n`);
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   console.error("Error:", error);
   process.exitCode = 1;
-}
+});
