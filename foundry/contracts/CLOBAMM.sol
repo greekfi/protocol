@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { TickMath } from "./libraries/TickMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IToken2 {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -446,7 +447,8 @@ contract CLOBAMM {
 
     function _tickToPrice(int24 tick) internal pure returns (uint256) {
         uint256 sqrtP = uint256(TickMath.getSqrtPriceAtTick(tick));
-        return (sqrtP * sqrtP * 1e18) >> 192;
+        uint256 ratio = Math.mulDiv(sqrtP, sqrtP, 1 << 96);
+        return Math.mulDiv(ratio, 1e18, 1 << 96);
     }
 
     function _levelId(address a, address b, int24 tick) internal pure returns (bytes32) {

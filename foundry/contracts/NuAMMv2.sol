@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { TickMath } from "./libraries/TickMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IToken {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -596,13 +597,9 @@ contract NuAMMv2 {
     /// @notice Convert tick to price scaled by 1e18
     /// @dev price = (sqrtPriceX96)^2 / 2^192 * 1e18
     function _tickToPrice(int24 tick) internal pure returns (uint256) {
-        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(tick);
-        uint256 sqrtP = uint256(sqrtPriceX96);
-        // sqrtPriceX96 = sqrt(price) * 2^96
-        // price = sqrtP^2 / 2^192
-        // scaled by 1e18: price = sqrtP^2 * 1e18 / 2^192
-        // To avoid overflow: (sqrtP * sqrtP / 2^64) * 1e18 / 2^128
-        return (sqrtP * sqrtP * 1e18) >> 192;
+        uint256 sqrtP = uint256(TickMath.getSqrtPriceAtTick(tick));
+        uint256 ratio = Math.mulDiv(sqrtP, sqrtP, 1 << 96);
+        return Math.mulDiv(ratio, 1e18, 1 << 96);
     }
 
     /// @dev Integer square root (Babylonian method)

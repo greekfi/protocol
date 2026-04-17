@@ -40,12 +40,9 @@ contract ScaffoldETHDeploy is Script {
         vm.startBroadcast();
         (, address _deployer,) = vm.readCallers();
 
+        // forge 1.6+ bans `try this.X()` self-calls — skip auto-funding; anvil funds test accounts by default
         if (block.chainid == 31337 && _deployer.balance == 0) {
-            try this.anvilSetBalance(_deployer, ANVIL_BASE_BALANCE) {
-                emit AnvilSetBalance(_deployer, ANVIL_BASE_BALANCE);
-            } catch {
-                emit FailedAnvilRequest();
-            }
+            emit FailedAnvilRequest();
         }
         return _deployer;
     }
@@ -69,13 +66,8 @@ contract ScaffoldETHDeploy is Script {
             vm.serializeString(jsonWrite, vm.toString(deployments[i].addr), deployments[i].name);
         }
 
-        string memory chainName;
-
-        try this.getChain() returns (Chain memory chain) {
-            chainName = chain.name;
-        } catch {
-            chainName = findChainName();
-        }
+        // forge 1.6+ bans `try this.X()` self-calls — resolve chain name inline
+        string memory chainName = block.chainid == 31337 ? "Anvil" : getChain(block.chainid).name;
         jsonWrite = vm.serializeString(jsonWrite, "networkName", chainName);
         vm.writeJson(jsonWrite, path);
     }
