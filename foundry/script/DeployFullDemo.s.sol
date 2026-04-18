@@ -2,9 +2,9 @@
 pragma solidity ^0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
 import { Option } from "../contracts/Option.sol";
-import { Redemption } from "../contracts/Redemption.sol";
+import { Collateral } from "../contracts/Collateral.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
 import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -29,12 +29,12 @@ contract DeployFullDemo is Script {
         MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
         MockERC20 wbtc = new MockERC20("Wrapped BTC", "WBTC", 8);
         MockERC20 aave = new MockERC20("Aave", "AAVE", 18);
-        MockERC20 uni  = new MockERC20("Uniswap", "UNI", 18);
+        MockERC20 uni = new MockERC20("Uniswap", "UNI", 18);
 
         // ===== 2. Protocol =====
-        Redemption rdm = new Redemption("S","S",address(usdc),address(weth),block.timestamp+1 days,1e18,false);
-        Option opt = new Option("L","L",address(rdm));
-        OptionFactory factory = new OptionFactory(address(rdm), address(opt));
+        Collateral coll = new Collateral("C", "C");
+        Option opt = new Option("O", "O");
+        Factory factory = new Factory(address(coll), address(opt));
         CLOBAMM book = new CLOBAMM();
 
         console.log("Factory:", address(factory));
@@ -53,10 +53,10 @@ contract DeployFullDemo is Script {
         address[4] memory underlyings = [address(weth), address(wbtc), address(aave), address(uni)];
         // Strikes per underlying (in USDC terms for calls)
         uint256[3][4] memory strikes = [
-            [uint256(2500e18), uint256(3000e18), uint256(3500e18)],  // WETH
+            [uint256(2500e18), uint256(3000e18), uint256(3500e18)], // WETH
             [uint256(60000e18), uint256(80000e18), uint256(100000e18)], // WBTC
-            [uint256(150e18), uint256(200e18), uint256(250e18)],     // AAVE
-            [uint256(5e18), uint256(7e18), uint256(10e18)]           // UNI
+            [uint256(150e18), uint256(200e18), uint256(250e18)], // AAVE
+            [uint256(5e18), uint256(7e18), uint256(10e18)] // UNI
         ];
 
         // Create + enable all options
@@ -134,26 +134,26 @@ contract DeployFullDemo is Script {
     //   premiums(USD): ITM=[300,350,500,800] ATM=[80,100,150,250] OTM=[10,15,25,50]
     //   ticks computed as log(premium * 1e6 / 1e18) / log(1.0001)
     int24[4][3] ASK_TICKS_18 = [
-        [int24(-219283), int24(-217716), int24(-214175), int24(-209475)],  // ITM: $300,$350,$500,$800
-        [int24(-232502), int24(-230270), int24(-226215), int24(-223338)],  // ATM: $80,$100,$150,$200
-        [int24(-253297), int24(-249242), int24(-246365), int24(-237202)]   // OTM: $10,$15,$20,$50
+        [int24(-219283), int24(-217716), int24(-214175), int24(-209475)], // ITM: $300,$350,$500,$800
+        [int24(-232502), int24(-230270), int24(-226215), int24(-223338)], // ATM: $80,$100,$150,$200
+        [int24(-253297), int24(-249242), int24(-246365), int24(-237202)] // OTM: $10,$15,$20,$50
     ];
     // For 8dec option / 6dec USDC (WBTC):
     //   raw = premium * 1e6 / 1e8 = premium * 0.01
     //   ticks are POSITIVE for large premiums
     int24[4][3] ASK_TICKS_8 = [
-        [int24(29957), int24(31541), int24(34012), int24(37740)],   // ITM: $2000,$2500,$3000,$5000 (raw 20,25,30,50)
-        [int24(20794), int24(23025), int24(26593), int24(29957)],   // ATM: $800,$1000,$1500,$2000
-        [int24(10987), int24(13862), int24(16095), int24(20794)]    // OTM: $300,$400,$500,$800
+        [int24(29957), int24(31541), int24(34012), int24(37740)], // ITM: $2000,$2500,$3000,$5000 (raw 20,25,30,50)
+        [int24(20794), int24(23025), int24(26593), int24(29957)], // ATM: $800,$1000,$1500,$2000
+        [int24(10987), int24(13862), int24(16095), int24(20794)] // OTM: $300,$400,$500,$800
     ];
     // Amounts per moneyness (in option-wei, will be scaled by decimals)
     uint256[3] CALL_SIZES = [uint256(5), uint256(10), uint256(20)]; // fewer ITM, more OTM
 
     // Put premiums: option is 6dec, cash is 6dec → raw = premium_usd, tick = log(premium)/log(1.0001)
     int24[4][3] ASK_TICKS_PUT = [
-        [int24(34014), int24(35607), int24(39122), int24(43822)],   // ITM: $30,$35,$50,$80
-        [int24(20794), int24(23025), int24(26593), int24(29957)],   // ATM: $8,$10,$15,$20
-        [int24(6932), int24(10987), int24(13862), int24(16095)]     // OTM: $2,$3,$4,$5
+        [int24(34014), int24(35607), int24(39122), int24(43822)], // ITM: $30,$35,$50,$80
+        [int24(20794), int24(23025), int24(26593), int24(29957)], // ATM: $8,$10,$15,$20
+        [int24(6932), int24(10987), int24(13862), int24(16095)] // OTM: $2,$3,$4,$5
     ];
 
     function _seedCall(CLOBAMM bk, address opt, address cash, uint8 optDec, uint256 u, uint256 s, uint256 e) internal {
@@ -163,11 +163,11 @@ contract DeployFullDemo is Script {
         uint256 base = CALL_SIZES[s] * (10 ** optDec);
         // 3 ask levels: at premium, +5%, +12%
         bk.quote(opt, cash, askTick, base, true);
-        bk.quote(opt, cash, askTick + 487, base * 80 / 100, true);     // ~5% higher
-        bk.quote(opt, cash, askTick + 1133, base * 50 / 100, true);    // ~12% higher
+        bk.quote(opt, cash, askTick + 487, base * 80 / 100, true); // ~5% higher
+        bk.quote(opt, cash, askTick + 1133, base * 50 / 100, true); // ~12% higher
         // 2 bid levels: -5%, -15% from ask
-        int24 bidTick1 = -(askTick - 513);   // ~5% cheaper
-        int24 bidTick2 = -(askTick - 1625);  // ~15% cheaper
+        int24 bidTick1 = -(askTick - 513); // ~5% cheaper
+        int24 bidTick2 = -(askTick - 1625); // ~15% cheaper
         uint256 bidCash1 = _premiumFromTick(askTick - 513, optDec) * base / (10 ** optDec) * 80 / 100;
         uint256 bidCash2 = _premiumFromTick(askTick - 1625, optDec) * base / (10 ** optDec) * 120 / 100;
         if (bidCash1 > 0) bk.quote(cash, opt, bidTick1, bidCash1, false);
@@ -197,15 +197,15 @@ contract DeployFullDemo is Script {
         // Very rough: premium_usd ≈ 1.0001^tick * 10^(optDec - 6)
         // We just need order-of-magnitude for bid sizing
         // For simplicity return a fixed reasonable amount based on tick sign
-        if (tick < -240000) return 10e6;     // ~$10
-        if (tick < -230000) return 80e6;     // ~$80
-        if (tick < -220000) return 200e6;    // ~$200
-        if (tick < -210000) return 500e6;    // ~$500
-        if (tick < -200000) return 1000e6;   // ~$1000
-        if (tick < 0) return 5000e6;         // ~$5000
-        if (tick < 15000) return 5e6;        // ~$5
-        if (tick < 25000) return 50e6;       // ~$50
-        if (tick < 35000) return 500e6;      // ~$500
-        return 2000e6;                       // ~$2000
+        if (tick < -240000) return 10e6; // ~$10
+        if (tick < -230000) return 80e6; // ~$80
+        if (tick < -220000) return 200e6; // ~$200
+        if (tick < -210000) return 500e6; // ~$500
+        if (tick < -200000) return 1000e6; // ~$1000
+        if (tick < 0) return 5000e6; // ~$5000
+        if (tick < 15000) return 5e6; // ~$5
+        if (tick < 25000) return 50e6; // ~$50
+        if (tick < 35000) return 500e6; // ~$500
+        return 2000e6; // ~$2000
     }
 }

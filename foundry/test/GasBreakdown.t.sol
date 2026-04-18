@@ -3,16 +3,18 @@ pragma solidity ^0.8.30;
 
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract GasBreakdown is Test {
     StableToken public stableToken;
     ShakyToken public shakyToken;
-    Redemption public redemptionTemplate;
+    Collateral public redemptionTemplate;
     Option public optionTemplate;
-    OptionFactory public factory;
+    Factory public factory;
 
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     string public constant BASE_RPC_URL = "https://mainnet.base.org";
@@ -26,14 +28,11 @@ contract GasBreakdown is Test {
         stableToken.mint(address(this), 1_000_000 * 10 ** 18);
         shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
 
-        redemptionTemplate = new Redemption(
-            "Short Template", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 1e18, false
-        );
+        redemptionTemplate = new Collateral("Short Template", "SHORT");
+        optionTemplate = new Option("Long Template", "LONG");
 
-        optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
-
-        // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
+        // Deploy Factory
+        factory = new Factory(address(redemptionTemplate), address(optionTemplate));
 
         IERC20(address(stableToken)).approve(address(factory), type(uint256).max);
         IERC20(address(shakyToken)).approve(address(factory), type(uint256).max);
@@ -43,7 +42,7 @@ contract GasBreakdown is Test {
         uint256 gasBefore = gasleft();
         address redemption_ = Clones.clone(address(redemptionTemplate));
         uint256 gasClone1 = gasBefore - gasleft();
-        console.log("Clone Redemption:", gasClone1);
+        console.log("Clone Collateral:", gasClone1);
 
         gasBefore = gasleft();
         address option_ = Clones.clone(address(optionTemplate));
@@ -57,7 +56,7 @@ contract GasBreakdown is Test {
         address redemption_ = Clones.clone(address(redemptionTemplate));
         address option_ = Clones.clone(address(optionTemplate));
 
-        Redemption redemption = Redemption(redemption_);
+        Collateral redemption = Collateral(redemption_);
         Option option = Option(option_);
 
         uint256 gasBefore = gasleft();
@@ -67,25 +66,27 @@ contract GasBreakdown is Test {
             uint40(block.timestamp + 30 days),
             1e18,
             false,
+            false,
+            address(0),
             option_,
             address(factory)
         );
-        uint256 gasRedemptionInit = gasBefore - gasleft();
-        console.log("Redemption.init():", gasRedemptionInit);
+        uint256 gasCollateralInit = gasBefore - gasleft();
+        console.log("Collateral.init():", gasCollateralInit);
 
         gasBefore = gasleft();
         option.init(redemption_, msg.sender);
         uint256 gasOptionInit = gasBefore - gasleft();
         console.log("Option.init():", gasOptionInit);
 
-        console.log("Total Init Cost:", gasRedemptionInit + gasOptionInit);
+        console.log("Total Init Cost:", gasCollateralInit + gasOptionInit);
     }
 
     function test_GasBreakdown_Step3_CreateOptionInfo() public {
         address redemption_ = Clones.clone(address(redemptionTemplate));
         address option_ = Clones.clone(address(optionTemplate));
 
-        Redemption redemption = Redemption(redemption_);
+        Collateral redemption = Collateral(redemption_);
         Option option = Option(option_);
 
         redemption.init(
@@ -94,6 +95,8 @@ contract GasBreakdown is Test {
             uint40(block.timestamp + 30 days),
             1e18,
             false,
+            false,
+            address(0),
             option_,
             address(factory)
         );

@@ -11,7 +11,7 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
+import { IFactory, CreateParams } from "./interfaces/IFactory.sol";
 
 using SafeERC20 for IERC20;
 
@@ -88,7 +88,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
 
     // ============ STRATEGY ============
 
-    IOptionFactory public factory;
+    IFactory public factory;
     StrikeConfig[] public strikeConfigs;
     uint256 public rollBounty;
     mapping(address => bool) public rolled;
@@ -138,7 +138,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         Ownable(msg.sender)
     {
         if (factory_ == address(0) || pricer_ == address(0)) revert InvalidAddress();
-        factory = IOptionFactory(factory_);
+        factory = IFactory(factory_);
         pricer = IOptionPricer(pricer_);
         maxCommitmentBps = 8000;
     }
@@ -189,7 +189,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         uint256 total = totalAssets();
         if (totalCommitted + amount > (total * maxCommitmentBps) / 10000) revert ExceedsCommitmentCap();
 
-        address redemption = IOption(option).redemption();
+        address redemption = IOption(option).coll();
         uint256 redBefore = IERC20(redemption).balanceOf(address(this));
 
         // transferFrom triggers auto-mint: vault's collateral → Redemption, options minted to `to`
@@ -212,7 +212,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     function recordBuyback(address option, uint256 amount) external onlyHook nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
 
-        address redemption = IOption(option).redemption();
+        address redemption = IOption(option).coll();
         uint256 redBefore = trackedRedemptionBalance[option];
         uint256 redAfter = IERC20(redemption).balanceOf(address(this));
 
@@ -278,7 +278,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
     function handleSettlement(address option) external nonReentrant {
         if (!whitelistedOptions[option]) revert NotWhitelisted();
 
-        address redemption = IOption(option).redemption();
+        address redemption = IOption(option).coll();
         uint256 previous = trackedRedemptionBalance[option];
         uint256 current = IERC20(redemption).balanceOf(address(this));
 
@@ -311,7 +311,16 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
             uint96 newStrike = uint96(Math.mulDiv(spot, uint256(cfg.strikeOffsetBps), 10000));
             uint40 newExpiry = uint40(block.timestamp + uint256(cfg.duration));
             address newOption = factory.createOption(
-                collateral_, IOption(expiredOption).consideration(), newExpiry, newStrike, cfg.isPut
+                CreateParams({
+                    collateral: collateral_,
+                    consideration: IOption(expiredOption).consideration(),
+                    expirationDate: newExpiry,
+                    strike: newStrike,
+                    isPut: cfg.isPut,
+                    isEuro: false,
+                    oracleSource: address(0),
+                    twapWindow: 0
+                })
             );
             whitelistedOptions[newOption] = true;
             newOptions[i] = newOption;
@@ -406,7 +415,18 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         onlyOwner
         returns (address)
     {
-        address opt = factory.createOption(asset(), cashToken_, expiration, strike, isPut);
+        address opt = factory.createOption(
+            CreateParams({
+                collateral: asset(),
+                consideration: cashToken_,
+                expirationDate: expiration,
+                strike: strike,
+                isPut: isPut,
+                isEuro: false,
+                oracleSource: address(0),
+                twapWindow: 0
+            })
+        );
         whitelistedOptions[opt] = true;
         emit OptionWhitelisted(opt, true);
         return opt;
@@ -458,7 +478,7 @@ contract HookVault is ERC4626, Ownable, ReentrancyGuardTransient, Pausable {
         returns (uint256 committed_, uint256 redemptionBalance_, bool expired_)
     {
         committed_ = committed[option];
-        address redemption = IOption(option).redemption();
+        address redemption = IOption(option).coll();
         redemptionBalance_ = IERC20(redemption).balanceOf(address(this));
         expired_ = block.timestamp >= IOption(option).expirationDate();
     }

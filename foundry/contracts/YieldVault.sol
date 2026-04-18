@@ -14,8 +14,8 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { IRedemption } from "./interfaces/IRedemption.sol";
-import { IOptionFactory } from "./interfaces/IOptionFactory.sol";
+import { ICollateral } from "./interfaces/ICollateral.sol";
+import { IFactory } from "./interfaces/IFactory.sol";
 import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
 using SafeERC20 for IERC20;
@@ -55,7 +55,7 @@ contract YieldVault is
 
     // ============ STATE ============
 
-    IOptionFactory public factory;
+    IFactory public factory;
     address[] public activeOptions;
 
     // ============ ASYNC REDEEM STATE ============
@@ -89,7 +89,7 @@ contract YieldVault is
         Ownable(msg.sender)
     {
         if (factory_ == address(0)) revert InvalidAddress();
-        factory = IOptionFactory(factory_);
+        factory = IFactory(factory_);
     }
 
     // ============ ERC4626 OVERRIDES ============
@@ -263,12 +263,12 @@ contract YieldVault is
         emit OptionsBurned(option, amount);
     }
 
-    /// @notice Redeem expired Redemption tokens to recover collateral (post-expiry)
+    /// @notice Redeem expired Collateral tokens to recover collateral (post-expiry)
     function redeemExpired(address option) external onlyOperatorOrOwner {
-        address r = IOption(option).redemption();
+        address r = IOption(option).coll();
         uint256 balance = IERC20(r).balanceOf(address(this));
         if (balance == 0) revert ZeroAmount();
-        IRedemption(r).redeem(address(this), balance);
+        ICollateral(r).redeem(address(this), balance);
     }
 
     /// @notice Remove an option from active tracking (operator or owner)
@@ -336,7 +336,7 @@ contract YieldVault is
         uint256 i = 0;
         while (i < len) {
             address opt = activeOptions[i];
-            uint256 bal = IERC20(IOption(opt).redemption()).balanceOf(address(this));
+            uint256 bal = IERC20(IOption(opt).coll()).balanceOf(address(this));
             if (bal == 0 && block.timestamp >= IOption(opt).expirationDate()) {
                 activeOptions[i] = activeOptions[len - 1];
                 activeOptions.pop();
@@ -360,13 +360,13 @@ contract YieldVault is
     /// @notice Total collateral committed across all active options
     function totalCommitted() public view returns (uint256 total) {
         for (uint256 i = 0; i < activeOptions.length; i++) {
-            total += IERC20(IOption(activeOptions[i]).redemption()).balanceOf(address(this));
+            total += IERC20(IOption(activeOptions[i]).coll()).balanceOf(address(this));
         }
     }
 
     /// @notice Collateral committed to a specific option
     function committed(address option) public view returns (uint256) {
-        return IERC20(IOption(option).redemption()).balanceOf(address(this));
+        return IERC20(IOption(option).coll()).balanceOf(address(this));
     }
 
     /// @notice Idle collateral available (not committed to options, not earmarked for redeems)

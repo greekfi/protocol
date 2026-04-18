@@ -2,14 +2,15 @@
 pragma solidity ^0.8.33;
 
 import { Test, console } from "forge-std/Test.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 
 /**
  * @title Factory Security Test
- * @notice Tests for OptionFactory security validations
+ * @notice Tests for Factory security validations
  */
 contract FactorySecurityTest is Test {
-    OptionFactory factory;
+    Factory factory;
     address redemptionTemplate;
     address optionTemplate;
 
@@ -25,7 +26,7 @@ contract FactorySecurityTest is Test {
         optionTemplate = address(new MockContract());
 
         // Deploy factory directly
-        factory = new OptionFactory(redemptionTemplate, optionTemplate);
+        factory = new Factory(redemptionTemplate, optionTemplate);
 
         // Deploy mock tokens
         collateralToken = new MockERC20("Collateral", "COLL", 18);
@@ -36,8 +37,8 @@ contract FactorySecurityTest is Test {
      * HIGH-01: Template validation - constructor rejects both zero
      */
     function testFIXED_TemplateValidation_BothZero() public {
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(address(0), address(0));
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(address(0), address(0));
 
         console.log("FIXED: Constructor rejects both zero addresses!");
     }
@@ -48,8 +49,8 @@ contract FactorySecurityTest is Test {
     function testFIXED_TemplateValidation_OneZero() public {
         address validTemplate = address(new MockContract());
 
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(address(0), validTemplate);
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(address(0), validTemplate);
 
         console.log("FIXED: Constructor rejects redemption zero address!");
     }
@@ -60,8 +61,8 @@ contract FactorySecurityTest is Test {
     function testFIXED_TemplateValidation_OptionZero() public {
         address validTemplate = address(new MockContract());
 
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
-        new OptionFactory(validTemplate, address(0));
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(validTemplate, address(0));
 
         console.log("FIXED: Constructor rejects option zero address!");
     }
@@ -71,7 +72,7 @@ contract FactorySecurityTest is Test {
      */
     function testLOW_UnblockTokenNoValidation() public {
         // Can unblock zero address (should fail but doesn't)
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        vm.expectRevert(Factory.InvalidAddress.selector);
         factory.unblockToken(address(0));
 
         // No error, no event (if we checked blocklist[address(0)] it's now false)
@@ -100,8 +101,7 @@ contract FactorySecurityTest is Test {
  */
 contract MockContract {
     // Empty contract to use as template address
-
-    }
+}
 
 /**
  * Mock ERC20 token for testing

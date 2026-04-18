@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { OpHook } from "../contracts/OpHook.sol";
-import { Option, Redemption } from "../contracts/Option.sol";
+import { Option, Collateral } from "../contracts/Option.sol";
 import { HookVault } from "../contracts/HookVault.sol";
 import { BlackScholes } from "../contracts/BlackScholes.sol";
 import { OptionPricer } from "../contracts/OptionPricer.sol";
@@ -30,7 +30,7 @@ import { ConstantsMainnet } from "../contracts/ConstantsMainnet.sol";
 import { ConstantsBase } from "../contracts/ConstantsBase.sol";
 
 import { IOption } from "../contracts/interfaces/IOption.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
 
 contract SwapCallback is SafeCallback {
     OpHook public opHook;
@@ -120,11 +120,11 @@ abstract contract OpHookTestBase is Test {
         poolManager = IPoolManager(poolManager_);
 
         uint40 expiration = uint40(block.timestamp + 30 days);
-        Redemption r = new Redemption("", "", weth_, usdc_, expiration, 1e22, false);
-        Option o = new Option("", "", address(r));
+        Collateral r = new Collateral("", "");
+        Option o = new Option("", "");
 
         // Deploy factory
-        OptionFactory factory = new OptionFactory(address(r), address(o));
+        Factory factory = new Factory(address(r), address(o));
 
         option1_ = factory.createOption(weth_, usdc_, expiration, strike1, false);
         option2_ = factory.createOption(weth_, usdc_, expiration, strike2, false);

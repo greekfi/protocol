@@ -4,7 +4,10 @@ pragma solidity ^0.8.30;
 import { Test } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
@@ -48,13 +51,13 @@ contract FeeOnTransferTest is Test {
     StableToken public stableToken;
     ShakyToken public shakyToken;
     FeeOnTransferToken public fotToken;
-    Redemption public redemptionClone;
+    Collateral public redemptionClone;
     Option public optionClone;
-    OptionFactory public factory;
+    Factory public factory;
 
     IPermit2 permit2 = IPermit2(PERMIT2);
     Option option;
-    Redemption redemption;
+    Collateral redemption;
 
     // Base RPC URL
     string constant BASE_RPC_URL = "https://mainnet.base.org";
@@ -77,22 +80,14 @@ contract FeeOnTransferTest is Test {
         shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
         fotToken.mint(address(this), 1_000_000 * 10 ** 18);
 
-        // Deploy Redemption template
-        redemptionClone = new Redemption(
-            "Redemption Template",
-            "REDT",
-            address(stableToken),
-            address(shakyToken),
-            block.timestamp + 1 days,
-            1e18,
-            false
-        );
+        // Deploy Collateral template
+        redemptionClone = new Collateral("Collateral Template", "COLL");
 
         // Deploy Option template
-        optionClone = new Option("Option Template", "OPTT", address(redemptionClone));
+        optionClone = new Option("Option Template", "OPTT");
 
-        // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        // Deploy Factory
+        factory = new Factory(address(redemptionClone), address(optionClone));
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted collateral
@@ -104,7 +99,7 @@ contract FeeOnTransferTest is Test {
         assertTrue(factory.isBlocked(address(fotToken)));
 
         // Try to create option with blocklisted collateral - should revert
-        vm.expectRevert(OptionFactory.BlocklistedToken.selector);
+        vm.expectRevert(Factory.BlocklistedToken.selector);
         factory.createOption(
             address(fotToken), // Blocklisted collateral
             address(stableToken),
@@ -120,7 +115,7 @@ contract FeeOnTransferTest is Test {
         factory.blockToken(address(fotToken));
 
         // Try to create option with blocklisted consideration - should revert
-        vm.expectRevert(OptionFactory.BlocklistedToken.selector);
+        vm.expectRevert(Factory.BlocklistedToken.selector);
         factory.createOption(
             address(stableToken),
             address(fotToken), // Blocklisted consideration
@@ -165,7 +160,7 @@ contract FeeOnTransferTest is Test {
         );
 
         option = Option(optionAddress);
-        redemption = Redemption(option.redemption());
+        redemption = Collateral(option.coll());
 
         // Approve tokens
         fotToken.approve(address(factory), MAX160);
@@ -174,31 +169,34 @@ contract FeeOnTransferTest is Test {
         uint256 mintAmount = 1000 * 10 ** 18;
 
         // Try to mint - should fail because FOT token transfers less than requested
-        vm.expectRevert(Redemption.FeeOnTransferNotSupported.selector);
+        vm.expectRevert(Collateral.FeeOnTransferNotSupported.selector);
         option.mint(mintAmount);
     }
 
     /// @notice Test that normal tokens work fine with the balance check
     function test_NormalTokensPassBalanceCheck() public {
         // Create option with normal tokens
-        OptionParameter[] memory options = new OptionParameter[](1);
-        options[0] = OptionParameter({
-            collateral_: address(shakyToken),
-            consideration_: address(stableToken),
-            expiration: uint40(block.timestamp + 1 days),
+        CreateParams[] memory options = new CreateParams[](1);
+        options[0] = CreateParams({
+            collateral: address(shakyToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 1 days),
             strike: uint96(1e18),
-            isPut: false
+            isPut: false,
+            isEuro: false,
+            oracleSource: address(0),
+            twapWindow: 0
         });
 
         address optionAddress = factory.createOption(
-            options[0].collateral_,
-            options[0].consideration_,
-            options[0].expiration,
+            options[0].collateral,
+            options[0].consideration,
+            options[0].expirationDate,
             options[0].strike,
             options[0].isPut
         );
         option = Option(optionAddress);
-        redemption = Redemption(option.redemption());
+        redemption = Collateral(option.coll());
 
         // Approve tokens
         shakyToken.approve(address(factory), MAX160);
@@ -220,18 +218,18 @@ contract FeeOnTransferTest is Test {
     function test_BlocklistEventEmission() public {
         // Test add event
         vm.expectEmit(true, true, false, false);
-        emit OptionFactory.TokenBlocked(address(fotToken), true);
+        emit Factory.TokenBlocked(address(fotToken), true);
         factory.blockToken(address(fotToken));
 
         // Test remove event
         vm.expectEmit(true, true, false, false);
-        emit OptionFactory.TokenBlocked(address(fotToken), false);
+        emit Factory.TokenBlocked(address(fotToken), false);
         factory.unblockToken(address(fotToken));
     }
 
     /// @notice Test that zero address cannot be blocklisted
     function test_CannotBlocklistZeroAddress() public {
-        vm.expectRevert(OptionFactory.InvalidAddress.selector);
+        vm.expectRevert(Factory.InvalidAddress.selector);
         factory.blockToken(address(0));
     }
 }

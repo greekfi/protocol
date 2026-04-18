@@ -8,5 +8,4 @@ import { IAllowanceTransfer } from "./IAllowanceTransfer.sol";
 /// @dev Users must approve Permit2 before calling any of the transfer functions.
 interface IPermit2 is ISignatureTransfer, IAllowanceTransfer {
     // IPermit2 unifies the two interfaces so users have maximal flexibility with their approval.
-
-    }
+}

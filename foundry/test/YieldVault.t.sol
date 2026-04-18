@@ -4,7 +4,7 @@ pragma solidity ^0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { Factory, Collateral, Option } from "../contracts/Factory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
@@ -130,10 +130,10 @@ contract YieldVaultTest is Test {
 
     StableToken public stableToken;
     ShakyToken public shakyToken;
-    OptionFactory public factory;
+    Factory public factory;
     YieldVault public vault;
     Option public option;
-    Redemption public redemption;
+    Collateral public redemption;
 
     address public lp = address(0x1111);
     uint256 public operatorPk = 0xA11CE;
@@ -162,11 +162,9 @@ contract YieldVaultTest is Test {
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
 
-        Redemption redemptionClone = new Redemption(
-            "Short Option", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
-        );
-        Option optionClone = new Option("Long Option", "LONG", address(redemptionClone));
-        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        Collateral redemptionClone = new Collateral("Short Option", "SHORT");
+        Option optionClone = new Option("Long Option", "LONG");
+        factory = new Factory(address(redemptionClone), address(optionClone));
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         vault.setupFactoryApproval();
@@ -176,7 +174,7 @@ contract YieldVaultTest is Test {
             address(shakyToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
         );
         option = Option(optionAddr);
-        redemption = option.redemption();
+        redemption = option.coll();
         vault.addOption(address(option), address(0));
 
         shakyToken.mint(address(this), 1_000_000e18);
@@ -679,7 +677,7 @@ contract YieldVaultTest is Test {
         // 4. Options expire OTM (no exercise)
         vm.warp(block.timestamp + 2 days);
 
-        // 5. Vault recovers collateral from expired Redemption tokens
+        // 5. Vault recovers collateral from expired Collateral tokens
         vault.redeemExpired(address(option));
         assertEq(vault.committed(address(option)), 0);
 

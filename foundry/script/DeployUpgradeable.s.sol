@@ -10,34 +10,31 @@ import { HookMiner } from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import { OpHook } from "../contracts/OpHook.sol";
 import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 
-import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
-/// @notice Deploys the OptionFactory and OpHook
+/// @notice Deploys the Factory and OpHook
 contract DeployUpgradeable is Script, ScaffoldETHDeploy {
     function setUp() public { }
 
     function run() public broadcast {
-        // Deploy test tokens
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
+        stableToken;
+        shakyToken;
 
-        // Deploy template contracts (these are used for cloning)
-        Redemption redemptionTemplate = new Redemption(
-            "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
-        );
+        Collateral collTemplate = new Collateral("Collateral", "COLL");
+        Option optionTemplate = new Option("Option", "OPT");
 
-        Option optionTemplate = new Option("Option", "OPT", address(redemptionTemplate));
+        Factory factory = new Factory(address(collTemplate), address(optionTemplate));
 
-        // Deploy OptionFactory
-        OptionFactory factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
-
-        console.log("OptionFactory deployed at:", address(factory));
+        console.log("Factory deployed at:", address(factory));
         console.log("Factory owner:", factory.owner());
-        console.log("Redemption template:", factory.REDEMPTION_CLONE());
+        console.log("Collateral template:", factory.COLL_CLONE());
         console.log("Option template:", factory.OPTION_CLONE());
 
-        // Deploy OpHook using HookMiner to get correct address
         address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
         uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG
             | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;

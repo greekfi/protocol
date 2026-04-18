@@ -33,9 +33,9 @@ contract PopulateAllBooks is Script {
             // Cheap heuristic: we hard-code calls here. Callers should post puts manually or extend.
             // Asks: sell option for stable
             book.quote(option, stableAddr, -16094, 10e18, true); // 10 @ 0.20
-            book.quote(option, stableAddr, -15141, 8e18,  true); // 8  @ 0.22
+            book.quote(option, stableAddr, -15141, 8e18, true); // 8  @ 0.22
             book.quote(option, stableAddr, -13863, 12e18, true); // 12 @ 0.25
-            book.quote(option, stableAddr, -12039, 5e18,  true); // 5  @ 0.30
+            book.quote(option, stableAddr, -12039, 5e18, true); // 5  @ 0.30
             // Bids: sell stable for option (maker buys)
             book.quote(stableAddr, option, 18971, 1_500_000_000_000_000_000, false);
             book.quote(stableAddr, option, 20402, 1_040_000_000_000_000_000, false);

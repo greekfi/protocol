@@ -2,40 +2,21 @@
 pragma solidity ^0.8.19;
 
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
-import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
-/**
- * @notice Deploy script for YourContract contract
- * @dev Inherits ScaffoldETHDeploy which:
- *      - Includes forge-std/Script.sol for deployment
- *      - Includes `broadcast` modifier
- *      - Provides `deployer` address variable
- * Example:
- * yarn deploy --file DeployYourContract.s.sol  # local anvil chain
- * yarn deploy --file DeployYourContract.s.sol --network optimism # live network (requires keystore)
- */
 contract DeployYourContract is ScaffoldETHDeploy {
-    /**
-     * @dev Deployer setup based on `ETH_KEYSTORE_ACCOUNT` in `.env`:
-     *      - "scaffold-eth-default": Uses Anvil's account #9 (0xa0Ee7A142d267C1f36714E4a8F75612F20a79720), no password prompt
-     *      - "scaffold-eth-custom": requires password used while creating keystore
-     *
-     * Note: Must use `broadcast` modifier to:
-     *      - Setup correct `deployer` account and fund it
-     *      - Export contract addresses & ABIs to `nextjs` packages
-     */
     function run() external broadcast {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
+        stableToken;
+        shakyToken;
 
-        Redemption short = new Redemption(
-            "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
-        );
+        Collateral short = new Collateral("Collateral", "COLL");
+        Option long = new Option("Option", "OPT");
 
-        Option long = new Option("Option", "OPT", address(short));
-
-        // Deploy factory
-        new OptionFactory(address(short), address(long));
+        new Factory(address(short), address(long));
     }
 }

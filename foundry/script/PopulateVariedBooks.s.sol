@@ -74,52 +74,52 @@ contract PopulateVariedBooks is Script {
         // call1: ATM-ish, tight spread, moderate depth
         // mid ~ 0.175
         // =========================
-        _ask(book, call1, stable, -17147,  5e18);  // 5 @ 0.18
-        _ask(book, call1, stable, -16606, 10e18);  // 10 @ 0.19
-        _ask(book, call1, stable, -15607,  8e18);  // 8  @ 0.21
-        _ask(book, call1, stable, -13863, 15e18);  // 15 @ 0.25
-        _bid(book, call1, stable,  18325,  8e18, 0.16e18);  // 8  @ 0.16
-        _bid(book, call1, stable,  19660, 14e18, 0.14e18);  // 14 @ 0.14
-        _bid(book, call1, stable,  22072, 20e18, 0.11e18);  // 20 @ 0.11
+        _ask(book, call1, stable, -17147, 5e18); // 5 @ 0.18
+        _ask(book, call1, stable, -16606, 10e18); // 10 @ 0.19
+        _ask(book, call1, stable, -15607, 8e18); // 8  @ 0.21
+        _ask(book, call1, stable, -13863, 15e18); // 15 @ 0.25
+        _bid(book, call1, stable, 18325, 8e18, 0.16e18); // 8  @ 0.16
+        _bid(book, call1, stable, 19660, 14e18, 0.14e18); // 14 @ 0.14
+        _bid(book, call1, stable, 22072, 20e18, 0.11e18); // 20 @ 0.11
         console.log("call1 seeded");
 
         // =========================
         // call2: similar strike, different distribution (fatter depth at worse levels)
         // mid ~ 0.21
         // =========================
-        _ask(book, call2, stable, -16094, 20e18);  // 20 @ 0.20
-        _ask(book, call2, stable, -15141,  6e18);  // 6  @ 0.22
-        _ask(book, call2, stable, -13471, 10e18);  // 10 @ 0.26
-        _ask(book, call2, stable, -11393,  4e18);  // 4  @ 0.32
-        _bid(book, call2, stable,  17147, 10e18, 0.18e18); // 10 @ 0.18
-        _bid(book, call2, stable,  18971, 15e18, 0.15e18); // 15 @ 0.15
-        _bid(book, call2, stable,  21202, 22e18, 0.12e18); // 22 @ 0.12
-        _bid(book, call2, stable,  24079,  8e18, 0.09e18); // 8  @ 0.09
+        _ask(book, call2, stable, -16094, 20e18); // 20 @ 0.20
+        _ask(book, call2, stable, -15141, 6e18); // 6  @ 0.22
+        _ask(book, call2, stable, -13471, 10e18); // 10 @ 0.26
+        _ask(book, call2, stable, -11393, 4e18); // 4  @ 0.32
+        _bid(book, call2, stable, 17147, 10e18, 0.18e18); // 10 @ 0.18
+        _bid(book, call2, stable, 18971, 15e18, 0.15e18); // 15 @ 0.15
+        _bid(book, call2, stable, 21202, 22e18, 0.12e18); // 22 @ 0.12
+        _bid(book, call2, stable, 24079, 8e18, 0.09e18); // 8  @ 0.09
         console.log("call2 seeded");
 
         // =========================
         // call3: strike 3 = OTM, cheaper premium, thinner book
         // mid ~ 0.075
         // =========================
-        _ask(book, call3, stable, -26593, 12e18);  // 12 @ 0.07
-        _ask(book, call3, stable, -25257,  8e18);  // 8  @ 0.08
-        _ask(book, call3, stable, -23025,  5e18);  // 5  @ 0.10
-        _ask(book, call3, stable, -19660,  3e18);  // 3  @ 0.14
-        _bid(book, call3, stable,  29957, 10e18, 0.05e18); // 10 @ 0.05
-        _bid(book, call3, stable,  32189,  7e18, 0.04e18); // 7  @ 0.04
-        _bid(book, call3, stable,  35066,  5e18, 0.03e18); // 5  @ 0.03
+        _ask(book, call3, stable, -26593, 12e18); // 12 @ 0.07
+        _ask(book, call3, stable, -25257, 8e18); // 8  @ 0.08
+        _ask(book, call3, stable, -23025, 5e18); // 5  @ 0.10
+        _ask(book, call3, stable, -19660, 3e18); // 3  @ 0.14
+        _bid(book, call3, stable, 29957, 10e18, 0.05e18); // 10 @ 0.05
+        _bid(book, call3, stable, 32189, 7e18, 0.04e18); // 7  @ 0.04
+        _bid(book, call3, stable, 35066, 5e18, 0.03e18); // 5  @ 0.03
         console.log("call3 seeded");
 
         // =========================
         // call30d: 30-day, richer premium (time value)
         // mid ~ 0.33
         // =========================
-        _ask(book, call30d, stable, -10498,  8e18);  // 8  @ 0.35
-        _ask(book, call30d, stable,  -9162, 12e18);  // 12 @ 0.40
-        _ask(book, call30d, stable,  -7985,  6e18);  // 6  @ 0.45
-        _bid(book, call30d, stable,  11393, 10e18, 0.32e18); // 10 @ 0.32
-        _bid(book, call30d, stable,  13471, 15e18, 0.26e18); // 15 @ 0.26
-        _bid(book, call30d, stable,  16094,  8e18, 0.20e18); // 8  @ 0.20
+        _ask(book, call30d, stable, -10498, 8e18); // 8  @ 0.35
+        _ask(book, call30d, stable, -9162, 12e18); // 12 @ 0.40
+        _ask(book, call30d, stable, -7985, 6e18); // 6  @ 0.45
+        _bid(book, call30d, stable, 11393, 10e18, 0.32e18); // 10 @ 0.32
+        _bid(book, call30d, stable, 13471, 15e18, 0.26e18); // 15 @ 0.26
+        _bid(book, call30d, stable, 16094, 8e18, 0.2e18); // 8  @ 0.20
         console.log("call30d seeded");
 
         // =========================
@@ -127,11 +127,11 @@ contract PopulateVariedBooks is Script {
         // Premium quoted in stable per put. Skinny book.
         // mid ~ 0.09 stable per put
         // =========================
-        _ask(book, put, stable, -25257,  5e18);  // 5  @ 0.08
-        _ask(book, put, stable, -23025, 10e18);  // 10 @ 0.10
-        _ask(book, put, stable, -19660,  4e18);  // 4  @ 0.14
-        _bid(book, put, stable,  28134,  5e18, 0.06e18);  // 5  @ 0.06
-        _bid(book, put, stable,  32189,  8e18, 0.04e18);  // 8  @ 0.04
+        _ask(book, put, stable, -25257, 5e18); // 5  @ 0.08
+        _ask(book, put, stable, -23025, 10e18); // 10 @ 0.10
+        _ask(book, put, stable, -19660, 4e18); // 4  @ 0.14
+        _bid(book, put, stable, 28134, 5e18, 0.06e18); // 5  @ 0.06
+        _bid(book, put, stable, 32189, 8e18, 0.04e18); // 8  @ 0.04
         console.log("put seeded");
 
         vm.stopBroadcast();

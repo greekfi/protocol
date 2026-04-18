@@ -3,16 +3,17 @@ pragma solidity ^0.8.30;
 
 import "forge-std/Test.sol";
 import "../contracts/NuAMMv2.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
 import { Option } from "../contracts/Option.sol";
-import { Redemption } from "../contracts/Redemption.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 
 /// @notice End-to-end test: maker deposits collateral into NuAMMv2, quotes options at a tick,
 ///         taker swaps cash for options. Verifies auto-mint delivers real option tokens.
 contract NuAMMv2OptionTest is Test {
     NuAMMv2 public book;
-    OptionFactory public factory;
+    Factory public factory;
     Option public option;
     ShakyToken public shaky;
     StableToken public stable;
@@ -24,10 +25,9 @@ contract NuAMMv2OptionTest is Test {
         stable = new StableToken();
         shaky = new ShakyToken();
 
-        Redemption redemptionClone =
-            new Redemption("Short", "SHORT", address(stable), address(shaky), block.timestamp + 1 days, 1e18, false);
-        Option optionClone = new Option("Long", "LONG", address(redemptionClone));
-        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        Collateral redemptionClone = new Collateral("Short", "SHORT");
+        Option optionClone = new Option("Long", "LONG");
+        factory = new Factory(address(redemptionClone), address(optionClone));
 
         option = Option(
             factory.createOption(address(shaky), address(stable), uint40(block.timestamp + 1 days), 2000e18, false)
