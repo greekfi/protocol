@@ -72,10 +72,8 @@ contract UniV3Oracle is IPriceOracle {
 
         address token0 = POOL.token0();
         address token1 = POOL.token1();
-        if (
-            !((token0 == collateral_ && token1 == consideration_)
-                || (token1 == collateral_ && token0 == consideration_))
-        ) {
+        if (!((token0 == collateral_ && token1 == consideration_)
+                    || (token1 == collateral_ && token0 == consideration_))) {
             revert PoolTokenMismatch();
         }
         COLLATERAL_IS_TOKEN0 = token0 == collateral_;
@@ -99,7 +97,12 @@ contract UniV3Oracle is IPriceOracle {
     ///      `[expiration - window, expiration]`. Must be called before observations roll off the
     ///      pool's ring buffer — in practice within `observationCardinality * avg_block_time` of
     ///      expiration. Idempotent: no-op after first successful settle.
-    function settle(bytes calldata /* hint */ ) external returns (uint256) {
+    function settle(
+        bytes calldata /* hint */
+    )
+        external
+        returns (uint256)
+    {
         if (settled) return settledPrice;
         if (block.timestamp < EXPIRATION_TS) revert NotExpired();
 

@@ -282,10 +282,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
             coll: address(coll),
             collateral: TokenData({ address_: colTok, name: cm.name(), symbol: cm.symbol(), decimals: cm.decimals() }),
             consideration: TokenData({
-                address_: consTok,
-                name: cnm.name(),
-                symbol: cnm.symbol(),
-                decimals: cnm.decimals()
+                address_: consTok, name: cnm.name(), symbol: cnm.symbol(), decimals: cnm.decimals()
             }),
             expiration: expirationDate(),
             strike: strike(),
