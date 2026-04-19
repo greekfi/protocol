@@ -13,10 +13,8 @@ docs/
 .env
 localhost.json
 
-# Yarn (berry)
-.yarn/
-.yarnrc.yml
-yarn.lock
-
 # Scratch
 .tmp/
+
+# Yarn berry regenerable state (the rest of .yarn/ — releases/ etc — is tracked)
+.yarn/install-state.gz
