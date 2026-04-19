@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { BytesLib } from "solidity-bytes-utils/BytesLib.sol";
 
 /**
  * @dev Temp Vm implementation
@@ -51,9 +50,8 @@ contract VerifyAll is Script {
             abi.decode(vm.parseJson(content, searchStr(currTransactionIdx, "transaction.input")), (bytes));
         bytes memory compiledBytecode =
             abi.decode(vm.parseJson(_getCompiledBytecode(contractName), ".bytecode.object"), (bytes));
-        bytes memory constructorArgs = BytesLib.slice(
-            deployedBytecode, compiledBytecode.length, deployedBytecode.length - compiledBytecode.length
-        );
+        bytes memory constructorArgs =
+            _slice(deployedBytecode, compiledBytecode.length, deployedBytecode.length - compiledBytecode.length);
 
         string[] memory inputs = new string[](9);
         inputs[0] = "forge";
@@ -97,5 +95,15 @@ contract VerifyAll is Script {
 
     function searchStr(uint96 idx, string memory searchKey) internal pure returns (string memory) {
         return string.concat(".transactions[", vm.toString(idx), "].", searchKey);
+    }
+
+    /// @dev Minimal bytes slice — drop-in for the one BytesLib.slice call we had.
+    function _slice(bytes memory b, uint256 start, uint256 len) internal pure returns (bytes memory) {
+        require(b.length >= start + len, "slice oob");
+        bytes memory r = new bytes(len);
+        for (uint256 i = 0; i < len; i++) {
+            r[i] = b[start + i];
+        }
+        return r;
     }
 }

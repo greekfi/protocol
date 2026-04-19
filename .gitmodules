@@ -8,6 +8,3 @@
 [submodule "web"]
 	path = web
 	url = git@github.com:greekfi/web.git
-[submodule "foundry/lib/solidity-bytes-utils"]
-	path = foundry/lib/solidity-bytes-utils
-	url = https://github.com/gnsps/solidity-bytes-utils
