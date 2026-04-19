@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Factory, Collateral, Option } from "../contracts/Factory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
 // ============ Bebop addresses on Base ============
 address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;

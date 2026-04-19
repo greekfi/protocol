@@ -13,7 +13,7 @@ import { ConstantsUnichain } from "../contracts/ConstantsUnichain.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice Deploys the Factory and OpHook
 contract DeployUpgradeable is Script, ScaffoldETHDeploy {

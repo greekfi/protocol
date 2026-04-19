@@ -3,7 +3,7 @@ pragma solidity ^0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice Seed a realistic-looking order book on multiple options.
 /// @dev Pass option addresses via a packed bytes array (abi.encodePacked).

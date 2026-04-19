@@ -6,7 +6,7 @@ import "../contracts/CLOBAMM.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Option } from "../contracts/Option.sol";
 import { Collateral } from "../contracts/Collateral.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../../contracts/mocks/ShakyToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice End-to-end test: maker deposits collateral into CLOBAMM, quotes options at a tick,

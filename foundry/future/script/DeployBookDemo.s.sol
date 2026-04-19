@@ -4,7 +4,7 @@ pragma solidity ^0.8.33;
 import { Script, console } from "forge-std/Script.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice Post-deploy setup for the CLOB book demo.
 /// @dev Creates an option, enables option-support on the book, funds a maker account.

@@ -9,7 +9,7 @@ import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { Balances, OptionInfo, TokenData } from "../contracts/interfaces/IOption.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;

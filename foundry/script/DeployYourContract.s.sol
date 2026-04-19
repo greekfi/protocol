@@ -5,7 +5,7 @@ import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
 contract DeployYourContract is ScaffoldETHDeploy {
     function run() external broadcast {

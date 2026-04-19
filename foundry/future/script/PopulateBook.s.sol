@@ -3,7 +3,7 @@ pragma solidity ^0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice Populate a fresh CLOBAMM book with realistic-looking liquidity:
 ///         a few ask levels and a few bid levels around a ~0.17 STK/option mid.

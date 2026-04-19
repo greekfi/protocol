@@ -8,7 +8,7 @@ import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 /**

@@ -7,7 +7,7 @@ import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
