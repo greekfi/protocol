@@ -26,16 +26,13 @@ contract OptionTest is Test {
     address stableTokenAddr;
     address factoryAddr;
 
-    // Base RPC URL
-    string constant BASE_RPC_URL = "https://mainnet.base.org";
-
     uint160 constant MAX160 = type(uint160).max;
     uint48 constant MAX48 = type(uint48).max;
     uint256 constant MAX256 = type(uint256).max;
 
     function setUp() public {
         // Fork Base
-        vm.createSelectFork(BASE_RPC_URL, 43189435);
+        vm.createSelectFork(vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org")), 43189435);
 
         // Deploy tokens
         stableToken = new StableToken();

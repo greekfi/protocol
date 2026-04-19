@@ -281,7 +281,7 @@ contract Mainnet is OpHookTestBase {
 // Base-specific tests
 contract Base is OpHookTestBase {
     function setUp() public {
-        string memory rpc = "https://mainnet.base.org";
+        string memory rpc = vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org"));
         networkFork = vm.createSelectFork(rpc, 43190000);
         weth_ = ConstantsBase.WETH;
         usdc_ = ConstantsBase.USDC;

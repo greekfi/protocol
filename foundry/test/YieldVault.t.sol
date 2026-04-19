@@ -157,7 +157,7 @@ contract YieldVaultTest is Test {
     bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
 
     function setUp() public {
-        vm.createSelectFork("https://mainnet.base.org", 43189435);
+        vm.createSelectFork(vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org")), 43189435);
 
         stableToken = new StableToken();
         shakyToken = new ShakyToken();

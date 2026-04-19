@@ -2,6 +2,7 @@
   "name": "@greek/foundry",
   "version": "0.0.1",
   "type": "module",
+  "packageManager": "yarn@4.13.0",
   "scripts": {
     "account": "make account",
     "account:generate": "node scripts-js/generateKeystore.js",

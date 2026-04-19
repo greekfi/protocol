@@ -34,7 +34,6 @@ contract GasAnalysis is Test {
     IPermit2 public permit2 = IPermit2(PERMIT2);
 
     // Constants
-    string public constant BASE_RPC_URL = "https://mainnet.base.org";
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     uint160 public constant MAX160 = type(uint160).max;
     uint48 public constant MAX48 = type(uint48).max;
@@ -42,7 +41,7 @@ contract GasAnalysis is Test {
 
     function setUp() public {
         // Fork Base
-        vm.createSelectFork(BASE_RPC_URL, 43189435);
+        vm.createSelectFork(vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org")), 43189435);
 
         // Deploy test tokens
         stableToken = new StableToken();

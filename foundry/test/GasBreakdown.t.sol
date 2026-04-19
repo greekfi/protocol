@@ -17,10 +17,9 @@ contract GasBreakdown is Test {
     Factory public factory;
 
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-    string public constant BASE_RPC_URL = "https://mainnet.base.org";
 
     function setUp() public {
-        vm.createSelectFork(BASE_RPC_URL, 43189435);
+        vm.createSelectFork(vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org")), 43189435);
 
         stableToken = new StableToken();
         shakyToken = new ShakyToken();

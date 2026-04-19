@@ -443,12 +443,8 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata m = IERC20Metadata(address(consideration));
-        return TokenData({
-            address_: address(consideration),
-            name: m.name(),
-            symbol: m.symbol(),
-            decimals: m.decimals()
-        });
+        return
+            TokenData({ address_: address(consideration), name: m.name(), symbol: m.symbol(), decimals: m.decimals() });
     }
 
     function option() public view returns (address) {

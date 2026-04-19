@@ -15,10 +15,8 @@ contract CloneGas is Test {
     Option public optionTemplate;
     Factory public factory;
 
-    string public constant BASE_RPC_URL = "https://mainnet.base.org";
-
     function setUp() public {
-        vm.createSelectFork(BASE_RPC_URL, 43189435);
+        vm.createSelectFork(vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org")), 43189435);
 
         stableToken = new StableToken();
         shakyToken = new ShakyToken();

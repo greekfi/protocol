@@ -81,17 +81,18 @@ contract Factory is Ownable, ReentrancyGuardTransient {
             oracle_ = _deployOracle(p);
         }
 
-        Collateral(coll_).init(
-            p.collateral,
-            p.consideration,
-            p.expirationDate,
-            p.strike,
-            p.isPut,
-            p.isEuro,
-            oracle_,
-            option_,
-            address(this)
-        );
+        Collateral(coll_)
+            .init(
+                p.collateral,
+                p.consideration,
+                p.expirationDate,
+                p.strike,
+                p.isPut,
+                p.isEuro,
+                oracle_,
+                option_,
+                address(this)
+            );
         Option(option_).init(coll_, msg.sender);
 
         colls[coll_] = true;
@@ -111,10 +112,13 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Backward-compat overload: American non-settled (no oracle).
-    function createOption(address collateral_, address consideration_, uint40 expirationDate_, uint96 strike_, bool isPut_)
-        external
-        returns (address)
-    {
+    function createOption(
+        address collateral_,
+        address consideration_,
+        uint40 expirationDate_,
+        uint96 strike_,
+        bool isPut_
+    ) external returns (address) {
         return createOption(
             CreateParams({
                 collateral: collateral_,
@@ -139,9 +143,8 @@ contract Factory is Ownable, ReentrancyGuardTransient {
             if (exp == p.expirationDate) return p.oracleSource;
         } catch { }
         try IUniswapV3Pool(p.oracleSource).token0() returns (address) {
-            return address(
-                new UniV3Oracle(p.oracleSource, p.collateral, p.consideration, p.expirationDate, p.twapWindow)
-            );
+            return
+                address(new UniV3Oracle(p.oracleSource, p.collateral, p.consideration, p.expirationDate, p.twapWindow));
         } catch { }
         revert UnsupportedOracleSource();
     }
