@@ -458,5 +458,4 @@ contract GasAnalysis is Test {
         // Redeem redemption tokens
         redemption.redeem(70);
     }
-
 }
