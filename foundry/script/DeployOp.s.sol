@@ -4,13 +4,14 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 
-import { OptionFactory, Redemption, Option } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @notice Mines the address and deploys the PointsHook.sol Hook contract
 contract DeployOp is Script, ScaffoldETHDeploy {
     function setUp() public { }
 
@@ -18,16 +19,11 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 
-        Redemption short = new Redemption(
-            "Redemption", "RDM", address(stableToken), address(shakyToken), block.timestamp + 1 days, 100, false
-        );
+        Collateral short = new Collateral("Collateral", "COLL");
+        Option long = new Option("Option", "OPT");
 
-        Option long = new Option("Option", "OPT", address(short));
-
-        // Deploy factory directly
-        OptionFactory factory = new OptionFactory(address(short), address(long));
-
-        console.log("OptionFactory deployed at:", address(factory));
+        Factory factory = new Factory(address(short), address(long));
+        console.log("Factory deployed at:", address(factory));
 
         YieldVault shakyVault =
             new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
@@ -39,23 +35,5 @@ contract DeployOp is Script, ScaffoldETHDeploy {
 
         CLOBAMM book = new CLOBAMM();
         console.log("CLOBAMM deployed at:", address(book));
-
-        // address deployer = ConstantsUnichain.CREATE2_DEPLOYER;
-        // // Deploy OpHook using HookMiner to get correct address
-        // uint160 flags = Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG
-        //     | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG;
-        // bytes memory constructorArgs = abi.encode(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
-
-        // (address hookAddress, bytes32 salt) =
-        //     HookMiner.find(deployer, flags, type(OpHook).creationCode, constructorArgs);
-
-        // console.log("Address", hookAddress);
-
-        // OpHook opHook = new OpHook{ salt: salt }(ConstantsUnichain.POOLMANAGER, ConstantsUnichain.PERMIT2);
-
-        // console.log("Address", hookAddress);
-        // console.log("Address", address(opHook));
-
-        // require(address(opHook) == hookAddress, " hook address mismatch");
     }
 }

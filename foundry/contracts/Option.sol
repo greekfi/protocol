@@ -1,137 +1,139 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Redemption } from "./Redemption.sol";
-import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
-import { OptionUtils } from "./OptionUtils.sol";
-
-/// @notice Interface for OptionFactory's operator approval and auto-mint/redeem functions
-interface IOptionFactory {
-    function approvedOperator(address owner, address operator) external view returns (bool);
-    function autoMintRedeem(address account) external view returns (bool);
-}
-
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-using SafeERC20 for IERC20;
+import { Collateral } from "./Collateral.sol";
+import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
+import { OptionUtils } from "./OptionUtils.sol";
+import { IPriceOracle } from "./oracles/IPriceOracle.sol";
+
+interface IFactoryView {
+    function approvedOperator(address owner, address operator) external view returns (bool);
+    function autoMintRedeem(address account) external view returns (bool);
+}
 
 /**
  * @title Option
- * @notice Long position ERC20 in an option contract — gives holders the right to exercise
- * @dev Deployed as EIP-1167 minimal proxy clones via OptionFactory. Paired 1:1 with a
- *      Redemption contract (short position) which holds all collateral.
+ * @notice Long-side ERC20. Three modes (chosen at creation, see Factory):
+ *        - American non-settled: exercise pre-expiry; no post-expiry claim
+ *        - American settled:    exercise pre-expiry; post-expiry claim pays ITM residual
+ *        - European:            no exercise; post-expiry claim pays ITM residual
  *
- *      Key invariant: available_collateral == total_option_supply (always).
+ *      Mode is read from paired Collateral (`isEuro`, `oracle`).
  *
- *      Opt-in auto-settling transfers (via factory.autoMintRedeem):
- *        - Auto-mint: transfer() mints the deficit from collateral if sender balance < amount
- *        - Auto-redeem: receiving Options while holding Redemptions burns matched pairs
- *
- *      Rounding policy: round DOWN on all payouts, round UP on all collections.
- *      Dust stays in the protocol; no user is ever shorted.
+ *      Opt-in auto-settling transfers via `factory.autoMintRedeem`:
+ *        - Auto-mint: transfer > balance mints the deficit from collateral
+ *        - Auto-redeem: receiving Options while holding Coll tokens burns matched pairs
  */
 contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
-    Redemption public redemption;
+    Collateral public coll;
 
     event Mint(address longOption, address holder, uint256 amount);
     event Exercise(address longOption, address holder, uint256 amount);
+    event Settled(uint256 price);
+    event Claimed(address indexed holder, uint256 optionBurned, uint256 collateralOut);
+    event ContractLocked();
+    event ContractUnlocked();
 
     error ContractExpired();
+    error ContractNotExpired();
     error InsufficientBalance();
     error InvalidValue();
     error InvalidAddress();
     error LockedContract();
+    error EuropeanExerciseDisabled();
+    error NoOracle();
 
-    event ContractLocked();
-    event ContractUnlocked();
-
-    // ============ MODIFIERS ============
-
-    /// @notice Ensures contract is not locked (emergency pause)
     modifier notLocked() {
-        if (redemption.locked()) revert LockedContract();
+        if (coll.locked()) revert LockedContract();
         _;
     }
 
-    /// @notice Ensures option has not expired
     modifier notExpired() {
         if (block.timestamp >= expirationDate()) revert ContractExpired();
-
         _;
     }
 
-    /// @notice Reverts if amount is zero
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert InvalidValue();
         _;
     }
 
-    /// @notice Reverts if address is zero
-    modifier validAddress(address account) {
-        if (account == address(0)) revert InvalidAddress();
+    modifier sufficientBalance(address account, uint256 amount) {
+        if (balanceOf(account) < amount) revert InsufficientBalance();
         _;
     }
 
-    /// @notice Reverts if account's Option balance < amount
-    modifier sufficientBalance(address contractHolder, uint256 amount) {
-        if (balanceOf(contractHolder) < amount) revert InsufficientBalance();
-        _;
-    }
-
-    // ============ CONSTRUCTOR & INITIALIZATION ============
-
-    /**
-     * @notice Template constructor — only used for the implementation contract
-     * @dev Clones never execute the constructor; state is set via init().
-     *      Calls _disableInitializers() to prevent init() on the template itself.
-     */
-    constructor(string memory name_, string memory symbol_, address redemption_)
-        ERC20(name_, symbol_)
-        Ownable(msg.sender)
-    {
-        redemption = Redemption(redemption_);
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable(msg.sender) {
         _disableInitializers();
     }
 
-    /**
-     * @notice Initializes a cloned Option contract
-     * @dev Called exactly once by OptionFactory.createOption() immediately after cloning.
-     * @param redemption_ Paired Redemption contract address
-     * @param owner Option creator who receives ownership
-     */
-    function init(address redemption_, address owner) public initializer {
-        if (redemption_ == address(0) || owner == address(0)) revert InvalidAddress();
-        _transferOwnership(owner);
-        redemption = Redemption(redemption_);
+    function init(address coll_, address owner_) public initializer {
+        if (coll_ == address(0) || owner_ == address(0)) revert InvalidAddress();
+        coll = Collateral(coll_);
+        _transferOwnership(owner_);
     }
 
-    // ============ VIEW FUNCTIONS ============
+    // ============ VIEWS ============
 
-    /// @notice Factory that created this Option (delegated from Redemption)
     function factory() public view returns (address) {
-        return redemption.factory();
+        return coll.factory();
     }
 
-    /**
-     * @notice Dynamic token name: OPT-{COLL}-{CONS}-{STRIKE}-{YYYY-MM-DD}
-     * @dev For puts, strike is displayed as 1/strike (human-readable price)
-     */
-    function name() public view override returns (string memory) {
-        // For put options, display inverted price (1/strike)
-        uint256 displayStrike = isPut() && strike() > 0 ? (1e36 / strike()) : strike();
+    function collateral() public view returns (address) {
+        return address(coll.collateral());
+    }
 
+    function consideration() public view returns (address) {
+        return address(coll.consideration());
+    }
+
+    function expirationDate() public view returns (uint256) {
+        return coll.expirationDate();
+    }
+
+    function strike() public view returns (uint256) {
+        return coll.strike();
+    }
+
+    function isPut() public view returns (bool) {
+        return coll.isPut();
+    }
+
+    function isEuro() public view returns (bool) {
+        return coll.isEuro();
+    }
+
+    function oracle() public view returns (address) {
+        return address(coll.oracle());
+    }
+
+    function isSettled() public view returns (bool) {
+        return coll.reserveInitialized();
+    }
+
+    function settlementPrice() public view returns (uint256) {
+        return coll.settlementPrice();
+    }
+
+    function decimals() public view override returns (uint8) {
+        return IERC20Metadata(collateral()).decimals();
+    }
+
+    function name() public view override returns (string memory) {
+        uint256 displayStrike = isPut() && strike() > 0 ? (1e36 / strike()) : strike();
         return string(
             abi.encodePacked(
-                "OPT-",
-                IERC20Metadata(address(collateral())).symbol(),
+                isEuro() ? "OPTE-" : "OPT-",
+                IERC20Metadata(collateral()).symbol(),
                 "-",
-                IERC20Metadata(address(consideration())).symbol(),
+                IERC20Metadata(consideration()).symbol(),
                 "-",
                 OptionUtils.strike2str(displayStrike),
                 "-",
@@ -140,92 +142,51 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         );
     }
 
-    /// @notice Token symbol (same as name)
     function symbol() public view override returns (string memory) {
         return name();
     }
 
-    /// @notice Collateral token address (delegated from Redemption)
-    function collateral() public view returns (address) {
-        return address(redemption.collateral());
-    }
+    // ============ MINT ============
 
-    /// @notice Consideration token address (delegated from Redemption)
-    function consideration() public view returns (address) {
-        return address(redemption.consideration());
-    }
-
-    /// @notice Expiration unix timestamp (delegated from Redemption)
-    function expirationDate() public view returns (uint256) {
-        return redemption.expirationDate();
-    }
-
-    /// @notice Strike price in 18-decimal encoding (delegated from Redemption)
-    function strike() public view returns (uint256) {
-        return redemption.strike();
-    }
-
-    /// @notice True if put option, false if call (delegated from Redemption)
-    function isPut() public view returns (bool) {
-        return redemption.isPut();
-    }
-
-    // ============ MINTING FUNCTIONS ============
-
-    /// @notice Mints Option + Redemption tokens for msg.sender by depositing collateral
     function mint(uint256 amount) public notLocked {
         mint(msg.sender, amount);
     }
 
-    /// @notice Mints Option + Redemption tokens for `account`, pulling collateral from msg.sender
     function mint(address account, uint256 amount) public notLocked nonReentrant {
         mint_(account, amount);
     }
 
-    /**
-     * @notice Internal mint: deposits collateral via Redemption, then mints Option tokens
-     * @dev 1:1 minting — no fees. Collateral deposited equals tokens minted.
-     */
     function mint_(address account, uint256 amount) internal notExpired validAmount(amount) {
-        redemption.mint(account, amount);
+        coll.mint(account, amount);
         _mint(account, amount);
         emit Mint(address(this), account, amount);
     }
 
-    // ============ TRANSFER FUNCTIONS (WITH AUTO-SETTLING) ============
+    // ============ TRANSFER (auto-mint + auto-redeem) ============
 
-    /**
-     * @notice Core transfer with auto-mint and auto-redeem
-     * @dev Auto-mint (opt-in): if sender balance < amount, mints the deficit (1:1, no fees).
-     *      Auto-redeem (opt-in): if recipient holds Redemption tokens, matched pairs are burned.
-     */
     function _settledTransfer(address from, address to, uint256 amount) internal {
-        // Auto-mint: if sender opted in and balance < amount, mint the deficit
         uint256 balance = balanceOf(from);
         if (balance < amount) {
-            if (!IOptionFactory(factory()).autoMintRedeem(from)) revert InsufficientBalance();
+            if (!IFactoryView(factory()).autoMintRedeem(from)) revert InsufficientBalance();
             uint256 deficit = amount - balance;
             mint_(from, deficit);
         }
 
         _transfer(from, to, amount);
 
-        // Auto-redeem: if recipient opted in and holds Redemption tokens, burn matched pairs
-        if (IOptionFactory(factory()).autoMintRedeem(to)) {
-            balance = redemption.balanceOf(to);
-            if (balance > 0) {
-                redeem_(to, Math.min(balance, amount));
+        if (IFactoryView(factory()).autoMintRedeem(to)) {
+            uint256 collBal = coll.balanceOf(to);
+            if (collBal > 0) {
+                redeem_(to, Math.min(collBal, amount));
             }
         }
     }
 
-    /// @notice ERC20 transfer with opt-in auto-mint and auto-redeem
     function transfer(address to, uint256 amount) public override notExpired notLocked nonReentrant returns (bool) {
         _settledTransfer(msg.sender, to, amount);
         return true;
     }
 
-    /// @notice ERC20 transferFrom with universal operator approval, auto-mint, and auto-redeem
     function transferFrom(address from, address to, uint256 amount)
         public
         override
@@ -234,117 +195,118 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         nonReentrant
         returns (bool)
     {
-        // Spend allowance unless caller has universal operator approval via factory
-        if (msg.sender != from && !IOptionFactory(factory()).approvedOperator(from, msg.sender)) {
+        if (msg.sender != from && !IFactoryView(factory()).approvedOperator(from, msg.sender)) {
             _spendAllowance(from, msg.sender, amount);
         }
         _settledTransfer(from, to, amount);
         return true;
     }
 
-    // ============ EXERCISE FUNCTIONS ============
+    // ============ EXERCISE (American only) ============
 
-    /// @notice Exercises options for msg.sender — burns Options, pays consideration, receives collateral
     function exercise(uint256 amount) public notLocked {
         exercise(msg.sender, amount);
     }
 
-    /**
-     * @notice Exercises options — burns caller's Options, sends collateral to `account`
-     * @dev Consideration is collected from msg.sender using toNeededConsideration (rounds UP).
-     * @param account Recipient of the collateral
-     * @param amount Number of Option tokens to exercise
-     */
     function exercise(address account, uint256 amount) public notExpired notLocked nonReentrant validAmount(amount) {
+        if (isEuro()) revert EuropeanExerciseDisabled();
         _burn(msg.sender, amount);
-        redemption.exercise(account, amount, msg.sender);
+        coll.exercise(account, amount, msg.sender);
         emit Exercise(address(this), msg.sender, amount);
     }
 
-    // ============ REDEEM FUNCTIONS ============
+    // ============ PRE-EXPIRY PAIR REDEEM ============
 
-    /**
-     * @notice Pre-expiry pair redeem: burns matched Option + Redemption tokens, returns collateral
-     * @param amount Number of pairs to redeem (must hold both tokens)
-     */
     function redeem(uint256 amount) public notLocked nonReentrant {
         redeem_(msg.sender, amount);
     }
 
-    /**
-     * @notice Internal pair redeem — burns Option tokens, delegates to Redemption._redeemPair
-     * @dev Pre-expiry only. The Redemption side burns Redemption tokens and returns collateral.
-     *      Waterfall fallback to consideration exists as defense-in-depth but should never
-     *      trigger because available_collateral == total_option_supply (invariant).
-     */
     function redeem_(address account, uint256 amount) internal notExpired sufficientBalance(account, amount) {
         _burn(account, amount);
-        redemption._redeemPair(account, amount);
+        coll._redeemPair(account, amount);
     }
 
-    // ============ QUERY FUNCTIONS ============
+    // ============ POST-EXPIRY SETTLE + CLAIM (settled modes only) ============
 
-    /// @notice Decimals match the collateral token
-    function decimals() public view override returns (uint8) {
-        IERC20Metadata collMeta = IERC20Metadata(collateral());
-        return collMeta.decimals();
+    function settle(bytes calldata hint) external notLocked {
+        if (address(coll.oracle()) == address(0)) revert NoOracle();
+        coll.settle(hint);
+        emit Settled(coll.settlementPrice());
     }
 
-    /// @notice Returns all four token balances (collateral, consideration, option, redemption) for an account
+    function claim(uint256 amount)
+        external
+        notLocked
+        nonReentrant
+        validAmount(amount)
+        sufficientBalance(msg.sender, amount)
+    {
+        if (address(coll.oracle()) == address(0)) revert NoOracle();
+        if (block.timestamp < expirationDate()) revert ContractNotExpired();
+        // Latch reserve using current option supply BEFORE the burn (idempotent).
+        coll.settle("");
+        _burn(msg.sender, amount);
+        uint256 payout = coll._claimForOption(msg.sender, amount);
+        emit Claimed(msg.sender, amount, payout);
+    }
+
+    function claimFor(address holder) external notLocked nonReentrant {
+        if (address(coll.oracle()) == address(0)) revert NoOracle();
+        if (block.timestamp < expirationDate()) revert ContractNotExpired();
+        uint256 bal = balanceOf(holder);
+        if (bal == 0) return;
+        coll.settle("");
+        _burn(holder, bal);
+        uint256 payout = coll._claimForOption(holder, bal);
+        emit Claimed(holder, bal, payout);
+    }
+
+    // ============ QUERY ============
+
     function balancesOf(address account) public view returns (Balances memory) {
         return Balances({
             collateral: IERC20(collateral()).balanceOf(account),
             consideration: IERC20(consideration()).balanceOf(account),
             option: balanceOf(account),
-            redemption: redemption.balanceOf(account)
+            coll: coll.balanceOf(account)
         });
     }
 
-    /// @notice Returns complete option contract info (tokens, strike, expiry, type)
     function details() public view returns (OptionInfo memory) {
-        // Cache addresses to avoid multiple delegatecalls
-        address coll = collateral();
-        address cons = consideration();
-
-        // Cache metadata objects
-        IERC20Metadata consMeta = IERC20Metadata(cons);
-        IERC20Metadata collMeta = IERC20Metadata(coll);
-
-        // Cache frequently accessed values
-        uint256 exp = expirationDate();
-        uint256 stk = strike();
-        bool put = isPut();
-
+        address colTok = collateral();
+        address consTok = consideration();
+        IERC20Metadata cm = IERC20Metadata(colTok);
+        IERC20Metadata cnm = IERC20Metadata(consTok);
         return OptionInfo({
             option: address(this),
-            redemption: address(redemption),
-            collateral: TokenData({
-                address_: coll, name: collMeta.name(), symbol: collMeta.symbol(), decimals: collMeta.decimals()
-            }),
+            coll: address(coll),
+            collateral: TokenData({ address_: colTok, name: cm.name(), symbol: cm.symbol(), decimals: cm.decimals() }),
             consideration: TokenData({
-                address_: cons, name: consMeta.name(), symbol: consMeta.symbol(), decimals: consMeta.decimals()
+                address_: consTok,
+                name: cnm.name(),
+                symbol: cnm.symbol(),
+                decimals: cnm.decimals()
             }),
-            expiration: exp,
-            strike: stk,
-            isPut: put
+            expiration: expirationDate(),
+            strike: strike(),
+            isPut: isPut(),
+            isEuro: isEuro(),
+            oracle: oracle()
         });
     }
 
-    // ============ ADMIN FUNCTIONS ============
+    // ============ ADMIN ============
 
-    /// @notice Emergency pause — prevents all mints, exercises, transfers, and redeems
     function lock() public onlyOwner {
-        redemption.lock();
+        coll.lock();
         emit ContractLocked();
     }
 
-    /// @notice Unpause the contract
     function unlock() public onlyOwner {
-        redemption.unlock();
+        coll.unlock();
         emit ContractUnlocked();
     }
 
-    /// @notice Disabled — renouncing ownership would permanently lock funds
     function renounceOwnership() public pure override {
         revert InvalidAddress();
     }

@@ -4,12 +4,9 @@ pragma solidity ^0.8.30;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenData } from "./IOption.sol";
 
-interface IRedemption {
-    // ============ EVENTS ============
-
+interface ICollateral {
     event Redeemed(address option, address token, address holder, uint256 amount);
-
-    // ============ ERRORS ============
+    event Settled(uint256 price);
 
     error ContractNotExpired();
     error ContractExpired();
@@ -21,23 +18,25 @@ interface IRedemption {
     error InsufficientCollateral();
     error InsufficientConsideration();
     error ArithmeticOverflow();
+    error NoOracle();
+    error NotSettled();
+    error SettledOnly();
+    error NonSettledOnly();
 
-    // ============ STATE VARIABLES ============
-
-    function fees() external view returns (uint256);
     function strike() external view returns (uint256);
     function collateral() external view returns (IERC20);
     function consideration() external view returns (IERC20);
-    function _factory() external view returns (address);
-    function fee() external view returns (uint64);
     function expirationDate() external view returns (uint40);
     function isPut() external view returns (bool);
+    function isEuro() external view returns (bool);
     function locked() external view returns (bool);
     function consDecimals() external view returns (uint8);
     function collDecimals() external view returns (uint8);
     function STRIKE_DECIMALS() external view returns (uint8);
-
-    // ============ INITIALIZATION ============
+    function oracle() external view returns (address);
+    function settlementPrice() external view returns (uint256);
+    function reserveInitialized() external view returns (bool);
+    function optionReserveRemaining() external view returns (uint256);
 
     function init(
         address collateral_,
@@ -45,12 +44,11 @@ interface IRedemption {
         uint40 expirationDate_,
         uint256 strike_,
         bool isPut_,
+        bool isEuro_,
+        address oracle_,
         address option_,
-        address factory_,
-        uint64 fee_
+        address factory_
     ) external;
-
-    // ============ VIEW FUNCTIONS ============
 
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
@@ -60,21 +58,19 @@ interface IRedemption {
     function option() external view returns (address);
     function factory() external view returns (address);
     function toConsideration(uint256 amount) external view returns (uint256);
+    function toNeededConsideration(uint256 amount) external view returns (uint256);
     function toCollateral(uint256 consAmount) external view returns (uint256);
 
-    // ============ STATE-CHANGING FUNCTIONS ============
-
     function mint(address account, uint256 amount) external;
-    function redeem(address account) external;
     function redeem(uint256 amount) external;
     function redeem(address account, uint256 amount) external;
     function _redeemPair(address account, uint256 amount) external;
     function redeemConsideration(uint256 amount) external;
     function exercise(address account, uint256 amount, address caller) external;
+    function settle(bytes calldata hint) external;
+    function _claimForOption(address holder, uint256 amount) external returns (uint256);
     function sweep(address holder) external;
     function sweep(address[] calldata holders) external;
-    function claimFees() external;
     function lock() external;
     function unlock() external;
-    function adjustFee(uint64 fee_) external;
 }

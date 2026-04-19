@@ -37,9 +37,9 @@ contract PopulateBook is Script {
 
         // --- ASKS (sell options for cash): sellToken=option, buyToken=cash, isOption=true ---
         book.quote(optionAddr, stableAddr, -16094, 10e18, true); // 10 @ 0.20
-        book.quote(optionAddr, stableAddr, -15141, 8e18,  true); // 8  @ 0.22
+        book.quote(optionAddr, stableAddr, -15141, 8e18, true); // 8  @ 0.22
         book.quote(optionAddr, stableAddr, -13863, 12e18, true); // 12 @ 0.25
-        book.quote(optionAddr, stableAddr, -12039, 5e18,  true); // 5  @ 0.30
+        book.quote(optionAddr, stableAddr, -12039, 5e18, true); // 5  @ 0.30
 
         // --- BIDS (buy options with cash): sellToken=cash, buyToken=option, amount in cash-wei ---
         // Size in options × price = cash amount. e.g. 10 options × 0.15 = 1.5 cash.

@@ -2,7 +2,8 @@
 pragma solidity ^0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { ShakyToken } from "../contracts/ShakyToken.sol";
 
@@ -19,7 +20,7 @@ contract DemoSetup is Script {
     function run(address factoryAddr, address vaultAddr, address shakyAddr, address stableAddr, address operator)
         external
     {
-        OptionFactory factory = OptionFactory(factoryAddr);
+        Factory factory = Factory(factoryAddr);
         YieldVault vault = YieldVault(vaultAddr);
         ShakyToken shaky = ShakyToken(shakyAddr);
 

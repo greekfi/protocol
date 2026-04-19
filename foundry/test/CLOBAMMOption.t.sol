@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import "forge-std/Test.sol";
 import "../contracts/CLOBAMM.sol";
-import { OptionFactory } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
 import { Option } from "../contracts/Option.sol";
-import { Redemption } from "../contracts/Redemption.sol";
+import { Collateral } from "../contracts/Collateral.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -13,7 +13,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///         taker swaps cash for options. Verifies auto-mint delivers real option tokens.
 contract CLOBAMMOptionTest is Test {
     CLOBAMM public book;
-    OptionFactory public factory;
+    Factory public factory;
     Option public option;
     ShakyToken public shaky; // collateral (18 dec)
     StableToken public stable; // consideration + taker's cash (6 dec)
@@ -26,10 +26,9 @@ contract CLOBAMMOptionTest is Test {
         stable = new StableToken();
         shaky = new ShakyToken();
 
-        Redemption redemptionClone =
-            new Redemption("Short", "SHORT", address(stable), address(shaky), block.timestamp + 1 days, 1e18, false);
-        Option optionClone = new Option("Long", "LONG", address(redemptionClone));
-        factory = new OptionFactory(address(redemptionClone), address(optionClone));
+        Collateral redemptionClone = new Collateral("Short", "SHORT");
+        Option optionClone = new Option("Long", "LONG");
+        factory = new Factory(address(redemptionClone), address(optionClone));
 
         option = Option(
             factory.createOption(address(shaky), address(stable), uint40(block.timestamp + 1 days), 2000e18, false)

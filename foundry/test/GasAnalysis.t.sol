@@ -4,13 +4,16 @@ pragma solidity ^0.8.30;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OptionFactory, Redemption, Option, OptionParameter } from "../contracts/OptionFactory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Collateral } from "../contracts/Collateral.sol";
+import { Option } from "../contracts/Option.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
 import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
 
 /**
  * @title GasAnalysis
- * @notice Comprehensive gas analysis for Factory, Option, and Redemption contracts
+ * @notice Comprehensive gas analysis for Factory, Option, and Collateral contracts
  * @dev Each test measures gas for a specific function. Run with --gas-report flag.
  */
 contract GasAnalysis is Test {
@@ -19,13 +22,13 @@ contract GasAnalysis is Test {
     // Contracts
     StableToken public stableToken;
     ShakyToken public shakyToken;
-    Redemption public redemptionTemplate;
+    Collateral public redemptionTemplate;
     Option public optionTemplate;
-    OptionFactory public factory;
+    Factory public factory;
 
     // Deployed via factory
     Option public option;
-    Redemption public redemption;
+    Collateral public redemption;
 
     // Permit2
     IPermit2 public permit2 = IPermit2(PERMIT2);
@@ -50,32 +53,33 @@ contract GasAnalysis is Test {
         shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy template contracts (these will be cloned by factory)
-        redemptionTemplate = new Redemption(
-            "Short Template", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 1e18, false
-        );
+        redemptionTemplate = new Collateral("Short Template", "SHORT");
 
-        optionTemplate = new Option("Long Template", "LONG", address(redemptionTemplate));
+        optionTemplate = new Option("Long Template", "LONG");
 
-        // Deploy OptionFactory
-        factory = new OptionFactory(address(redemptionTemplate), address(optionTemplate));
+        // Deploy Factory
+        factory = new Factory(address(redemptionTemplate), address(optionTemplate));
 
-        // Create an option pair via factory (required for testing Option/Redemption)
-        OptionParameter[] memory params = new OptionParameter[](1);
-        params[0] = OptionParameter({
-            collateral_: address(shakyToken),
-            consideration_: address(stableToken),
-            expiration: uint40(block.timestamp + 30 days),
+        // Create an option pair via factory (required for testing Option/Collateral)
+        CreateParams[] memory params = new CreateParams[](1);
+        params[0] = CreateParams({
+            collateral: address(shakyToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 30 days),
             strike: uint96(1e18),
-            isPut: false
+            isPut: false,
+            isEuro: false,
+            oracleSource: address(0),
+            twapWindow: 0
         });
 
         address optionAddress = factory.createOption(
-            params[0].collateral_, params[0].consideration_, params[0].expiration, params[0].strike, params[0].isPut
+            params[0].collateral, params[0].consideration, params[0].expirationDate, params[0].strike, params[0].isPut
         );
 
         // Get the deployed option and redemption
         option = Option(optionAddress);
-        redemption = option.redemption();
+        redemption = option.coll();
 
         // Setup approvals for testing
         _setupApprovals();
@@ -98,13 +102,16 @@ contract GasAnalysis is Test {
     // ============================================
 
     function test_Gas_Factory_CreateOption() public {
-        OptionParameter[] memory params = new OptionParameter[](1);
-        params[0] = OptionParameter({
-            collateral_: address(shakyToken),
-            consideration_: address(stableToken),
-            expiration: uint40(block.timestamp + 60 days),
+        CreateParams[] memory params = new CreateParams[](1);
+        params[0] = CreateParams({
+            collateral: address(shakyToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 60 days),
             strike: uint96(2e18),
-            isPut: false
+            isPut: false,
+            isEuro: false,
+            oracleSource: address(0),
+            twapWindow: 0
         });
 
         factory.createOptions(params);
@@ -115,15 +122,18 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Factory_CreateMultipleOptions_3() public {
-        OptionParameter[] memory params = new OptionParameter[](3);
+        CreateParams[] memory params = new CreateParams[](3);
 
         for (uint256 i = 0; i < 3; i++) {
-            params[i] = OptionParameter({
-                collateral_: address(shakyToken),
-                consideration_: address(stableToken),
-                expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
+            params[i] = CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
                 strike: uint96(1e18 + (i * 0.1e18)),
-                isPut: false
+                isPut: false,
+                isEuro: false,
+                oracleSource: address(0),
+                twapWindow: 0
             });
         }
 
@@ -131,15 +141,18 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Factory_CreateMultipleOptions_16() public {
-        OptionParameter[] memory params = new OptionParameter[](16);
+        CreateParams[] memory params = new CreateParams[](16);
 
         for (uint256 i = 0; i < 16; i++) {
-            params[i] = OptionParameter({
-                collateral_: address(shakyToken),
-                consideration_: address(stableToken),
-                expiration: uint40(block.timestamp + 30 days + (i * 1 days)),
+            params[i] = CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
                 strike: uint96(1e18 + (i * 0.1e18)),
-                isPut: false
+                isPut: false,
+                isEuro: false,
+                oracleSource: address(0),
+                twapWindow: 0
             });
         }
 
@@ -324,13 +337,13 @@ contract GasAnalysis is Test {
     // REDEMPTION GAS TESTS - CORE FUNCTIONS
     // ============================================
 
-    function test_Gas_Redemption_Mint() public {
+    function test_Gas_Collateral_Mint() public {
         // Only callable by option contract
         vm.prank(address(option));
         redemption.mint(address(this), 10);
     }
 
-    function test_Gas_Redemption_Exercise() public {
+    function test_Gas_Collateral_Exercise() public {
         option.mint(10);
 
         // Only callable by option contract
@@ -338,7 +351,7 @@ contract GasAnalysis is Test {
         redemption.exercise(address(this), 5, address(this));
     }
 
-    function test_Gas_Redemption_Redeem_PreExpiration() public {
+    function test_Gas_Collateral_Redeem_PreExpiration() public {
         option.mint(10);
 
         // Redeem via option contract's internal function before expiration
@@ -346,7 +359,7 @@ contract GasAnalysis is Test {
         redemption._redeemPair(address(this), 5);
     }
 
-    function test_Gas_Redemption_Redeem_PostExpiration() public {
+    function test_Gas_Collateral_Redeem_PostExpiration() public {
         option.mint(10);
 
         // Warp past expiration
@@ -356,7 +369,7 @@ contract GasAnalysis is Test {
         redemption.redeem(5);
     }
 
-    function test_Gas_Redemption_RedeemConsideration() public {
+    function test_Gas_Collateral_RedeemConsideration() public {
         option.mint(10);
         option.exercise(5);
 
@@ -364,7 +377,7 @@ contract GasAnalysis is Test {
         redemption.redeemConsideration(5);
     }
 
-    function test_Gas_Redemption_Sweep_SingleUser() public {
+    function test_Gas_Collateral_Sweep_SingleUser() public {
         option.mint(10);
 
         // Warp past expiration
@@ -374,7 +387,7 @@ contract GasAnalysis is Test {
         redemption.sweep(address(this));
     }
 
-    function test_Gas_Redemption_Sweep_MultipleUsers() public {
+    function test_Gas_Collateral_Sweep_MultipleUsers() public {
         option.mint(10);
 
         // Distribute to multiple users
@@ -403,20 +416,20 @@ contract GasAnalysis is Test {
     // REDEMPTION GAS TESTS - TRANSFERS
     // ============================================
 
-    function test_Gas_Redemption_Transfer() public {
+    function test_Gas_Collateral_Transfer() public {
         option.mint(10);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(redemption)).transfer(address(0x123), 5);
     }
 
-    function test_Gas_Redemption_TransferFrom() public {
+    function test_Gas_Collateral_TransferFrom() public {
         option.mint(10);
         redemption.approve(address(this), 10);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         redemption.transferFrom(address(this), address(0x123), 5);
     }
 
-    function test_Gas_Redemption_Approve() public {
+    function test_Gas_Collateral_Approve() public {
         redemption.approve(address(0x123), 100);
     }
 
@@ -424,20 +437,20 @@ contract GasAnalysis is Test {
     // REDEMPTION GAS TESTS - VIEW FUNCTIONS
     // ============================================
 
-    function test_Gas_Redemption_BalanceOf() public view {
+    function test_Gas_Collateral_BalanceOf() public view {
         redemption.balanceOf(address(this));
     }
 
-    function test_Gas_Redemption_BalancesOf() public {
+    function test_Gas_Collateral_BalancesOf() public {
         option.mint(10);
         option.balancesOf(address(this));
     }
 
-    function test_Gas_Redemption_CollateralData() public view {
+    function test_Gas_Collateral_CollateralData() public view {
         redemption.collateralData();
     }
 
-    function test_Gas_Redemption_ConsiderationData() public view {
+    function test_Gas_Collateral_ConsiderationData() public view {
         redemption.considerationData();
     }
 
@@ -445,13 +458,13 @@ contract GasAnalysis is Test {
     // REDEMPTION GAS TESTS - ADMIN FUNCTIONS
     // ============================================
 
-    function test_Gas_Redemption_Lock() public {
+    function test_Gas_Collateral_Lock() public {
         // Only owner (Option contract) can lock
         vm.prank(address(option));
         redemption.lock();
     }
 
-    function test_Gas_Redemption_Unlock() public {
+    function test_Gas_Collateral_Unlock() public {
         // Only owner (Option contract) can lock/unlock
         vm.prank(address(option));
         redemption.lock();
@@ -529,17 +542,15 @@ contract GasAnalysis is Test {
         new ShakyToken();
     }
 
-    function test_Gas_Deploy_RedemptionTemplate() public {
-        new Redemption(
-            "Short Template", "SHORT", address(stableToken), address(shakyToken), block.timestamp + 1 days, 1e18, false
-        );
+    function test_Gas_Deploy_CollateralTemplate() public {
+        new Collateral("Short Template", "SHORT");
     }
 
     function test_Gas_Deploy_OptionTemplate() public {
-        new Option("Long Template", "LONG", address(redemptionTemplate));
+        new Option("Long Template", "LONG");
     }
 
     function test_Gas_Deploy_Factory() public {
-        new OptionFactory(address(redemptionTemplate), address(optionTemplate));
+        new Factory(address(redemptionTemplate), address(optionTemplate));
     }
 }
