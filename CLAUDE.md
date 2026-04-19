@@ -248,13 +248,17 @@ For settlement pricing (especially European-style options):
 
 ## Testing
 
-16 test files in `foundry/test/`. Key file is `Option.t.sol`:
-- Fork testing on Base mainnet via `vm.createSelectFork("https://mainnet.base.org", 43189435)`
-- Two approval patterns: Permit2 (`t1` modifier) and standard ERC20 (`t2`)
-- Mock tokens: `StableToken` (6 decimals), `ShakyToken` (18 decimals), `MockERC20` (configurable decimals)
-- CLOBAMM option integration tests: `CLOBAMMOption.t.sol` (3 tests — quote→swap with auto-mint, withdraw trims, drained maker)
-- NuAMMv2 option integration tests: `NuAMMv2Option.t.sol` (2 tests — quote→swap, cancel refunds)
-- Other: `FactorySecurityTest`, `FeeOnTransfer`, `GasAnalysis`, `GasBreakdown`, `CloneGas`, `OpHook`, `OptionPrice`, `StrikeTest`, `YieldVault`, `CLOBAMM` (13), `NuAMMv2` (22), `QuoteGas` (3)
+Test files in `foundry/test/`:
+- `Option.t.sol` — canonical Option/Collateral suite. Fork-tests Base mainnet at block 43189435; covers both Permit2 (`t1`) and standard ERC20 (`t2`) approval paths; includes fuzz tests for mint/exercise/redeem and transfer auto-redeem.
+- `OptionSettlement.t.sol` — oracle-settled options. Shared `OptionSettlementBase` parameterized by `_isEuro`; subclasses `OptionAmericanSettledTest` + `OptionEuroTest` hold variant-specific tests.
+- `Factory.t.sol` — factory creation, oracle detection, mode combos, template validation, blocklist.
+- `FeeOnTransfer.t.sol` — FOT token detection + blocklist.
+- `GasAnalysis.t.sol` — fuzzed gas benchmarks for factory / option / collateral flows (no assertions; run with `--gas-report`).
+- `YieldVault.t.sol` — ERC-7540 vault + Bebop settlement (JAM, Blend, RFQ-T).
+- `StrikeTest.t.sol` — strike-formatting utility.
+- Mock tokens: `StableToken` (6 dec), `ShakyToken` (18 dec), `MockERC20` (configurable). Oracle mock: `test/mocks/MockPriceOracle.sol`.
+
+CLOBAMM and NuAMM (and their test suites) are parked in `foundry/future/` and not built by default.
 
 ## Security
 
