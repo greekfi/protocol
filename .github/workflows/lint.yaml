@@ -38,4 +38,6 @@ jobs:
 
       - name: Test
         working-directory: foundry
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
         run: forge test
