@@ -54,4 +54,4 @@ event OptionCreated(
 
 Filter by `collateral` or `consideration` to enumerate all options on a given pair.
 
-The web frontend maintains an indexed list via `useOptionsList` — see `web/core/app/book/hooks/useOptionsList.ts`.
+The web frontend maintains an indexed list via `useOptionsList` — see `core/app/book/hooks/useOptionsList.ts`.

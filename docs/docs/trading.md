@@ -83,7 +83,7 @@ The Greek market maker uses a Black-Scholes core (`foundry/contracts/BlackSchole
 - **Inventory skew** — widens asks and tightens bids when the MM is net short, to pull back toward flat.
 - **Base spread** configurable per venue.
 
-On-chain quote engine lives in `OptionPricer.sol`; the off-chain MM (TypeScript in `web/market-maker/`) uses the same formulas with richer surfaces and real-time data.
+On-chain quote engine lives in `OptionPricer.sol`; the off-chain MM (TypeScript in `market-maker/`) uses the same formulas with richer surfaces and real-time data.
 
 ## Vault flows
 
