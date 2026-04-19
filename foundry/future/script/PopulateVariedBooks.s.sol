@@ -3,7 +3,7 @@ pragma solidity ^0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
 import { CLOBAMM } from "../contracts/CLOBAMM.sol";
-import { ShakyToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice Seed each option with a DIFFERENT order book so switching options is visibly different.
 /// @dev Re-runnable: cancels the uniform ticks posted by PopulateAllBooks first.

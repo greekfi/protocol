@@ -4,8 +4,8 @@ pragma solidity ^0.8.30;
 import { Script, console } from "forge-std/Script.sol";
 import { IOption } from "../contracts/interfaces/IOption.sol";
 import { IFactory } from "../contracts/interfaces/IFactory.sol";
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
-import { BatchMinter } from "../contracts/BatchMinter.sol";
+import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { BatchMinter } from "./BatchMinter.sol";
 
 contract BatchMintScript is Script {
     function run() external {

@@ -7,7 +7,7 @@ import { Factory } from "../contracts/Factory.sol";
 import { Option } from "../contracts/Option.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../../contracts/mocks/ShakyToken.sol";
 
 /// @notice End-to-end test: maker deposits collateral into NuAMMv2, quotes options at a tick,
 ///         taker swaps cash for options. Verifies auto-mint delivers real option tokens.

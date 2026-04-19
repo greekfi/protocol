@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { IOption } from "./interfaces/IOption.sol";
+import { IOption } from "../contracts/interfaces/IOption.sol";
 
 /// @title BatchMinter
 /// @notice Mints on multiple Greek Protocol options in a single transaction

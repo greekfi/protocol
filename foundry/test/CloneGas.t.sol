@@ -6,7 +6,7 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
 contract CloneGas is Test {
     StableToken public stableToken;

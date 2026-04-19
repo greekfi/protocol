@@ -29,3 +29,6 @@ dist
 .vercel
 .env*.local
 .env
+
+# Claude Code — per-user state, not shared
+.claude/

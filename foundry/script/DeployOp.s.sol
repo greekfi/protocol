@@ -7,9 +7,8 @@ import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { Factory } from "../contracts/Factory.sol";
 import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
-import { ShakyToken, StableToken } from "../contracts/ShakyToken.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
-import { CLOBAMM } from "../contracts/CLOBAMM.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DeployOp is Script, ScaffoldETHDeploy {
@@ -32,8 +31,5 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         YieldVault stableVault =
             new YieldVault(IERC20(address(stableToken)), "Greek Stable Vault", "gSTABLE", address(factory));
         console.log("Stable Vault deployed at:", address(stableVault));
-
-        CLOBAMM book = new CLOBAMM();
-        console.log("CLOBAMM deployed at:", address(book));
     }
 }
