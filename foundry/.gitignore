@@ -12,3 +12,11 @@ docs/
 # Dotenv file
 .env
 localhost.json
+
+# Yarn (berry)
+.yarn/
+.yarnrc.yml
+yarn.lock
+
+# Scratch
+.tmp/
