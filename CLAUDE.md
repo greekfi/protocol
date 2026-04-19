@@ -14,11 +14,7 @@ foundry/
 │   ├── Option.sol           # Long position ERC20
 │   ├── Redemption.sol       # Short position ERC20
 │   ├── OptionFactory.sol    # Factory (immutable, EIP-1167 clones)
-│   ├── OpHook.sol           # Uniswap v4 hook (routes swaps to HookVault)
-│   ├── HookVault.sol        # ERC4626 vault backing OpHook (auto-mint, cash↔collateral swap)
 │   ├── YieldVault.sol       # Operator-run ERC-7540 async vault (Bebop RFQ demo)
-│   ├── OptionPricer.sol     # Pricing engine (BlackScholes + TWAP + inventory spread)
-│   ├── BlackScholes.sol     # Pricing math (int256 internal)
 │   ├── CLOBAMM.sol          # Named-maker on-chain CLOB (tick-based, FIFO)
 │   ├── NuAMMv2.sol          # Pro-rata pooled order book (tick-based, shares+accumulator)
 │   ├── BatchMinter.sol      # Batch mint helper
@@ -41,6 +37,8 @@ foundry/
 │   ├── FixVaults.s.sol          # Setup factory approvals + operator permissions
 │   ├── FundMaker.s.sol          # Fund + approve maker for Bebop
 │   └── DeployHelpers.s.sol      # Scaffold-ETH broadcast modifier (patched for forge 1.6+)
+├── future/          # Parked: Uniswap v4 hook stack (OpHook, HookVault, OptionPricer,
+│                   #   BlackScholes, Constants*). Not built by default. See future/README.md.
 ├── scripts-js/      # JS helpers (deploy, keystore, ABI gen)
 ├── lib/             # Git submodule deps (OZ, forge-std, uniswap)
 ├── foundry.toml     # Compiler config, RPC endpoints, etherscan keys
@@ -105,17 +103,22 @@ On-chain order book for options (and any token pair). Makers deposit once, quote
 ### NuAMMv2.sol — Pro-rata Pooled Order Book (alt venue)
 Similar tick-based model to CLOBAMM, but pooled: tokens locked per level, pro-rata fills within a level, lazy accumulator-based settlement. Anonymous makers. Has matching `enableOptionSupport`. Kept as an alternative venue.
 
-### HookVault.sol — AMM-Style Vault
-ERC4626 vault backing `OpHook`. Passive collateral holder with four core functions: `price()` (delegates to `OptionPricer`), `sellOptions()` (vault auto-mints via transferFrom → recipient), `recordBuyback()` (bookkeeping after auto-redeem), `swap()` (Uniswap v3 SwapRouter02 between cash and collateral). Tracks `netInventory` for inventory-based spread widening. Cash never sits — auto-swapped to/from collateral on every trade.
-
 ### YieldVault.sol — Operator-Managed Vault
 ERC-7540 async-redeem vault for the demo flow. Operator can `execute(target, calldata)` to route trades (e.g., call Bebop `swapSingle` as `msg.sender == vault`). `addOption(option, spender)` whitelists + approves. `redeemExpired()` sweeps post-expiry collateral. `setupFactoryApproval()` sets ERC20 + factory internal allowances. `approveToken(token, spender, amount)` for Bebop or other settlement contracts. No pricing on-chain — RFQ-driven.
 
 ### Other Contracts
-- **OpHook.sol** — Uniswap v4 hook (`BaseHook`, `ReentrancyGuard`, `Pausable`). Pure router — delegates pricing + settlement to `HookVault`. Permit2 integration for direct `swapForOption`.
-- **OptionPricer.sol** — Black-Scholes + Uniswap v3 TWAP + quadratic vol smile + inventory spread.
-- **BlackScholes.sol** — int256-internal pricing math, WAD fixed-point.
 - **BatchMinter.sol** — Batch mint helper for creating multiple options in one tx.
+
+### Parked (foundry/future/)
+The Uniswap v4 hook stack is parked and not built by default:
+- **OpHook.sol** — v4 hook (`BaseHook`), delegates pricing + settlement to `HookVault`.
+- **HookVault.sol** — ERC4626 vault backing OpHook; auto-mint + v3 SwapRouter02 cash↔coll.
+- **OptionPricer.sol** — Black-Scholes + v3 TWAP + smile + inventory spread.
+- **BlackScholes.sol** — int256-internal pricing math, WAD fixed-point.
+- **ConstantsBase/Mainnet/Unichain.sol** — Uniswap v4 addresses per chain.
+- **DeployUpgradeable.s.sol** — Factory + hook deployer (with HookMiner).
+
+See `foundry/future/README.md` for how to bring them back into an active build.
 
 ### Ownership
 ```
