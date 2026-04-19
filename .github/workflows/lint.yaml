@@ -25,6 +25,8 @@ jobs:
 
       - name: Install foundry-toolchain
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Check formatting
         working-directory: foundry
