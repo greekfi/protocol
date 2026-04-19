@@ -86,5 +86,5 @@ forge script script/DemoSetup.s.sol \
 echo ""
 echo "=== Done! ==="
 echo "Next:"
-echo "  cd ../web/core && yarn start"
+echo "  cd .. && yarn start"
 echo "  Open http://localhost:3000/vault"

@@ -23,6 +23,7 @@ Options:
   --file <filename>     Specify the deployment script file (default: Deploy.s.sol)
   --network <network>   Specify the network (default: localhost)
   --keystore <name>     Specify the keystore account to use (bypasses selection prompt)
+  --gas-price <wei>     Override gas price (useful on Arbitrum where base fee is volatile)
   --help, -h           Show this help message
 Examples:
   yarn deploy --file DeployYourContract.s.sol --network sepolia
@@ -32,6 +33,8 @@ Examples:
   `);
   process.exit(0);
 }
+
+let gasPriceArg = null;
 
 // Parse arguments
 for (let i = 0; i < args.length; i++) {
@@ -44,6 +47,9 @@ for (let i = 0; i < args.length; i++) {
   } else if (args[i] === "--keystore" && args[i + 1]) {
     keystoreArg = args[i + 1];
     i++; // Skip next arg since we used it
+  } else if (args[i] === "--gas-price" && args[i + 1]) {
+    gasPriceArg = args[i + 1];
+    i++;
   }
 }
 
@@ -152,6 +158,7 @@ The default account (scaffold-eth-default) can only be used for localhost deploy
 process.env.DEPLOY_SCRIPT = `script/${fileName}`;
 process.env.RPC_URL = network;
 process.env.ETH_KEYSTORE_ACCOUNT = selectedKeystore;
+if (gasPriceArg) process.env.DEPLOY_EXTRA_ARGS = `--gas-price ${gasPriceArg}`;
 
 const result = spawnSync("make", ["deploy-full"], {
   stdio: "inherit",

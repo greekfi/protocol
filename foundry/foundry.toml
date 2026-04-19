@@ -14,12 +14,15 @@ exclude_lints = ["unsafe-cheatcode", "unwrapped-modifier-logic", "unsafe-typecas
 
 
 [rpc_endpoints]
+# Deploy-facing RPCs use public endpoints (no API-key IP whitelist).
+# Fork tests read BASE_RPC_URL from .env (Alchemy) with a public fallback.
 default_network = "http://127.0.0.1:8545"
 
 unichain = "https://unichain.drpc.org"
 mainnet = "https://ethereum-rpc.publicnode.com"
+arbitrum = "https://arb1.arbitrum.io/rpc"
+base = "https://mainnet.base.org"
 sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 arbitrumSepolia = "https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 optimism = "https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 optimismSepolia = "https://opt-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
@@ -29,7 +32,6 @@ polygonZkEvm = "https://zkevm-rpc.com"
 polygonZkEvmTestnet = "https://rpc.public.zkevm-test.net"
 gnosis = "https://rpc.gnosischain.com"
 chiado = "https://rpc.chiadochain.net"
-base = "${BASE_RPC_URL}"
 baseSepolia = "https://sepolia.base.org"
 scrollSepolia = "https://sepolia-rpc.scroll.io"
 scroll = "https://rpc.scroll.io"

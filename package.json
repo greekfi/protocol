@@ -1,0 +1,56 @@
+{
+  "name": "@greek/protocol",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "yarn@4.13.0",
+  "engines": {
+    "node": ">=20.18.3"
+  },
+  "workspaces": [
+    "foundry",
+    "market-maker",
+    "core"
+  ],
+  "scripts": {
+    "postinstall": "husky",
+    "start": "yarn workspace @greek/core dev",
+    "dev": "yarn workspace @greek/core dev",
+    "build": "yarn workspace @greek/core build",
+    "next:check-types": "yarn workspace @greek/core check-types",
+    "direct": "yarn workspace @greek/market-maker direct",
+    "bebop": "yarn workspace @greek/market-maker bebop",
+    "relay": "yarn workspace @greek/market-maker relay",
+    "dev:direct": "yarn workspace @greek/market-maker dev:direct",
+    "dev:bebop": "yarn workspace @greek/market-maker dev:bebop",
+    "dev:relay": "yarn workspace @greek/market-maker dev:relay",
+    "fetch-metadata": "yarn workspace @greek/market-maker fetch-metadata"
+  },
+  "devDependencies": {
+    "husky": "~9.1.7",
+    "lint-staged": "~16.2.7"
+  },
+  "resolutions": {
+    "typescript": "~5.9.3",
+    "viem": "^2.44.1",
+    "dotenv": "^16.4.5",
+    "ws": "^8.19.0",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "@types/cors": "^2.8.17",
+    "express": "^5.2.1",
+    "next": "16.0.10",
+    "fast-redact": "3.5.0",
+    "esbuild": "0.25.12",
+    "path-to-regexp": "8.3.0",
+    "undici": "7.16.0",
+    "@walletconnect/ethereum-provider": "2.23.0",
+    "@walletconnect/universal-provider": "2.23.0",
+    "@walletconnect/sign-client": "2.23.0",
+    "@walletconnect/core": "2.23.0",
+    "@walletconnect/utils": "2.23.0",
+    "@walletconnect/types": "2.23.0",
+    "@reown/appkit": "1.8.12",
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.1"
+  }
+}

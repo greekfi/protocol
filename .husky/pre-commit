@@ -1,10 +1,11 @@
 #!/bin/sh
 set -e
 
-# Format Solidity
-(cd foundry && forge fmt)
+# Lint/format only files that are actually staged (forge fmt for .sol, eslint for .ts/.tsx, etc).
+# Config lives in .lintstagedrc.js.
+yarn lint-staged
 
-# If docs/ files are staged, verify Docusaurus still builds
+# If docs/ files are staged, verify Docusaurus still builds.
 if git diff --cached --name-only | grep -q '^docs/'; then
   echo "📚 docs/ changes staged — running docs build check…"
   (cd docs && npm run build --silent)

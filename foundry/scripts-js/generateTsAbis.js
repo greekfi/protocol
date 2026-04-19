@@ -63,13 +63,11 @@ function getDeploymentHistory(broadcastPath) {
   const deploymentHistory = new Map();
   let chainMinBlock = null;
 
+  // Include run-latest.json too — some deploys leave only that file behind
+  // (no archival run-NNNN.json). When both exist, run-latest duplicates the
+  // newest timestamped run; dedup by address (below) makes the duplicate a no-op.
   const runFiles = files
-    .filter(
-      (file) =>
-        file.startsWith("run-") &&
-        file.endsWith(".json") &&
-        !file.includes("run-latest"),
-    )
+    .filter((file) => file.startsWith("run-") && file.endsWith(".json"))
     .sort((a, b) => {
       const runA = parseInt(a.match(/run-(\d+)/)?.[1] || "0");
       const runB = parseInt(b.match(/run-(\d+)/)?.[1] || "0");
@@ -382,10 +380,10 @@ function processAllDeployments(broadcastPath) {
 const CHAIN_NAMES = {
   1: "mainnet",
   8453: "base",
+  42161: "arbitrum",
   31337: "foundry",
   11155111: "sepolia",
   84532: "baseSepolia",
-  1301: "unichain",
 };
 
 async function main() {
@@ -417,7 +415,7 @@ async function main() {
     });
   });
 
-  const NEXTJS_TARGET_DIR = "../web/abi/";
+  const NEXTJS_TARGET_DIR = "../abi/";
   const CHAINS_DIR = join(NEXTJS_TARGET_DIR, "chains");
 
   if (!existsSync(NEXTJS_TARGET_DIR)) {
