@@ -120,10 +120,11 @@ contract GasAnalysis is Test {
         factory.createOption(address(shakyToken), address(stableToken), uint40(block.timestamp + 60 days), 2e18, false);
     }
 
-    function test_Gas_Factory_CreateMultipleOptions_3() public {
-        CreateParams[] memory params = new CreateParams[](3);
+    function testFuzz_Gas_Factory_CreateMultipleOptions(uint8 count) public {
+        count = uint8(bound(uint256(count), 1, 20));
+        CreateParams[] memory params = new CreateParams[](count);
 
-        for (uint256 i = 0; i < 3; i++) {
+        for (uint256 i = 0; i < count; i++) {
             params[i] = CreateParams({
                 collateral: address(shakyToken),
                 consideration: address(stableToken),
@@ -137,65 +138,15 @@ contract GasAnalysis is Test {
         }
 
         factory.createOptions(params);
-    }
-
-    function test_Gas_Factory_CreateMultipleOptions_16() public {
-        CreateParams[] memory params = new CreateParams[](16);
-
-        for (uint256 i = 0; i < 16; i++) {
-            params[i] = CreateParams({
-                collateral: address(shakyToken),
-                consideration: address(stableToken),
-                expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
-                strike: uint96(1e18 + (i * 0.1e18)),
-                isPut: false,
-                isEuro: false,
-                oracleSource: address(0),
-                twapWindow: 0
-            });
-        }
-
-        factory.createOptions(params);
-    }
-
-    // Helper function to convert uint to string
-    function _toString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
-        }
-        return string(buffer);
     }
 
     // ============================================
     // OPTION GAS TESTS - CORE FUNCTIONS
     // ============================================
 
-    function test_Gas_Option_Mint_1Token() public {
-        option.mint(1);
-    }
-
-    function test_Gas_Option_Mint_10Tokens() public {
-        option.mint(10);
-    }
-
-    function test_Gas_Option_Mint_100Tokens() public {
-        option.mint(100);
-    }
-
-    function test_Gas_Option_Mint_1000Tokens() public {
-        option.mint(1000);
+    function testFuzz_Gas_Option_Mint(uint256 amount) public {
+        amount = bound(amount, 1, 1_000_000e18);
+        option.mint(amount);
     }
 
     function test_Gas_Option_MintToAddress() public {
@@ -210,39 +161,18 @@ contract GasAnalysis is Test {
         vm.stopPrank();
     }
 
-    function test_Gas_Option_Exercise_1Token() public {
-        option.mint(1);
-        option.exercise(1);
+    function testFuzz_Gas_Option_Exercise(uint256 mintAmt, uint256 exerciseAmt) public {
+        mintAmt = bound(mintAmt, 1, 1_000e18);
+        exerciseAmt = bound(exerciseAmt, 1, mintAmt);
+        option.mint(mintAmt);
+        option.exercise(exerciseAmt);
     }
 
-    function test_Gas_Option_Exercise_10Tokens() public {
-        option.mint(10);
-        option.exercise(10);
-    }
-
-    function test_Gas_Option_Exercise_Partial() public {
-        option.mint(100);
-        option.exercise(50);
-    }
-
-    function test_Gas_Option_Redeem_1Token() public {
-        option.mint(1);
-        option.redeem(1);
-    }
-
-    function test_Gas_Option_Redeem_10Tokens() public {
-        option.mint(10);
-        option.redeem(10);
-    }
-
-    function test_Gas_Option_Redeem_Partial() public {
-        option.mint(100);
-        option.redeem(50);
-    }
-
-    function test_Gas_Option_Redeem_5Tokens() public {
-        option.mint(10);
-        option.redeem(5);
+    function testFuzz_Gas_Option_Redeem(uint256 mintAmt, uint256 redeemAmt) public {
+        mintAmt = bound(mintAmt, 1, 1_000e18);
+        redeemAmt = bound(redeemAmt, 1, mintAmt);
+        option.mint(mintAmt);
+        option.redeem(redeemAmt);
     }
 
     // ============================================
@@ -529,27 +459,4 @@ contract GasAnalysis is Test {
         redemption.redeem(70);
     }
 
-    // ============================================
-    // DEPLOYMENT GAS TESTS
-    // ============================================
-
-    function test_Gas_Deploy_StableToken() public {
-        new StableToken();
-    }
-
-    function test_Gas_Deploy_ShakyToken() public {
-        new ShakyToken();
-    }
-
-    function test_Gas_Deploy_CollateralTemplate() public {
-        new Collateral("Short Template", "SHORT");
-    }
-
-    function test_Gas_Deploy_OptionTemplate() public {
-        new Option("Long Template", "LONG");
-    }
-
-    function test_Gas_Deploy_Factory() public {
-        new Factory(address(redemptionTemplate), address(optionTemplate));
-    }
 }

@@ -134,4 +134,35 @@ contract FactoryTest is Test {
         assertFalse(Option(opt).isEuro());
         assertEq(Option(opt).oracle(), address(0));
     }
+
+    // ======== Template validation ========
+
+    function test_TemplateValidation_BothZeroReverts() public {
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(address(0), address(0));
+    }
+
+    function test_TemplateValidation_RedemptionZeroReverts() public {
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(address(0), address(0x1));
+    }
+
+    function test_TemplateValidation_OptionZeroReverts() public {
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        new Factory(address(0x1), address(0));
+    }
+
+    // ======== Blocklist ========
+
+    function test_BlocklistWorks() public {
+        factory.blockToken(address(coll));
+        assertTrue(factory.isBlocked(address(coll)));
+        factory.unblockToken(address(coll));
+        assertFalse(factory.isBlocked(address(coll)));
+    }
+
+    function test_UnblockZeroAddressReverts() public {
+        vm.expectRevert(Factory.InvalidAddress.selector);
+        factory.unblockToken(address(0));
+    }
 }
