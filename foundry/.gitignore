@@ -16,5 +16,6 @@ localhost.json
 # Scratch
 .tmp/
 
-# Yarn berry regenerable state (the rest of .yarn/ — releases/ etc — is tracked)
-.yarn/install-state.gz
+# Yarn berry — everything under .yarn/ is machine-local (corepack fetches
+# the version pinned by `packageManager` in package.json).
+.yarn/
