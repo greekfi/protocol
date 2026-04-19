@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
-import {Option} from "./Option.sol";
-import {Collateral} from "./Collateral.sol";
-import {CreateParams} from "./interfaces/IFactory.sol";
-import {IPriceOracle} from "./oracles/IPriceOracle.sol";
-import {IUniswapV3Pool, UniV3Oracle} from "./oracles/UniV3Oracle.sol";
+import { Option } from "./Option.sol";
+import { Collateral } from "./Collateral.sol";
+import { CreateParams } from "./interfaces/IFactory.sol";
+import { IPriceOracle } from "./oracles/IPriceOracle.sol";
+import { IUniswapV3Pool, UniV3Oracle } from "./oracles/UniV3Oracle.sol";
 
 using SafeERC20 for ERC20;
 
@@ -237,11 +237,11 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     function _deployOracle(CreateParams memory p) internal returns (address) {
         try IPriceOracle(p.oracleSource).expiration() returns (uint256 exp) {
             if (exp == p.expirationDate) return p.oracleSource;
-        } catch {}
+        } catch { }
         try IUniswapV3Pool(p.oracleSource).token0() returns (address) {
             return
                 address(new UniV3Oracle(p.oracleSource, p.collateral, p.consideration, p.expirationDate, p.twapWindow));
-        } catch {}
+        } catch { }
         revert UnsupportedOracleSource();
     }
 

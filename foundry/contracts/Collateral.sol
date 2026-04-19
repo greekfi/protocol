@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
-import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 using SafeERC20 for IERC20;
 
-import {TokenData} from "./interfaces/IOption.sol";
-import {OptionUtils} from "./OptionUtils.sol";
-import {IPriceOracle} from "./oracles/IPriceOracle.sol";
+import { TokenData } from "./interfaces/IOption.sol";
+import { OptionUtils } from "./OptionUtils.sol";
+import { IPriceOracle } from "./oracles/IPriceOracle.sol";
 
 /// @dev Narrow view of {Factory} used by {Collateral} to pull collateral/consideration tokens via the
 ///      factory's centralised allowance registry.
@@ -607,13 +607,14 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @notice Metadata bundle for the collateral token (convenience read).
     function collateralData() public view returns (TokenData memory) {
         IERC20Metadata m = IERC20Metadata(address(collateral));
-        return TokenData({address_: address(collateral), name: m.name(), symbol: m.symbol(), decimals: m.decimals()});
+        return TokenData({ address_: address(collateral), name: m.name(), symbol: m.symbol(), decimals: m.decimals() });
     }
 
     /// @notice Metadata bundle for the consideration token (convenience read).
     function considerationData() public view returns (TokenData memory) {
         IERC20Metadata m = IERC20Metadata(address(consideration));
-        return TokenData({address_: address(consideration), name: m.name(), symbol: m.symbol(), decimals: m.decimals()});
+        return
+            TokenData({ address_: address(consideration), name: m.name(), symbol: m.symbol(), decimals: m.decimals() });
     }
 
     /// @notice Paired Option contract (also this Collateral's owner).
