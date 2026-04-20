@@ -5,7 +5,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "Greek",
   tagline: "Fully-collateralized options protocol",
-  favicon: "img/favicon.ico",
+  favicon: "img/helmet.svg",
 
   future: {
     v4: true,
