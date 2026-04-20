@@ -2,31 +2,16 @@ import { useCallback, useMemo } from "react";
 import type { OptionListItem } from "./types";
 import { useContracts } from "./useContracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Address, parseAbiItem } from "viem";
+import { Address } from "viem";
 import { usePublicClient, useReadContracts } from "wagmi";
+import { factoryAbi, optionAbi } from "~~/generated";
 
-// Event signature for OptionCreated
-const OPTION_CREATED_EVENT = parseAbiItem(
-  "event OptionCreated(address indexed collateral, address indexed consideration, uint40 expirationDate, uint96 strike, bool isPut, address indexed option, address redemption)",
-);
+// Pull the OptionCreated event definition straight from the generated ABI so
+// the topic0 hash can never drift from the contract.
+const OPTION_CREATED_EVENT = factoryAbi.find(
+  e => e.type === "event" && e.name === "OptionCreated",
+) as Extract<(typeof factoryAbi)[number], { type: "event"; name: "OptionCreated" }>;
 
-// Simple ERC20 name ABI
-const NAME_ABI = [
-  {
-    type: "function",
-    name: "name",
-    inputs: [],
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-  },
-] as const;
-
-/**
- * Hook to fetch all created options from factory events
- * Uses TanStack Query for caching and the factory's OptionCreated events
- *
- * @returns List of all created options with their metadata
- */
 export function useOptions() {
   const publicClient = usePublicClient();
   const contracts = useContracts();
@@ -36,7 +21,6 @@ export function useOptions() {
   const deploymentBlock = (contracts as { deploymentBlock?: number })?.deploymentBlock ?? 0;
   const chainId = (contracts as { chainId?: number })?.chainId;
 
-  // Fetch OptionCreated events using TanStack Query
   const {
     data: eventData = [],
     isLoading: isLoadingEvents,
@@ -46,24 +30,12 @@ export function useOptions() {
     queryFn: async () => {
       if (!publicClient || !factoryAddress) return [];
 
-      // Use deployment block from contracts config (extracted from broadcast receipts)
-      const fromBlock = BigInt(deploymentBlock);
-
-      console.log("Fetching OptionCreated events:", {
-        chainId,
-        factoryAddress,
-        deploymentBlock,
-        fromBlock: fromBlock.toString(),
-      });
-
       const logs = await publicClient.getLogs({
         address: factoryAddress,
         event: OPTION_CREATED_EVENT,
-        fromBlock,
+        fromBlock: BigInt(deploymentBlock),
         toBlock: "latest",
       });
-
-      console.log(`Found ${logs.length} OptionCreated events`);
 
       return logs.map(log => ({
         address: log.args.option as Address,
@@ -72,54 +44,43 @@ export function useOptions() {
         expiration: BigInt(log.args.expirationDate ?? 0),
         strike: BigInt(log.args.strike ?? 0),
         isPut: log.args.isPut as boolean,
+        coll: log.args.coll as Address,
       }));
     },
     enabled: Boolean(publicClient && factoryAddress),
-    staleTime: 30_000, // Cache for 30 seconds
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
-  // Build contracts array for batch name fetching
   const nameContracts = useMemo(
     () =>
       eventData.map(opt => ({
         address: opt.address,
-        abi: NAME_ABI,
+        abi: optionAbi,
         functionName: "name" as const,
       })),
     [eventData],
   );
 
-  // Batch fetch names for all options
   const { data: namesData, isLoading: isLoadingNames } = useReadContracts({
     contracts: nameContracts,
-    query: {
-      enabled: nameContracts.length > 0,
-    },
+    query: { enabled: nameContracts.length > 0 },
   });
 
-  // Combine event data with names
   const options: OptionListItem[] = useMemo(
     () =>
       eventData.map((opt, idx) => ({
         ...opt,
-        name: (namesData?.[idx]?.result as string) ?? `Option ${opt.address.slice(0, 10)}...`,
+        name: (namesData?.[idx]?.result as string | undefined) ?? `Option ${opt.address.slice(0, 10)}...`,
       })),
     [eventData, namesData],
   );
 
-  // Refetch function that invalidates the query cache
   const refetch = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["optionCreatedEvents", factoryAddress],
-    });
+    queryClient.invalidateQueries({ queryKey: ["optionCreatedEvents", factoryAddress] });
   }, [queryClient, factoryAddress]);
 
-  // Convert options to the format expected by SelectOptionAddress
-  const optionList = options.map(opt => ({
-    name: opt.name,
-    address: opt.address,
-  }));
+  const optionList = options.map(opt => ({ name: opt.name, address: opt.address }));
 
   return {
     options,

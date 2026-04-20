@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { MAX_UINT256 } from "../hooks/constants";
 import { useApproveERC20 } from "../hooks/transactions/useApproveERC20";
-import { useApproveFactory } from "../hooks/transactions/useApproveFactory";
-import { useExerciseTransaction } from "../hooks/transactions/useExerciseTransaction";
 import { useAllowances } from "../hooks/useAllowances";
 import { useContracts } from "../hooks/useContracts";
 import { useOption } from "../hooks/useOption";
 import { Address, formatUnits, parseUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
+import { useWriteFactoryApprove, useWriteOptionExercise } from "~~/generated";
 
 interface ExerciseActionProps {
   optionAddress: Address | undefined;
@@ -29,8 +29,8 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
 
   // Transaction executors (pure writes)
   const approveERC20 = useApproveERC20();
-  const approveFactory = useApproveFactory();
-  const exerciseTx = useExerciseTransaction();
+  const { writeContractAsync: approveFactoryToken } = useWriteFactoryApprove();
+  const { writeContractAsync: exerciseOption } = useWriteOptionExercise();
 
   // Wait for transaction
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
@@ -101,7 +101,10 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
       // Step 2: Approve factory if needed
       if (allowances.needsFactoryApproval) {
         console.log("Approving factory...");
-        const hash = await approveFactory.approve(option.consideration.address_);
+        const hash = await approveFactoryToken({
+          address: factoryAddress,
+          args: [option.consideration.address_, MAX_UINT256],
+        });
         console.log("Factory approval hash:", hash);
         setTxHash(hash);
         return;
@@ -109,7 +112,7 @@ export function Exercise({ optionAddress }: ExerciseActionProps) {
 
       // Step 3: Exercise
       console.log("Exercising options...");
-      const hash = await exerciseTx.exercise(optionAddress, wei);
+      const hash = await exerciseOption({ address: optionAddress, args: [wei] });
       console.log("Exercise hash:", hash);
       setTxHash(hash);
     } catch (err: any) {

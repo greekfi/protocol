@@ -3,6 +3,7 @@ import type { AllowanceState } from "./types";
 import { useContracts } from "./useContracts";
 import { Address, erc20Abi } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
+import { factoryAbi } from "~~/generated";
 
 /**
  * Hook to check both allowances for a token to the OptionFactory
@@ -25,46 +26,44 @@ export function useAllowances(
   refetch: () => void;
 } {
   const { address: userAddress } = useAccount();
-  const deployedContracts = useContracts();
-  const factoryAddress = deployedContracts?.Factory?.address;
-  const factoryContract = deployedContracts?.Factory;
+  const factoryAddress = useContracts()?.Factory?.address as Address | undefined;
 
-  const enabled = Boolean(tokenAddress && userAddress && factoryAddress && factoryContract?.abi);
+  const enabled = Boolean(tokenAddress && userAddress && factoryAddress);
 
-  // Build contracts array for multicall - check both allowances at once
+  // Both allowances in one multicall
   const contracts = useMemo(() => {
-    if (!enabled || !tokenAddress || !userAddress || !factoryAddress || !factoryContract?.abi) {
-      return [];
-    }
-
+    if (!enabled || !tokenAddress || !userAddress || !factoryAddress) return [];
     return [
-      // ERC20 allowance: token.allowance(user, factory)
+      // token.allowance(user, factory)
       {
         address: tokenAddress,
         abi: erc20Abi,
         functionName: "allowance" as const,
         args: [userAddress, factoryAddress] as const,
       },
-      // Factory internal allowance: factory.allowance(token, user)
+      // factory.allowance(token, user)
       {
         address: factoryAddress,
-        abi: factoryContract.abi as readonly unknown[],
+        abi: factoryAbi,
         functionName: "allowance" as const,
         args: [tokenAddress, userAddress] as const,
       },
-    ];
-  }, [enabled, tokenAddress, userAddress, factoryAddress, factoryContract?.abi]);
+    ] as const;
+  }, [enabled, tokenAddress, userAddress, factoryAddress]);
 
+  // Wagmi wants a literal tuple to infer per-call return types; our dynamic
+  // array needs a single cast here. Per-item types are still enforced by the
+  // generated abi, so the safety we care about (wrong functionName, wrong
+  // args shape) is still compile-time.
   const { data, isLoading, refetch } = useReadContracts({
-    contracts: contracts as any,
-    query: {
-      enabled: contracts.length > 0,
-    },
+    contracts: contracts as readonly unknown[] as never,
+    query: { enabled: contracts.length > 0 },
   });
 
   return useMemo(() => {
-    const erc20 = (data?.[0]?.result as bigint) ?? 0n;
-    const factory = (data?.[1]?.result as bigint) ?? 0n;
+    const results = data as Array<{ result?: unknown }> | undefined;
+    const erc20 = (results?.[0]?.result as bigint | undefined) ?? 0n;
+    const factory = (results?.[1]?.result as bigint | undefined) ?? 0n;
 
     const needsErc20Approval = erc20 < requiredAmount;
     const needsFactoryApproval = factory < requiredAmount;

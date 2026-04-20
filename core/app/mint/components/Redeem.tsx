@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useRedeemTransaction } from "../hooks/transactions/useRedeemTransaction";
 import { useOption } from "../hooks/useOption";
 import { Address, formatUnits, parseUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
+import { useWriteOptionRedeem } from "~~/generated";
 
 interface RedeemActionProps {
   optionAddress: Address | undefined;
@@ -23,7 +23,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
 
   // Transaction executors (pure writes)
-  const redeemTx = useRedeemTransaction();
+  const { writeContractAsync: burnPair } = useWriteOptionRedeem();
 
   // Wait for transaction
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
@@ -60,11 +60,11 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
       console.log("Amount entered:", amount);
       console.log("Amount in wei:", wei.toString());
       console.log("Option balance:", option.balances?.option?.toString());
-      console.log("Redemption balance:", option.balances?.redemption?.toString());
+      console.log("Redemption balance:", option.balances?.coll?.toString());
       console.log("Option balance check:", option.balances?.option ? option.balances.option < wei : "no balance");
       console.log(
         "Redemption balance check:",
-        option.balances?.redemption ? option.balances.redemption < wei : "no balance",
+        option.balances?.coll ? option.balances.coll < wei : "no balance",
       );
 
       // Check if user has enough of both tokens
@@ -75,7 +75,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
         return;
       }
 
-      if (option.balances?.redemption && option.balances.redemption < wei) {
+      if (option.balances?.coll && option.balances.coll < wei) {
         console.error("Failed: Insufficient Redemption balance");
         setError("Insufficient Redemption token balance");
         setStatus("error");
@@ -83,7 +83,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
       }
 
       // Redeem (no approvals needed)
-      const hash = await redeemTx.redeem(optionAddress, wei);
+      const hash = await burnPair({ address: optionAddress, args: [wei] });
       setTxHash(hash);
     } catch (err: any) {
       setStatus("error");
@@ -101,7 +101,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
   if (!option) {
     return (
       <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-        <h2 className="text-xl font-light text-purple-300 mb-4">Redeem Pairs</h2>
+        <h2 className="text-xl font-light text-purple-300 mb-4">Burn Pair</h2>
         <div className="text-gray-400">Select an option to redeem</div>
       </div>
     );
@@ -116,20 +116,20 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
     if (status === "success") return "Success!";
     if (status === "error") return "Error";
     if (status === "working") return "Redeeming...";
-    return "Redeem Pairs";
+    return "Burn Pair";
   };
 
   // Calculate max redeemable (minimum of both balances)
   const maxRedeemable =
-    option.balances?.option && option.balances?.redemption
-      ? option.balances.option < option.balances.redemption
+    option.balances?.option && option.balances?.coll
+      ? option.balances.option < option.balances.coll
         ? option.balances.option
-        : option.balances.redemption
+        : option.balances.coll
       : 0n;
 
   return (
     <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-      <h2 className="text-xl font-light text-purple-300 mb-4">Redeem Pairs</h2>
+      <h2 className="text-xl font-light text-purple-300 mb-4">Burn Pair</h2>
 
       {/* Balances */}
       <div className="space-y-2 mb-4">
@@ -138,9 +138,9 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
           <span className="text-purple-300">{formatBalance(option.balances?.option, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Redemption Balance</span>
+          <span className="text-gray-400">Short Balance</span>
           <span className="text-purple-300">
-            {formatBalance(option.balances?.redemption, option.collateral.decimals)}
+            {formatBalance(option.balances?.coll, option.collateral.decimals)}
           </span>
         </div>
         <div className="flex justify-between text-sm font-semibold">

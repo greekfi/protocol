@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useRedeemRedemption } from "../hooks/transactions/useRedeemRedemption";
 import { useOption } from "../hooks/useOption";
 import { Address, erc20Abi, formatUnits, parseUnits } from "viem";
 import { useReadContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteCollateralRedeem, useWriteCollateralRedeemConsideration } from "~~/generated";
 
 interface RedeemRedemptionProps {
   optionAddress: Address | undefined;
@@ -27,12 +27,13 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
     address: option?.consideration.address_,
     abi: erc20Abi,
     functionName: "balanceOf",
-    args: option?.redemption ? [option.redemption] : undefined,
-    query: { enabled: Boolean(option?.consideration.address_ && option?.redemption) },
+    args: option?.coll ? [option.coll] : undefined,
+    query: { enabled: Boolean(option?.consideration.address_ && option?.coll) },
   });
 
-  // Transaction executor
-  const redeemTx = useRedeemRedemption();
+  // Transaction executors
+  const { writeContractAsync: redeemColl } = useWriteCollateralRedeem();
+  const { writeContractAsync: redeemCollForConsideration } = useWriteCollateralRedeemConsideration();
 
   // Debug render
   console.log("=== RedeemRedemption Render ===");
@@ -85,14 +86,14 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
       console.log("=== RedeemRedemption Debug ===");
       console.log("Amount entered:", amount);
       console.log("Amount in wei:", wei.toString());
-      console.log("Redemption balance:", option.balances?.redemption?.toString());
-      console.log("Redemption address:", option.redemption);
+      console.log("Redemption balance:", option.balances?.coll?.toString());
+      console.log("Redemption address:", option.coll);
       console.log("Redeem for consideration:", redeemForConsideration);
       console.log("Is expired:", option.isExpired);
       console.log("Consideration balance:", redemptionConsiderationBalance?.toString());
 
       // Check balance
-      if (option.balances?.redemption && option.balances.redemption < wei) {
+      if (option.balances?.coll && option.balances.coll < wei) {
         console.error("Failed: Insufficient Redemption balance");
         setError("Insufficient Redemption token balance");
         setStatus("error");
@@ -106,8 +107,8 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
       console.log("Calling redeem function...");
       console.log("shouldUseConsideration:", shouldUseConsideration);
       const hash = shouldUseConsideration
-        ? await redeemTx.redeemConsideration(option.redemption, wei)
-        : await redeemTx.redeem(option.redemption, wei);
+        ? await redeemCollForConsideration({ address: option.coll, args: [wei] })
+        : await redeemColl({ address: option.coll, args: [wei] });
       console.log("Transaction hash:", hash);
       setTxHash(hash);
     } catch (err: any) {
@@ -145,7 +146,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
     if (status === "success") return "Success!";
     if (status === "error") return "Error";
     if (status === "working") return "Redeeming...";
-    return "Redeem Redemptions";
+    return "Redeem";
   };
 
   // Check if redemption is available (expired OR has consideration balance)
@@ -154,18 +155,18 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
 
   return (
     <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-      <h2 className="text-xl font-light text-orange-300 mb-4">Redeem Redemptions</h2>
+      <h2 className="text-xl font-light text-orange-300 mb-4">Redeem</h2>
 
       {/* Balances */}
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Your Redemption Balance</span>
           <span className="text-orange-300">
-            {formatBalance(option.balances?.redemption, option.collateral.decimals)}
+            {formatBalance(option.balances?.coll, option.collateral.decimals)}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Your Collateral ({option.collateral.symbol})</span>
+          <span className="text-gray-400">{option.collateral.symbol} Balance</span>
           <span className="text-orange-300">
             {formatBalance(option.balances?.collateral, option.collateral.decimals)}
           </span>
@@ -188,7 +189,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
             ? "Burns Redemption tokens to get collateral back (post-expiration)."
             : hasConsiderationBalance
               ? `⚠️ NOT EXPIRED: Will redeem for ${option.consideration.symbol} (consideration) since collateral redemption requires expiration.`
-              : "⚠️ This option has not expired yet and has no consideration balance. Use 'Redeem Pairs' component instead."}
+              : "⚠️ This option has not expired yet and has no consideration balance. Use 'Burn Pair' component instead."}
       </div>
 
       {/* Checkbox for choosing consideration (only show if expired AND has consideration) */}
@@ -214,7 +215,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
         <div className="flex justify-between items-center mb-1">
           <label className="block text-sm text-gray-400">Amount</label>
           <button
-            onClick={() => setAmount(formatUnits(option.balances?.redemption ?? 0n, 18))}
+            onClick={() => setAmount(formatUnits(option.balances?.coll ?? 0n, 18))}
             className="text-xs text-orange-400 hover:text-orange-300 underline"
             disabled={status === "working" || !canRedeem}
           >
@@ -253,14 +254,14 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
           !amount ||
           parseFloat(amount) <= 0 ||
           !canRedeem ||
-          (option.balances?.redemption ?? 0n) === 0n
+          (option.balances?.coll ?? 0n) === 0n
         }
         className={`w-full py-2 px-4 rounded-lg transition-colors font-medium ${
           status === "working" ||
           !amount ||
           parseFloat(amount) <= 0 ||
           !canRedeem ||
-          (option.balances?.redemption ?? 0n) === 0n
+          (option.balances?.coll ?? 0n) === 0n
             ? "bg-gray-600 cursor-not-allowed text-gray-400"
             : status === "success"
               ? "bg-green-600 hover:bg-green-700 text-white"
@@ -275,10 +276,10 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
       {/* Warnings */}
       {!canRedeem && (
         <div className="mt-2 text-yellow-500 text-sm text-center p-2 bg-yellow-900/20 rounded border border-yellow-800">
-          Option has not expired yet and has no consideration balance. Use Redeem Pairs component.
+          Option has not expired yet and has no consideration balance. Use Burn Pair component.
         </div>
       )}
-      {canRedeem && (option.balances?.redemption ?? 0n) === 0n && (
+      {canRedeem && (option.balances?.coll ?? 0n) === 0n && (
         <div className="mt-2 text-yellow-500 text-sm text-center p-2 bg-yellow-900/20 rounded border border-yellow-800">
           You have no Redemption tokens to redeem
         </div>

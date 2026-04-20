@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import ClaimFeesButton from "./ClaimFeesButton";
+import EthFaucet from "./EthFaucet";
 import TokenFaucet from "./TokenFaucet";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import logo from "~~/public/helmet-white.svg";
@@ -35,10 +35,10 @@ const Navbar: React.FC = () => (
         </Link>
       </li>
       <li>
-        <TokenFaucet />
+        <EthFaucet />
       </li>
       <li>
-        <ClaimFeesButton />
+        <TokenFaucet />
       </li>
       <li>
         <ConnectButton />

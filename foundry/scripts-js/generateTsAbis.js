@@ -8,6 +8,7 @@ import {
 } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { spawnSync } from "child_process";
 import { format } from "prettier";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -477,6 +478,34 @@ async function main() {
   });
   console.log(`   ${"deployedContracts.ts".padEnd(20)} ${indexResult.split("\n").length.toString().padStart(4)} lines (index)`);
   console.log(`\n   Total: ${totalContracts} contracts, ${totalLines} lines\n`);
+
+  runWagmiGenerate();
+}
+
+/**
+ * Run `@wagmi/cli` to regenerate typed hooks from the ABIs we just wrote.
+ * Config lives in `core/wagmi.config.ts`; output goes to `abi/generated.ts`.
+ * A failure here is non-fatal — the ABIs are already written, so we warn and
+ * continue (e.g. so fresh checkouts without `yarn install` don't block deploys).
+ */
+function runWagmiGenerate() {
+  const coreDir = join(__dirname, "..", "..", "core");
+  const configPath = join(coreDir, "wagmi.config.ts");
+  if (!existsSync(configPath)) {
+    console.log("   (skipping wagmi generate — no core/wagmi.config.ts)\n");
+    return;
+  }
+  console.log("🔌 Running @wagmi/cli generate...");
+  const result = spawnSync("yarn", ["wagmi", "generate"], {
+    cwd: coreDir,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  if (result.status !== 0) {
+    console.warn(
+      `   ⚠️  wagmi generate exited with code ${result.status}. ABIs were still written; run \`yarn workspace @greek/core wagmi generate\` manually to diagnose.\n`,
+    );
+  }
 }
 
 main().catch((error) => {
