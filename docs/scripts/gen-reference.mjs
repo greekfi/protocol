@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const SRC = path.join(ROOT, "foundry", "docs", "src", "contracts");
-const OUT_FILE = path.join(ROOT, "docs", "docs", "reference", "api.md");
+const OUT_FILE = path.join(ROOT, "docs", "docs", "api.md");
 
 // What to include, grouped for section headers. `from` is relative to forge-doc's
 // `src/contracts/` output.
@@ -153,8 +153,8 @@ async function loadEntry(entry) {
 }
 
 async function main() {
-  // Clean up any prior per-page output from earlier iterations of this script.
-  await fs.rm(path.join(ROOT, "docs", "docs", "reference", "generated"), { recursive: true, force: true });
+  // Clean up any prior output from earlier iterations of this script.
+  await fs.rm(path.join(ROOT, "docs", "docs", "reference"), { recursive: true, force: true });
 
   const chunks = [
     frontmatter({
