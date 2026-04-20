@@ -72,6 +72,23 @@ export interface QuoteResponse {
   iv?: number;
   routes?: string[];
   estimatedGas?: string;
+  /** EIP-712 maker signature over the SingleOrder struct (BebopSettlement v2). Present when server has a signing key. */
+  signature?: string;
+  signScheme?: "EIP712";
+  /** The exact SingleOrder struct the signature covers — pass verbatim to BebopSettlement.swapSingle. */
+  order?: {
+    partner_id: string;
+    expiry: string;
+    taker_address: string;
+    maker_address: string;
+    maker_nonce: string;
+    taker_token: string;
+    maker_token: string;
+    taker_amount: string;
+    maker_amount: string;
+    receiver: string;
+    packed_commands: string;
+  };
 }
 
 export interface ErrorResponse {

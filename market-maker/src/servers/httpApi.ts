@@ -2,12 +2,14 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import type { Pricer } from "../pricing/pricer";
 import type { QuoteResponse, ErrorResponse } from "../pricing/types";
+import { signQuote } from "../bebop/signing";
 
 export interface QuoteServerConfig {
   port: number;
   pricer: Pricer;
   makerAddress: string;
   chainId: number;
+  privateKey?: string;
 }
 
 export class QuoteServer {
@@ -15,11 +17,13 @@ export class QuoteServer {
   private pricer: Pricer;
   private makerAddress: string;
   private chainId: number;
+  private privateKey?: string;
 
   constructor(private config: QuoteServerConfig) {
     this.pricer = config.pricer;
     this.makerAddress = config.makerAddress;
     this.chainId = config.chainId;
+    this.privateKey = config.privateKey;
 
     this.app.use(cors());
     this.app.use(express.json());
@@ -111,6 +115,8 @@ export class QuoteServer {
       buyAmount,
       sell_amounts,
       buy_amounts,
+      takerAddress,
+      taker_address,
     } = params;
 
     // Normalize parameters (support both formats)
@@ -118,6 +124,7 @@ export class QuoteServer {
     const normalizedSellToken = sellToken || sell_tokens;
     const normalizedSellAmount = sellAmount || sell_amounts;
     const normalizedBuyAmount = buyAmount || buy_amounts;
+    const normalizedTaker = takerAddress || taker_address || "0x0000000000000000000000000000000000000000";
 
     if (!normalizedBuyToken || !normalizedSellToken) {
       throw new Error("buyToken and sellToken are required");
@@ -206,7 +213,7 @@ export class QuoteServer {
     const quoteId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const expiry = Math.floor(Date.now() / 1000) + 30;
 
-    return {
+    const response: QuoteResponse = {
       quoteId,
       buyToken: normalizedBuyToken,
       sellToken: normalizedSellToken,
@@ -221,6 +228,52 @@ export class QuoteServer {
       routes: ["RFQ"],
       estimatedGas: "150000",
     };
+
+    if (this.privateKey) {
+      // 256-bit nonce built from timestamp + random — unique per quote without a DB.
+      const nonce = (BigInt(Date.now()) << 128n) | BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+      const order = {
+        partner_id: "0",
+        expiry: expiry.toString(),
+        taker_address: normalizedTaker,
+        maker_address: this.makerAddress,
+        maker_nonce: nonce.toString(),
+        taker_token: normalizedSellToken,
+        maker_token: normalizedBuyToken,
+        taker_amount: sellAmountBigInt.toString(),
+        maker_amount: buyAmountBigInt.toString(),
+        receiver: normalizedTaker,
+        packed_commands: "0",
+      };
+      const { signature } = await signQuote(
+        {
+          chain_id: this.chainId,
+          order_signing_type: "SingleOrder",
+          order_type: "Single",
+          onchain_partner_id: 0,
+          expiry,
+          taker_address: order.taker_address,
+          maker_address: order.maker_address,
+          maker_nonce: order.maker_nonce,
+          receiver: order.receiver,
+          packed_commands: order.packed_commands,
+          quotes: [
+            {
+              taker_token: order.taker_token,
+              maker_token: order.maker_token,
+              taker_amount: order.taker_amount,
+              maker_amount: order.maker_amount,
+            },
+          ],
+        },
+        this.privateKey,
+      );
+      response.signature = signature;
+      response.signScheme = "EIP712";
+      response.order = order;
+    }
+
+    return response;
   }
 
   public start(): void {
@@ -243,6 +296,7 @@ export function createHttpApi(pricer: Pricer): QuoteServer {
   const makerAddress = process.env.MAKER_ADDRESS || "0x0000000000000000000000000000000000000000";
   const chainId = parseInt(process.env.CHAIN_ID || "1");
   const port = parseInt(process.env.HTTP_PORT || "3010");
+  const privateKey = process.env.PRIVATE_KEY || undefined;
 
-  return new QuoteServer({ pricer, makerAddress, chainId, port });
+  return new QuoteServer({ pricer, makerAddress, chainId, port, privateKey });
 }
