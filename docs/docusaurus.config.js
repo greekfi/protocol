@@ -75,10 +75,10 @@ const config = {
           {
             title: "Docs",
             items: [
-              { label: "Fundamentals", to: "/fundamentals/overview" },
+              { label: "Fundamentals", to: "/fundamentals" },
               { label: "Trading", to: "/trading" },
-              { label: "Settlement", to: "/settlement/overview" },
-              { label: "Reference", to: "/reference/contracts" },
+              { label: "Settlement", to: "/settlement" },
+              { label: "API Reference", to: "/reference/api" },
             ],
           },
           {

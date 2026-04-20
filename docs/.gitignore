@@ -12,8 +12,8 @@
 .cache-loader
 
 # Auto-generated contract reference (run `yarn docs:gen` at the repo root to refresh).
-# Commit the source NatSpec, not the derived pages.
-/docs/reference/generated/
+# Commit the source NatSpec, not the derived page.
+/docs/reference/api.md
 
 # Misc
 .DS_Store

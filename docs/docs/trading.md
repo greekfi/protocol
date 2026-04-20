@@ -16,7 +16,7 @@ Bebop's docs are the source of truth for the swap mechanics. Start here:
 
 ## Why RFQ (and not an AMM)
 
-Options have high dimensionality — strike × expiry × underlying × call/put — and each series has vastly different liquidity needs. An AMM per series would fragment capital badly. RFQ lets one maker quote the entire book using their own risk engine, and Greek's [auto-minting](./fundamentals/auto-mint-redeem.md) means they don't need to pre-inventory every strike × expiry: options are minted at the moment of sale.
+Options have high dimensionality — strike × expiry × underlying × call/put — and each series has vastly different liquidity needs. An AMM per series would fragment capital badly. RFQ lets one maker quote the entire book using their own risk engine, and Greek's [auto-minting](./fundamentals#auto-mint--auto-redeem) means they don't need to pre-inventory every strike × expiry: options are minted at the moment of sale.
 
 ## How Greek + Bebop fit
 
