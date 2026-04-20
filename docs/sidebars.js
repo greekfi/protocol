@@ -5,28 +5,9 @@ const sidebars = {
   docsSidebar: [
     "index",
     "addresses",
-    {
-      type: "category",
-      label: "Fundamentals",
-      link: { type: "doc", id: "fundamentals/overview" },
-      items: [
-        "fundamentals/mint-and-collateralize",
-        "fundamentals/tokens",
-        "fundamentals/auto-mint-redeem",
-        "fundamentals/exercise",
-      ],
-    },
+    "fundamentals",
     "trading",
-    {
-      type: "category",
-      label: "Settlement",
-      link: { type: "doc", id: "settlement/overview" },
-      items: [
-        "settlement/pair-redeem",
-        "settlement/oracle-settlement",
-        "settlement/oracles",
-      ],
-    },
+    "settlement",
     {
       type: "category",
       label: "Reference",
