@@ -4,6 +4,7 @@
 const sidebars = {
   docsSidebar: [
     "index",
+    "addresses",
     {
       type: "category",
       label: "Fundamentals",
@@ -30,48 +31,7 @@ const sidebars = {
       type: "category",
       label: "Reference",
       link: { type: "doc", id: "reference/contracts" },
-      items: [
-        "reference/errors",
-        "reference/addresses",
-        {
-          type: "category",
-          label: "Generated API",
-          link: { type: "doc", id: "reference/generated/index" },
-          items: [
-            {
-              type: "category",
-              label: "Core",
-              link: { type: "doc", id: "reference/generated/core/index" },
-              items: [
-                "reference/generated/contracts/Option",
-                "reference/generated/contracts/Collateral",
-                "reference/generated/contracts/Factory",
-                "reference/generated/contracts/YieldVault",
-                "reference/generated/contracts/OptionUtils",
-              ],
-            },
-            {
-              type: "category",
-              label: "Oracles",
-              link: { type: "doc", id: "reference/generated/oracles/index" },
-              items: [
-                "reference/generated/oracles/IPriceOracle",
-                "reference/generated/oracles/UniV3Oracle",
-              ],
-            },
-            {
-              type: "category",
-              label: "Interfaces",
-              link: { type: "doc", id: "reference/generated/interfaces/index" },
-              items: [
-                "reference/generated/interfaces/IOption",
-                "reference/generated/interfaces/ICollateral",
-                "reference/generated/interfaces/IFactory",
-              ],
-            },
-          ],
-        },
-      ],
+      items: ["reference/api"],
     },
   ],
 };
