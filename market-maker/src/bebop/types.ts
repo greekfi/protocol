@@ -45,6 +45,8 @@ export interface RFQRequest {
     is_aggregate_order?: boolean;
     origin_address?: string;
     expiry_type?: string;
+    receiver?: string;
+    taker_address?: string;
   };
 }
 

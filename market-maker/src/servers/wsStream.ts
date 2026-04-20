@@ -54,7 +54,7 @@ export class PricingStream {
         try {
           const message: ClientMessage = JSON.parse(data.toString());
           this.handleMessage(client, message);
-        } catch (error) {
+        } catch {
           this.sendError(ws, "Invalid message format");
         }
       });
@@ -94,7 +94,7 @@ export class PricingStream {
         this.send(client.ws, { type: "pong", timestamp: Date.now() });
         break;
       default:
-        this.sendError(client.ws, `Unknown message type: ${(message as any).type}`);
+        this.sendError(client.ws, `Unknown message type: ${(message as { type: string }).type}`);
     }
   }
 

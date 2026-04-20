@@ -33,8 +33,8 @@ interface UseRfqQuoteParams {
 // RFQ-Direct API endpoints by chain ID
 const RFQ_API_URLS: Record<number, string> = {
   1: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
-  1301: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
-  11155111: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
+  8453: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
+  42161: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
   31337: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
 };
 

@@ -5,6 +5,7 @@ export default defineConfig({
     direct: "src/direct.ts",
     bebop: "src/bebop.ts",
     relay: "src/relay.ts",
+    deribit: "src/deribit.ts",
   },
   format: ["esm"],
   dts: true,
