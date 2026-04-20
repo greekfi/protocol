@@ -67,13 +67,13 @@ export class QuoteServer {
     // Get quote - Bebop-compatible format
     this.app.get("/quote", async (req: Request, res: Response) => {
       try {
-        const quote = await this.handleQuoteRequest(req.query as any);
+        const quote = await this.handleQuoteRequest(req.query as Record<string, string | undefined>);
         res.json(quote);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Quote error:", error);
         const errorResponse: ErrorResponse = {
-          error: error.message || "Quote generation failed",
-          code: error.code || "QUOTE_ERROR",
+          error: error instanceof Error ? error.message : "Quote generation failed",
+          code: "QUOTE_ERROR",
         };
         res.status(400).json(errorResponse);
       }
@@ -101,7 +101,7 @@ export class QuoteServer {
     });
   }
 
-  private async handleQuoteRequest(params: any): Promise<QuoteResponse> {
+  private async handleQuoteRequest(params: Record<string, string | undefined>): Promise<QuoteResponse> {
     const {
       buyToken,
       sellToken,
@@ -111,8 +111,6 @@ export class QuoteServer {
       buyAmount,
       sell_amounts,
       buy_amounts,
-      takerAddress,
-      taker_address,
     } = params;
 
     // Normalize parameters (support both formats)
@@ -170,7 +168,7 @@ export class QuoteServer {
         if (cost === null) throw new Error("Unable to calculate cost");
         sellAmountBigInt = cost;
       } else {
-        sellAmountBigInt = BigInt(normalizedSellAmount);
+        sellAmountBigInt = BigInt(normalizedSellAmount!);
         const askPriceScaled = BigInt(Math.floor(price * 1e6));
         buyAmountBigInt = (sellAmountBigInt * BigInt(10 ** option.decimals)) / askPriceScaled;
       }
@@ -199,7 +197,7 @@ export class QuoteServer {
         if (payout === null) throw new Error("Unable to calculate payout");
         buyAmountBigInt = payout;
       } else {
-        buyAmountBigInt = BigInt(normalizedBuyAmount);
+        buyAmountBigInt = BigInt(normalizedBuyAmount!);
         const bidPriceScaled = BigInt(Math.floor(price * 1e6));
         sellAmountBigInt = (buyAmountBigInt * BigInt(10 ** option.decimals)) / bidPriceScaled;
       }

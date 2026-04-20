@@ -19,8 +19,10 @@ let _currentChainId: number | null = null;
  * Get the viem chain object from chain ID
  */
 function getViemChain(chainId: number): Chain {
-  const chain = Object.values(chains).find((c: any) => c?.id === chainId) as Chain | undefined;
-  return chain || chains.mainnet;
+  const chain = Object.values(chains).find(
+    (c) => typeof c === "object" && c !== null && "id" in c && c.id === chainId,
+  ) as Chain | undefined;
+  return chain ?? chains.mainnet;
 }
 
 /**

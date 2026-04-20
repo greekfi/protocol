@@ -1,6 +1,7 @@
 import { blackScholes, calculateGreeks, type BlackScholesInput } from "./blackScholes";
 import type { OptionParams, PriceResult, MarketData, SpreadConfig } from "./types";
 import type { SpotFeed } from "./spotFeed";
+import type { RFQRequest, QuoteResponse, DeclineResponse } from "../bebop/types";
 
 export interface PricerConfig {
   spreadConfig?: SpreadConfig;
@@ -247,7 +248,7 @@ export class Pricer {
    * Handle RFQ request (for Bebop integration)
    * Returns quote response or decline
    */
-  async handleRfq(rfq: any): Promise<any> {
+  async handleRfq(rfq: RFQRequest): Promise<QuoteResponse | DeclineResponse> {
     const { buy_tokens, sell_tokens, rfq_id, taker_address, _originalRequest } = rfq;
 
     // Log RFQ for debugging
@@ -297,7 +298,7 @@ export class Pricer {
       }
 
       // Determine trade direction and calculate quote
-      let quoteResponse;
+      let quoteResponse: QuoteResponse;
       if (isBuyingOption) {
         // Taker wants to buy options, maker sells options (asks)
         // Taker pays sellToken, receives buyToken (options)
@@ -386,7 +387,7 @@ export class Pricer {
         };
 
         const { signature } = await signQuote(quoteData, privateKey);
-        (quoteResponse as any).signature = signature;
+        quoteResponse.signature = signature;
         console.log(`✍️  Quote signed`);
       }
 

@@ -72,7 +72,7 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
       address: optionAddress as `0x${string}`,
       abi: OPTION_ABI,
       functionName: "redemption",
-    } as any) as `0x${string}`;
+    }) as `0x${string}`;
 
     // Then get option parameters from redemption contract
     const [strike, expirationDate, isPut, collateral] = await Promise.all([
@@ -80,22 +80,22 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
         address: redemptionAddress,
         abi: REDEMPTION_ABI,
         functionName: "strike",
-      } as any) as Promise<bigint>,
+      }) as Promise<bigint>,
       client.readContract({
         address: redemptionAddress,
         abi: REDEMPTION_ABI,
         functionName: "expirationDate",
-      } as any) as Promise<bigint>,
+      }) as Promise<unknown> as Promise<bigint>,
       client.readContract({
         address: redemptionAddress,
         abi: REDEMPTION_ABI,
         functionName: "isPut",
-      } as any) as Promise<boolean>,
+      }) as Promise<boolean>,
       client.readContract({
         address: redemptionAddress,
         abi: REDEMPTION_ABI,
         functionName: "collateral",
-      } as any) as Promise<`0x${string}`>,
+      }) as Promise<`0x${string}`>,
     ]);
 
     // Strike is encoded with 18 decimals
@@ -274,7 +274,7 @@ export async function fetchSpotPrice(): Promise<number> {
       "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
       { signal: AbortSignal.timeout(5000) }
     );
-    const data = await response.json() as any;
+    const data = (await response.json()) as { ethereum?: { usd?: number } };
     if (data.ethereum?.usd) {
       cachedSpotPrice = data.ethereum.usd;
       lastSpotFetch = now;
@@ -291,7 +291,7 @@ export async function fetchSpotPrice(): Promise<number> {
       "https://api.coincap.io/v2/assets/ethereum",
       { signal: AbortSignal.timeout(5000) }
     );
-    const data = await response.json() as any;
+    const data = (await response.json()) as { data?: { priceUsd?: string } };
     if (data.data?.priceUsd) {
       cachedSpotPrice = parseFloat(data.data.priceUsd);
       lastSpotFetch = now;

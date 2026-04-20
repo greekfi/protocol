@@ -2,7 +2,7 @@
 import "dotenv/config";
 import { writeFileSync } from "fs";
 import { join } from "path";
-import { fetchAllOptionMetadata, type OptionMetadata } from "../src/config/metadata";
+import { fetchAllOptionMetadata } from "../src/config/metadata";
 import { getCurrentChainId } from "../src/config/client";
 
 /**
@@ -37,6 +37,7 @@ async function main() {
 
     // Create data directory if it doesn't exist
     const dataDir = join(__dirname, "..", "data");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("fs");
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });

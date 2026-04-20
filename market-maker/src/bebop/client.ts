@@ -12,6 +12,42 @@ import type {
 } from "./types";
 import { signQuote, type QuoteData } from "./signing";
 
+/** Shape of a quote item in Bebop's incoming RFQ messages */
+interface BebopRfqQuoteItem {
+  maker_token: string;
+  taker_token: string;
+  maker_amount?: string;
+  taker_amount?: string;
+}
+
+/** Shape of the msg object we send back in a taker_quote response */
+interface BebopQuoteMsg {
+  quote_id: string;
+  event_id?: string;
+  order_signing_type?: string;
+  order_type?: string;
+  onchain_partner_id?: number;
+  expiry: number;
+  taker_address?: string;
+  maker_address: string;
+  maker_nonce?: string;
+  quotes: Array<{
+    taker_token: string;
+    maker_token: string;
+    taker_amount: string;
+    maker_amount: string;
+    reference_price: number;
+  }>;
+  receiver?: string;
+  commands?: string;
+  packed_commands?: string;
+  fee_native?: number;
+  is_aggregate_order?: boolean;
+  expiry_type: string;
+  origin_address?: string;
+  signature?: string;
+}
+
 const BEBOP_WS_BASE = "wss://api.bebop.xyz/pmm";
 const CHAIN_ID = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 1; // Default to Ethereum mainnet
 
@@ -121,11 +157,11 @@ export class BebopClient {
           rfq_id: rfqData.quote_id,
           chain_id: message.chain_id,
           taker_address: rfqData.taker_address,
-          buy_tokens: rfqData.quotes.map((q: any) => ({
+          buy_tokens: rfqData.quotes.map((q: BebopRfqQuoteItem) => ({
             token: q.maker_token,
             amount: q.maker_amount || "0",
           })),
-          sell_tokens: rfqData.quotes.map((q: any) => ({
+          sell_tokens: rfqData.quotes.map((q: BebopRfqQuoteItem) => ({
             token: q.taker_token,
             amount: q.taker_amount || "0",
           })),
@@ -223,7 +259,7 @@ export class BebopClient {
     }
 
     // Convert to Bebop's expected format
-    let bebopMessage: any;
+    let bebopMessage: object;
 
     if (message.type === "quote") {
       // Validate amounts are not zero
@@ -239,7 +275,7 @@ export class BebopClient {
       const originalReq = message._originalRequest || {};
 
       // Build the msg object, only including fields that are defined
-      const msg: any = {
+      const msg: BebopQuoteMsg = {
         quote_id: message.rfq_id,
         event_id: originalReq.event_id,
         order_signing_type: originalReq.order_signing_type,
@@ -281,19 +317,19 @@ export class BebopClient {
         try {
           const quoteData: QuoteData = {
             chain_id: this.config.chainId || CHAIN_ID,
-            order_signing_type: msg.order_signing_type,
-            order_type: msg.order_type,
-            onchain_partner_id: msg.onchain_partner_id,
+            order_signing_type: msg.order_signing_type ?? "SingleOrder",
+            order_type: msg.order_type ?? "Single",
+            onchain_partner_id: msg.onchain_partner_id ?? 0,
             expiry: msg.expiry,
-            taker_address: msg.taker_address,
+            taker_address: msg.taker_address ?? "",
             maker_address: msg.maker_address,
-            maker_nonce: msg.maker_nonce,
-            receiver: msg.receiver,
-            packed_commands: msg.packed_commands,
+            maker_nonce: msg.maker_nonce ?? "0",
+            receiver: msg.receiver ?? "",
+            packed_commands: msg.packed_commands ?? "0",
             quotes: msg.quotes,
           };
 
-          const signature = await signQuote(quoteData, this.config.privateKey);
+          const { signature } = await signQuote(quoteData, this.config.privateKey);
           msg.signature = signature;
           console.log("✅ Quote signed successfully");
         } catch (error) {

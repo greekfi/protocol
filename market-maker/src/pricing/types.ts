@@ -36,6 +36,12 @@ export interface SpreadConfig {
   minSpread: number;
 }
 
+/** Minimal interface for components that consume option prices (e.g., PricingStream) */
+export interface PricingSource {
+  getOptionAddresses(): string[];
+  getPrice(optionAddress: string): { bids: [number, number][]; asks: [number, number][] } | null;
+}
+
 // === Quote Types ===
 
 export interface QuoteRequest {

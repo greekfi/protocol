@@ -1,12 +1,9 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { type Address, type Hex } from "viem";
 
-// Bebop Settlement Contract addresses by chain
-const BEBOP_SETTLEMENT_ADDRESSES: Record<number, Address> = {
-  1: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Ethereum
-  137: "0xbEbEbEb035351f58602E0C1C8B59ECBfF5d5f47b", // Polygon
-  // Add other chains as needed
-};
+// BebopBlend PMM RFQ contract — same address on all supported chains
+// (NOT the JAM settlement at 0xbEbEbEb…, which uses a different EIP-712 domain)
+const BEBOP_BLEND_ADDRESS: Address = "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F";
 
 export interface QuoteData {
   chain_id: number;
@@ -56,10 +53,7 @@ export async function signQuote(
   const takerAmounts = Object.values(takerTokensDict);
   const makerAmounts = Object.values(makerTokensDict);
 
-  // Get Bebop settlement contract for this chain
-  const verifyingContract =
-    BEBOP_SETTLEMENT_ADDRESSES[quoteData.chain_id] ||
-    BEBOP_SETTLEMENT_ADDRESSES[1];
+  const verifyingContract = BEBOP_BLEND_ADDRESS;
 
   // Build the typed data for EIP712 signing
   if (quoteData.order_signing_type === "SingleOrder") {

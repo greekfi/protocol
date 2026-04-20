@@ -5,8 +5,8 @@
  */
 
 import WebSocket from "ws";
-import type { Pricer } from "../pricing/pricer";
 import { bebop } from "./proto/pricing_pb";
+import type { PricingSource } from "../pricing/types";
 
 const { LevelsSchema, LevelMsg, LevelInfo } = bebop;
 
@@ -22,12 +22,12 @@ export interface PricingStreamConfig {
 export class PricingStream {
   private ws: WebSocket | null = null;
   private config: PricingStreamConfig;
-  private pricer: Pricer;
+  private pricer: PricingSource;
   private interval: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private maxReconnectDelay = 300000; // Cap at 5 minutes
 
-  constructor(config: PricingStreamConfig, pricer: Pricer) {
+  constructor(config: PricingStreamConfig, pricer: PricingSource) {
     this.config = config;
     this.pricer = pricer;
   }
@@ -61,7 +61,7 @@ export class PricingStream {
           const json = JSON.parse(text);
           console.log("   ", JSON.stringify(json, null, 2));
         } catch {}
-      } catch (error) {
+      } catch {
         console.log("📨 Pricing response (binary):", Array.from(data as Buffer).slice(0, 100));
       }
     });
