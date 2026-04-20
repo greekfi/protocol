@@ -1,6 +1,7 @@
 ---
 title: Settlement
 sidebar_label: Settlement
+sidebar_position: 2
 ---
 
 # Settlement
