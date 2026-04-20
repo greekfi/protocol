@@ -77,7 +77,7 @@ After mint, the Collateral contract holds the collateral. Its balance equals the
 - `Collateral.sol` — holds escrow, enforces 1:1. Only callable by its paired Option.
 - `Factory.sol` — clone factory, allowance registry, blocklist.
 
-See the [API Reference](./reference/api) for full surface.
+See the [API Reference](./api) for full surface.
 
 ## Option & Collateral Tokens
 

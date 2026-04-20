@@ -78,7 +78,7 @@ const config = {
               { label: "Fundamentals", to: "/fundamentals" },
               { label: "Trading", to: "/trading" },
               { label: "Settlement", to: "/settlement" },
-              { label: "API Reference", to: "/reference/api" },
+              { label: "API Reference", to: "/api" },
             ],
           },
           {

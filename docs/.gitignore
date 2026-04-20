@@ -13,7 +13,7 @@
 
 # Auto-generated contract reference (run `yarn docs:gen` at the repo root to refresh).
 # Commit the source NatSpec, not the derived page.
-/docs/reference/api.md
+/docs/api.md
 
 # Misc
 .DS_Store
