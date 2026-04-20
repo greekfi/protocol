@@ -25,7 +25,7 @@ Every token is ERC20, making it fungible and transferable hence swappable.
 - **[Fundamentals](./fundamentals)** — Option Token + Collateral Token; exercise, settlement, collateral redemption; auto-mint/redeem.
 - **[Trading](./trading)** — RFQ flows via Bebop, buying and shorting, market-makers, market takers.
 - **[Settlement](./settlement)** — pair-redeem, oracle settlement, post-expiry paths.
-- **[API Reference](./api)** — full contract surface, generated from NatSpec.
+- **[API Reference](./api)** — full contract surface, generated from smart contract code.
 
 ## Deployed Addresses
 
@@ -56,7 +56,6 @@ Addresses are not yet finalized for this refactor. This page will be populated a
 | Network  | Factory |
 |----------|---------|
 | Sepolia  | _TBD_ |
-| Foundry (31337) | See `foundry/broadcast/` after running `DeployFullDemo`. |
 
 ### Programmatic discovery
 

@@ -5,25 +5,58 @@ sidebar_label: Fundamentals
 
 # Fundamentals
 
-An option in Greek is fully-collateralized. This means any option created has collateral in the protocol backing that option in the event it gets exercised/settled.
-
-To enable capital efficiency of that collateral, Greek provides the option writer a Collateral Token (CLT) along with the Option Token (OPT). Let's dig into this system.
 
 ## Overview
 
 Greek offers a mechanism for someone to write options to receive two tokens, OPT and CLT, in return for depositing collateral:
 
 ```
- deposit collateral
- │
- ▼
+           deposit collateral
+                   │
+                   ▼
  ┌──────────────┐      ┌──────────────┐
- │    Option    │      │  Collateral  │
- │  (long side) │◀────▶│ (short side) │
+ │    Option    │      │  Collateral  |
+ |              │◀....▶|    Token     |
+ │  (long side) │      │ (short side) │
  └──────────────┘      └──────────────┘
 ```
 
 Both tokens are standard ERC20. The **Option** holder has the right to receive collateral; the **Collateral** holder backs that right and keeps the premium / post-expiry residual.
+
+Options are fully-collateralized, meaning any option created has collateral in the protocol backing that option in the event it gets exercised/settled.
+
+To enable capital efficiency of that collateral, Greek provides the option writer a Collateral Token (CLT) which allows the writer to redeem the collateral after expiration. Let's dig into this system.
+
+## Option & Collateral Tokens
+
+Both sides of an option are standard ERC20s, deployed as EIP-1167 clones per option pair. Same decimals as the underlying collateral token.
+
+### Option Token (OPT)
+
+- Minted on deposit, burned on `exercise`, `redeem` (pair), or `claim` (settled).
+- Transferable. Standard `approve` / `transferFrom` semantics, plus operator approvals via the factory (see below).
+- Expiration-gated: `mint`, `transfer`, `exercise`, pair-`redeem` all revert after expiry. Post-expiry, only `settle` and `claim` work (and only in settled modes).
+
+### Collateral Token (CLT)
+
+- Minted 1:1 with Option on deposit.
+- Transferable. Burned on pair-`redeem` (pre-expiry) or `redeem` / `redeemConsideration` (post-expiry).
+- No expiration gate — Collateral holders can unwind pre- or post-expiry depending on path.
+- Accessed via `Option.coll()`.
+
+### Names & symbols
+
+Auto-generated at deploy time from the option's parameters:
+
+```
+OPT-WETH-USDC-3000-2026-06-27      // American call
+OPTE-WETH-USDC-3000-2026-06-27     // European call (E for Euro)
+CLL-WETH-USDC-3000-2026-06-27      // Collateral side
+```
+
+Name format: `<prefix>-<collateralSymbol>-<considerationSymbol>-<strike>-<YYYY-MM-DD>`.
+
+Put options display the human-readable strike (inverse of on-chain storage); see the [Put example](#put-example) below.
 
 ### Invariants
 
@@ -79,51 +112,19 @@ After mint, the Collateral contract holds the collateral. Its balance equals the
 
 See the [API Reference](./api) for full surface.
 
-## Option & Collateral Tokens
-
-Both sides of an option are standard ERC20s, deployed as EIP-1167 clones per option pair. Same decimals as the underlying collateral token.
-
-### Option Token (OPT)
-
-- Minted on deposit, burned on `exercise`, `redeem` (pair), or `claim` (settled).
-- Transferable. Standard `approve` / `transferFrom` semantics, plus operator approvals via the factory (see below).
-- Expiration-gated: `mint`, `transfer`, `exercise`, pair-`redeem` all revert after expiry. Post-expiry, only `settle` and `claim` work (and only in settled modes).
-
-### Collateral Token (CLT)
-
-- Minted 1:1 with Option on deposit.
-- Transferable. Burned on pair-`redeem` (pre-expiry) or `redeem` / `redeemConsideration` (post-expiry).
-- No expiration gate — Collateral holders can unwind pre- or post-expiry depending on path.
-- Accessed via `Option.coll()`.
-
-### Names & symbols
-
-Auto-generated at deploy time from the option's parameters:
-
-```
-OPT-WETH-USDC-3000-2026-06-27      // American call
-OPTE-WETH-USDC-3000-2026-06-27     // European call (E for Euro)
-CLL-WETH-USDC-3000-2026-06-27      // Collateral side
-```
-
-Name format: `<prefix>-<collateralSymbol>-<considerationSymbol>-<strike>-<YYYY-MM-DD>`.
-
-Put options display the human-readable strike (inverse of on-chain storage); see the [Put example](#put-example) below.
+## Transferring and Swapping
 
 ### Operator approvals
-
-The factory exposes an ERC-1155-style universal approval:
+To allow a contract to transfer/swap (`transferFrom()`) on your behalf, similar to `token.approve()`, you must permit that contract through the following approval method, that's similar to an ERC-1155-style universal approval:
 
 ```solidity
 // Grant operator transfer rights across ALL options created by this factory
 factory.approveOperator(operator, true);
 ```
 
-When approved, `operator` can call `option.transferFrom(owner, to, amount)` on any option created by that factory without needing individual ERC20 approvals. Used by the `/book` CLOBAMM and other trading venues.
+When approved, `operator` can call `option.transferFrom(owner, to, amount)` on any option created by that factory without needing individual ERC20 approvals. Used by the RFQ settlement contract and other trading venues.
 
-### Transfers
-
-Standard ERC20 `transfer` / `transferFrom` work. If the sender has opted into auto-mint / auto-redeem (next section), the transfer can additionally mint or burn pairs on the fly.
+ If the sender has opted into auto-mint / auto-redeem (next section), the transfer can additionally mint or burn pairs on the fly, assuming the sender has enough collateral.
 
 ## Auto-Mint & Auto-Redeem
 
@@ -211,7 +212,16 @@ The term "consideration" is rarely used in the options world because in nearly a
 
 ### Exercising on-chain
 
-An option can be exercised on-chain at any time (e.g. any block). Call `exercise` with an amount (X) that you want to exercise:
+An option can be exercised on-chain at any time (e.g. any block). Prior to exercising, you need to allow the Factory to call `transferFrom()` to transfer your consideration tokens in for the swap. 
+
+```solidity
+// One-time setup
+IERC20(consideration).approve(address(factory), type(uint256).max);
+factory.approve(consideration, type(uint256).max);
+```
+
+
+Then, call `exercise` with an amount (X) that you want to exercise:
 
 ```solidity
 uint256 amountX = 1e18;
@@ -251,7 +261,10 @@ A WETH put at $3,000 strike is just a call written on the swapped pair:
 - Exercising pays WETH → gets USDC.
 - The `isPut` flag on the option is display-only; the contract math is identical to a call.
 
-### Important
+### Is a Put really the same as a Call?
+Yes, from the example above, you can see that the swap is simply reversed. The only difference is that the option labels that it is a Put through a boolean flag. The only impact this has is on the price on the front end. Rather than saying swap .0005 WETH to receive one USDC, the flag tells us instead "swap in 1 WETH for 2000 USDC". 
+
+### Important Notes
 
 - All strike prices are 18-decimal notation.
 - `exercise` can only be called on American options.

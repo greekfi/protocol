@@ -1,6 +1,6 @@
 ---
 title: Trading
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Trading
@@ -36,7 +36,7 @@ Net: the MM holds collateral, signs a quote, and the option materializes at the 
 
 1. `GET /quote` on Bebop → signed EIP-712 order from the maker.
 2. Approve cash to Bebop's `approvalTarget` (returned by the quote — **don't hardcode**).
-3. Call settlement (or let Bebop submit gasless via Permit2).
+3. Call settlement with the received quote.
 
 ```solidity
 // After receiving a signed quote from the MM:
@@ -64,27 +64,22 @@ factory.approveOperator(bebopApprovalTarget, true);
 
 Now every RFQ sale signed by your wallet atomically:
 1. Pulls `amount` collateral from you,
-2. Mints `amount` Option + `amount` Collateral to you,
+2. Mints `amount` Option + `amount` Collateral Tokens to you,
 3. Delivers the Options to the taker,
 4. Pays you the cash.
 
 You end up short (holding Collateral tokens). The original collateral is locked in the Collateral contract backing that short — unwound by buying options back, or settled at expiry.
 
-## Closing a long
-
-Symmetric: request a **bid** quote, sign on the maker side (you're selling), call `swapSingle`. If the MM has auto-redeem enabled and holds matched Collateral, your incoming options burn against their short and release collateral — they unwind on receive, all in the same tx.
 
 ## Pricing
 
-The Greek market maker uses a Black-Scholes core (`foundry/contracts/BlackScholes.sol`) plus real-world adjustments:
+The Greek market maker may use a Black-Scholes formula to price their option. Most MMs use sophisticated strategies off-chain to price and deliver a quote when requested. Typically to price you need the following pieces of information.
 
 - **Spot** from Chainlink (primary) with Uniswap v3 TWAP as fallback.
 - **Volatility** from a per-underlying surface (ATM-anchored, quadratic skew optional).
 - **Inventory skew** — widens asks and tightens bids when the MM is net short, to pull back toward flat.
 - **Base spread** configurable per venue.
 
-On-chain quote engine lives in `OptionPricer.sol`; the off-chain MM (TypeScript in `market-maker/`) uses the same formulas with richer surfaces and real-time data.
+<!-- ## Vault flows
 
-## Vault flows
-
-Liquidity providers can route through a vault (`YieldVault.sol`) that holds collateral and lets an authorized operator sign RFQ orders via EIP-1271 contract signatures. The vault becomes Bebop's `maker_address`; everything downstream (including auto-mint) is identical to the EOA case.
+Liquidity providers can route through a vault (`YieldVault.sol`) that holds collateral and lets an authorized operator sign RFQ orders via EIP-1271 contract signatures. The vault becomes Bebop's `maker_address`; everything downstream (including auto-mint) is identical to the EOA case. -->
