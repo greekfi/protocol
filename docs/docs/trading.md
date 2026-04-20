@@ -80,6 +80,6 @@ The Greek market maker may use a Black-Scholes formula to price their option. Mo
 - **Inventory skew** — widens asks and tightens bids when the MM is net short, to pull back toward flat.
 - **Base spread** configurable per venue.
 
-<!-- ## Vault flows
+{/* ## Vault flows
 
-Liquidity providers can route through a vault (`YieldVault.sol`) that holds collateral and lets an authorized operator sign RFQ orders via EIP-1271 contract signatures. The vault becomes Bebop's `maker_address`; everything downstream (including auto-mint) is identical to the EOA case. -->
+Liquidity providers can route through a vault (`YieldVault.sol`) that holds collateral and lets an authorized operator sign RFQ orders via EIP-1271 contract signatures. The vault becomes Bebop's `maker_address`; everything downstream (including auto-mint) is identical to the EOA case. */}
