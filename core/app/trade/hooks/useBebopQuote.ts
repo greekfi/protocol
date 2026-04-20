@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { env } from "process";
 import { useAccount, useChainId } from "wagmi";
 
 export interface BebopQuote {
@@ -7,7 +6,7 @@ export interface BebopQuote {
   sellAmount: string;
   price: string;
   estimatedGas: string;
-  tx: {
+  tx?: {
     to: string;
     data: string;
     value: string;
@@ -16,6 +15,7 @@ export interface BebopQuote {
   };
   approvalTarget?: string;
   routes?: any[];
+  source?: "bebop" | "direct";
 }
 
 interface UseBebopQuoteParams {
@@ -29,9 +29,32 @@ interface UseBebopQuoteParams {
 // Bebop API endpoints by chain ID
 const BEBOP_API_URLS: Record<number, string> = {
   1: "https://api.bebop.xyz/pmm/ethereum/v3", // Ethereum Mainnet
-  1301: "https://api.bebop.xyz/pmm/unichain/v3", // Unichain Sepolia
-  11155111: "https://api.bebop.xyz/pmm/sepolia/v3", // Sepolia
+  8453: "https://api.bebop.xyz/pmm/base/v3", // Base
+  42161: "https://api.bebop.xyz/pmm/arbitrum/v3", // Arbitrum
 };
+
+// Polled HTTP fallback — our own market-maker /quote endpoint.
+// Same Bebop-compatible response shape; quotes are indicative, not executable.
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "http://localhost:3010";
+
+async function fetchDirectQuote(
+  buyToken: string,
+  sellToken: string,
+  takerAddress: string,
+  sellAmount?: string,
+  buyAmount?: string,
+): Promise<BebopQuote | null> {
+  const params: Record<string, string> = { buyToken, sellToken, takerAddress };
+  if (sellAmount) params.sellAmount = sellAmount;
+  else if (buyAmount) params.buyAmount = buyAmount;
+
+  const url = `${DIRECT_API_URL}/quote?${new URLSearchParams(params).toString()}`;
+  console.log("📞 Falling back to direct quote server:", url);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Direct API error: ${res.status} ${res.statusText}`);
+  const data = await res.json();
+  return { ...data, source: "direct" };
+}
 
 export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enabled = true }: UseBebopQuoteParams) {
   const { address: takerAddress } = useAccount();
@@ -46,7 +69,7 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
 
       const bebopApiUrl = BEBOP_API_URLS[chainId];
       if (!bebopApiUrl) {
-        throw new Error(`Bebop API not available for chain ${chainId}`);
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
       }
 
       // Source name and auth from env
@@ -86,17 +109,19 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
       };
       console.log("   Using source-auth:", sourceAuth.slice(0, 8) + "...");
 
-      const response = await fetch(url, { headers });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Bebop API error:", response.status, errorText);
-        throw new Error(`Bebop API error: ${response.statusText}`);
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Bebop API error ${response.status}: ${errorText}`);
+        }
+        const data = await response.json();
+        console.log("✅ Bebop response");
+        return { ...data, source: "bebop" };
+      } catch (err) {
+        console.warn("⚠️  Bebop failed, trying direct:", err instanceof Error ? err.message : err);
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
       }
-
-      const data = await response.json();
-      console.log("✅ Bebop response:", data);
-      return data;
     },
     enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && (!!sellAmount || !!buyAmount),
     staleTime: 15_000, // 15 seconds
