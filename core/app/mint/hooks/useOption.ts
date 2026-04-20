@@ -1,132 +1,67 @@
 import type { Balances, OptionDetails, OptionInfo } from "./types";
-import { useContracts } from "./useContracts";
 import { Address } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
+import { optionAbi } from "~~/generated";
 
-/**
- * Check if an option has expired
- */
 function isExpired(expiration: bigint | undefined): boolean {
   if (!expiration) return false;
   return BigInt(Math.floor(Date.now() / 1000)) >= expiration;
 }
 
-/**
- * Format option name for display
- * Input: "OPT-COLL-CONS-STRIKE-YYYY-MM-DD" or similar
- */
 function formatOptionName(name: string): string {
   if (!name) return "";
-
   const parts = name.split("-");
   if (parts.length < 4) return name;
-
-  // Parse the name format: OPT-COLL-CONS-STRIKE-DATE
   const [prefix, collateral, consideration, strike, ...dateParts] = parts;
   const isPut = prefix?.includes("P") ?? false;
   const optionType = isPut ? "PUT" : "CALL";
   const date = dateParts.join("-");
-
   return `${optionType} ${collateral}/${consideration} @ ${strike} (${date})`;
 }
 
 /**
- * Hook to fetch all data for a single option contract
- * Combines details(), balancesOf(), and name() in one multicall
- *
- * @param optionAddress - The deployed option contract address
- * @returns Option details with balances, expiry status, and formatted name
+ * Fetch details + name + caller balances for a single option in one multicall.
  */
 export function useOption(optionAddress: Address | undefined) {
   const { address: userAddress } = useAccount();
-  const optionContract = useContracts()?.Option;
 
   const enabled = Boolean(
     optionAddress &&
-    optionAddress !== "0x0" &&
-    optionAddress !== "0x0000000000000000000000000000000000000000" &&
-    optionContract?.abi,
+      optionAddress !== "0x0" &&
+      optionAddress !== "0x0000000000000000000000000000000000000000",
   );
 
-  // Build contracts array for multicall
-  let contracts: any[] = [];
+  const address = optionAddress as Address;
 
-  if (enabled && optionContract?.abi) {
-    contracts = [
-      {
-        address: optionAddress as Address,
-        abi: optionContract.abi as readonly unknown[],
-        functionName: "details" as const,
-      },
-      {
-        address: optionAddress as Address,
-        abi: optionContract.abi as readonly unknown[],
-        functionName: "name" as const,
-      },
-    ];
-
-    // Only add balancesOf if user is connected
-    if (userAddress) {
-      contracts.push({
-        address: optionAddress as Address,
-        abi: optionContract.abi as readonly unknown[],
-        functionName: "balancesOf" as const,
-        args: [userAddress],
-      });
-    }
-  }
+  const contracts = enabled
+    ? ([
+        { address, abi: optionAbi, functionName: "details" as const },
+        { address, abi: optionAbi, functionName: "name" as const },
+        ...(userAddress
+          ? ([{ address, abi: optionAbi, functionName: "balancesOf" as const, args: [userAddress] }] as const)
+          : []),
+      ] as const)
+    : [];
 
   const { data, isLoading, error, refetch } = useReadContracts({
-    contracts: contracts as any,
-    query: {
-      enabled: contracts.length > 0,
-    },
+    contracts: contracts as readonly unknown[] as never,
+    query: { enabled: contracts.length > 0 },
   });
 
-  // Parse results
-  if (!data || data.length === 0) {
-    return {
-      data: null,
-      isLoading,
-      error,
-      refetch,
-    };
-  }
+  const results = data as Array<{ status: string; result?: unknown }> | undefined;
+  if (!results || results.length === 0) return { data: null, isLoading, error, refetch };
 
-  const [detailsResult, nameResult, balancesResult] = data;
+  const [detailsResult, nameResult, balancesResult] = results;
 
-  console.log("=== useOption Debug ===");
-  console.log("optionAddress:", optionAddress);
-  console.log("userAddress:", userAddress);
-  console.log("detailsResult:", detailsResult);
-  console.log("nameResult:", nameResult);
-  console.log("balancesResult:", balancesResult);
-
-  // Check for errors in individual calls
   if (detailsResult?.status === "failure") {
-    console.error("Details call failed:", detailsResult);
-    return {
-      data: null,
-      isLoading,
-      error: new Error("Failed to fetch option details"),
-      refetch,
-    };
+    return { data: null, isLoading, error: new Error("Failed to fetch option details"), refetch };
   }
 
   const details = detailsResult?.result as OptionInfo | undefined;
   const name = nameResult?.result as string | undefined;
   const balances = balancesResult?.result as Balances | undefined;
 
-  console.log("Parsed balances:", balances);
-
-  if (!details) {
-    return {
-      data: null,
-      isLoading,
-      error,
-      refetch,
-    };
-  }
+  if (!details) return { data: null, isLoading, error, refetch };
 
   const optionDetails: OptionDetails = {
     ...details,
@@ -135,12 +70,7 @@ export function useOption(optionAddress: Address | undefined) {
     formattedName: formatOptionName(name ?? ""),
   };
 
-  return {
-    data: optionDetails,
-    isLoading,
-    error,
-    refetch,
-  };
+  return { data: optionDetails, isLoading, error, refetch };
 }
 
 export default useOption;

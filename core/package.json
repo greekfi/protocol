@@ -40,6 +40,7 @@
     "@types/fastestsmallesttextencoderdecoder": "^1.0.2",
     "@types/node": "~25.6.0",
     "@types/react": "^19.2.14",
+    "@wagmi/cli": "^2.10.0",
     "abitype": "1.2.3",
     "autoprefixer": "~10.5.0",
     "baseline-browser-mapping": "^2.10.20",

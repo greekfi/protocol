@@ -1,6 +1,8 @@
 import { Martel_Sans } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "~~/styles/globals.css";
+import { ThemeProvider } from "next-themes";
+import { Providers } from "./providers";
 
 const martelSans = Martel_Sans({
   subsets: ["latin"],
@@ -18,7 +20,6 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning lang="en" className={martelSans.variable}>
       <head>
-        {/* <link rel="icon" href="/favicon.ico" sizes="any" /> */}
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/helmet-white.png" />
         <meta name="application-name" content="Greek Contract" />
@@ -32,7 +33,13 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
         <meta name="msapplication-tap-highlight" content="no" />
         <meta name="theme-color" content="#000000" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <Providers>
+            <div className="min-h-screen">{children}</div>
+          </Providers>
+        </ThemeProvider>
+      </body>
     </html>
   );
 };

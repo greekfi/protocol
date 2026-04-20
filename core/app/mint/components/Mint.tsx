@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { MAX_UINT256 } from "../hooks/constants";
 import { useApproveERC20 } from "../hooks/transactions/useApproveERC20";
-import { useApproveFactory } from "../hooks/transactions/useApproveFactory";
-import { useMintTransaction } from "../hooks/transactions/useMintTransaction";
 import { useAllowances } from "../hooks/useAllowances";
 import { useContracts } from "../hooks/useContracts";
 import { useOption } from "../hooks/useOption";
 import { Address, formatUnits, parseUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
+import { useWriteFactoryApprove, useWriteOptionMint } from "~~/generated";
 
 interface MintActionCleanProps {
   optionAddress: Address | undefined;
@@ -29,8 +29,8 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
 
   // Transaction executors (pure writes)
   const approveERC20 = useApproveERC20();
-  const approveFactory = useApproveFactory();
-  const mintTx = useMintTransaction();
+  const { writeContractAsync: approveFactoryToken } = useWriteFactoryApprove();
+  const { writeContractAsync: mintOption } = useWriteOptionMint();
 
   // Wait for transaction
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
@@ -89,13 +89,16 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
 
       // Step 2: Approve factory if needed
       if (allowances.needsFactoryApproval) {
-        const hash = await approveFactory.approve(option.collateral.address_);
+        const hash = await approveFactoryToken({
+          address: factoryAddress,
+          args: [option.collateral.address_, MAX_UINT256],
+        });
         setTxHash(hash);
         return;
       }
 
       // Step 3: Mint
-      const hash = await mintTx.mint(optionAddress, wei);
+      const hash = await mintOption({ address: optionAddress, args: [wei] });
       setTxHash(hash);
     } catch (err: any) {
       setStatus("error");
@@ -155,9 +158,9 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
           <span className="text-blue-300">{formatBalance(option.balances?.option, option.collateral.decimals)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Redemption Balance</span>
+          <span className="text-gray-400">Short Balance</span>
           <span className="text-blue-300">
-            {formatBalance(option.balances?.redemption, option.collateral.decimals)}
+            {formatBalance(option.balances?.coll, option.collateral.decimals)}
           </span>
         </div>
       </div>

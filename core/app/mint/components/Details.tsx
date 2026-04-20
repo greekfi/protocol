@@ -39,9 +39,9 @@ const ContractDetails = ({ details }: { details: OptionDetails | null }) => {
         <div>
           Balance Long: {formatBalance(details.balances?.option, optionDecimals)} {details.collateral.symbol}
         </div>
-        <div>Redemption Address: {details.redemption}</div>
+        <div>Coll Address: {details.coll}</div>
         <div>
-          Balance Redemption: {formatBalance(details.balances?.redemption, optionDecimals)} {details.collateral.symbol}
+          Balance Short (Coll): {formatBalance(details.balances?.coll, optionDecimals)} {details.collateral.symbol}
         </div>
         <div>Collateral Name: {details.collateral.name}</div>
         <div>Collateral Address: {details.collateral.address_}</div>

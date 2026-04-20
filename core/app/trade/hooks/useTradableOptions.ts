@@ -4,7 +4,7 @@ import { useChainId, usePublicClient } from "wagmi";
 import deployedContracts from "~~/abi/deployedContracts";
 
 const OPTION_CREATED_EVENT = parseAbiItem(
-  "event OptionCreated(address indexed collateral, address indexed consideration, uint40 expirationDate, uint96 strike, bool isPut, address indexed option, address redemption)",
+  "event OptionCreated(address indexed collateral, address indexed consideration, uint40 expirationDate, uint96 strike, bool isPut, bool isEuro, address oracle, address indexed option, address coll)",
 );
 
 export interface TradableOption {
@@ -60,7 +60,7 @@ export function useTradableOptions(underlyingToken: string | null) {
           expiration: BigInt(log.args.expirationDate || 0),
           strike: BigInt(log.args.strike || 0),
           isPut: log.args.isPut as boolean,
-          redemptionAddress: log.args.redemption as string,
+          redemptionAddress: log.args.coll as string,
         }));
 
       // Filter out expired options
