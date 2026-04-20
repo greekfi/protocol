@@ -23,7 +23,8 @@
     "dev:direct": "yarn workspace @greek/market-maker dev:direct",
     "dev:bebop": "yarn workspace @greek/market-maker dev:bebop",
     "dev:relay": "yarn workspace @greek/market-maker dev:relay",
-    "fetch-metadata": "yarn workspace @greek/market-maker fetch-metadata"
+    "fetch-metadata": "yarn workspace @greek/market-maker fetch-metadata",
+    "docs:gen": "yarn workspace @greek/foundry docs:gen && cd docs && node scripts/gen-reference.mjs"
   },
   "devDependencies": {
     "husky": "~9.1.7",

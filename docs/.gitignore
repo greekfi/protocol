@@ -11,6 +11,10 @@
 .docusaurus
 .cache-loader
 
+# Auto-generated contract reference (run `yarn docs:gen` at the repo root to refresh).
+# Commit the source NatSpec, not the derived pages.
+/docs/reference/generated/
+
 # Misc
 .DS_Store
 .env.local

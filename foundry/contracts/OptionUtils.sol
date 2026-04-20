@@ -2,18 +2,24 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title OptionUtils
- * @notice Shared utility library for Option and Redemption contracts
- * @dev Pure functions for string formatting (strike prices, dates) and math helpers.
- *      Used by both Option.sol and Redemption.sol to avoid code duplication
- *      and reduce clone template deployment costs.
+ * @title  OptionUtils
+ * @author Greek.fi
+ * @notice Pure-function library used by {Option} and {Collateral} to render human-readable
+ *         token names ("OPT-WETH-USDC-3000-2025-12-26") without blowing up the clone deployment cost.
+ * @dev    Contains no state. All functions are `internal pure`. Three concerns:
+ *
+ *         - `uint2str`      — decimal → ASCII conversion.
+ *         - `strike2str`    — 18-decimal fixed point → human string, with sensible rounding and
+ *                             scientific notation for very small values (e.g. inverted put strikes).
+ *         - `epoch2str`     — unix timestamp → `YYYY-MM-DD` (UTC).
+ *
+ *         The helpers live here (not inline in Option / Collateral) so every option-pair clone
+ *         shares a single deployed copy of the rendering logic.
  */
 library OptionUtils {
-    /**
-     * @notice Converts a uint256 to its decimal string representation
-     * @param _i The number to convert
-     * @return str The string representation
-     */
+    /// @notice Convert a uint to its base-10 ASCII representation.
+    /// @param _i The number to convert.
+    /// @return str The decimal string (e.g. `42 → "42"`; `0 → "0"`).
     function uint2str(uint256 _i) internal pure returns (string memory str) {
         if (_i == 0) {
             return "0";
@@ -36,13 +42,16 @@ library OptionUtils {
         str = string(bstr);
     }
 
-    /**
-     * @notice Converts an 18-decimal strike price to a human-readable string
-     * @dev Handles whole numbers, decimals (up to 4 significant digits),
-     *      and scientific notation for very small values.
-     * @param _i Strike price in 18-decimal fixed-point
-     * @return str Human-readable string (e.g. "3000", "0.0005", "1e-9")
-     */
+    /// @notice Render an 18-decimal fixed-point strike as a compact, human-readable string.
+    /// @dev    Rules applied, in order:
+    ///         1. No fractional part → print the integer.
+    ///         2. Whole number with ≥4 leading fractional zeros → drop the noise (e.g. floating-point
+    ///            artifacts from `1e36 / strike` on puts) and print only the integer.
+    ///         3. Whole == 0 and >8 leading zeros → scientific notation (`"1e-9"`).
+    ///         4. Otherwise → decimal string, rounded to 4 significant fractional digits and trimmed
+    ///            of trailing zeros. Overflow on rounding (e.g. `0.99995 → 1`) is handled.
+    /// @param _i Strike price in 18-decimal fixed-point.
+    /// @return str Human-readable strike (e.g. `"3000"`, `"0.0005"`, `"1e-9"`).
     function strike2str(uint256 _i) internal pure returns (string memory str) {
         uint256 whole = _i / 1e18;
         uint256 fractional = _i % 1e18;
@@ -144,11 +153,12 @@ library OptionUtils {
         return string(abi.encodePacked(uint2str(whole), ".", string(fracResult)));
     }
 
-    /**
-     * @notice Converts a unix timestamp to ISO date string YYYY-MM-DD
-     * @param _i Unix timestamp
-     * @return str Date string
-     */
+    /// @notice Convert a unix timestamp to a `YYYY-MM-DD` (UTC) string.
+    /// @dev    Uses the proleptic Gregorian calendar including leap-year rules (divisible by 4 except
+    ///         centuries, which must be divisible by 400). Independent of EVM time zone (block.timestamp
+    ///         is always UTC anyway).
+    /// @param _i Unix timestamp (seconds since 1970-01-01).
+    /// @return str Date string (e.g. `1704067200 → "2024-01-01"`).
     function epoch2str(uint256 _i) internal pure returns (string memory str) {
         // Convert timestamp to days since epoch
         uint256 daysSinceEpoch = _i / 86400; // 86400 seconds per day
@@ -199,6 +209,9 @@ library OptionUtils {
         );
     }
 
+    /// @notice Gregorian leap-year test.
+    /// @param year Four-digit year.
+    /// @return `true` if `year` is a leap year.
     function isLeapYear(uint256 year) internal pure returns (bool) {
         if (year % 4 != 0) return false;
         if (year % 100 != 0) return true;

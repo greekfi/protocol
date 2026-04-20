@@ -12,6 +12,16 @@ evm_version = "osaka"
 [lint]
 exclude_lints = ["unsafe-cheatcode", "unwrapped-modifier-logic", "unsafe-typecast"]
 
+# `forge doc` — renders NatSpec on contracts in `contracts/` into markdown.
+#
+# Scope via --include/--exclude on the CLI rather than globs here, since there's no
+# native toml field; the yarn script in package.json passes the right flags.
+[doc]
+out = "docs"
+title = "Greek.fi Protocol — Contract Reference"
+ignore = ["contracts/libraries", "contracts/mocks", "contracts/future"]
+repository = "https://github.com/greekfi/protocol"
+
 
 [rpc_endpoints]
 # Deploy-facing RPCs use public endpoints (no API-key IP whitelist).

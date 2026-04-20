@@ -20,11 +20,38 @@ import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
 using SafeERC20 for IERC20;
 
-/// @title YieldVault
-/// @notice ERC4626 vault for option collateral. Depositors provide collateral and earn yield from premiums.
-/// @dev ERC-7540 async redeems (collateral may be locked in active options).
-///      EIP-1271 contract signatures allow operators to act as Bebop taker on behalf of the vault.
-///      Auto-mint enabled: Bebop settlement transferFrom auto-mints options from vault collateral.
+/**
+ * @title  YieldVault — operator-managed option-writing vault
+ * @author Greek.fi
+ * @notice ERC4626 vault that accepts collateral (e.g. WETH), writes options against it, and
+ *         earns yield from the premiums collected on each trade. Depositors share in that yield
+ *         pro-rata via vault shares.
+ *
+ *         ### Architecture
+ *
+ *         - **ERC-4626** for the share accounting.
+ *         - **ERC-7540** async redeems — vault collateral may be locked inside live options, so
+ *           withdrawals go through `requestRedeem → owner fulfillRedeem → redeem`. The synchronous
+ *           `withdraw` / `previewRedeem` paths are intentionally disabled.
+ *         - **ERC-1271** contract signatures — the vault can act as a Bebop taker; authorised
+ *           operators sign RFQ quotes on its behalf.
+ *         - **Operator registry** — `setOperator` delegates the vault's trading powers (`execute`,
+ *           `burn`, `redeemExpired`, `removeOption`, signing). The vault owner is always authorised.
+ *         - **Auto-mint** — with `setupFactoryApproval` + `enableAutoMintRedeem`, selling an option
+ *             inside a Bebop `swapSingle` automatically mints it against vault collateral.
+ *
+ *         ### Flow
+ *
+ *         1. Users `deposit(asset, shares)` — receive vault shares.
+ *         2. Operator routes RFQ trades through {execute} — Bebop settlement pulls options from the
+ *            vault, auto-minting against idle collateral.
+ *         3. After expiry, operator calls {redeemExpired} to recover leftover collateral + any
+ *            consideration earned. {burn} is used to close matched pairs pre-expiry.
+ *         4. Users who want out call {requestRedeem}. Once the operator has idle collateral, they
+ *            call {fulfillRedeem} to snapshot the asset value. The user then claims via {redeem}.
+ *
+ * @dev    Deployments are per-collateral (one vault for WETH, another for USDC, etc.).
+ */
 contract YieldVault is
     ERC4626,
     ERC165,
@@ -39,39 +66,59 @@ contract YieldVault is
 
     // ============ ERRORS ============
 
+    /// @notice Thrown when a required address is zero.
     error InvalidAddress();
+    /// @notice Thrown when a mutation is called with `amount == 0`.
     error ZeroAmount();
+    /// @notice Thrown when the caller is neither owner nor an approved operator.
     error Unauthorized();
+    /// @notice Thrown when idle collateral is insufficient to fulfill a redeem request.
     error InsufficientIdle();
+    /// @notice Thrown when a user tries to claim more shares than they have fulfilled.
     error InsufficientClaimable();
+    /// @notice Thrown when synchronous `withdraw` is called — use the async redeem flow.
     error WithdrawDisabled();
+    /// @notice Thrown when a preview function requiring a sync path is called in async-only mode.
     error AsyncOnly();
 
     // ============ EVENTS ============
 
+    /// @notice Emitted when an option is added to the active set via {addOption}.
     event OptionAdded(address indexed option);
+    /// @notice Emitted when an option is removed from the active set via {removeOption} or {cleanupOptions}.
     event OptionRemoved(address indexed option);
+    /// @notice Emitted when the vault pair-redeems held Option + Collateral tokens via {burn}.
     event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ STATE ============
 
+    /// @notice Factory used when configuring auto-mint approvals.
     IFactory public factory;
+    /// @notice Options this vault has written / is tracking. Drives {totalCommitted} accounting.
     address[] public activeOptions;
 
     // ============ ASYNC REDEEM STATE ============
 
+    /// @dev Controller → shares awaiting fulfillment.
     mapping(address => uint256) private _pendingRedeemShares;
+    /// @dev Controller → shares that have been fulfilled and can now be claimed.
     mapping(address => uint256) private _claimableRedeemShares;
+    /// @dev Controller → asset amount earmarked at fulfillment (price snapshot).
     mapping(address => uint256) private _claimableRedeemAssets;
+    /// @dev Sum of all `_claimableRedeemShares` across controllers — subtracted from `totalSupply`
+    ///      in the share math so claimable shares don't dilute active depositors.
     uint256 private _totalClaimableShares;
+    /// @dev Sum of all `_claimableRedeemAssets` — subtracted from balance in `totalAssets`.
     uint256 private _totalClaimableAssets;
 
     // ============ OPERATORS ============
 
+    /// @dev `_operators[controller][operator] -> bool`.
     mapping(address => mapping(address => bool)) private _operators;
 
     // ============ MODIFIERS ============
 
+    /// @dev Permits owner + operators approved *by the owner*.
     modifier onlyOperatorOrOwner() {
         if (msg.sender != owner() && !_operators[owner()][msg.sender]) revert Unauthorized();
         _;
@@ -79,10 +126,11 @@ contract YieldVault is
 
     // ============ CONSTRUCTOR ============
 
-    /// @param collateral_ Underlying collateral token (e.g. WETH)
-    /// @param name_ Vault share token name
-    /// @param symbol_ Vault share token symbol
-    /// @param factory_ OptionFactory address
+    /// @notice Deploy a vault for a single collateral asset.
+    /// @param collateral_ Underlying ERC20 (e.g. WETH).
+    /// @param name_       Vault share token name.
+    /// @param symbol_     Vault share token symbol.
+    /// @param factory_    {Factory} used for auto-mint approvals (non-zero).
     constructor(IERC20 collateral_, string memory name_, string memory symbol_, address factory_)
         ERC4626(collateral_)
         ERC20(name_, symbol_)
@@ -94,55 +142,67 @@ contract YieldVault is
 
     // ============ ERC4626 OVERRIDES ============
 
-    /// @dev Virtual share offset to prevent first-depositor attack
+    /// @dev Virtual-share offset prevents first-depositor inflation attacks (OZ ERC-4626 convention).
     function _decimalsOffset() internal pure override returns (uint8) {
         return 3;
     }
 
-    /// @notice Total assets actively backing shares (excludes assets earmarked for claimable redeems)
+    /// @notice Assets actively backing shares: idle balance + collateral committed to live options,
+    ///         minus amounts earmarked for fulfilled (but not yet claimed) redeems.
     function totalAssets() public view override returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) + totalCommitted() - _totalClaimableAssets;
     }
 
-    /// @dev Active supply excludes claimable shares (locked in vault, awaiting claim)
+    /// @dev Active share supply — excludes shares already locked in the vault as claimable redeems,
+    ///      so fulfilled-but-unclaimed redeems don't inflate the price per share.
     function _activeSupply() internal view returns (uint256) {
         return totalSupply() - _totalClaimableShares;
     }
 
+    /// @inheritdoc ERC4626
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256) {
         return assets.mulDiv(_activeSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 
+    /// @inheritdoc ERC4626
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
         return shares.mulDiv(totalAssets() + 1, _activeSupply() + 10 ** _decimalsOffset(), rounding);
     }
 
+    /// @inheritdoc ERC4626
+    /// @dev Deposits are disabled while paused.
     function maxDeposit(address) public view override returns (uint256) {
         return paused() ? 0 : type(uint256).max;
     }
 
+    /// @inheritdoc ERC4626
+    /// @dev Mints are disabled while paused.
     function maxMint(address) public view override returns (uint256) {
         return paused() ? 0 : type(uint256).max;
     }
 
-    /// @notice Withdraw disabled — use requestRedeem + redeem
+    /// @notice Synchronous withdraw is disabled in favour of the ERC-7540 flow.
+    /// @dev Returns 0 so interfaces don't offer it as an option.
     function maxWithdraw(address) public pure override returns (uint256) {
         return 0;
     }
 
-    /// @notice Returns claimable shares (fulfilled redeem requests ready to claim)
+    /// @notice Shares that `controller` has had fulfilled and can now claim via {redeem}.
     function maxRedeem(address controller) public view override returns (uint256) {
         return _claimableRedeemShares[controller];
     }
 
+    /// @notice Preview for synchronous redeems is not defined — use the async flow.
     function previewRedeem(uint256) public pure override returns (uint256) {
         revert AsyncOnly();
     }
 
+    /// @notice Preview for synchronous withdraws is not defined — use the async flow.
     function previewWithdraw(uint256) public pure override returns (uint256) {
         revert AsyncOnly();
     }
 
+    /// @notice Synchronous withdraw is disabled.
     function withdraw(uint256, address, address) public pure override returns (uint256) {
         revert WithdrawDisabled();
     }
@@ -152,8 +212,10 @@ contract YieldVault is
     // Flow: requestRedeem (lock shares) → owner fulfillRedeem (snapshot price) → redeem (claim assets)
     //
 
-    /// @notice Request to redeem shares. Locks shares in vault until fulfilled.
     /// @inheritdoc IERC7540Redeem
+    /// @notice Step 1/3 of the async redeem: lock `shares` in the vault until an operator fulfils.
+    /// @dev    Shares move from `owner` into `address(this)`. Caller can be `owner` directly or an
+    ///         operator approved via {setOperator}. Returns `0` (synchronous request id not used).
     function requestRedeem(uint256 shares, address controller, address owner)
         external
         override
@@ -170,7 +232,9 @@ contract YieldVault is
         return 0;
     }
 
-    /// @notice Fulfill a pending redeem request, snapshotting the asset value at current price
+    /// @notice Step 2/3: owner fulfils a pending request, snapshotting its asset value at the
+    ///         current share price. Requires idle collateral ≥ quoted assets.
+    /// @param controller Controller whose pending request is being fulfilled.
     function fulfillRedeem(address controller) public onlyOwner nonReentrant {
         uint256 shares = _pendingRedeemShares[controller];
         if (shares == 0) revert ZeroAmount();
@@ -187,14 +251,22 @@ contract YieldVault is
         _totalClaimableAssets += assets;
     }
 
-    /// @notice Batch fulfill multiple pending redeem requests
+    /// @notice Batch {fulfillRedeem} — useful when rebalancing the vault periodically.
+    /// @param controllers Controllers whose requests should be fulfilled.
     function fulfillRedeems(address[] calldata controllers) external onlyOwner {
         for (uint256 i = 0; i < controllers.length; i++) {
             fulfillRedeem(controllers[i]);
         }
     }
 
-    /// @notice Claim assets from a fulfilled redeem request. Burns shares, transfers assets.
+    /// @notice Step 3/3: claim the fulfilled redeem. Burns shares, transfers assets to `receiver`.
+    /// @dev    Caller can be `controller` directly or an operator approved by `controller`.
+    ///         `assets` are computed pro-rata in case the controller is partially claiming a larger
+    ///         fulfilled bucket.
+    /// @param shares     Shares to claim (≤ `maxRedeem(controller)`).
+    /// @param receiver   Address receiving the underlying collateral.
+    /// @param controller Controller whose claimable bucket is being drawn from.
+    /// @return assets    Underlying collateral paid out.
     function redeem(uint256 shares, address receiver, address controller)
         public
         override
@@ -233,6 +305,7 @@ contract YieldVault is
     // ============ OPERATORS (ERC-7540) ============
 
     /// @inheritdoc IERC7540Operator
+    /// @dev Self-approval is rejected; returns `true` on success.
     function setOperator(address operator, bool approved) external override returns (bool) {
         if (operator == msg.sender) revert InvalidAddress();
         _operators[msg.sender][operator] = approved;
@@ -247,7 +320,17 @@ contract YieldVault is
 
     // ============ OPERATOR ACTIONS ============
 
-    /// @notice Execute a call from the vault (e.g. BebopSettlement.swapSingle for RFQ-T)
+    /// @notice Execute an arbitrary call from the vault. Used to route RFQ trades (e.g. calling
+    ///         `BebopSettlement.swapSingle` with the vault as taker).
+    /// @dev    Owner or owner-approved operator only. Bubbles up the callee's revert reason.
+    /// @param target The contract to call.
+    /// @param data   Raw calldata.
+    /// @return result Raw return data.
+    ///
+    /// Example:
+    /// ```solidity
+    /// vault.execute(BEBOP_SETTLEMENT, abi.encodeCall(IBebop.swapSingle, (order, sig)));
+    /// ```
     function execute(address target, bytes calldata data) external onlyOperatorOrOwner returns (bytes memory) {
         (bool ok, bytes memory result) = target.call(data);
         if (!ok) {
@@ -256,14 +339,19 @@ contract YieldVault is
         return result;
     }
 
-    /// @notice Pair-redeem option + redemption tokens held by vault to recover collateral (pre-expiry)
+    /// @notice Pre-expiry: burn matched Option + Collateral tokens held by the vault to recover
+    ///         the underlying collateral (calls {Option.redeem}).
+    /// @param option Option contract whose Option + Collateral are paired in the vault.
+    /// @param amount Collateral-denominated pair amount to redeem.
     function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
         if (amount == 0) revert ZeroAmount();
         IOption(option).redeem(amount);
         emit OptionsBurned(option, amount);
     }
 
-    /// @notice Redeem expired Collateral tokens to recover collateral (post-expiry)
+    /// @notice Post-expiry: redeem all Collateral tokens this vault holds for `option`, pulling
+    ///         leftover collateral + any consideration earned during exercise.
+    /// @param option Option contract whose short side is held by the vault.
     function redeemExpired(address option) external onlyOperatorOrOwner {
         address r = IOption(option).coll();
         uint256 balance = IERC20(r).balanceOf(address(this));
@@ -271,7 +359,9 @@ contract YieldVault is
         ICollateral(r).redeem(address(this), balance);
     }
 
-    /// @notice Remove an option from active tracking (operator or owner)
+    /// @notice Untrack an option (does not affect token balances).
+    /// @dev    Swap-and-pop — ordering is not preserved. Called automatically by {cleanupOptions}
+    ///         once the option has expired and the vault's short-side balance is zero.
     function removeOption(address option) external onlyOperatorOrOwner {
         uint256 len = activeOptions.length;
         for (uint256 i = 0; i < len; i++) {
@@ -286,7 +376,11 @@ contract YieldVault is
 
     // ============ EIP-1271: CONTRACT SIGNATURE ============
 
-    /// @notice Validates signatures for Bebop settlement — authorized operators can sign on behalf of vault
+    /// @notice Let contracts (e.g. Bebop settlement) verify the vault's signature. Accepts any
+    ///         ECDSA signature produced by the owner or an owner-approved operator.
+    /// @param hash      Message hash being verified.
+    /// @param signature 65-byte ECDSA signature.
+    /// @return magicValue `0x1626ba7e` on success, `0xffffffff` otherwise (EIP-1271 convention).
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns (bytes4) {
         address signer = ECDSA.recover(hash, signature);
         if (signer == owner() || _operators[owner()][signer]) {
@@ -297,6 +391,7 @@ contract YieldVault is
 
     // ============ ERC-165 ============
 
+    /// @inheritdoc ERC165
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
         return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
             || interfaceId == type(IERC1271).interfaceId || super.supportsInterface(interfaceId);
@@ -304,25 +399,34 @@ contract YieldVault is
 
     // ============ ADMIN ============
 
-    /// @notice Setup factory approvals so auto-mint can pull collateral
+    /// @notice One-time setup: grant the factory infinite allowance over the vault's collateral AND
+    ///         record the same allowance in the factory's own allowance registry.
+    /// @dev    Required before auto-mint can pull collateral inside a settlement call.
     function setupFactoryApproval() external onlyOwner {
         IERC20(asset()).forceApprove(address(factory), type(uint256).max);
         factory.approve(asset(), type(uint256).max);
     }
 
-    /// @notice Enable auto-mint/redeem on the factory for this vault
+    /// @notice Opt the vault into {Option}'s auto-mint-on-transfer / auto-redeem-on-receive hooks.
+    /// @param enabled `true` to opt in, `false` to opt out.
     function enableAutoMintRedeem(bool enabled) external onlyOwner {
         factory.enableAutoMintRedeem(enabled);
     }
 
-    /// @notice Approve any token for a spender (e.g. collateral for Permit2 so vault can buy options)
+    /// @notice Approve `spender` to pull `amount` of `token` from the vault.
+    /// @dev    Used to configure Permit2 / Bebop balance manager approvals for settlement flows.
+    /// @param token   ERC20 to approve.
+    /// @param spender Address being approved.
+    /// @param amount  Allowance (use `type(uint256).max` for infinite).
     function approveToken(address token, address spender, uint256 amount) external onlyOwner {
         IERC20(token).forceApprove(spender, amount);
     }
 
-    /// @notice Add an option and approve it for a settlement spender (e.g. Permit2, BalanceManager)
-    /// @param option Option contract address
-    /// @param spender Settlement contract to approve for pulling option tokens (address(0) to skip approval)
+    /// @notice Start tracking `option` in `activeOptions` and optionally approve a settlement
+    ///         contract to pull the vault's Option tokens.
+    /// @param option   Option contract to activate.
+    /// @param spender  Settlement contract receiving an infinite Option-token approval, or
+    ///                 `address(0)` to skip approvals (the option is just tracked).
     function addOption(address option, address spender) external onlyOwner {
         _activateOption(option);
         if (spender != address(0)) {
@@ -330,7 +434,9 @@ contract YieldVault is
         }
     }
 
-    /// @notice Remove expired/settled options from activeOptions to save gas on totalCommitted()
+    /// @notice Untrack options whose short-side balance is zero *and* which are past expiry.
+    /// @dev    Publicly callable — anyone can pay the gas to compact the active set. Keeps
+    ///         {totalCommitted} cheap over time.
     function cleanupOptions() external {
         uint256 len = activeOptions.length;
         uint256 i = 0;
@@ -347,39 +453,50 @@ contract YieldVault is
         }
     }
 
+    /// @notice Pause deposits and mints. Existing deposits continue to earn and can still redeem.
     function pause() external onlyOwner {
         _pause();
     }
 
+    /// @notice Reverse of {pause}.
     function unpause() external onlyOwner {
         _unpause();
     }
 
     // ============ VIEW ============
 
-    /// @notice Total collateral committed across all active options
+    /// @notice Sum of the vault's Collateral-token balances across every tracked option —
+    ///         i.e. collateral currently locked backing live short positions.
     function totalCommitted() public view returns (uint256 total) {
         for (uint256 i = 0; i < activeOptions.length; i++) {
             total += IERC20(IOption(activeOptions[i]).coll()).balanceOf(address(this));
         }
     }
 
-    /// @notice Collateral committed to a specific option
+    /// @notice Collateral committed to a single option (Collateral-token balance for that option).
     function committed(address option) public view returns (uint256) {
         return IERC20(IOption(option).coll()).balanceOf(address(this));
     }
 
-    /// @notice Idle collateral available (not committed to options, not earmarked for redeems)
+    /// @notice Collateral sitting in the vault that is free to use (idle balance minus earmarked redeems).
     function idleCollateral() external view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this)) - _totalClaimableAssets;
     }
 
+    /// @notice Share of total assets currently committed to live options, in basis points.
+    /// @return 0 when the vault is empty, otherwise `totalCommitted / totalAssets * 1e4`.
     function utilizationBps() external view returns (uint256) {
         uint256 total = totalAssets();
         if (total == 0) return 0;
         return (totalCommitted() * 10000) / total;
     }
 
+    /// @notice One-shot snapshot for frontends.
+    /// @return totalAssets_    Total asset value ({totalAssets}).
+    /// @return totalShares_    Active share supply (excludes claimable redeems).
+    /// @return idle_           Idle asset balance (excludes earmarked redeems).
+    /// @return committed_      Assets committed to live options.
+    /// @return utilizationBps_ committed_ / totalAssets_ * 1e4.
     function getVaultStats()
         external
         view
@@ -394,6 +511,7 @@ contract YieldVault is
 
     // ============ INTERNAL ============
 
+    /// @dev Idempotently append `option` to `activeOptions`.
     function _activateOption(address option) internal {
         for (uint256 i = 0; i < activeOptions.length; i++) {
             if (activeOptions[i] == option) return;

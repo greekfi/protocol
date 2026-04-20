@@ -27,17 +27,26 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+          # Caching "nightly" by its string name pins the first nightly CI ever
+          # saw, so forge fmt / build start drifting from what local devs run.
+          # Fetch fresh on every run.
+          cache: false
 
       - name: Check formatting
         working-directory: foundry
+        env:
+          FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
         run: forge fmt --check
 
       - name: Build
         working-directory: foundry
+        env:
+          FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
         run: forge build
 
       - name: Test
         working-directory: foundry
         env:
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
         run: forge test

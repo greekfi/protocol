@@ -15,45 +15,74 @@ interface IUniswapV3Pool {
         returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
 }
 
-/// @title UniV3Oracle
-/// @notice Settlement oracle backed by a Uniswap v3 pool's TWAP observation buffer.
-/// @dev Reads `pool.observe()` to compute an arithmetic-mean tick over a configurable window
-///      ending at the option's expiration. The window provides manipulation resistance:
-///      shorter windows are cheaper to poison, longer windows require more stored observations.
+/// @title  UniV3Oracle — Uniswap v3 TWAP settlement oracle
+/// @author Greek.fi
+/// @notice `IPriceOracle` implementation that derives its settlement price from a Uniswap v3 pool's
+///         arithmetic-mean tick over a configurable window ending at the option's expiration.
+/// @dev    One oracle instance per option: constructed with a pool, the ordered collateral /
+///         consideration pair, the expiration timestamp, and the TWAP window size. After expiry,
+///         any caller may run {settle} to latch the price forever.
 ///
-///      Price output semantics: 18-decimal fixed point, "consideration per collateral".
-///      Matches the strike encoding used by OptionFactory / Option / Redemption.
+///         ### Price semantics
 ///
-///      Token ordering: Uniswap pools store tokens in lexicographic order. This contract
-///      handles both cases (collateral as token0 or token1) and inverts the raw ratio when
-///      collateral is token1. Decimal normalization is applied at the end.
+///         `settledPrice` is 18-decimal fixed-point, "consideration per collateral" — the same
+///         encoding used by {Collateral} for strike. Conversion handles:
+///           1. `sqrtPriceX96 → tick → ratio` math on the pool's `observe()` output.
+///           2. Inversion when collateral sits at `token1` (Uniswap orders lexicographically).
+///           3. Decimal normalisation via the tokens' on-chain decimals.
+///
+///         ### Manipulation resistance
+///
+///         A longer TWAP window (`twapWindow_`) is more expensive to poison but requires the pool
+///         to have recorded enough historical observations. If the pool's ring buffer has rolled
+///         over the earliest endpoint (typical when `block.timestamp >> expiration + window`),
+///         `observe()` itself reverts and the oracle cannot settle — callers must invoke {settle}
+///         within `observationCardinality * avg_block_time` of expiry.
 contract UniV3Oracle is IPriceOracle {
     // ============ IMMUTABLES ============
 
+    /// @notice The Uniswap v3 pool providing the TWAP observations.
     IUniswapV3Pool public immutable POOL;
+    /// @notice Collateral token address (one of `POOL.token0()` / `POOL.token1()`).
     address public immutable COLLATERAL;
+    /// @notice Consideration token address (the other of `POOL.token0()` / `POOL.token1()`).
     address public immutable CONSIDERATION;
+    /// @notice Option expiration timestamp (settlement target).
     uint256 public immutable EXPIRATION_TS;
+    /// @notice TWAP window length in seconds.
     uint32 public immutable TWAP_WINDOW;
+    /// @notice Pre-computed: `true` when collateral is `pool.token0()`, `false` when it's `token1`.
     bool public immutable COLLATERAL_IS_TOKEN0;
+    /// @notice Cached `collateral.decimals()`.
     uint8 public immutable COLLATERAL_DECIMALS;
+    /// @notice Cached `consideration.decimals()`.
     uint8 public immutable CONSIDERATION_DECIMALS;
 
     // ============ STATE ============
 
+    /// @notice Latched settlement price (18-decimal fixed point, consideration per collateral).
     uint256 public settledPrice;
+    /// @notice `true` once {settle} has latched `settledPrice`.
     bool public settled;
 
     // ============ ERRORS ============
 
+    /// @notice Thrown in the constructor if `(collateral, consideration)` do not match the pool's pair.
     error PoolTokenMismatch();
+    /// @notice Thrown if {settle} is called before `EXPIRATION_TS`.
     error NotExpired();
+    /// @notice Reserved.
     error AlreadySettled();
+    /// @notice Thrown by {price} if called before {settle} succeeds.
     error NotSettled();
+    /// @notice Thrown if `ago + twapWindow` overflows `uint32` (window can't be fetched safely).
     error WindowTooLong();
 
     // ============ EVENTS ============
 
+    /// @notice Emitted once when the oracle latches its settlement price.
+    /// @param price   Latched 18-decimal fixed-point price.
+    /// @param avgTick Arithmetic-mean tick over the TWAP window.
     event Settled(uint256 price, int24 avgTick);
 
     // ============ CONSTRUCTOR ============
@@ -84,10 +113,12 @@ contract UniV3Oracle is IPriceOracle {
 
     // ============ IPriceOracle ============
 
+    /// @inheritdoc IPriceOracle
     function expiration() external view returns (uint256) {
         return EXPIRATION_TS;
     }
 
+    /// @inheritdoc IPriceOracle
     function isSettled() external view returns (bool) {
         return settled;
     }
@@ -134,6 +165,7 @@ contract UniV3Oracle is IPriceOracle {
         return p;
     }
 
+    /// @inheritdoc IPriceOracle
     function price() external view returns (uint256) {
         if (!settled) revert NotSettled();
         return settledPrice;
