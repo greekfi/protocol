@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "foundry/contracts/**"
+      - "foundry/foundry.toml"
+      - "foundry/remappings.txt"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -20,11 +23,28 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: docs
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Init foundry submodules
+        run: |
+          git -c url."https://github.com/".insteadOf="git@github.com:" \
+            submodule update --init --recursive foundry/lib
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+          # Same rationale as lint.yaml: keying the cache on "nightly"
+          # pins the first nightly seen and silently drifts from local.
+          cache: false
+
+      - name: Generate forge-doc markdown
+        working-directory: foundry
+        env:
+          FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
+        run: forge doc --out docs
 
       - uses: actions/setup-node@v6
         with:
@@ -32,8 +52,17 @@ jobs:
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install docs deps
+        working-directory: docs
+        run: npm ci
+
+      - name: Post-process forge-doc into Docusaurus pages
+        working-directory: docs
+        run: node scripts/gen-reference.mjs
+
+      - name: Build docs
+        working-directory: docs
+        run: npm run build
 
       - uses: actions/configure-pages@v6
 
