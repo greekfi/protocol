@@ -2,14 +2,18 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import type { Pricer } from "../pricing/pricer";
 import type { QuoteResponse, ErrorResponse } from "../pricing/types";
-import { signQuote } from "../bebop/signing";
+import { signQuote, type QuoteData } from "../bebop/signing";
+
+/** Signs a QuoteData without exposing the underlying key. Produced at factory time. */
+export type Signer = (data: QuoteData) => Promise<{ signature: string }>;
 
 export interface QuoteServerConfig {
   port: number;
   pricer: Pricer;
   makerAddress: string;
   chainId: number;
-  privateKey?: string;
+  /** Optional signer closure. If absent, /quote responses omit signature fields. */
+  signer?: Signer;
 }
 
 export class QuoteServer {
@@ -17,13 +21,13 @@ export class QuoteServer {
   private pricer: Pricer;
   private makerAddress: string;
   private chainId: number;
-  private privateKey?: string;
+  private signer?: Signer;
 
   constructor(private config: QuoteServerConfig) {
     this.pricer = config.pricer;
     this.makerAddress = config.makerAddress;
     this.chainId = config.chainId;
-    this.privateKey = config.privateKey;
+    this.signer = config.signer;
 
     this.app.use(cors());
     this.app.use(express.json());
@@ -229,7 +233,7 @@ export class QuoteServer {
       estimatedGas: "150000",
     };
 
-    if (this.privateKey) {
+    if (this.signer) {
       // 256-bit nonce built from timestamp + random — unique per quote without a DB.
       const nonce = (BigInt(Date.now()) << 128n) | BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
       const order = {
@@ -245,29 +249,26 @@ export class QuoteServer {
         receiver: normalizedTaker,
         packed_commands: "0",
       };
-      const { signature } = await signQuote(
-        {
-          chain_id: this.chainId,
-          order_signing_type: "SingleOrder",
-          order_type: "Single",
-          onchain_partner_id: 0,
-          expiry,
-          taker_address: order.taker_address,
-          maker_address: order.maker_address,
-          maker_nonce: order.maker_nonce,
-          receiver: order.receiver,
-          packed_commands: order.packed_commands,
-          quotes: [
-            {
-              taker_token: order.taker_token,
-              maker_token: order.maker_token,
-              taker_amount: order.taker_amount,
-              maker_amount: order.maker_amount,
-            },
-          ],
-        },
-        this.privateKey,
-      );
+      const { signature } = await this.signer({
+        chain_id: this.chainId,
+        order_signing_type: "SingleOrder",
+        order_type: "Single",
+        onchain_partner_id: 0,
+        expiry,
+        taker_address: order.taker_address,
+        maker_address: order.maker_address,
+        maker_nonce: order.maker_nonce,
+        receiver: order.receiver,
+        packed_commands: order.packed_commands,
+        quotes: [
+          {
+            taker_token: order.taker_token,
+            maker_token: order.maker_token,
+            taker_amount: order.taker_amount,
+            maker_amount: order.maker_amount,
+          },
+        ],
+      });
       response.signature = signature;
       response.signScheme = "EIP712";
       response.order = order;
@@ -296,7 +297,17 @@ export function createHttpApi(pricer: Pricer): QuoteServer {
   const makerAddress = process.env.MAKER_ADDRESS || "0x0000000000000000000000000000000000000000";
   const chainId = parseInt(process.env.CHAIN_ID || "1");
   const port = parseInt(process.env.HTTP_PORT || "3010");
-  const privateKey = process.env.PRIVATE_KEY || undefined;
 
-  return new QuoteServer({ pricer, makerAddress, chainId, port, privateKey });
+  // Capture the key in a closure at construction time so it never reaches
+  // QuoteServer (no class property, no config field). Read from env locally
+  // and let GC collect the local binding after the closure is built.
+  let signer: Signer | undefined;
+  {
+    const pk = process.env.PRIVATE_KEY;
+    if (pk) {
+      signer = data => signQuote(data, pk);
+    }
+  }
+
+  return new QuoteServer({ pricer, makerAddress, chainId, port, signer });
 }
