@@ -64,10 +64,12 @@ export async function discoverOptionAddresses(): Promise<string[]> {
   return addresses;
 }
 
-// Option contract ABI (minimal for metadata)
+// Option contract ABI (minimal for metadata).
+// `collateral()` returns the Collateral/redemption contract address
+// (renamed from `redemption()` in the current contract).
 const OPTION_ABI = [
   {
-    name: "redemption",
+    name: "collateral",
     type: "function",
     stateMutability: "view",
     inputs: [],
@@ -126,11 +128,12 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
   const client = getPublicClient();
 
   try {
-    // First get the redemption contract address
+    // First get the Collateral/redemption contract address.
+    // The Option contract exposes collateral() — previously named redemption().
     const redemptionAddress = await client.readContract({
       address: optionAddress as `0x${string}`,
       abi: OPTION_ABI,
-      functionName: "redemption",
+      functionName: "collateral",
     }) as `0x${string}`;
 
     // Then get option parameters from redemption contract
