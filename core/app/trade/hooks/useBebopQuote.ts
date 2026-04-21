@@ -116,7 +116,13 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
           throw new Error(`Bebop API error ${response.status}: ${errorText}`);
         }
         const data = await response.json();
-        console.log("✅ Bebop response");
+        // Bebop returns 200 with {error: "..."} when no quote is available
+        // (missing source/auth, no maker interested, etc.) — treat that as failure.
+        if (data?.error || !data?.buyAmount || !data?.sellAmount) {
+          console.warn("⚠️  Bebop returned no usable quote:", data);
+          throw new Error(data?.error || "Bebop response missing buyAmount/sellAmount");
+        }
+        console.log("✅ Bebop response:", data);
         return { ...data, source: "bebop" };
       } catch (err) {
         console.warn("⚠️  Bebop failed, trying direct:", err instanceof Error ? err.message : err);
