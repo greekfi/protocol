@@ -2,7 +2,12 @@
 
 export interface OptionDeployment {
   factory: string;
-  options: string[];  // Deployed option contract addresses
+  // First block with the factory — starting point for OptionCreated scans.
+  // Falls back to 0 for local chains; required on Arbitrum (~454M) to avoid
+  // RPC timeouts.
+  deploymentBlock?: number;
+  options: string[];  // Optional pre-seeded list; dynamic discovery from
+                      // the factory takes precedence when enabled.
 }
 
 // Option contract addresses per chain
@@ -10,6 +15,7 @@ export const OPTIONS: Record<number, OptionDeployment> = {
   // === ETHEREUM MAINNET ===
   1: {
     factory: "0x...",  // OptionFactory address - update with actual address
+    deploymentBlock: 0,
     options: [
       // Filtered valid WETH call options (28 total)
       "0x93a8f0E3b2103F2DeeA8EcefD86701b41b7810eA",
@@ -96,7 +102,25 @@ export const OPTIONS: Record<number, OptionDeployment> = {
     factory: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     options: [],
   },
+
+  // === BASE ===
+  8453: {
+    factory: "0xbd54f7c909008a11c912a353416d88e5c2f3c4b3",
+    deploymentBlock: 44920107,
+    options: [],
+  },
+
+  // === ARBITRUM ONE ===
+  42161: {
+    factory: "0x20e84883896c36b52f4cdefecca5f10140abf23d",
+    deploymentBlock: 454236303,
+    options: [],
+  },
 };
+
+export function getDeploymentBlock(chainId: number): number {
+  return OPTIONS[chainId]?.deploymentBlock ?? 0;
+}
 
 export function getOptionFactory(chainId: number): string {
   const deployment = OPTIONS[chainId];
