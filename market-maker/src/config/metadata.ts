@@ -48,6 +48,7 @@ type OptionCreatedArgs = {
  */
 export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
   console.log(`[discoverOptions] ENTER`);
+  try {
   const chainId = getCurrentChainId();
   const factory = getOptionFactory(chainId);
   console.log(`[discoverOptions] chain=${chainId} factory=${factory}`);
@@ -57,7 +58,9 @@ export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
   }
 
   const client = getPublicClient();
+  console.log(`[discoverOptions] calling getBlockNumber()`);
   const currentBlock = await client.getBlockNumber();
+  console.log(`[discoverOptions] currentBlock=${currentBlock}`);
   const deploymentBlock = BigInt(getDeploymentBlock(chainId));
 
   const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
@@ -105,6 +108,10 @@ export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
   // Prime the module-level cache so downstream callers skip the RPC reads.
   for (const m of metadata) metadataCache.set(m.address.toLowerCase(), m);
   return metadata;
+  } catch (err) {
+    console.error(`[discoverOptions] THREW:`, err instanceof Error ? err.stack || err.message : err);
+    throw err;
+  }
 }
 
 // Option contract ABI (minimal for metadata).
