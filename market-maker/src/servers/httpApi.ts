@@ -215,7 +215,9 @@ export class QuoteServer {
     }
 
     const quoteId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const expiry = Math.floor(Date.now() / 1000) + 30;
+    // 5-minute quote TTL leaves room for wallet confirmation + tx propagation
+    // without tripping Bebop's OrderExpired() on settlement.
+    const expiry = Math.floor(Date.now() / 1000) + 300;
 
     const response: QuoteResponse = {
       quoteId,
