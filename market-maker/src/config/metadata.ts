@@ -14,7 +14,8 @@ const OPTION_CREATED_EVENT = parseAbiItem(
 
 // RPC getLogs limits: Alchemy/public nodes typically cap at 10k blocks.
 const LOG_CHUNK_SIZE = 10_000n;
-const LOG_CONCURRENCY = 8;
+// 4-way keeps us under PublicNode's per-second burst ceiling on Arbitrum.
+const LOG_CONCURRENCY = 4;
 
 type OptionCreatedArgs = {
   collateral?: string;
