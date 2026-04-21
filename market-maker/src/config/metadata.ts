@@ -47,8 +47,10 @@ type OptionCreatedArgs = {
  * Uses chunked getLogs to work around per-call block range limits.
  */
 export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
+  console.log(`[discoverOptions] ENTER`);
   const chainId = getCurrentChainId();
   const factory = getOptionFactory(chainId);
+  console.log(`[discoverOptions] chain=${chainId} factory=${factory}`);
   if (!factory || factory === "0x..." || factory === "0x") {
     console.warn(`⚠️  No factory configured for chain ${chainId}`);
     return [];
