@@ -14,8 +14,21 @@ const OPTION_CREATED_EVENT = parseAbiItem(
 
 // RPC getLogs limits: Alchemy/public nodes typically cap at 10k blocks.
 const LOG_CHUNK_SIZE = 10_000n;
-// 4-way keeps us under PublicNode's per-second burst ceiling on Arbitrum.
-const LOG_CONCURRENCY = 4;
+// Keep to 2-way to stay under PublicNode's per-second burst ceiling.
+const LOG_CONCURRENCY = 2;
+
+async function getLogsWithRetry<T>(fn: () => Promise<T>, attempts = 4, baseMs = 300): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      await new Promise(r => setTimeout(r, baseMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
 
 type OptionCreatedArgs = {
   collateral?: string;
@@ -59,11 +72,13 @@ export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
     const batch = ranges.slice(i, i + LOG_CONCURRENCY);
     const results = await Promise.all(
       batch.map(r =>
-        client.getLogs({
-          address: factory as `0x${string}`,
-          event: OPTION_CREATED_EVENT,
-          ...r,
-        }),
+        getLogsWithRetry(() =>
+          client.getLogs({
+            address: factory as `0x${string}`,
+            event: OPTION_CREATED_EVENT,
+            ...r,
+          }),
+        ),
       ),
     );
     for (const chunk of results) allLogs.push(...(chunk as Array<{ args: OptionCreatedArgs }>));
