@@ -13,6 +13,20 @@ export type ScaffoldConfig = BaseConfig;
 
 export const DEFAULT_ALCHEMY_API_KEY = "oKxs-03sij-U_N0iOlrSsZFr29-IqbuF";
 
+// Shared Alchemy default key is heavily rate-limited (often 403s). When the user
+// hasn't supplied their own NEXT_PUBLIC_ALCHEMY_API_KEY, fall back to PublicNode —
+// free, no auth, generous limits — instead of a broken Alchemy endpoint.
+const userAlchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+const mainnetRpc = userAlchemyKey
+  ? `https://eth-mainnet.g.alchemy.com/v2/${userAlchemyKey}`
+  : "https://ethereum-rpc.publicnode.com";
+const baseRpc = userAlchemyKey
+  ? `https://base-mainnet.g.alchemy.com/v2/${userAlchemyKey}`
+  : "https://base-rpc.publicnode.com";
+const arbitrumRpc = userAlchemyKey
+  ? `https://arb-mainnet.g.alchemy.com/v2/${userAlchemyKey}`
+  : "https://arbitrum-one-rpc.publicnode.com";
+
 const scaffoldConfig = {
   // The networks on which your DApp is live
   targetNetworks: [chains.foundry, chains.mainnet, chains.base, chains.arbitrum],
@@ -22,16 +36,13 @@ const scaffoldConfig = {
   // You can get your own at https://dashboard.alchemyapi.io
   // It's recommended to store it in an env variable:
   // .env.local for local testing, and in the Vercel/system env config for live apps.
-  alchemyApiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY,
+  alchemyApiKey: userAlchemyKey || DEFAULT_ALCHEMY_API_KEY,
   // If you want to use a different RPC for a specific network, you can add it here.
   // The key is the chain ID, and the value is the HTTP RPC URL
   rpcOverrides: {
-    [chains.mainnet.id]:
-      `https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY}`,
-    [chains.base.id]:
-      `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY}`,
-    [chains.arbitrum.id]:
-      `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY}`,
+    [chains.mainnet.id]: mainnetRpc,
+    [chains.base.id]: baseRpc,
+    [chains.arbitrum.id]: arbitrumRpc,
   },
   // This is ours WalletConnect's default project ID.
   // You can get your own at https://cloud.walletconnect.com
