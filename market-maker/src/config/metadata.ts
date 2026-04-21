@@ -1,14 +1,125 @@
-import { formatUnits } from "viem";
-import { getOptionAddresses } from "./options";
+import { formatUnits, parseAbiItem } from "viem";
+import { getOptionAddresses, getOptionFactory, getDeploymentBlock } from "./options";
 import { getPublicClient, getCurrentChainId } from "./client";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-// Option contract ABI (minimal for metadata)
+// Event signature for OptionCreated on the Factory. Matches the solidity
+// signature in foundry/contracts/Factory.sol. Indexed: collateral,
+// consideration, option.
+const OPTION_CREATED_EVENT = parseAbiItem(
+  "event OptionCreated(address indexed collateral, address indexed consideration, uint40 expirationDate, uint96 strike, bool isPut, bool isEuro, address oracle, address indexed option, address coll)",
+);
+
+// RPC getLogs limits: Alchemy/public nodes typically cap at 10k blocks.
+const LOG_CHUNK_SIZE = 10_000n;
+// Keep to 2-way to stay under PublicNode's per-second burst ceiling.
+const LOG_CONCURRENCY = 2;
+
+async function getLogsWithRetry<T>(fn: () => Promise<T>, attempts = 4, baseMs = 300): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      await new Promise(r => setTimeout(r, baseMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+type OptionCreatedArgs = {
+  collateral?: string;
+  consideration?: string;
+  expirationDate?: bigint | number;
+  strike?: bigint;
+  isPut?: boolean;
+  option?: string;
+  coll?: string;
+};
+
+/**
+ * Discover options by scanning the Factory's OptionCreated events. Returns
+ * full metadata directly from event args — no per-option RPC reads needed
+ * (strike, expiry, isPut, collateral, redemption are all in the event).
+ * Uses chunked getLogs to work around per-call block range limits.
+ */
+export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
+  console.log(`[discoverOptions] ENTER`);
+  try {
+  const chainId = getCurrentChainId();
+  const factory = getOptionFactory(chainId);
+  console.log(`[discoverOptions] chain=${chainId} factory=${factory}`);
+  if (!factory || factory === "0x..." || factory === "0x") {
+    console.warn(`⚠️  No factory configured for chain ${chainId}`);
+    return [];
+  }
+
+  const client = getPublicClient();
+  console.log(`[discoverOptions] calling getBlockNumber()`);
+  const currentBlock = await client.getBlockNumber();
+  console.log(`[discoverOptions] currentBlock=${currentBlock}`);
+  const deploymentBlock = BigInt(getDeploymentBlock(chainId));
+
+  const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
+  for (let b = deploymentBlock; b <= currentBlock; b += LOG_CHUNK_SIZE) {
+    const end = b + LOG_CHUNK_SIZE - 1n > currentBlock ? currentBlock : b + LOG_CHUNK_SIZE - 1n;
+    ranges.push({ fromBlock: b, toBlock: end });
+  }
+  console.log(
+    `[discoverOptions] chain=${chainId} factory=${factory} scan=${deploymentBlock}→${currentBlock} chunks=${ranges.length}`,
+  );
+
+  const allLogs: Array<{ args: OptionCreatedArgs }> = [];
+  for (let i = 0; i < ranges.length; i += LOG_CONCURRENCY) {
+    const batch = ranges.slice(i, i + LOG_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(r =>
+        getLogsWithRetry(() =>
+          client.getLogs({
+            address: factory as `0x${string}`,
+            event: OPTION_CREATED_EVENT,
+            ...r,
+          }),
+        ),
+      ),
+    );
+    for (const chunk of results) allLogs.push(...(chunk as Array<{ args: OptionCreatedArgs }>));
+  }
+
+  // Dedupe by option address; last-writer-wins if the factory somehow emits twice.
+  const byAddress = new Map<string, OptionMetadata>();
+  for (const log of allLogs) {
+    const a = log.args;
+    if (!a.option || !a.coll || !a.collateral) continue;
+    byAddress.set(a.option.toLowerCase(), {
+      address: a.option,
+      redemptionAddress: a.coll,
+      strike: Number(formatUnits(BigInt(a.strike ?? 0n), 18)),
+      expirationTimestamp: Number(a.expirationDate ?? 0),
+      isPut: Boolean(a.isPut),
+      collateralAddress: a.collateral,
+    });
+  }
+  const metadata = Array.from(byAddress.values());
+  console.log(`[discoverOptions] found ${allLogs.length} events, ${metadata.length} unique options`);
+  // Prime the module-level cache so downstream callers skip the RPC reads.
+  for (const m of metadata) metadataCache.set(m.address.toLowerCase(), m);
+  return metadata;
+  } catch (err) {
+    console.error(`[discoverOptions] THREW:`, err instanceof Error ? err.stack || err.message : err);
+    throw err;
+  }
+}
+
+// Option contract ABI (minimal for metadata).
+// `collateral()` returns the Collateral/redemption contract address
+// (renamed from `redemption()` in the current contract).
 const OPTION_ABI = [
   {
-    name: "redemption",
+    name: "collateral",
     type: "function",
     stateMutability: "view",
     inputs: [],
@@ -67,11 +178,12 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
   const client = getPublicClient();
 
   try {
-    // First get the redemption contract address
+    // First get the Collateral/redemption contract address.
+    // The Option contract exposes collateral() — previously named redemption().
     const redemptionAddress = await client.readContract({
       address: optionAddress as `0x${string}`,
       abi: OPTION_ABI,
-      functionName: "redemption",
+      functionName: "collateral",
     }) as `0x${string}`;
 
     // Then get option parameters from redemption contract
@@ -181,7 +293,17 @@ export function loadMetadataFromFile(): Map<string, OptionMetadata> | null {
  */
 export async function fetchAllOptionMetadata(forceRefresh = false): Promise<Map<string, OptionMetadata>> {
   const chainId = getCurrentChainId();
-  const optionAddresses = getOptionAddresses(chainId);
+  // Prefer dynamic discovery: scans the Factory for OptionCreated events so new
+  // options appear without a code change. The call primes metadataCache with
+  // event-derived OptionMetadata, so subsequent fetchOptionMetadata(addr) hits
+  // the cache and skips per-option RPC reads (necessary because the current
+  // Option contract exposes collateral() not redemption()).
+  const discovered = await discoverOptionMetadata().catch(err => {
+    console.warn(`⚠️  Option discovery failed: ${err instanceof Error ? err.message : err}`);
+    return [] as OptionMetadata[];
+  });
+  const optionAddresses =
+    discovered.length > 0 ? discovered.map(m => m.address) : getOptionAddresses(chainId);
 
   // Load existing cache
   const fromFile = loadMetadataFromFile();

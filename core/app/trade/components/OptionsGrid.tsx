@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
+import { useDirectPrices } from "../hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
 
@@ -27,6 +28,10 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
 
   // Use pricing from context (connection is managed at layout level)
   const { getPrice, isConnected } = usePricing();
+
+  // Fallback prices polled from the direct quote server. Used for cells where
+  // the WebSocket stream has no quote (typical when the relay isn't reachable).
+  const { data: directPrices } = useDirectPrices();
 
   // Group options by strike and expiration
   const { strikes, expirations, grid } = useMemo(() => {
@@ -260,8 +265,9 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
                     const key = `${strike}-${exp}`;
                     const cell = grid.get(key);
                     const callPrice = cell?.call ? getPrice(cell.call.optionAddress) : undefined;
-                    const callBid = callPrice?.bids[0]?.[0];
-                    const callAsk = callPrice?.asks[0]?.[0];
+                    const directCall = cell?.call ? directPrices?.get(cell.call.optionAddress.toLowerCase()) : undefined;
+                    const callBid = callPrice?.bids[0]?.[0] ?? directCall?.bid;
+                    const callAsk = callPrice?.asks[0]?.[0] ?? directCall?.ask;
 
                     return (
                       <td key={`call-${exp}`} colSpan={2} className="p-0 border-r border-gray-800">
@@ -308,8 +314,9 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
                     const key = `${strike}-${exp}`;
                     const cell = grid.get(key);
                     const putPrice = cell?.put ? getPrice(cell.put.optionAddress) : undefined;
-                    const putBid = putPrice?.bids[0]?.[0];
-                    const putAsk = putPrice?.asks[0]?.[0];
+                    const directPut = cell?.put ? directPrices?.get(cell.put.optionAddress.toLowerCase()) : undefined;
+                    const putBid = putPrice?.bids[0]?.[0] ?? directPut?.bid;
+                    const putAsk = putPrice?.asks[0]?.[0] ?? directPut?.ask;
 
                     return (
                       <td key={`put-${exp}`} colSpan={2} className="p-0 border-l border-gray-800">

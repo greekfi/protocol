@@ -143,9 +143,16 @@ export class Pricer {
     const T = this.timeToExpiry(option.expiry);
     const sigma = this.getIV(optionAddress);
 
+    // Put strikes on-chain are stored inverted (collateral per consideration),
+    // e.g. 0.000333 for a $3000 put. Invert back to the real strike for BS.
+    // We return the USD/ETH BS price directly — comparable to call prices on
+    // the same chain. The on-chain per-token conversion happens at settlement.
+    const isInvertedPut = option.isPut && option.strike > 0;
+    const K = isInvertedPut ? 1 / option.strike : option.strike;
+
     const bsInput: BlackScholesInput = {
       S: spotPrice,
-      K: option.strike,
+      K,
       T,
       r: this.riskFreeRate,
       sigma,
