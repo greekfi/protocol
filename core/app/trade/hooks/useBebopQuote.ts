@@ -16,6 +16,23 @@ export interface BebopQuote {
   approvalTarget?: string;
   routes?: any[];
   source?: "bebop" | "direct";
+  // Present when the quote came from our direct server: the signed
+  // Order.Single struct + maker signature, ready for BebopSettlement.swapSingle.
+  signature?: string;
+  signScheme?: "EIP712";
+  order?: {
+    partner_id: string;
+    expiry: string;
+    taker_address: string;
+    maker_address: string;
+    maker_nonce: string;
+    taker_token: string;
+    maker_token: string;
+    taker_amount: string;
+    maker_amount: string;
+    receiver: string;
+    packed_commands: string;
+  };
 }
 
 interface UseBebopQuoteParams {
