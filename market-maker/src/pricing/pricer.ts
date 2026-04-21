@@ -143,9 +143,16 @@ export class Pricer {
     const T = this.timeToExpiry(option.expiry);
     const sigma = this.getIV(optionAddress);
 
+    // Put strikes on-chain are stored inverted (collateral per consideration),
+    // e.g. 0.000333 for a $3000 put. Invert back to the real strike for BS,
+    // then divide the resulting price by that K so we quote per-OPT-token
+    // (each put OPT = 1 USDC of notional). See CLAUDE.md "Put price normalization".
+    const isInvertedPut = option.isPut && option.strike > 0;
+    const K = isInvertedPut ? 1 / option.strike : option.strike;
+
     const bsInput: BlackScholesInput = {
       S: spotPrice,
-      K: option.strike,
+      K,
       T,
       r: this.riskFreeRate,
       sigma,
@@ -154,7 +161,8 @@ export class Pricer {
     const bsResult = blackScholes(bsInput);
     const greeks = calculateGreeks(bsInput, option.isPut);
 
-    const mid = option.isPut ? bsResult.putPrice : bsResult.callPrice;
+    let mid = option.isPut ? bsResult.putPrice : bsResult.callPrice;
+    if (isInvertedPut) mid = mid / K;
 
     // Calculate bid/ask with spreads
     let bidSpreadAmount = mid * this.spreadConfig.bidSpread;
