@@ -199,3 +199,118 @@ table thead tr {
   background: var(--greek-accent);
   color: #171717;
 }
+
+/* ───────────── layout: top tabs + left sidebar accordion ───────────── */
+
+/* Desktop right-hand TOC is now rendered inside the left sidebar instead */
+.theme-doc-toc-desktop {
+  display: none;
+}
+
+/* Give the sidebar a touch more breathing room */
+.theme-doc-sidebar-container {
+  border-right: 1px solid rgba(47, 80, 255, 0.1);
+}
+[data-theme="dark"] .theme-doc-sidebar-container {
+  border-right-color: rgba(92, 119, 255, 0.15);
+}
+
+/* Section links in the sidebar — look like section headers, not bullet links */
+.theme-doc-sidebar-menu > .menu__list-item > .menu__link {
+  font-family: var(--greek-font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ifm-color-primary);
+}
+.theme-doc-sidebar-menu > .menu__list-item > .menu__link:hover {
+  color: var(--greek-accent);
+  background: rgba(47, 80, 255, 0.06);
+}
+.theme-doc-sidebar-menu > .menu__list-item > .menu__link--active,
+.theme-doc-sidebar-menu > .menu__list-item > .menu__link--active:hover {
+  color: var(--greek-accent);
+  background: rgba(255, 131, 0, 0.08);
+}
+[data-theme="dark"] .theme-doc-sidebar-menu > .menu__list-item > .menu__link {
+  color: var(--greek-info);
+}
+[data-theme="dark"] .theme-doc-sidebar-menu > .menu__list-item > .menu__link:hover {
+  color: var(--greek-accent-light);
+  background: rgba(53, 243, 255, 0.1);
+}
+[data-theme="dark"] .theme-doc-sidebar-menu > .menu__list-item > .menu__link--active,
+[data-theme="dark"] .theme-doc-sidebar-menu > .menu__list-item > .menu__link--active:hover {
+  color: var(--greek-accent-light);
+  background: rgba(255, 131, 0, 0.12);
+}
+
+/* TOC nested under the active section — indented, quieter type */
+.sidebar-toc-list {
+  list-style: none;
+  padding-left: 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  border-left: 2px solid rgba(47, 80, 255, 0.15);
+}
+[data-theme="dark"] .sidebar-toc-list {
+  border-left-color: rgba(92, 119, 255, 0.2);
+}
+.sidebar-toc-list .menu__list-item {
+  margin: 0;
+}
+.sidebar-toc-link {
+  font-family: var(--ifm-font-family-base);
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.4;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  padding-right: 0.5rem;
+  color: #1a1a1a;
+}
+.sidebar-toc-link:hover {
+  color: var(--ifm-color-primary);
+  background: rgba(47, 80, 255, 0.06);
+}
+.sidebar-toc-link--active {
+  color: var(--greek-accent-dark);
+  font-weight: 500;
+  background: rgba(255, 131, 0, 0.08);
+}
+[data-theme="dark"] .sidebar-toc-link {
+  color: #f0f0f0;
+}
+[data-theme="dark"] .sidebar-toc-link:hover {
+  color: var(--ifm-color-primary-lightest);
+  background: rgba(92, 119, 255, 0.12);
+}
+[data-theme="dark"] .sidebar-toc-link--active {
+  color: var(--greek-accent-light);
+  background: rgba(255, 131, 0, 0.12);
+}
+
+/* Navbar tabs — make section items read as tabs with an active underline */
+.navbar__items .navbar__link {
+  font-family: var(--greek-font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.navbar__items .navbar__link:hover {
+  border-bottom-color: rgba(47, 80, 255, 0.3);
+  background: transparent;
+}
+.navbar__items .navbar__link--active,
+.navbar__items .navbar__link--active:hover {
+  border-bottom-color: var(--greek-accent);
+  color: var(--ifm-font-color-base);
+  background: transparent;
+}
+[data-theme="dark"] .navbar__items .navbar__link--active,
+[data-theme="dark"] .navbar__items .navbar__link--active:hover {
+  color: var(--ifm-font-color-base);
+}

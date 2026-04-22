@@ -57,10 +57,28 @@ const config = {
         title: "Greek",
         items: [
           {
-            type: "docSidebar",
-            sidebarId: "docsSidebar",
+            to: "/fundamentals",
+            label: "Fundamentals",
             position: "left",
-            label: "Docs",
+            activeBaseRegex: "^/fundamentals",
+          },
+          {
+            to: "/trading",
+            label: "Trading",
+            position: "left",
+            activeBaseRegex: "^/trading",
+          },
+          {
+            to: "/settlement",
+            label: "Settlement",
+            position: "left",
+            activeBaseRegex: "^/settlement",
+          },
+          {
+            to: "/api",
+            label: "API Reference",
+            position: "left",
+            activeBaseRegex: "^/api",
           },
           {
             href: "https://github.com/greekfi/protocol",
