@@ -4,6 +4,8 @@ import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import deployedContracts from "~~/abi/deployedContracts";
+import { useReadFactoryApprovedOperator } from "~~/generated";
 
 // ERC20 ABI for approve, allowance, and decimals
 const ERC20_ABI = [
@@ -149,6 +151,19 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     },
   });
 
+  // Factory-level operator approval — grants Bebop blanket authority over every
+  // Option this factory created, bypassing per-token ERC20 allowance on sells.
+  const factoryAddress = deployedContracts[chainId as keyof typeof deployedContracts]?.Factory?.address as
+    | `0x${string}`
+    | undefined;
+  const { data: factoryOperatorApproved } = useReadFactoryApprovedOperator({
+    address: factoryAddress,
+    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
+    query: {
+      enabled: !!userAddress && !!bebopRouter && !!factoryAddress,
+    },
+  });
+
   // USDC approval transaction
   const { writeContract: approveUsdc, data: usdcApprovalHash, isPending: isApprovingUsdc } = useWriteContract();
   const { isSuccess: isUsdcApprovalSuccess } = useWaitForTransactionReceipt({
@@ -180,10 +195,15 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     bebopRouter && usdcAllowance !== undefined && usdcNeededAmount > 0n && usdcAllowance < usdcNeededAmount,
   );
 
-  // Check if option approval is needed (when selling options)
+  // Check if option approval is needed (when selling options).
+  // Either a per-token ERC20 allowance OR a factory-level operator approval is sufficient.
   const optionNeededAmount = !isBuy && amount ? parseUnits(amount, sellTokenDecimals) : 0n;
   const needsOptionApproval = Boolean(
-    bebopRouter && optionAllowance !== undefined && optionNeededAmount > 0n && optionAllowance < optionNeededAmount,
+    bebopRouter &&
+      optionAllowance !== undefined &&
+      optionNeededAmount > 0n &&
+      optionAllowance < optionNeededAmount &&
+      !factoryOperatorApproved,
   );
 
   // Handle USDC approval (approve max amount for convenience)
@@ -367,6 +387,12 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
                 <span className="text-gray-400">Current Allowance:</span>
                 <span className="text-blue-300 font-mono">
                   {optionAllowance !== undefined ? formatUnits(optionAllowance, buyTokenDecimals) : "Loading..."}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-400">Factory Operator:</span>
+                <span className="text-blue-300 font-mono">
+                  {factoryOperatorApproved === undefined ? "Loading..." : factoryOperatorApproved ? "Approved" : "Not set"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
