@@ -20,9 +20,6 @@ export interface TradableOption {
 // Alchemy / most public RPCs cap getLogs at 10k blocks per call.
 const LOG_CHUNK_SIZE = 10_000n;
 const LOG_CONCURRENCY = 8;
-// Cap the scan window to avoid 1000+ chunks on fast-block chains like Arbitrum.
-// 500k blocks ≈ 35h on Arbitrum (~0.25s/block) / weeks on mainnet (~12s/block).
-const MAX_SCAN_WINDOW = 500_000n;
 
 export function useTradableOptions(underlyingToken: string | null) {
   const publicClient = usePublicClient();
@@ -41,8 +38,9 @@ export function useTradableOptions(underlyingToken: string | null) {
       }
 
       const currentBlock = await publicClient.getBlockNumber();
-      const windowStart = currentBlock > MAX_SCAN_WINDOW ? currentBlock - MAX_SCAN_WINDOW : 0n;
-      const fromBlock = deploymentBlock > windowStart ? deploymentBlock : windowStart;
+      // Factory can't emit OptionCreated before it was deployed, so deploymentBlock is the
+      // natural floor. Falls back to 0 for local/anvil (deploymentBlock undefined).
+      const fromBlock = deploymentBlock;
       const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
       for (let b = fromBlock; b <= currentBlock; b += LOG_CHUNK_SIZE) {
         const end = b + LOG_CHUNK_SIZE - 1n > currentBlock ? currentBlock : b + LOG_CHUNK_SIZE - 1n;

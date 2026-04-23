@@ -3,10 +3,40 @@ import type { OptionParams, PriceResult, MarketData, SpreadConfig } from "./type
 import type { SpotFeed } from "./spotFeed";
 import type { RFQRequest, QuoteResponse, DeclineResponse } from "../bebop/types";
 
+export interface SmileConfig {
+  // log-moneyness coefficient; negative for put skew (K < S gets higher IV)
+  skew: number;
+  // log-moneyness^2 coefficient; positive for convex wings
+  curvature: number;
+  // reference time-to-expiry (years) at which smile amplitude is measured;
+  // shorter expiries get amplified by sqrt(termRef / T)
+  termRef: number;
+  // amplitude amplification cap so 1-hour options don't explode
+  maxTermBoost: number;
+  // clamp IV output to [minIV, maxIV] for sanity
+  minIV: number;
+  maxIV: number;
+  // Additive IV offset applied only to put options. Use a negative value
+  // to tilt the surface so puts price below calls at the same strike —
+  // useful when market spreads are asymmetric between the two sides.
+  putOffset: number;
+}
+
+const DEFAULT_SMILE: SmileConfig = {
+  skew: -0.3,
+  curvature: 3.0,
+  termRef: 30 / 365, // 30 days
+  maxTermBoost: 6.0,
+  minIV: 0.1,
+  maxIV: 3.0,
+  putOffset: 0.0,
+};
+
 export interface PricerConfig {
   spreadConfig?: SpreadConfig;
   riskFreeRate?: number;
   defaultIV?: number;
+  smile?: Partial<SmileConfig>;
   spotFeed?: SpotFeed;
 }
 
@@ -26,12 +56,14 @@ export class Pricer {
   private spreadConfig: SpreadConfig;
   private riskFreeRate: number;
   private defaultIV: number;
+  private smile: SmileConfig;
   private spotFeed?: SpotFeed;
 
   constructor(config: PricerConfig = {}) {
     this.spreadConfig = config.spreadConfig ?? DEFAULT_SPREAD_CONFIG;
     this.riskFreeRate = config.riskFreeRate ?? 0.05; // 5% default
-    this.defaultIV = config.defaultIV ?? 0.80; // 80% default IV for crypto
+    this.defaultIV = config.defaultIV ?? 0.80; // 80% default IV for crypto (ATM anchor)
+    this.smile = { ...DEFAULT_SMILE, ...(config.smile ?? {}) };
     this.spotFeed = config.spotFeed;
   }
 
@@ -115,10 +147,33 @@ export class Pricer {
   }
 
   /**
-   * Get IV for an option (override or default)
+   * Get IV for an option. Manual overrides win; otherwise compute from the
+   * parametric smile:
+   *   σ(K, T) = defaultIV + (skew·k + curvature·k²) · √(termRef / T)
+   * where k = log(K/S). The √(termRef/T) term gives short-dated wings a
+   * higher amplitude, matching the observed term-structure of smile.
    */
   getIV(optionAddress: string): number {
-    return this.ivOverrides.get(optionAddress.toLowerCase()) ?? this.defaultIV;
+    const override = this.ivOverrides.get(optionAddress.toLowerCase());
+    if (override !== undefined) return override;
+
+    const opt = this.options.get(optionAddress.toLowerCase());
+    if (!opt) return this.defaultIV;
+    const S = this.getSpotPrice(opt.underlying);
+    if (S === undefined || S <= 0) return this.defaultIV;
+    const K = opt.isPut && opt.strike > 0 ? 1 / opt.strike : opt.strike;
+    if (K <= 0) return this.defaultIV;
+    const T = this.timeToExpiry(opt.expiry);
+    if (T <= 0) return this.defaultIV;
+
+    const k = Math.log(K / S);
+    const termBoost = Math.min(
+      this.smile.maxTermBoost,
+      Math.sqrt(this.smile.termRef / Math.max(T, 1 / 365)),
+    );
+    let raw = this.defaultIV + (this.smile.skew * k + this.smile.curvature * k * k) * termBoost;
+    if (opt.isPut) raw += this.smile.putOffset;
+    return Math.min(this.smile.maxIV, Math.max(this.smile.minIV, raw));
   }
 
   /**
@@ -192,6 +247,16 @@ export class Pricer {
    * Get quote for buying options (user pays, receives options)
    * Returns the cost in consideration token (e.g., USDC)
    */
+  // For calls, 1 option token = 1 underlying-notional, so the per-ETH BS price is also the
+  // per-option-token price. For puts, 1 option token = 1 USDC-notional (= 1/strike ETH),
+  // so the per-option-token price is BS_price / real_strike. `option.strike` for puts is
+  // stored inverted (collateral per consideration), so real_strike = 1 / option.strike,
+  // and dividing by real_strike is the same as multiplying by option.strike.
+  private perTokenPrice(price: number, option: OptionParams): number {
+    if (!option.isPut || option.strike <= 0) return price;
+    return price * option.strike;
+  }
+
   getAskQuote(optionAddress: string, amount: bigint, decimals: number): bigint | null {
     const priceResult = this.price(optionAddress);
     if (!priceResult) return null;
@@ -200,7 +265,8 @@ export class Pricer {
     const option = this.getOption(optionAddress);
     if (!option) return null;
 
-    const askPriceScaled = BigInt(Math.floor(priceResult.ask * 10 ** decimals));
+    const askPerToken = this.perTokenPrice(priceResult.ask, option);
+    const askPriceScaled = BigInt(Math.floor(askPerToken * 10 ** decimals));
     const cost = (amount * askPriceScaled) / BigInt(10 ** option.decimals);
 
     return cost;
@@ -217,7 +283,8 @@ export class Pricer {
     const option = this.getOption(optionAddress);
     if (!option) return null;
 
-    const bidPriceScaled = BigInt(Math.floor(priceResult.bid * 10 ** decimals));
+    const bidPerToken = this.perTokenPrice(priceResult.bid, option);
+    const bidPriceScaled = BigInt(Math.floor(bidPerToken * 10 ** decimals));
     const payout = (amount * bidPriceScaled) / BigInt(10 ** option.decimals);
 
     return payout;

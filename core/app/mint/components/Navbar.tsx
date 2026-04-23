@@ -25,6 +25,11 @@ const Navbar: React.FC = () => (
         </Link>
       </li>
       <li>
+        <Link href="/yield" className="hover:text-blue-500 text-blue-300">
+          Yield
+        </Link>
+      </li>
+      <li>
         <Link href="https://github.com/greekfi/whitepaper" className="hover:text-blue-500">
           Whitepaper
         </Link>

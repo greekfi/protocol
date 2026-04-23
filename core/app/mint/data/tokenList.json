@@ -34,6 +34,16 @@
       "address": "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
       "symbol": "SHIB",
       "decimals": 18
+    },
+    {
+      "address": "0x45804880De22913dAFE09f4980848ECE6EcbAf78",
+      "symbol": "PAXG",
+      "decimals": 18
+    },
+    {
+      "address": "0x68749665FF8D2d112Fa859AA293F07A622782F38",
+      "symbol": "XAUt",
+      "decimals": 6
     }
   ],
   "130": [
@@ -215,6 +225,16 @@
       "address": "0xba5DdD1f9d7F570dc94a51479a000E3BCE967196",
       "symbol": "AAVE",
       "decimals": 18
+    },
+    {
+      "address": "0xfEb4DfC8C4Cf7Ed305bb08065D08eC6ee6728429",
+      "symbol": "PAXG",
+      "decimals": 18
+    },
+    {
+      "address": "0x40461291347e1ecbb09499F3371d3F17F10D7159",
+      "symbol": "XAUt",
+      "decimals": 6
     }
   ]
 }

@@ -84,6 +84,12 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
         return null;
       }
 
+      // Opt-out: skip Bebop and always hit the local direct server. Useful in dev
+      // when Bebop doesn't have liquidity on our option contracts yet.
+      if (process.env.NEXT_PUBLIC_USE_DIRECT_QUOTE === "true") {
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
+      }
+
       const bebopApiUrl = BEBOP_API_URLS[chainId];
       if (!bebopApiUrl) {
         return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
@@ -135,9 +141,14 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
         const data = await response.json();
         // Bebop returns 200 with {error: "..."} when no quote is available
         // (missing source/auth, no maker interested, etc.) — treat that as failure.
-        if (data?.error || !data?.buyAmount || !data?.sellAmount) {
+        // Also treat a zero buyAmount/sellAmount as no-quote (Bebop will happily return
+        // "0" for option instruments it doesn't recognize — "0" is truthy in JS, so
+        // the plain falsy check above lets it through).
+        const buyAmt = BigInt(data?.buyAmount ?? 0);
+        const sellAmt = BigInt(data?.sellAmount ?? 0);
+        if (data?.error || buyAmt === 0n || sellAmt === 0n) {
           console.warn("⚠️  Bebop returned no usable quote:", data);
-          throw new Error(data?.error || "Bebop response missing buyAmount/sellAmount");
+          throw new Error(data?.error || "Bebop response has zero buy/sell amount");
         }
         console.log("✅ Bebop response:", data);
         return { ...data, source: "bebop" };

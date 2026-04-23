@@ -16,6 +16,7 @@ export interface DirectPrice {
   ask?: number;
   mid?: number;
   iv?: number;
+  spotPrice?: number;
 }
 
 /**
@@ -37,6 +38,7 @@ export function useDirectPrices() {
           ask: o.ask ?? undefined,
           mid: o.mid ?? undefined,
           iv: o.iv ?? undefined,
+          spotPrice: o.spotPrice ?? undefined,
         });
       }
       return map;
