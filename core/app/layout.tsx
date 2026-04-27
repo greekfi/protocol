@@ -1,4 +1,4 @@
-import { Martel_Sans } from "next/font/google";
+import { Instrument_Serif, Martel_Sans } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "~~/styles/globals.css";
 import { ThemeProvider } from "next-themes";
@@ -10,6 +10,13 @@ const martelSans = Martel_Sans({
   variable: "--font-martel-sans",
 });
 
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+});
+
 export const viewport = {
   themeColor: "#000000",
   width: "device-width",
@@ -18,7 +25,7 @@ export const viewport = {
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning lang="en" className={martelSans.variable}>
+    <html suppressHydrationWarning lang="en" className={`${martelSans.variable} ${instrumentSerif.variable}`}>
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/helmet-white.png" />

@@ -56,18 +56,21 @@ floatfix,
 ml@greek.fi
 }
 
-\date{June 26, 2025}
+\date{April 26, 2026}
 
 \begin{abstract}
-\greekfi is a protocol that enables decentralized American-style exercisable (American) options
-that are fully collateralized.
+\greekfi is a protocol that enables decentralized, fully collateralized options
+in three settlement modes: American non-settled (oracle-free), American oracle-settled,
+and European oracle-settled.
 It is designed for composability, exercisability, and universal use
-on any EVM-compatible chain and allows any ERC20 token to be used as
+on any EVM-compatible chain, and allows any ERC20 token to be used as
 collateral and consideration, including wBTC, wETH, stETH, USDC, and USDT.
 
-This new level of composability enables new options ecosystem that allows and goes beyond 
-traditional financial options strategies. 
-Greek achieves capital efficiency through decentralized lending.
+The protocol pairs these primitives with a live RFQ-driven trading venue,
+per-holder cash- or in-kind settlement via injectable swapper contracts,
+and a modified-Morpho vault for capital-efficient option writing, lending, and yield collection.
+This composability enables an options ecosystem that goes beyond
+traditional financial strategies while remaining oracle-optional at the option-token layer.
 
 \end{abstract}
 
@@ -84,44 +87,56 @@ points us that it's up only.
 The DeFi space is held back from options growth: early exercisable (American) options do not exist in a liquid, decentralized, tokenized manner which will allow options to be as common as are yield generating tokens. 
 Early exercise is an added benefit in options because it gives in-the-money option holders to capitalize on their investment.
 
-To solve this, we introduce the \greekfi protocol, 
-the first fully decentralized, collateralized, tokenized, 
+To solve this, we introduce the \greekfi protocol,
+the first fully decentralized, collateralized, tokenized,
 exercisable, expirable options protocol in the Ethereum ecosystem.
-The protocol achieves the following, which fulfill the requirements for American options:
+The protocol achieves the following:
 \begin{itemize}
   \setlength{\itemsep}{0pt}
   \setlength{\parskip}{0pt}
-  \item ERC20 compatible - allowing full composability
-  \item Exercisable and collateralized protocol so that every option can be exercised to swap for the collateral
-  \item The option writer can redeem consideration (Cash) prior to expiration and collateral post expiration
-  \item The option writer can redeem collateral prior to expiration if they also own the option
-  \item Dual token system (OPTION and REDEMPTION) similar to yield platforms
-  \item Oracle-free and lending capable for capital efficiency
+  \item ERC20 compatible -- allowing full composability
+  \item Three settlement modes: American non-settled (oracle-free),
+    American oracle-settled, and European oracle-settled
+  \item Exercisable and collateralized protocol so that every option can be
+    exercised to swap for the collateral
+  \item Per-holder cash or in-kind settlement at expiry, with the swap delegated
+    to an injectable swapper (Uniswap v4 flash accounting, Universal Router, or any
+    other venue) -- the protocol stays DEX-agnostic
+  \item The option writer can redeem consideration (cash) prior to expiration
+    and collateral post expiration
+  \item The option writer can redeem collateral prior to expiration if they also
+    own the option
+  \item Dual token system (OPTION and RECEIPT) similar to yield platforms
+  \item Modified-Morpho vault for capital-efficient option writing, lending, and
+    yield collection
+  \item Live RFQ trading venue at \texttt{/trade}, integrating Bebop and 0x market makers
 \end{itemize}
 
-This protocol will unlock a trove of possibilities to DeFi, for example:
+This protocol unlocks a trove of possibilities for DeFi, for example:
 
 \begin{itemize}
   \setlength{\itemsep}{0pt}
   \setlength{\parskip}{0pt}
-  \item Hedge short-term and long-term risk 
+  \item Hedge short-term and long-term risk
   \item Use leverage without getting margin called
-  \item Earn yield against volatility
+  \item Earn yield against volatility through covered calls and puts
+  \item Use options as collateral via the modified-Morpho vault
   \item Create unique underlying swap pairs \\ (wBTC/wETH, ETH/AAVE, USDe/USDC)
   \item Transfer options across ecosystems and chains
-  \item Trade options in both OTC and other markets
-  \item Cash Settlement through flash-loans
+  \item Trade options in OTC and RFQ markets (live today)
+  \item Cash settlement via injectable swappers (live today)
+  \item European-style options on any ERC20 pair, settled to oracle price
 \end{itemize}
 
 \section{Protocol Overview}
 \paragraph*{Protocol Summary -}
-The protocol uses two coupled ERC20 tokens to represent an option position: an Option Token and a Redemption Token. As an American option, the Option Token can be exercised at any time before expiration and Redemption Tokens allow redemption after expiration. 
+The protocol uses two coupled ERC20 tokens to represent an option position: an Option Token and a Receipt Token. As an American option, the Option Token can be exercised at any time before expiration and Receipt Tokens allow redemption after expiration. 
 
 \subsection{Protocol Details}
 Options are represented by ERC20 Option Tokens (OT) that allow a user to excercise at specific strike price of N units of consideration for a specific underlying token, before an expiration date (Consideration is typically a cash asset like USDC, and Collateral is typically an asset like wETH).
 This OT is unique, and temporary as it has an expiration date, after which it is worthless. 
 
-To write an Option, we mint an OT by collateralizing assets which also results in a Redemption Token (RT) with the OT. 
+To write an Option, we mint an OT by collateralizing assets which also results in a Receipt Token (RT) with the OT. 
 The RT, also an ERC20, represents the short option position and redeemability of the asset that was collateralized, which can happen after expiration.
 Also, the reverse of minting, combining the OT with the RT, also redeems Collateral.
 Both tokens can be swap and delivered through DEXs/AMMs and RFQs on-chain.
@@ -155,39 +170,88 @@ Other than standard ERC20 functionality, the OT permits a user to \textbf{exerci
 \hline
 \textbf{Option Token} & \\
 \hline
-exercise() & Exercise option: \\ &  swap consideration \\ & for collateral \\
+exercise() & Exercise option pre-expiry: \\ &  pay consideration \\ & receive collateral \\
 \hline
-redeem() & Redeem collateral \\ & pre expiration \\ & while holding OPTION \\
+redeem() & Redeem collateral \\ & pre-expiration \\ & while holding OPTION \\
 \hline
-\textbf{Redemption Token} &  \\
+claim() & Post-expiry oracle-settled \\ & payout in collateral or \\ & consideration (per holder flag) \\
+\hline
+\textbf{Receipt Token} &  \\
 \hline
 redeem() & Redeems collateral \\ & after expiration \\
 \hline
-redeemConsideration() & Redeems consideration \\ & if available \\ 
+redeemConsideration() & Redeems consideration \\ & if available \\
 \hline
 \end{tabular}
-\caption{Available functions for Option and Redemption Tokens}
+\caption{Available functions for Option and Receipt Tokens. \texttt{claim()} is available only in oracle-settled modes.}
 \label{tab:functions}
 \end{table}
 
 
-\subsection{Capital Efficiency}
+\subsection{Settlement}
 
-To achieve capital efficiency, we need to use less collateral to achieve the same exposure. 
-In traditional finance, the options clearing houses use margining to achieve this.
-In DeFi, we can use lending protocols to achieve this.
+The protocol supports three settlement modes, fixed at option creation:
 
-Let's say we need 1 wETH as collateral to mint an option.
-We borrow 0.7 wETH from a lending protocol, combined with 0.3 wETH of our own, we can mint the option.
-In return for the loan, we return the RT back to the lender as collateral for the loan and
-sell the OT to earn premium.
+\begin{table}[ht]
+\centering
+\begin{tabular}{|p{2.4cm} p{2.0cm} p{2.4cm}|}
+\hline
+\textbf{Mode} & \textbf{Oracle} & \textbf{Pre-expiry exercise} \\
+\hline
+American non-settled & none & yes (pay consideration) \\
+\hline
+American settled & required & yes (pay consideration) \\
+\hline
+European & required & disabled (claim post-expiry only) \\
+\hline
+\end{tabular}
+\caption{Settlement modes. The mode is determined by the \texttt{(oracle, isEuro)} pair at creation.}
+\label{tab:modes}
+\end{table}
 
-To retrieve our collateral, we need to repay the loan, which can be done by buying back the OT from the market.
-The OT is combined with the RT to redeem the collateral, and we return the borrowed wETH to the lender.
+In oracle-settled modes (American settled and European), once expired, any caller
+runs a permissionless \texttt{settle()} which latches the spot price from the configured oracle
+(Chainlink, Uniswap v3 TWAP, or any \texttt{IPriceOracle} implementation). The contract
+records whether the option finished in-the-money (ITM) and reserves the appropriate
+slice of collateral for option-holder claims; the rest flows to the short side.
 
-Lastly, if the lender needs to margin call against the RT, they buy the coupled OT,
-unlock the collateral and return the remainder back to the borrower.
-The LTV limit is determined by the Strike and the spot price of the collateral.
+ITM holders then call \texttt{claim()} to retrieve their payout. The default settlement
+asset is the consideration (cash); a holder may opt into in-kind collateral by calling
+\texttt{requestCollateral()} before the post-expiry swap runs. A one-shot
+\texttt{convertResidualToConsideration(swapper, minOut, routeHint)} call sweeps the
+non-opt-in slice of collateral into consideration through an injectable
+\texttt{ISettlementSwapper} -- typically a thin wrapper around Uniswap v4's flash
+accounting, the Universal Router, or an aggregator like 1inch. The protocol itself
+remains DEX-agnostic.
+
+European options use the same \texttt{claim()} mechanism but disable pre-expiry
+\texttt{exercise()}, which makes them economically equivalent to a cash-settled European
+option even when the holder opts for in-kind delivery.
+
+\subsection{Capital Efficiency via the \greekfi Vault}
+
+To achieve capital efficiency, less collateral must support the same exposure.
+Traditional clearing houses do this through margining; in DeFi, lending markets
+play the same role. We bundle the lending pattern into a modified-Morpho vault
+shipped alongside the protocol, so writers do not need to operate it manually.
+
+The basic mechanic. To mint a 1 wETH option, the writer supplies only $\alpha$ wETH
+of their own (e.g. 0.3 wETH) and the vault borrows the remaining $1 - \alpha$
+(e.g. 0.7 wETH) against the freshly-minted Receipt Token (RT). The vault then
+sells the Option Token (OT) into the live RFQ market for premium. The position
+nets to: writer owns the premium plus a leveraged short-volatility exposure;
+the lender holds RT as loan collateral.
+
+To unwind, the OT is bought back, paired with the RT, and redeemed for the underlying
+wETH; the loan is repaid. If the OT moves against the writer and the LTV crosses
+its threshold, the lender liquidates by buying the matching OT, redeeming the
+collateral, and returning the residual to the writer. The LTV ceiling is a function
+of strike and current spot.
+
+The vault also collects yield: short-side holders earn premium directly, while the
+RT held as loan collateral compounds via the lending leg. The same primitive supports
+covered-call, covered-put, and put-spread strategies without bespoke contracts per
+strategy -- the vault simply parameterises which option series to write each cycle.
 
 \begin{figure}[ht]
   \centering
@@ -197,45 +261,57 @@ The LTV limit is determined by the Strike and the spot price of the collateral.
 \end{figure}
 
 
-\section{Applications and Future Considerations}
-\paragraph*{Trading}
+\section{Applications}
 
-The composability of the protocol allows for multiple trading venues for the options on-chain.
-Traditional DEX AMMs, such as Uniswap, cannot handle the low volume and low liquidity and atypical ($xy=k$) pricing that options could have. 
-The obvious solution is to use RFQs, such as 0x, Bebop, UniswapX etc. enabling market makers (MMs) to provide liquidity and pricing for the options.
-OTs can be minted within the transfer() function to allow for seamless OTC trading
+\paragraph*{Trading (live)}
+The \texttt{/trade} page is live and integrates with Bebop and 0x RFQ.
+Traditional constant-product AMMs ($xy=k$) cannot price the low-volume, asymmetric
+distributions that options generate, so the protocol routes order flow through RFQ
+market makers who quote signed prices on demand. OTs can also be auto-minted inside
+\texttt{transfer()} for seamless OTC delivery, allowing market makers to fill an
+order without holding inventory ahead of time.
+
+\paragraph*{Cash Settlement (live)}
+At expiry, the protocol's per-holder settlement flag and the
+\texttt{convertResidualToConsideration} sweep allow ITM holders to receive USDC
+(or any consideration token) directly, rather than the in-kind collateral residual.
+The on-chain swap is delegated to an \texttt{ISettlementSwapper} -- shipped today as
+either a Uniswap v4 flash-accounting wrapper (\texttt{V4SettlementSwapper}, where the
+borrow-A-pay-B semantics let the swap atomically borrow consideration and repay in
+the freshly-released collateral), or a Universal Router wrapper
+(\texttt{UniversalRouterSwapper}, which delegates routing to Uniswap's auto-router and
+covers v2/v3/v4 in one call). Holders who prefer in-kind collateral opt out via
+\texttt{requestCollateral()} before the sweep runs. The protocol stays DEX-agnostic;
+new swappers (1inch, 0x, Curve, RFQ feeds) can be added without protocol changes.
 
 \paragraph*{Default Swaps}
+The protocol provides default swaps as insurance for risk management in debt markets.
+An oracle or third party can \textbf{unlock} the OT to allow exercise on the
+default event.
 
-The protocol is able to provide default swaps as insurance for risk management in debt markets. 
-An Oracle or Third party can \textbf{unlock} the OT to allow exercise.
+\paragraph*{Yield, Vault, and Lending (live)}
+The \texttt{/yield} page lets users write covered calls and puts directly, with the
+modified-Morpho vault handling the borrow-against-RT leg automatically. Premium
+flows back to the writer; lenders earn against the RT-as-collateral loan; market
+makers price the OT through the same RFQ feed used by \texttt{/trade}. The strategy
+is the on-chain analogue of XYLD-style covered-call ETFs, but composable -- the
+resulting vault share is itself an ERC20 that downstream protocols can integrate.
 
-\paragraph*{Cash Settlement}
-Through a Flash Loan (via a swap protocol, ie Uniswap), one can borrow Consideration, exercise, repay via collateral, and be settled in one transaction.
+\paragraph*{Crosschain Interoperability}
+With protocols such as LayerZero and Hop, crosschain interoperability is increasingly
+practical. The system can be designed to be interoperable across chains, with careful
+handling of the four moving parts (Collateral, Consideration, OT, RT) per chain.
+The factory contract can be upgraded to support crosschain option creation.
 
-
-\paragraph*{Crosschain interoperability}
-With protocols such as LayerZero, Hop Protocol, and others, crosschain interoperability is becoming more common.
-This system can be designed to be interoperable across chains, with careful design as there are +3 additional moving parts: Collateral, Consideration, and Option/Redemption tokens across chains. 
-We can upgrade the factory contract to support crosschain options.
-
-\paragraph*{Option Drops instead of Token drops}
-In TradFi, options are vested by startup employees and exercised for tax purposes.
-A similar use case can be made here to provide option drops instead of token drops.
+\paragraph*{Option Drops Instead of Token Drops}
+In TradFi, startup employees vest options and exercise for tax purposes. A similar
+mechanic on-chain provides option drops as an alternative to token drops, distributing
+upside without giving up immediate sell-pressure protection.
 
 \paragraph*{Compound Options}
-A compound option is an option on an option. Yes, this is a thing. It's basically a second derivative.
-And yes, this protocol can handle it. 
-
-\paragraph*{Covered Call Vaults}
-
-Other protocols have created covered call vaults, such as Rysk Finance.
-This approach can be easily implemented using the \greekfi protocol.
-PropAMMs and RFQ market makers can price options for the vaults.
-This strategy is nearly identical to ETF strategies (i.e., XYLD).
-This simplifies the user experience and reduces the amount of work
-required to earn yield. The same strategy can be applied to
-covered put vaults as well.
+A compound option is an option on an option -- a second derivative. The protocol
+handles this natively: nothing prevents the OT or RT of one option from being used
+as collateral for another option.
 
 
 \end{document}

@@ -8,6 +8,7 @@
 
   --font-family-sans: var(--font-geist-sans);
   --font-family-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 /*
