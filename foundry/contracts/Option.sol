@@ -396,46 +396,103 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         emit Settled(coll.settlementPrice());
     }
 
-    /// @notice Post-expiry ITM claim. Burns `amount` options, pays the `(S-K)/S` residual in collateral.
-    /// @dev    Only makes sense for settled (American-settled or European) modes. Calls `settle("")`
-    ///         internally, so a separate settle step isn't strictly required.
-    ///         Payout is floor-rounded; OTM options claim zero (the tokens still burn).
-    /// @param amount Option tokens to burn.
-    ///
-    /// Example:
-    /// ```solidity
-    /// // European WETH/USDC call, strike 3000, settled at S=3500:
-    /// // payout per option = (3500 - 3000) / 3500 ≈ 0.1429 WETH
-    /// option.claim(1e18);
-    /// ```
-    function claim(uint256 amount)
+    /// @notice Claim the caller's full Option balance. Convenience wrapper that burns
+    ///         `balanceOf(msg.sender)` and routes the payout per the holder's
+    ///         {Collateral.wantsCollateral} flag (default = consideration/cash).
+    function claim() external notLocked nonReentrant {
+        _claim(msg.sender, balanceOf(msg.sender));
+    }
+
+    /// @notice Claim the specified `amount` for the caller. Delegates to the workhorse.
+    function claim(uint256 amount) external notLocked nonReentrant {
+        _claim(msg.sender, amount);
+    }
+
+    /// @notice Permissionless claim on behalf of `holder` — burns `holder`'s full balance
+    ///         and sends the payout to `holder`. Anyone can call; useful for gas-sponsored
+    ///         sweeps. No-op when the holder's balance is zero.
+    function claim(address holder) external notLocked nonReentrant {
+        uint256 bal = balanceOf(holder);
+        if (bal == 0) return;
+        _claim(holder, bal);
+    }
+
+    /// @notice Permissionless claim on behalf of `holder` for a specified `amount`. The
+    ///         core workhorse — all other `claim` overloads route through here.
+    /// @dev    Payout always goes to `holder`; `msg.sender` only pays gas. Routes to the
+    ///         in-kind reserve if `holder` opted into collateral AND has enough locked
+    ///         for `amount`; otherwise routes to the cash pool (post-swap) or silently
+    ///         falls back to in-kind (pre-swap).
+    function claim(address holder, uint256 amount) external notLocked nonReentrant {
+        _claim(holder, amount);
+    }
+
+    /// @dev Shared claim workhorse. Gates, routes, burns, pays.
+    function _claim(address holder, uint256 amount) internal validAmount(amount) sufficientBalance(holder, amount) {
+        if (address(coll.oracle()) == address(0)) revert NoOracle();
+        if (block.timestamp < expirationDate()) revert ContractNotExpired();
+
+        uint256 payout;
+        // In-kind path: holder opted into collateral AND has `amount` locked. Else cash path
+        // (if swap completed) or silent fallback to in-kind (pre-swap safety).
+        bool inKind = coll.wantsCollateral(holder) && coll.collateralLockedOf(holder) >= amount;
+        if (!inKind && coll.cashSwapCompleted()) {
+            _burn(holder, amount);
+            payout = coll._claimCashForOption(holder, amount);
+        } else {
+            coll.settle(""); // idempotent; safe to call even if already settled
+            _burn(holder, amount);
+            payout = coll._claimForOption(holder, amount);
+        }
+        emit Claimed(holder, amount, payout);
+    }
+
+    /// @notice Post-expiry permissionless exercise. Burns `amount` from `holder`, pulls
+    ///         `toNeededConsideration(amount)` consideration from `msg.sender`, and sends `amount`
+    ///         collateral to `recipient`. Economically: the caller buys the option at strike.
+    /// @dev    Only valid in settled modes with an oracle, post-expiry, and only when ITM.
+    ///         Decrements `optionReserveRemaining` by the burned option's residual so that
+    ///         short-side redemption accounting stays consistent with {claim}.
+    /// @param holder    Option holder whose tokens will be burned.
+    /// @param amount    Collateral units to exercise.
+    /// @param recipient Recipient of the collateral payout (typically a keeper).
+    function exerciseFor(address holder, uint256 amount, address recipient)
         external
         notLocked
         nonReentrant
         validAmount(amount)
-        sufficientBalance(msg.sender, amount)
+        sufficientBalance(holder, amount)
     {
-        if (address(coll.oracle()) == address(0)) revert NoOracle();
-        if (block.timestamp < expirationDate()) revert ContractNotExpired();
-        // Latch reserve using current option supply BEFORE the burn (idempotent).
-        coll.settle("");
-        _burn(msg.sender, amount);
-        uint256 payout = coll._claimForOption(msg.sender, amount);
-        emit Claimed(msg.sender, amount, payout);
+        _burn(holder, amount);
+        coll._exerciseForPostExpiry(msg.sender, recipient, amount);
+        emit Exercise(address(this), holder, amount);
     }
 
-    /// @notice Claim on behalf of `holder`. Anyone can call; payout still goes to `holder`.
-    ///         Enables gas-sponsored or keeper-driven settlement sweeps. No-op for zero balance.
-    /// @param holder The option holder whose full balance should be claimed.
-    function claimFor(address holder) external notLocked nonReentrant {
-        if (address(coll.oracle()) == address(0)) revert NoOracle();
-        if (block.timestamp < expirationDate()) revert ContractNotExpired();
-        uint256 bal = balanceOf(holder);
-        if (bal == 0) return;
-        coll.settle("");
-        _burn(holder, bal);
-        uint256 payout = coll._claimForOption(holder, bal);
-        emit Claimed(holder, bal, payout);
+    /// @notice Batch variant: same semantics as `exerciseFor(holder, amount, recipient)`
+    ///         applied to a list of holders in one transaction. Saves the per-call external
+    ///         CALL + selector dispatch vs. a keeper that loops `exerciseFor` from outside.
+    /// @dev    Arrays must be equal length. Skips holders with zero balance rather than
+    ///         reverting, so stale addresses in a keeper's holder list do not abort the sweep.
+    /// @param  holders    Option holders whose tokens will be burned.
+    /// @param  amounts    Per-holder collateral units to exercise.
+    /// @param  recipient  Address receiving all collateral payouts.
+    function exerciseFor(address[] calldata holders, uint256[] calldata amounts, address recipient)
+        external
+        notLocked
+        nonReentrant
+    {
+        uint256 n = holders.length;
+        if (n != amounts.length) revert InvalidValue();
+        Collateral c = coll;
+        for (uint256 i = 0; i < n; i++) {
+            address h = holders[i];
+            uint256 a = amounts[i];
+            if (a == 0) continue;
+            if (balanceOf(h) < a) continue;
+            _burn(h, a);
+            c._exerciseForPostExpiry(msg.sender, recipient, a);
+            emit Exercise(address(this), h, a);
+        }
     }
 
     // ============ QUERY ============

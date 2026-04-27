@@ -5,3 +5,7 @@
 [submodule "foundry/lib/openzeppelin-contracts"]
 	path = foundry/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "foundry/lib/v4-core"]
+	path = foundry/lib/v4-core
+	url = https://github.com/Uniswap/v4-core.git
+	branch = main

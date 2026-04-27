@@ -14,6 +14,7 @@ using SafeERC20 for IERC20;
 import { TokenData } from "./interfaces/IOption.sol";
 import { OptionUtils } from "./OptionUtils.sol";
 import { IPriceOracle } from "./oracles/IPriceOracle.sol";
+import { ISettlementSwapper } from "./interfaces/ISettlementSwapper.sol";
 
 /// @dev Narrow view of {Factory} used by {Collateral} to pull collateral/consideration tokens via the
 ///      factory's centralised allowance registry.
@@ -101,6 +102,34 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint8 public collDecimals;
     /// @notice `true` once the first post-expiry settle has initialised `optionReserveRemaining`.
     bool public reserveInitialized;
+    /// @notice Latched at first {settle}: `true` if the option settled ITM (`S > K` for calls,
+    ///         `S < K` for puts). Read by `exerciseFor` as the ITM gate — no per-call recomputation.
+    bool public isItmAtSettle;
+
+    // ============ SETTLEMENT ASSET (opt-in per holder) ============
+    //
+    // Default post-expiry settlement is consideration (cash): when anyone triggers
+    // {convertResidualToConsideration}, the contract swaps the full ITM reserve into
+    // consideration at market via a caller-supplied {ISettlementSwapper}, and every
+    // `claim` by default pays consideration. A holder who wants in-kind collateral
+    // instead calls {requestCollateral} post-expiry — their balance is locked into the
+    // collateral pool and that slice is NOT swapped. {Option.claim} reads the flag and
+    // pays WETH (collateral opt-ins) or USDC (default) automatically.
+
+    /// @notice Holder-chosen settlement asset. `false` (default) = consideration/cash.
+    ///         `true` = collateral/in-kind. Flippable until the swap completes.
+    mapping(address => bool) public wantsCollateral;
+    /// @notice Option balance locked in the collateral (in-kind) pool when a holder
+    ///         flips {wantsCollateral} to `true`. Snapshot at flag-flip time; decremented
+    ///         as the holder claims in-kind.
+    mapping(address => uint256) internal _collateralLocked;
+    /// @notice Sum of {_collateralLocked}. Cash-pool WETH to swap =
+    ///         `(totalSupply − totalCollateralReservedOptions) × (S−K) / S`.
+    uint256 public totalCollateralReservedOptions;
+    /// @notice `true` once {convertResidualToConsideration} has run. One-shot.
+    bool public cashSwapCompleted;
+    /// @notice Consideration paid per option unit claimed in cash (1e18-scaled WAD). Latched at swap.
+    uint256 public cashConsiderationPerOptionWad;
 
     /// @notice Decimal basis of the strike — fixed at 18 and independent of token decimals.
     uint8 public constant STRIKE_DECIMALS = 18;
@@ -135,6 +164,16 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error NonSettledOnly();
     /// @notice Thrown when `exercise` is called on a European option.
     error EuropeanExerciseDisabled();
+    /// @notice Thrown by `_exerciseForPostExpiry` when the settled price is not ITM.
+    error NotITM();
+    /// @notice Thrown when a cash-settlement path runs before {convertResidualToConsideration}.
+    error CashSwapNotCompleted();
+    /// @notice Thrown when {convertResidualToConsideration} is called twice.
+    error CashSwapAlreadyCompleted();
+    /// @notice Thrown when a holder's cash-reservation action exceeds their option balance.
+    error ExceedsBalance();
+    /// @notice Thrown when the swapper returns less consideration than `minOut`.
+    error SwapSlippage();
 
     /// @notice Emitted on every path that returns collateral or consideration to a user.
     /// @param option The paired Option contract (also this contract's owner).
@@ -468,12 +507,48 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 S = oracle.settle(hint);
         settlementPrice = S;
         uint256 K = strike;
+        isItmAtSettle = S > K;
         if (S > K) {
             uint256 O = IERC20(owner()).totalSupply();
             optionReserveRemaining = Math.mulDiv(O, S - K, S);
         }
         reserveInitialized = true;
         emit Settled(S);
+    }
+
+    /// @notice Post-expiry exercise path invoked by {Option.exerciseFor}. Pulls consideration from
+    ///         `consumer`, sends collateral to `recipient`, and decrements the option-reserve by the
+    ///         residual the burned option would have claimed — keeping short-side redemption math
+    ///         consistent with the {claim} path.
+    /// @dev    Caller is the paired {Option}; gating (expired, settled, ITM, option-burn) lives there.
+    /// @param consumer  Address paying consideration (typically a keeper/periphery contract).
+    /// @param recipient Recipient of the collateral payout.
+    /// @param amount    Collateral units to deliver; consideration collected is `ceil(amount * strike)`.
+    function _exerciseForPostExpiry(address consumer, address recipient, uint256 amount)
+        external
+        notLocked
+        onlyOwner
+        sufficientCollateral(amount)
+    {
+        if (!reserveInitialized) _settle("");
+        // ITM gate is a single SLOAD of the bool latched at first settle.
+        if (!isItmAtSettle) revert NotITM();
+
+        uint256 consAmount = toNeededConsideration(amount);
+        if (consAmount == 0) revert InvalidValue();
+        if (consAmount > type(uint160).max) revert ArithmeticOverflow();
+
+        // Same residual formula as `_claimForOption` so reserve accounting stays exact.
+        uint256 residual = Math.mulDiv(amount, settlementPrice - strike, settlementPrice);
+        uint256 reserve = optionReserveRemaining;
+        if (residual > reserve) residual = reserve;
+        optionReserveRemaining = reserve - residual;
+
+        uint256 consBefore = consideration.balanceOf(address(this));
+        // forge-lint: disable-next-line(unsafe-typecast)
+        _factory.transferFrom(consumer, address(this), uint160(consAmount), address(consideration));
+        if (consideration.balanceOf(address(this)) - consBefore < consAmount) revert FeeOnTransferNotSupported();
+        collateral.safeTransfer(recipient, amount);
     }
 
     /// @notice Pay an option-holder's ITM residual. Only callable by the paired Option.
@@ -483,6 +558,15 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @param amount  Option tokens being burned on the long side.
     /// @return payout Collateral units actually sent.
     function _claimForOption(address holder, uint256 amount) external onlyOwner returns (uint256 payout) {
+        // If `holder` opted into in-kind collateral, decrement their locked amount so the
+        // cash-pool sizing stays accurate. Safe to call for non-opted holders too (no-op).
+        uint256 lockedAmt = _collateralLocked[holder];
+        if (lockedAmt > 0) {
+            uint256 reduce = amount > lockedAmt ? lockedAmt : amount;
+            _collateralLocked[holder] = lockedAmt - reduce;
+            if (!cashSwapCompleted) totalCollateralReservedOptions -= reduce;
+        }
+
         _settle("");
         uint256 S = settlementPrice;
         uint256 K = strike;
@@ -497,6 +581,108 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         }
         return payout;
     }
+
+    // ============ CASH SETTLEMENT (opt-in) ============
+
+    /// @notice Opt the caller out of the default consideration settlement and into
+    ///         in-kind collateral. Locks the caller's current Option balance so the
+    ///         upcoming one-shot swap skips that slice. Idempotent. Must be called
+    ///         before {convertResidualToConsideration} runs.
+    function requestCollateral() external expired notLocked {
+        if (cashSwapCompleted) revert CashSwapAlreadyCompleted();
+        if (wantsCollateral[msg.sender]) return;
+        uint256 bal = IERC20(owner()).balanceOf(msg.sender);
+        _collateralLocked[msg.sender] = bal;
+        totalCollateralReservedOptions += bal;
+        wantsCollateral[msg.sender] = true;
+    }
+
+    /// @notice Flip the caller back to the default consideration settlement. Releases
+    ///         whatever remained of their collateral lock. Must be called before
+    ///         {convertResidualToConsideration} runs.
+    function requestConsideration() external expired notLocked {
+        if (cashSwapCompleted) revert CashSwapAlreadyCompleted();
+        if (!wantsCollateral[msg.sender]) return;
+        uint256 locked = _collateralLocked[msg.sender];
+        totalCollateralReservedOptions -= locked;
+        _collateralLocked[msg.sender] = 0;
+        wantsCollateral[msg.sender] = false;
+    }
+
+    /// @notice How many option units `holder` currently has locked for in-kind claim.
+    function collateralLockedOf(address holder) external view returns (uint256) {
+        return _collateralLocked[holder];
+    }
+
+    /// @notice One-shot, permissionless: swap the cash-reserved slice of the ITM reserve into
+    ///         consideration via a caller-supplied swapper. Callers MUST set `minOut` to a
+    ///         value that captures the oracle-implied value minus an acceptable slippage,
+    ///         otherwise an MEV actor can sandwich the call.
+    /// @dev    Idempotent after first completion; subsequent calls revert. Only meaningful
+    ///         when the option settled ITM — otherwise there is no reserve to swap.
+    /// @param  swapper   Implementation of {ISettlementSwapper} that will execute the swap.
+    /// @param  minOut    Minimum consideration acceptable from the swap.
+    /// @param  routeHint Opaque venue-specific calldata forwarded to the swapper — typically
+    ///                   an off-chain-computed routing payload (e.g. Universal Router
+    ///                   `(commands, inputs)` or a 0x API quote). Empty bytes when the
+    ///                   swapper uses a bound pool.
+    function convertResidualToConsideration(ISettlementSwapper swapper, uint256 minOut, bytes calldata routeHint)
+        external
+        expired
+        notLocked
+        nonReentrant
+    {
+        if (cashSwapCompleted) revert CashSwapAlreadyCompleted();
+        _settle("");
+        if (!isItmAtSettle) {
+            // No reserve was set aside → nothing to convert. Mark complete so callers can't retry.
+            cashSwapCompleted = true;
+            return;
+        }
+
+        // Cash pool size = current Option supply minus holders who opted into in-kind collateral.
+        uint256 totalOptions = IERC20(owner()).totalSupply();
+        uint256 reservedColl = totalCollateralReservedOptions;
+        uint256 cashOptions = totalOptions > reservedColl ? totalOptions - reservedColl : 0;
+        if (cashOptions == 0) {
+            cashSwapCompleted = true;
+            return;
+        }
+
+        uint256 S = settlementPrice;
+        uint256 K = strike;
+        // Portion of the in-kind reserve that must convert to consideration.
+        uint256 wethToSwap = Math.mulDiv(cashOptions, S - K, S);
+        uint256 reserve = optionReserveRemaining;
+        if (wethToSwap > reserve) wethToSwap = reserve;
+        optionReserveRemaining = reserve - wethToSwap;
+
+        // Pull the collateral out of the reserve and hand it to the swapper.
+        collateral.forceApprove(address(swapper), wethToSwap);
+        uint256 consOut =
+            swapper.swap(address(collateral), address(consideration), wethToSwap, minOut, address(this), routeHint);
+        if (consOut < minOut) revert SwapSlippage();
+
+        // consOut is distributed pro-rata over the reserved options: each cash-claimed option
+        // unit is worth (consOut / cashOptions) consideration.
+        cashConsiderationPerOptionWad = Math.mulDiv(consOut, 1e18, cashOptions);
+        cashSwapCompleted = true;
+        emit CashConverted(wethToSwap, consOut, cashOptions);
+    }
+
+    /// @notice Cash-settlement payout. Only callable by the paired Option. Decrements the
+    ///         holder's cash reservation and transfers consideration proportional to the
+    ///         already-latched `cashConsiderationPerOptionWad`.
+    /// @dev    Reverts if the holder has not yet reserved `amount` for cash, or if the
+    ///         swap has not completed.
+    function _claimCashForOption(address holder, uint256 amount) external onlyOwner returns (uint256 payout) {
+        if (!cashSwapCompleted) revert CashSwapNotCompleted();
+        payout = Math.mulDiv(amount, cashConsiderationPerOptionWad, 1e18);
+        if (payout > 0) consideration.safeTransfer(holder, payout);
+    }
+
+    /// @notice Emitted by {convertResidualToConsideration} on the one-shot cash swap.
+    event CashConverted(uint256 collateralIn, uint256 considerationOut, uint256 optionsReserved);
 
     // ============ SWEEPS ============
 
