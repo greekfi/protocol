@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "../mint/components/Navbar";
+import { SiteFooter } from "../components/SiteFooter";
+import { SiteHeader } from "../components/SiteHeader";
 import { ModeToggle, type YieldMode } from "./components/ModeToggle";
 import { StablecoinTabs } from "./components/StablecoinTabs";
 import { TokenGrid } from "./components/TokenGrid";
@@ -23,8 +24,8 @@ export default function YieldPage() {
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
+      <SiteHeader />
       <div className="max-w-7xl mx-auto p-6">
-        <Navbar />
         <div className="mt-6 mb-8 flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-light text-blue-300">Earn Yield From:</h1>
@@ -66,6 +67,7 @@ export default function YieldPage() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   );
 }

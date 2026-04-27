@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { SERIF_STACK, SiteHeader } from "./components/SiteHeader";
+import { SiteFooter } from "./components/SiteFooter";
 
-const SERIF_STACK = "var(--font-instrument-serif), ui-serif, Georgia, serif";
 const HERO_LINES: readonly string[] = ["Don't get liquidated", "Earn the Best Yield in DeFi"];
 const TYPE_MS = 55;
 const LINE_PAUSE_MS = 350;
@@ -61,24 +61,6 @@ function TypewriterHero() {
   );
 }
 
-type NavItem = { label: string; href: string; external?: boolean };
-
-const FOOTER_NAV: NavItem[] = [
-  { label: "Trade Options", href: "/trade" },
-  { label: "Earn Yield", href: "/yield" },
-  { label: "Docs", href: "https://docs.greek.fi", external: true },
-  { label: "Whitepaper", href: "/greekfi.pdf", external: true },
-  { label: "Contact", href: "mailto:hello@greek.fi", external: true },
-  { label: "Telegram", href: "https://t.me/greekfi", external: true },
-  { label: "GitHub", href: "https://github.com/greekfi", external: true },
-  { label: "Terms", href: "#" },
-  { label: "Privacy", href: "#" },
-];
-
-const HEADER_NAV: NavItem[] = FOOTER_NAV.filter(
-  i => !["Contact", "Telegram", "GitHub", "Terms", "Privacy"].includes(i.label),
-);
-
 const PILLARS: { heading: string; body: string }[] = [
   {
     heading: "The missing primitive",
@@ -103,55 +85,7 @@ const PILLARS: { heading: string; body: string }[] = [
 export default function OptionsPage() {
   return (
     <div className="min-h-screen bg-black text-gray-200">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-sm bg-black/80 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3 sm:gap-4 group">
-              <Image
-                src="/helmet.svg"
-                alt="Greek"
-                width={64}
-                height={64}
-                className="h-12 w-12 sm:h-14 sm:w-14"
-              />
-              <span
-                style={{ fontFamily: SERIF_STACK }}
-                className="text-3xl sm:text-4xl lg:text-5xl text-white group-hover:text-blue-300 transition-colors"
-              >
-                Greek
-              </span>
-            </Link>
-
-            <div
-              style={{ fontFamily: SERIF_STACK }}
-              className="flex flex-wrap items-center gap-x-6 gap-y-2 text-base sm:text-lg"
-            >
-              {HEADER_NAV.map(item =>
-                item.external ? (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-300 hover:text-blue-300 transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="text-gray-300 hover:text-blue-300 transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ),
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="relative py-32 px-6">
@@ -202,37 +136,7 @@ export default function OptionsPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ fontFamily: SERIF_STACK }} className="py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col gap-8">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-base sm:text-lg">
-            {FOOTER_NAV.map(item =>
-              item.external ? (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-300 hover:text-blue-300 transition-colors"
-                >
-                  {item.label}
-                </a>
-              ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="text-gray-300 hover:text-blue-300 transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ),
-            )}
-          </div>
-          <div className="pt-6 border-t border-gray-800">
-            <p className="text-gray-500">© Greek Fi, Inc. 2026</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

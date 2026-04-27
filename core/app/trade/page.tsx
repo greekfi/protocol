@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "../mint/components/Navbar";
+import { SiteFooter } from "../components/SiteFooter";
+import { SiteHeader } from "../components/SiteHeader";
 import { type OptionSelection, OptionsGrid } from "./components/OptionsGrid";
 import { TokenSelector } from "./components/TokenSelector";
 import { TradePanel } from "./components/TradePanel";
@@ -32,8 +33,8 @@ export default function TradePage() {
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
+      <SiteHeader />
       <div className="max-w-7xl mx-auto p-6">
-        <Navbar />
         <h1 className="text-3xl font-light text-blue-300 mb-8 mt-6">Trade Options</h1>
 
         {/* Token Selector */}
@@ -55,6 +56,7 @@ export default function TradePage() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   );
 }
