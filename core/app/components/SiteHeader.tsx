@@ -24,8 +24,66 @@ export const HEADER_NAV: NavItem[] = FOOTER_NAV.filter(
   i => !["Contact", "Telegram", "GitHub", "Terms", "Privacy"].includes(i.label),
 );
 
+/**
+ * Wallet button rendered via {@link ConnectButton.Custom} so we control the
+ * typography (Instrument Serif, regular weight) and which fields show. The
+ * default RainbowKit pill renders bold and surfaces an ETH balance we don't
+ * want — here we render the ENS-preferring `account.displayName` only.
+ */
+function WalletButton() {
+  const buttonClass =
+    "px-3.5 py-2 rounded-lg border border-gray-700 hover:border-blue-300 transition-colors text-base sm:text-lg";
+
+  return (
+    <ConnectButton.Custom>
+      {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
+        const ready = mounted && authenticationStatus !== "loading";
+        const connected =
+          ready && account && chain && (!authenticationStatus || authenticationStatus === "authenticated");
+
+        return (
+          <div
+            style={{ fontFamily: SERIF_STACK, fontWeight: 400 }}
+            aria-hidden={!ready}
+            className={ready ? "" : "opacity-0 pointer-events-none select-none"}
+          >
+            {!connected && (
+              <button onClick={openConnectModal} type="button" className={`${buttonClass} text-blue-300`}>
+                Connect Wallet
+              </button>
+            )}
+            {connected && chain.unsupported && (
+              <button onClick={openChainModal} type="button" className={`${buttonClass} text-red-400`}>
+                Wrong network
+              </button>
+            )}
+            {connected && !chain.unsupported && (
+              <div className="flex gap-2">
+                <button
+                  onClick={openChainModal}
+                  type="button"
+                  className={`${buttonClass} text-gray-300 flex items-center gap-1.5`}
+                >
+                  {chain.hasIcon && chain.iconUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={chain.iconUrl} alt={chain.name ?? ""} className="w-4 h-4 rounded-full" />
+                  )}
+                  <span>{chain.name}</span>
+                </button>
+                <button onClick={openAccountModal} type="button" className={`${buttonClass} text-gray-200`}>
+                  {account.displayName}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }}
+    </ConnectButton.Custom>
+  );
+}
+
 interface SiteHeaderProps {
-  /** Show the wallet ConnectButton on the right (default: true). */
+  /** Show the wallet button on the right (default: true). */
   showWallet?: boolean;
 }
 
@@ -82,7 +140,7 @@ export function SiteHeader({ showWallet = true }: SiteHeaderProps) {
                 ),
               )}
             </div>
-            {showWallet && <ConnectButton />}
+            {showWallet && <WalletButton />}
           </div>
         </div>
       </div>
