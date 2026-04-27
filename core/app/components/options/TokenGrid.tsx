@@ -1,8 +1,29 @@
+"use client";
+
 import clsx from "clsx";
 import Image from "next/image";
 import { useState } from "react";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
-import { formatAprRange, type UnderlyingToken } from "../data";
+
+// ===== Types and helpers (shared by /yield and /trade) =====
+
+export type AprRange = { min: number; max: number };
+
+export type UnderlyingToken = {
+  symbol: string;
+  name: string;
+  /** Tailwind bg-* class used as a fallback colour when the token logo PNG is missing. */
+  color: string;
+  /** Optional yield estimate; rendered as a green badge when present. /trade omits it. */
+  apr?: AprRange;
+};
+
+export function formatAprRange(apr?: AprRange): string {
+  if (!apr) return "";
+  return apr.min === apr.max ? `${apr.min}%` : `${apr.min}–${apr.max}%`;
+}
+
+// ===== TokenGrid component =====
 
 interface TokenGridProps {
   tokens: UnderlyingToken[];
@@ -109,9 +130,11 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
             </div>
             {!compact && (
               <>
-                <span className="text-xs font-semibold text-emerald-300 tabular-nums">
-                  {formatAprRange(token.apr)}
-                </span>
+                {token.apr && (
+                  <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+                    {formatAprRange(token.apr)}
+                  </span>
+                )}
                 {address && <CopyAddressButton address={address} />}
               </>
             )}

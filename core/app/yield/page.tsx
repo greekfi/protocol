@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
+import { TokenGrid } from "../components/options/TokenGrid";
 import { ModeToggle, type YieldMode } from "./components/ModeToggle";
 import { StablecoinTabs } from "./components/StablecoinTabs";
-import { TokenGrid } from "./components/TokenGrid";
 import { YieldPanel } from "./components/YieldPanel";
 import { CALL_UNDERLYINGS, PUT_UNDERLYINGS, STABLECOINS } from "./data";
 

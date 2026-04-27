@@ -1,13 +1,10 @@
 // Placeholder data for the /yield app — swap with on-chain / market-maker data later.
 
-export type AprRange = { min: number; max: number };
+import type { UnderlyingToken } from "../components/options/TokenGrid";
 
-export type UnderlyingToken = {
-  symbol: string;
-  name: string;
-  color: string; // tailwind bg-* class for the logo placeholder
-  apr: AprRange;
-};
+// Re-export the shared types so existing /yield call sites keep working.
+export type { AprRange, UnderlyingToken } from "../components/options/TokenGrid";
+export { formatAprRange } from "../components/options/TokenGrid";
 
 export type Stablecoin = {
   symbol: string;
@@ -42,5 +39,3 @@ export const PUT_UNDERLYINGS: UnderlyingToken[] = [
   { symbol: "MORPHO", name: "Morpho", color: "bg-blue-500", apr: { min: 10, max: 19 } },
 ];
 
-export const formatAprRange = (apr: AprRange) =>
-  apr.min === apr.max ? `${apr.min}%` : `${apr.min}–${apr.max}%`;
