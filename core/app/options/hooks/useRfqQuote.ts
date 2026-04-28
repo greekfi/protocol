@@ -32,10 +32,10 @@ interface UseRfqQuoteParams {
 
 // RFQ-Direct API endpoints by chain ID
 const RFQ_API_URLS: Record<number, string> = {
-  1: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
-  8453: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
-  42161: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
-  31337: process.env.NEXT_PUBLIC_RFQ_API_URL || "http://localhost:3010",
+  1: process.env.NEXT_PUBLIC_RFQ_API_URL || "https://api.greek.finance",
+  8453: process.env.NEXT_PUBLIC_RFQ_API_URL || "https://api.greek.finance",
+  42161: process.env.NEXT_PUBLIC_RFQ_API_URL || "https://api.greek.finance",
+  31337: process.env.NEXT_PUBLIC_RFQ_API_URL || "https://api.greek.finance",
 };
 
 export function useRfqQuote({ buyToken, sellToken, sellAmount, buyAmount, enabled = true }: UseRfqQuoteParams) {

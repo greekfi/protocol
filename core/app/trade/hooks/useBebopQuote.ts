@@ -52,7 +52,7 @@ const BEBOP_API_URLS: Record<number, string> = {
 
 // Polled HTTP fallback — our own market-maker /quote endpoint.
 // Same Bebop-compatible response shape; quotes are indicative, not executable.
-const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "http://localhost:3010";
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "https://api.greek.finance";
 
 async function fetchDirectQuote(
   buyToken: string,
