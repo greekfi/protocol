@@ -46,6 +46,12 @@ export const ORACLE_CATALOG: Record<number, OracleSuggestion[]> = {
       pair: ["WETH", "USDC"],
       label: "WETH/USDC · Uniswap v3 · 0.05%",
     },
+    // Base has no deep WBTC pool; the canonical BTC market on Base is Coinbase Wrapped BTC.
+    {
+      address: "0xfBB6Eed8e7aa03B138556eeDaF5D271A5E1e43ef",
+      pair: ["cbBTC", "USDC"],
+      label: "cbBTC/USDC · Uniswap v3 · 0.05% (BTC ref on Base)",
+    },
   ],
 
   // Arbitrum
@@ -59,6 +65,16 @@ export const ORACLE_CATALOG: Record<number, OracleSuggestion[]> = {
       address: "0x2f5e87C9312fa29aed5c179E456625D79015299c",
       pair: ["WBTC", "WETH"],
       label: "WBTC/WETH · Uniswap v3 · 0.05%",
+    },
+    {
+      address: "0xa62ad78825e3a55a77823f00fe0050f567c1e4ee",
+      pair: ["WBTC", "USDC"],
+      label: "WBTC/USDC · Uniswap v3 · 0.30%",
+    },
+    {
+      address: "0x53c6ca2597711ca7a73b6921faf4031eedf71339",
+      pair: ["WBTC", "USDT"],
+      label: "WBTC/USDT · Uniswap v3 · 0.30%",
     },
   ],
 
