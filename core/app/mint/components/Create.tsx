@@ -1,4 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
+import { useChainId } from "wagmi";
+import { ORACLE_CATALOG, pairMatches } from "../data/oracleCatalog";
 import { toStrikePrice } from "../hooks/constants";
 import { CreateOptionParams, useCreateOption } from "../hooks/useCreateOption";
 import { Token, useTokenMap } from "../hooks/useTokenMap";
@@ -76,6 +78,17 @@ const Create = () => {
   const [strikePrices, setStrikePrices] = useState<number[]>([]);
   const [isPut, setIsPut] = useState(false);
   const [expirationDates, setExpirationDates] = useState<Date[]>([new Date()]);
+  // Form-only fields (not yet passed to createOptions): European-style flag and an
+  // oracle source. The oracle is a typeable text input with a chain-aware
+  // suggestion list; users can pick a known pool or paste any address.
+  const [isEuro, setIsEuro] = useState(false);
+  const [oracleAddress, setOracleAddress] = useState("");
+  const chainId = useChainId();
+  const oracleListId = useId();
+  const oracleSuggestions = useMemo(() => {
+    const all = ORACLE_CATALOG[chainId] ?? [];
+    return all.filter(o => pairMatches(o, collateralToken?.symbol, considerationToken?.symbol));
+  }, [chainId, collateralToken?.symbol, considerationToken?.symbol]);
 
   const addExpirationDate = useCallback(() => {
     setExpirationDates(prev => [...prev, new Date()]);
@@ -121,6 +134,10 @@ const Create = () => {
     console.log("strikePrices:", strikePrices);
     console.log("expirationDates:", expirationDates);
     console.log("isPut:", isPut);
+    // The European flag and oracle address are visual-only for now — captured
+    // here so it's visible the form has them, but not threaded into createOptions.
+    console.log("isEuro (visual only):", isEuro);
+    console.log("oracleAddress (visual only):", oracleAddress);
 
     if (!collateralToken || !considerationToken || strikePrices.length === 0 || expirationDates.length === 0) {
       console.error("Missing required fields");
@@ -207,6 +224,64 @@ const Create = () => {
                   PUT
                 </button>
               </div>
+            </div>
+
+            {/* Settlement Style */}
+            <div className="flex flex-col space-y-2">
+              <label className="text-blue-100">Settlement:</label>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEuro(false)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    !isEuro ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  AMERICAN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEuro(true)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isEuro ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  EUROPEAN
+                </button>
+              </div>
+              {isEuro && (
+                <span className="text-xs text-gray-400">
+                  Settles once at expiry against the chosen oracle. No pre-expiry exercise.
+                </span>
+              )}
+            </div>
+
+            {/* Oracle source */}
+            <div className="flex flex-col space-y-2">
+              <label className="text-blue-100">
+                Oracle{!isEuro && <span className="text-gray-500 text-sm font-normal"> (optional)</span>}
+              </label>
+              <input
+                type="text"
+                list={oracleListId}
+                value={oracleAddress}
+                onChange={e => setOracleAddress(e.target.value)}
+                placeholder={isEuro ? "Pick or paste a Uniswap v3 pool address (0x…)" : "Optional — required for European"}
+                className="rounded-lg border border-gray-800 bg-black/60 text-blue-300 p-2 font-mono text-sm focus:outline-none focus:border-blue-500"
+              />
+              <datalist id={oracleListId}>
+                {oracleSuggestions.map(o => (
+                  <option key={o.address} value={o.address}>
+                    {o.label}
+                  </option>
+                ))}
+              </datalist>
+              {oracleSuggestions.length === 0 && collateralToken && considerationToken && (
+                <span className="text-xs text-gray-500">
+                  No known oracle for {collateralToken.symbol}/{considerationToken.symbol} on this chain — paste a pool
+                  address.
+                </span>
+              )}
             </div>
 
             {/* Expiration Dates */}
