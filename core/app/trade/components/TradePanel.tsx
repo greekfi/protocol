@@ -241,14 +241,14 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
             <button
               type="button"
               onClick={() => setDirection("buy")}
-              className={`px-2 py-1 ${direction === "buy" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-blue-300 hover:bg-black/60"}`}
             >
               Buy
             </button>
             <button
               type="button"
               onClick={() => setDirection("sell")}
-              className={`px-2 py-1 ${direction === "sell" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+              className={`px-2 py-1 ${direction === "sell" ? "bg-orange-500 text-white" : "bg-black/40 text-orange-300 hover:bg-black/60"}`}
             >
               Sell
             </button>
@@ -276,7 +276,11 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
             type="button"
             onClick={handleTrade}
             disabled={!quote || isTrading || !approvals.allSatisfied}
-            className="px-3 py-1.5 rounded-lg bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-[#0a0a0a] text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+            className={`px-3 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors ${
+              direction === "buy"
+                ? "bg-blue-500 hover:bg-blue-400"
+                : "bg-orange-500 hover:bg-orange-400"
+            }`}
             title={disabledReason}
           >
             {isTrading
