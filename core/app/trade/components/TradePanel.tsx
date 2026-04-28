@@ -229,10 +229,10 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div>
-            <span className="text-xs uppercase tracking-wider text-[#35F3FF] mb-1 inline-block">
+            <span className="text-xs uppercase tracking-wider text-white/80 mb-1 inline-block">
               {direction === "buy" ? "Buy option" : "Sell option"}
             </span>
-            <div className="text-base font-semibold text-blue-200 tabular-nums">
+            <div className="text-base font-semibold text-white tabular-nums">
               {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
             </div>
           </div>
@@ -298,14 +298,14 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className="text-gray-500">
+          <span className={direction === "buy" ? "text-blue-300" : "text-orange-300"}>
             {direction === "buy" ? "Cost" : "Receive"}{" "}
-            <span className="text-emerald-300 font-medium tabular-nums">
+            <span className="font-medium tabular-nums">
               {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
             </span>
           </span>
           <span className="text-gray-500">
-            Per option <span className="text-blue-200 tabular-nums">${formatMoney(pricePerOption)}</span>
+            Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
         </div>
 
