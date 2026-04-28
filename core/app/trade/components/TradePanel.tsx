@@ -1,48 +1,19 @@
+"use client";
+
 import { useEffect, useState } from "react";
+import { formatUnits, parseUnits } from "viem";
+import { useChainId } from "wagmi";
+import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
-import { formatUnits, parseUnits } from "viem";
-import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import deployedContracts from "~~/abi/deployedContracts";
-import { useReadFactoryApprovedOperator } from "~~/generated";
+import type { TradableOption } from "../hooks/useTradableOptions";
+import { type TradeDirection, useTradeApprovals } from "../hooks/useTradeApprovals";
 
-// ERC20 ABI for approve, allowance, and decimals
-const ERC20_ABI = [
-  {
-    name: "approve",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-  },
-  {
-    name: "allowance",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    name: "decimals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-  },
-] as const;
-
-// Bebop Router addresses by chain ID — BebopBlend is same address on all supported chains
-const BEBOP_ROUTER_ADDRESSES: Record<number, string> = {
-  1: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Ethereum Mainnet
-  8453: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Base
-  42161: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F", // Arbitrum
+const USDC: Record<number, string> = {
+  1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
 };
 
 interface TradePanelProps {
@@ -58,472 +29,260 @@ interface TradePanelProps {
   onClose: () => void;
 }
 
+function displayStrike(strike: bigint, isPut: boolean): number {
+  const raw = isPut && strike > 0n ? 10n ** 36n / strike : strike;
+  return Number(formatUnits(raw, 18));
+}
+
+function formatMoney(n: number | undefined): string {
+  if (n === undefined || !Number.isFinite(n)) return "—";
+  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (n >= 0.01) return n.toFixed(3);
+  return n.toPrecision(2);
+}
+
+function formatExpiry(expiration: bigint): string {
+  const d = new Date(Number(expiration) * 1000);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+function formatBalance(raw: bigint | undefined, decimals: number): string {
+  if (raw === undefined) return "—";
+  const n = Number(formatUnits(raw, decimals));
+  if (n === 0) return "0";
+  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (n >= 0.0001) return n.toFixed(4);
+  return n.toPrecision(2);
+}
+
 export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
-  const [isBuy, setIsBuy] = useState<boolean>(selectedOption.isBuy);
-
-  // Update isBuy when selectedOption changes
-  useEffect(() => {
-    setIsBuy(selectedOption.isBuy);
-  }, [selectedOption.isBuy]);
-  const [amount, setAmount] = useState<string>("1");
-  const { allTokensMap } = useTokenMap();
-  const { address: userAddress } = useAccount();
   const chainId = useChainId();
+  const { allTokensMap } = useTokenMap();
 
-  // Get token info
+  const [direction, setDirection] = useState<TradeDirection>(selectedOption.isBuy ? "buy" : "sell");
+  const [amount, setAmount] = useState<string>("1");
+
+  // Sync direction with the selection coming from OptionsGrid (Buy/Sell button).
+  useEffect(() => {
+    setDirection(selectedOption.isBuy ? "buy" : "sell");
+  }, [selectedOption.isBuy, selectedOption.optionAddress]);
+
   const optionToken = selectedOption.optionAddress;
+  const paymentToken = USDC[chainId] ?? USDC[1];
 
-  // Payment token is USDC based on chain
-  const USDC_ADDRESSES: Record<number, string> = {
-    1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Ethereum Mainnet
-    8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base
-    42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // Arbitrum
+  // Build the "TradableOption" shape useTradeApprovals needs from the selection.
+  const optionForApprovals: TradableOption = {
+    optionAddress: selectedOption.optionAddress,
+    collateralAddress: selectedOption.collateralAddress,
+    considerationAddress: selectedOption.considerationAddress,
+    expiration: selectedOption.expiration,
+    strike: selectedOption.strike,
+    isPut: selectedOption.isPut,
+    redemptionAddress: "",
   };
 
-  const paymentToken = USDC_ADDRESSES[chainId] || USDC_ADDRESSES[1];
-
-  // Find token symbols
-  const paymentTokenSymbol =
-    Object.values(allTokensMap).find(t => t.address.toLowerCase() === paymentToken.toLowerCase())?.symbol || "USDC";
-
-  // Determine buy/sell tokens for Bebop
-  const buyToken = isBuy ? optionToken : paymentToken;
-  const sellToken = isBuy ? paymentToken : optionToken;
-
-  // Fetch decimals for buy token
-  const { data: buyTokenDecimalsData } = useReadContract({
-    address: buyToken as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "decimals",
-  });
-
-  // Fetch decimals for sell token
-  const { data: sellTokenDecimalsData } = useReadContract({
-    address: sellToken as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "decimals",
-  });
-
-  // Use fetched decimals or default to 18 if not available yet
-  const buyTokenDecimals = buyTokenDecimalsData ?? 18;
-  const sellTokenDecimals = sellTokenDecimalsData ?? 18;
-
-  // Use buy_amounts when buying options (user wants X options, Bebop tells us the USDC cost)
-  // Use sell_amounts when selling options (user has X options to sell, Bebop tells us the USDC received)
-  const buyAmount = isBuy && amount ? parseUnits(amount, buyTokenDecimals).toString() : undefined;
-  const sellAmount = !isBuy && amount ? parseUnits(amount, sellTokenDecimals).toString() : undefined;
-
-  // Get Bebop router address for current chain
-  const bebopRouter = BEBOP_ROUTER_ADDRESSES[chainId];
-
-  // Fetch quote from Bebop
-  const {
-    data: quote,
-    isLoading: quoteLoading,
-    error: quoteError,
-  } = useBebopQuote({
-    buyToken,
-    sellToken,
-    buyAmount,
-    sellAmount,
-    enabled: amount !== "" && parseFloat(amount) > 0,
-  });
-
-  // Check USDC allowance
-  const { data: usdcAllowance, refetch: refetchUsdcAllowance } = useReadContract({
-    address: paymentToken as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
-    query: {
-      enabled: !!userAddress && !!bebopRouter,
-    },
-  });
-
-  // Check option token allowance
-  const { data: optionAllowance, refetch: refetchOptionAllowance } = useReadContract({
-    address: optionToken as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
-    query: {
-      enabled: !!userAddress && !!bebopRouter,
-    },
-  });
-
-  // Factory-level operator approval — grants Bebop blanket authority over every
-  // Option this factory created, bypassing per-token ERC20 allowance on sells.
-  const factoryAddress = deployedContracts[chainId as keyof typeof deployedContracts]?.Factory?.address as
-    | `0x${string}`
-    | undefined;
-  const { data: factoryOperatorApproved } = useReadFactoryApprovedOperator({
-    address: factoryAddress,
-    args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
-    query: {
-      enabled: !!userAddress && !!bebopRouter && !!factoryAddress,
-    },
-  });
-
-  // USDC approval transaction
-  const { writeContract: approveUsdc, data: usdcApprovalHash, isPending: isApprovingUsdc } = useWriteContract();
-  const { isSuccess: isUsdcApprovalSuccess } = useWaitForTransactionReceipt({
-    hash: usdcApprovalHash,
-  });
-
-  // Option approval transaction
-  const { writeContract: approveOption, data: optionApprovalHash, isPending: isApprovingOption } = useWriteContract();
-  const { isSuccess: isOptionApprovalSuccess } = useWaitForTransactionReceipt({
-    hash: optionApprovalHash,
-  });
-
-  // Refetch allowances after successful approvals
-  useEffect(() => {
-    if (isUsdcApprovalSuccess) {
-      refetchUsdcAllowance();
-    }
-  }, [isUsdcApprovalSuccess, refetchUsdcAllowance]);
-
-  useEffect(() => {
-    if (isOptionApprovalSuccess) {
-      refetchOptionAllowance();
-    }
-  }, [isOptionApprovalSuccess, refetchOptionAllowance]);
-
-  // Check if USDC approval is needed (when buying options)
-  const usdcNeededAmount = isBuy && quote?.sellAmount ? BigInt(quote.sellAmount) : 0n;
-  const needsUsdcApproval = Boolean(
-    bebopRouter && usdcAllowance !== undefined && usdcNeededAmount > 0n && usdcAllowance < usdcNeededAmount,
+  // Bebop quote — for buys we know the option amount we want; for sells we know the option amount we have.
+  const { data: quote, isLoading: quoteLoading } = useBebopQuote(
+    direction === "buy"
+      ? {
+          buyToken: optionToken,
+          sellToken: paymentToken,
+          buyAmount: amount && parseFloat(amount) > 0 ? parseUnits(amount, 18).toString() : undefined,
+          enabled: amount !== "" && parseFloat(amount) > 0,
+        }
+      : {
+          buyToken: paymentToken,
+          sellToken: optionToken,
+          sellAmount: amount && parseFloat(amount) > 0 ? parseUnits(amount, 18).toString() : undefined,
+          enabled: amount !== "" && parseFloat(amount) > 0,
+        },
   );
 
-  // Check if option approval is needed (when selling options).
-  // Either a per-token ERC20 allowance OR a factory-level operator approval is sufficient.
-  const optionNeededAmount = !isBuy && amount ? parseUnits(amount, sellTokenDecimals) : 0n;
-  const needsOptionApproval = Boolean(
-    bebopRouter &&
-      optionAllowance !== undefined &&
-      optionNeededAmount > 0n &&
-      optionAllowance < optionNeededAmount &&
-      !factoryOperatorApproved,
-  );
+  const approvals = useTradeApprovals({
+    option: optionForApprovals,
+    amount,
+    direction,
+    usdcQuoteAmount: direction === "buy" ? quote?.sellAmount : undefined,
+  });
 
-  // Handle USDC approval (approve max amount for convenience)
-  const handleApproveUsdc = async () => {
-    if (!bebopRouter) return;
-
-    try {
-      approveUsdc({
-        address: paymentToken as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "approve",
-        args: [
-          bebopRouter as `0x${string}`,
-          BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ], // max uint256
-      });
-    } catch (err) {
-      console.error("USDC approval failed:", err);
-    }
-  };
-
-  // Handle option token approval (approve max amount for convenience)
-  const handleApproveOption = async () => {
-    if (!bebopRouter) return;
-
-    try {
-      approveOption({
-        address: optionToken as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "approve",
-        args: [
-          bebopRouter as `0x${string}`,
-          BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ], // max uint256
-      });
-    } catch (err) {
-      console.error("Option approval failed:", err);
-    }
-  };
-
-  // Trade execution
   const { executeTrade, status, error: tradeError, txHash, reset } = useBebopTrade();
-
-  // Reset trade status when option or trade type changes
   useEffect(() => {
     reset();
-  }, [selectedOption, isBuy, reset]);
+  }, [optionToken, direction, reset]);
 
-  const handleExecuteTrade = async () => {
+  const handleTrade = async () => {
     if (!quote) return;
-
     try {
       await executeTrade(quote);
-    } catch (err) {
-      console.error("Trade failed:", err);
+      approvals.refetchAll();
+    } catch (e) {
+      console.error("[trade] failed", e);
     }
   };
 
-  // Format dates
-  const expirationDate = new Date(Number(selectedOption.expiration) * 1000);
-  const strikeFormatted = formatUnits(selectedOption.strike, 18);
+  const isTrading = status === "preparing" || status === "pending";
+
+  // Money side of the quote: buys show "cost", sells show "receive".
+  const usdcAmount = direction === "buy" ? quote?.sellAmount : quote?.buyAmount;
+  const usdcDisplay = usdcAmount
+    ? Number(formatUnits(BigInt(usdcAmount), approvals.usdcDecimals))
+    : undefined;
+  const pricePerOption =
+    usdcDisplay !== undefined && parseFloat(amount) > 0 ? usdcDisplay / parseFloat(amount) : undefined;
+
+  const disabledReason = !approvals.allSatisfied
+    ? "Finish the approvals in the card on the right"
+    : !quote
+      ? quoteLoading
+        ? "Fetching quote…"
+        : "No quote available — is the market maker running?"
+      : isTrading
+        ? "Waiting for on-chain confirmation"
+        : undefined;
+
+  // ApprovalsCard inputs.
+  const usdcSymbol =
+    Object.values(allTokensMap).find(t => t.address.toLowerCase() === paymentToken.toLowerCase())?.symbol ?? "USDC";
+  const collSymbol =
+    Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
+    )?.symbol ?? "Collateral";
+
+  const balances: BalanceRow[] = [
+    {
+      label: usdcSymbol,
+      value: formatBalance(approvals.usdcBalance, approvals.usdcDecimals),
+      dim: !approvals.usdcBalance,
+    },
+    {
+      label: `${collSymbol} option`,
+      value: formatBalance(approvals.optionBalance, approvals.optionDecimals),
+      dim: !approvals.optionBalance,
+    },
+  ];
+
+  const steps =
+    direction === "buy"
+      ? [
+          {
+            label: `Approve ${usdcSymbol} → Bebop`,
+            done: !approvals.needsUsdcApproval,
+            pending: approvals.isApproving,
+            onAction: approvals.handleApproveUsdc,
+            title: "Allow Bebop to pull USDC for the option purchase.",
+          },
+        ]
+      : [
+          {
+            label: `Approve option → Bebop`,
+            done: !approvals.needsOptionApproval,
+            pending: approvals.isApproving,
+            onAction: approvals.handleApproveOption,
+            title: "Allow Bebop to pull the option token for the sale.",
+          },
+        ];
+
+  const strikeLabel = `$${formatMoney(displayStrike(selectedOption.strike, selectedOption.isPut))}`;
+  const expiryLabel = formatExpiry(selectedOption.expiration);
 
   return (
-    <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-light text-blue-300">Trade Option</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
-          ✕
+    <div className="flex flex-wrap gap-4 items-stretch">
+      {/* Action card */}
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <div>
+            <span className="text-xs uppercase tracking-wider text-[#35F3FF] mb-1 inline-block">
+              {direction === "buy" ? "Buy option" : "Sell option"}
+            </span>
+            <div className="text-base font-semibold text-blue-200 tabular-nums">
+              {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
+            </div>
+          </div>
+
+          <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => setDirection("buy")}
+              className={`px-2 py-1 ${direction === "buy" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => setDirection("sell")}
+              className={`px-2 py-1 ${direction === "sell" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Sell
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 items-stretch">
+          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-44">
+            <input
+              type="text"
+              inputMode="decimal"
+              maxLength={8}
+              value={amount}
+              onChange={e => {
+                const v = e.target.value;
+                if (/^\d*\.?\d*$/.test(v) && v.length <= 8) setAmount(v);
+              }}
+              placeholder="0"
+              className="w-full px-3 py-2 bg-transparent text-blue-100 text-base outline-none tabular-nums"
+            />
+            <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">option</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTrade}
+            disabled={!quote || isTrading || !approvals.allSatisfied}
+            className="px-3 py-1.5 rounded-lg bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-[#0a0a0a] text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+            title={disabledReason}
+          >
+            {isTrading
+              ? direction === "buy"
+                ? "Buying…"
+                : "Selling…"
+              : status === "success"
+                ? direction === "buy"
+                  ? "Bought ✓"
+                  : "Sold ✓"
+                : direction === "buy"
+                  ? "Buy"
+                  : "Sell"}
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+          <span className="text-gray-500">
+            {direction === "buy" ? "Cost" : "Receive"}{" "}
+            <span className="text-emerald-300 font-medium tabular-nums">
+              {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
+            </span>
+          </span>
+          <span className="text-gray-500">
+            Per option <span className="text-blue-200 tabular-nums">${formatMoney(pricePerOption)}</span>
+          </span>
+        </div>
+
+        {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
+        {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 text-xs text-gray-500 hover:text-blue-300 transition-colors"
+        >
+          ← back to grid
         </button>
       </div>
 
-      {/* Option Details */}
-      <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-gray-400">Type</div>
-            <div className="text-blue-300 font-medium">{selectedOption.isPut ? "PUT" : "CALL"}</div>
-          </div>
-          <div>
-            <div className="text-gray-400">Strike</div>
-            <div className="text-blue-300 font-medium">${strikeFormatted}</div>
-          </div>
-          <div className="col-span-2">
-            <div className="text-gray-400">Expiration</div>
-            <div className="text-blue-300 font-medium">
-              {expirationDate.toLocaleDateString()} {expirationDate.toLocaleTimeString()}
-            </div>
-          </div>
-        </div>
+      {/* Approvals + balances side card */}
+      <div className="min-w-[16rem] flex-1 max-w-sm">
+        <ApprovalsCard steps={steps} balances={balances} />
       </div>
-
-      {/* Trade Type Selector */}
-      <div className="mb-4">
-        <div className="text-gray-400 mb-2 text-sm">Action</div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsBuy(true)}
-            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-              isBuy
-                ? "bg-green-500 text-white"
-                : "bg-gray-900 text-gray-400 border border-gray-700 hover:border-green-500"
-            }`}
-          >
-            Buy
-          </button>
-          <button
-            onClick={() => setIsBuy(false)}
-            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-              !isBuy ? "bg-red-500 text-white" : "bg-gray-900 text-gray-400 border border-gray-700 hover:border-red-500"
-            }`}
-          >
-            Sell
-          </button>
-        </div>
-      </div>
-
-      {/* Amount Input */}
-      <div className="mb-4">
-        <label className="block text-gray-400 mb-2 text-sm">Amount {isBuy ? "to buy" : "to sell"}</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="0.0"
-          step="any"
-          min="0"
-          className="w-full p-3 rounded-lg border border-gray-700 bg-black/60 text-blue-300 focus:outline-none focus:border-blue-500"
-        />
-      </div>
-
-      {/* Token Approval Sections */}
-      {!bebopRouter ? (
-        <div className="mb-4 p-4 bg-red-900/20 rounded-lg border border-red-700">
-          <div className="text-red-300 text-sm">Bebop router not available for chain {chainId}</div>
-        </div>
-      ) : (
-        <div className="mb-4 space-y-3">
-          {/* USDC Approval */}
-          <div className="p-4 bg-gray-900 rounded-lg border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">USDC Allowance</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Current Allowance:</span>
-                <span className="text-blue-300 font-mono">
-                  {usdcAllowance !== undefined ? formatUnits(usdcAllowance, 6) : "Loading..."}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Bebop Router:</span>
-                <span className="text-blue-300 font-mono text-xs">
-                  {bebopRouter.slice(0, 6)}...{bebopRouter.slice(-4)}
-                </span>
-              </div>
-              <button
-                onClick={handleApproveUsdc}
-                disabled={isApprovingUsdc}
-                className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors ${
-                  isApprovingUsdc
-                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-                }`}
-              >
-                {isApprovingUsdc ? "Approving..." : "Approve USDC"}
-              </button>
-              {isUsdcApprovalSuccess && (
-                <div className="p-3 bg-green-900/20 rounded border border-green-700">
-                  <div className="text-green-300 text-sm">USDC approval successful!</div>
-                  {usdcApprovalHash && (
-                    <div className="mt-1 text-xs text-gray-400 break-all">Tx: {usdcApprovalHash}</div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Option Token Approval */}
-          <div className="p-4 bg-gray-900 rounded-lg border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">Option Token Allowance</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Current Allowance:</span>
-                <span className="text-blue-300 font-mono">
-                  {optionAllowance !== undefined ? formatUnits(optionAllowance, buyTokenDecimals) : "Loading..."}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Factory Operator:</span>
-                <span className="text-blue-300 font-mono">
-                  {factoryOperatorApproved === undefined ? "Loading..." : factoryOperatorApproved ? "Approved" : "Not set"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">Bebop Router:</span>
-                <span className="text-blue-300 font-mono text-xs">
-                  {bebopRouter.slice(0, 6)}...{bebopRouter.slice(-4)}
-                </span>
-              </div>
-              <button
-                onClick={handleApproveOption}
-                disabled={isApprovingOption}
-                className={`w-full py-2.5 px-4 rounded-lg font-medium transition-colors ${
-                  isApprovingOption
-                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-                }`}
-              >
-                {isApprovingOption ? "Approving..." : "Approve Option Token"}
-              </button>
-              {isOptionApprovalSuccess && (
-                <div className="p-3 bg-green-900/20 rounded border border-green-700">
-                  <div className="text-green-300 text-sm">Option approval successful!</div>
-                  {optionApprovalHash && (
-                    <div className="mt-1 text-xs text-gray-400 break-all">Tx: {optionApprovalHash}</div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quote Display */}
-      {quoteLoading && (
-        <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-          <div className="text-blue-300">Fetching quote...</div>
-        </div>
-      )}
-
-      {quoteError && (
-        <div className="mb-4 p-4 bg-red-900/20 rounded-lg border border-red-700">
-          <div className="text-red-300">Error: {quoteError.message}</div>
-        </div>
-      )}
-
-      {quote && !quoteLoading && (
-        <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-          <div className="text-sm space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-400">You pay:</span>
-              <span className="text-blue-300 font-medium">
-                {quote.sellAmount ? formatUnits(BigInt(quote.sellAmount), sellTokenDecimals) : "N/A"}{" "}
-                {isBuy ? paymentTokenSymbol : "OPT"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">You receive:</span>
-              <span className="text-blue-300 font-medium">
-                {quote.buyAmount ? formatUnits(BigInt(quote.buyAmount), buyTokenDecimals) : "N/A"}{" "}
-                {isBuy ? "OPT" : paymentTokenSymbol}
-              </span>
-            </div>
-            {quote.price && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Price:</span>
-                <span className="text-blue-300 font-medium">{quote.price}</span>
-              </div>
-            )}
-            {quote.estimatedGas && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Est. Gas:</span>
-                <span className="text-blue-300 font-medium">{quote.estimatedGas}</span>
-              </div>
-            )}
-          </div>
-          <div className="mt-2 text-xs text-gray-500">Quote refreshes every 15 seconds</div>
-          {/* Debug info */}
-          <details className="mt-2">
-            <summary className="text-xs text-gray-500 cursor-pointer">Debug: Show raw quote data</summary>
-            <div className="mt-1 text-xs text-gray-600 break-all bg-black/40 p-2 rounded">
-              <pre>{JSON.stringify(quote, null, 2)}</pre>
-            </div>
-          </details>
-        </div>
-      )}
-
-      {/* Transaction Status */}
-      {status !== "idle" && (
-        <div
-          className={`mb-4 p-4 rounded-lg border ${
-            status === "success"
-              ? "bg-green-900/20 border-green-700"
-              : status === "error"
-                ? "bg-red-900/20 border-red-700"
-                : "bg-blue-900/20 border-blue-700"
-          }`}
-        >
-          <div
-            className={status === "success" ? "text-green-300" : status === "error" ? "text-red-300" : "text-blue-300"}
-          >
-            {status === "preparing" && "Preparing transaction..."}
-            {status === "pending" && "Transaction pending..."}
-            {status === "success" && "Trade successful!"}
-            {status === "error" && `Error: ${tradeError}`}
-          </div>
-          {txHash && <div className="mt-2 text-xs text-gray-400 break-all">Tx: {txHash}</div>}
-        </div>
-      )}
-
-      {/* Execute Button */}
-      <button
-        onClick={handleExecuteTrade}
-        disabled={
-          !quote || status === "pending" || status === "preparing" || (isBuy ? needsUsdcApproval : needsOptionApproval)
-        }
-        className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-          !quote || status === "pending" || status === "preparing" || (isBuy ? needsUsdcApproval : needsOptionApproval)
-            ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-            : isBuy
-              ? "bg-green-500 hover:bg-green-600 text-white"
-              : "bg-red-500 hover:bg-red-600 text-white"
-        }`}
-      >
-        {status === "pending" || status === "preparing"
-          ? "Processing..."
-          : (isBuy ? needsUsdcApproval : needsOptionApproval)
-            ? "Approval Required"
-            : isBuy
-              ? "Buy Option"
-              : "Sell Option"}
-      </button>
     </div>
   );
 }
