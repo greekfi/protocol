@@ -3,6 +3,22 @@ import "dotenv/config";
 import { Pricer } from "./pricing/pricer";
 import { SpotFeed } from "./pricing/spotFeed";
 import { startDirectMode } from "./modes/direct";
+import { getCurrentChainId } from "./config/client";
+import { getTokenByAddress } from "./config/tokens";
+
+/**
+ * Map a collateral-token symbol to the spot-feed symbol used for pricing.
+ * BTC variants (WBTC, cbBTC, …) all reference the BTC spot. ETH variants
+ * (WETH, stETH, wstETH, …) all reference the ETH spot. Add more here as the
+ * protocol supports new underlyings.
+ */
+function feedSymbolFor(tokenSymbol: string | undefined): string | undefined {
+  if (!tokenSymbol) return undefined;
+  const s = tokenSymbol.toUpperCase();
+  if (s === "WETH" || s === "ETH" || s.endsWith("ETH")) return "ETH";
+  if (s === "WBTC" || s === "BTC" || s === "CBBTC" || s.endsWith("BTC")) return "BTC";
+  return undefined; // unknown — pricer will skip / no spot
+}
 
 async function main() {
   console.log("Starting market-maker in DIRECT mode");
@@ -32,26 +48,55 @@ async function main() {
     pricer.setSpotPrice(symbol, price);
   });
 
-  let ethPrice: number | null = null;
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    ethPrice = await spotFeed.getPrice("ETH");
-    if (ethPrice) break;
-    console.warn(`⚠️  Spot price fetch attempt ${attempt}/5 failed, retrying in ${attempt * 2}s...`);
-    await new Promise(r => setTimeout(r, attempt * 2000));
-    spotFeed.clearCache();
-  }
-  if (ethPrice) {
-    pricer.setSpotPrice("ETH", ethPrice);
-    console.log(`💲 Initial ETH spot price: $${ethPrice.toFixed(2)}`);
-  } else {
-    console.warn("⚠️  Failed to fetch ETH spot price after retries, pricing may fail");
-  }
-
-  spotFeed.startPolling(["ETH"], 30000);
-
   console.log("Loading option metadata from chain...");
   const { fetchAllOptionMetadata } = await import("./config/metadata");
   const optionsMap = await fetchAllOptionMetadata();
+
+  // Resolve each option's collateral → spot-feed symbol (ETH, BTC, …).
+  // Drives both which spot prices we poll and which underlying each option is
+  // registered under, so puts/calls on different underlyings don't all collapse
+  // into "ETH" pricing the way they used to.
+  const chainId = getCurrentChainId();
+  const underlyingByOption = new Map<string, string>();
+  const feedSymbols = new Set<string>();
+  for (const [address, metadata] of optionsMap.entries()) {
+    const tok = getTokenByAddress(chainId, metadata.collateralAddress);
+    const feed = feedSymbolFor(tok?.symbol);
+    if (feed) {
+      underlyingByOption.set(address, feed);
+      feedSymbols.add(feed);
+    } else {
+      console.warn(
+        `⚠️  Unknown collateral ${metadata.collateralAddress} (chainId ${chainId}) for option ${address}; skipping spot-price registration.`,
+      );
+    }
+  }
+  if (feedSymbols.size === 0) {
+    console.warn("⚠️  No underlyings discovered — falling back to ETH spot polling.");
+    feedSymbols.add("ETH");
+  }
+  const symbolList = Array.from(feedSymbols);
+  console.log(`Underlyings discovered from on-chain options: ${symbolList.join(", ")}`);
+
+  // Initial spot fetch with retries for each discovered underlying.
+  for (const sym of symbolList) {
+    let price: number | null = null;
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      price = await spotFeed.getPrice(sym);
+      if (price) break;
+      console.warn(`⚠️  Spot ${sym} fetch attempt ${attempt}/5 failed, retrying in ${attempt * 2}s...`);
+      await new Promise(r => setTimeout(r, attempt * 2000));
+      spotFeed.clearCache();
+    }
+    if (price) {
+      pricer.setSpotPrice(sym, price);
+      console.log(`💲 Initial ${sym} spot price: $${price.toFixed(2)}`);
+    } else {
+      console.warn(`⚠️  Failed to fetch ${sym} spot after retries, pricing for ${sym} options may fail`);
+    }
+  }
+
+  spotFeed.startPolling(symbolList, 30000);
 
   const { getPublicClient } = await import("./config/client");
   const client = getPublicClient();
@@ -80,7 +125,7 @@ async function main() {
   for (const [address, metadata] of optionsMap.entries()) {
     pricer.registerOption({
       optionAddress: address,
-      underlying: "ETH",
+      underlying: underlyingByOption.get(address) ?? "ETH",
       strike: metadata.strike,
       expiry: metadata.expirationTimestamp,
       isPut: metadata.isPut,

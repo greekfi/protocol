@@ -16,6 +16,7 @@ export type Stablecoin = {
 export const CALL_UNDERLYINGS: UnderlyingToken[] = [
   { symbol: "WETH", name: "Wrapped Ether", color: "bg-indigo-500", apr: { min: 9, max: 18 } },
   { symbol: "WBTC", name: "Wrapped Bitcoin", color: "bg-amber-500", apr: { min: 7, max: 14 } },
+  { symbol: "cbBTC", name: "Coinbase Wrapped BTC", color: "bg-orange-500", apr: { min: 7, max: 14 } },
   { symbol: "AAVE", name: "Aave", color: "bg-purple-500", apr: { min: 12, max: 24 } },
   { symbol: "UNI", name: "Uniswap", color: "bg-pink-500", apr: { min: 10, max: 22 } },
   { symbol: "MORPHO", name: "Morpho", color: "bg-blue-500", apr: { min: 11, max: 21 } },
@@ -34,6 +35,7 @@ export const STABLECOINS: Stablecoin[] = [
 export const PUT_UNDERLYINGS: UnderlyingToken[] = [
   { symbol: "WETH", name: "Wrapped Ether", color: "bg-indigo-500", apr: { min: 8, max: 16 } },
   { symbol: "WBTC", name: "Wrapped Bitcoin", color: "bg-amber-500", apr: { min: 6, max: 13 } },
+  { symbol: "cbBTC", name: "Coinbase Wrapped BTC", color: "bg-orange-500", apr: { min: 6, max: 13 } },
   { symbol: "AAVE", name: "Aave", color: "bg-purple-500", apr: { min: 11, max: 22 } },
   { symbol: "UNI", name: "Uniswap", color: "bg-pink-500", apr: { min: 9, max: 20 } },
   { symbol: "MORPHO", name: "Morpho", color: "bg-blue-500", apr: { min: 10, max: 19 } },
