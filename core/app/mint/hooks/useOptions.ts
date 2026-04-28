@@ -15,9 +15,6 @@ const OPTION_CREATED_EVENT = factoryAbi.find(
 // Alchemy / most public RPCs cap getLogs at 10k blocks per call.
 const LOG_CHUNK_SIZE = 10_000n;
 const LOG_CONCURRENCY = 8;
-// Cap window to avoid 1000+ chunks on Arbitrum (~12M blocks since deployment).
-// 500k blocks ≈ 35h on Arbitrum / weeks on mainnet / ~12 days on Base.
-const MAX_SCAN_WINDOW = 500_000n;
 
 export function useOptions() {
   const publicClient = usePublicClient();
@@ -38,9 +35,11 @@ export function useOptions() {
       if (!publicClient || !factoryAddress) return [];
 
       const currentBlock = await publicClient.getBlockNumber();
-      const windowStart = currentBlock > MAX_SCAN_WINDOW ? currentBlock - MAX_SCAN_WINDOW : 0n;
-      const deployBN = BigInt(deploymentBlock);
-      const fromBlock = deployBN > windowStart ? deployBN : windowStart;
+      // Scan from deploymentBlock through current — matches useTradableOptions on
+      // /trade and /yield. The previous 500k-block cap was hiding any option older
+      // than ~12 days on Base (and similarly on the other chains), so /mint would
+      // come up empty even though the options exist on-chain.
+      const fromBlock = BigInt(deploymentBlock);
 
       const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
       for (let b = fromBlock; b <= currentBlock; b += LOG_CHUNK_SIZE) {

@@ -28,7 +28,8 @@ const arbitrumRpc = userAlchemyKey
   : "https://arbitrum-one-rpc.publicnode.com";
 
 const scaffoldConfig = {
-  // The networks on which your DApp is live
+  // The networks on which your DApp is live. `foundry` is filtered out at runtime in
+  // wagmiConfig when the app isn't being served from localhost (see services/web3/wagmiConfig.tsx).
   targetNetworks: [chains.foundry, chains.mainnet, chains.base, chains.arbitrum],
   // The interval at which your front-end polls the RPC servers for new data (it has no effect if you only target the local network (default is 4000))
   pollingInterval: 30000,

@@ -62,13 +62,16 @@ export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
         </>
       )}
 
+      {steps.length > 0 && (
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
           Approvals
         </span>
         {allDone && <span className="text-xs text-emerald-300">All set ✓</span>}
       </div>
+      )}
 
+      {steps.length > 0 && (
       <ul className="flex flex-col gap-1.5">
         {steps.map(step => (
           <li key={step.label} className="flex items-center justify-between gap-3 text-sm">
@@ -104,6 +107,7 @@ export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }
