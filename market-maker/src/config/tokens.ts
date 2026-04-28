@@ -41,6 +41,12 @@ export const TOKENS: Record<number, Record<string, TokenConfig>> = {
       decimals: 8,
       name: "Wrapped BTC",
     },
+    cbBTC: {
+      address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+      symbol: "cbBTC",
+      decimals: 8,
+      name: "Coinbase Wrapped BTC",
+    },
   },
 
   // === BASE MAINNET ===
@@ -69,6 +75,12 @@ export const TOKENS: Record<number, Record<string, TokenConfig>> = {
       decimals: 18,
       name: "Coinbase Wrapped Staked ETH",
     },
+    cbBTC: {
+      address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+      symbol: "cbBTC",
+      decimals: 8,
+      name: "Coinbase Wrapped BTC",
+    },
   },
 
   // === ARBITRUM ONE ===
@@ -96,6 +108,18 @@ export const TOKENS: Record<number, Record<string, TokenConfig>> = {
       symbol: "ARB",
       decimals: 18,
       name: "Arbitrum",
+    },
+    WBTC: {
+      address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+      symbol: "WBTC",
+      decimals: 8,
+      name: "Wrapped BTC",
+    },
+    USDT: {
+      address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+      symbol: "USDT",
+      decimals: 6,
+      name: "Tether USD",
     },
   },
 
