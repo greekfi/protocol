@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
-import { useChainId } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
+import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
@@ -58,6 +60,14 @@ function formatBalance(raw: bigint | undefined, decimals: number): string {
 export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
   const chainId = useChainId();
   const { allTokensMap } = useTokenMap();
+  const { address: userAddress } = useAccount();
+
+  // Pull all four balances Option exposes in one call: collateral / consideration / long / short.
+  const { data: optionBalances } = useReadOptionBalancesOf({
+    address: selectedOption.optionAddress as `0x${string}`,
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: !!userAddress },
+  });
 
   const [direction, setDirection] = useState<TradeDirection>(selectedOption.isBuy ? "buy" : "sell");
   const [amount, setAmount] = useState<string>("1");
@@ -147,19 +157,50 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
     Object.values(allTokensMap).find(
       t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
     )?.symbol ?? "Collateral";
+  const consSymbol =
+    Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
+    )?.symbol ?? "Consideration";
 
-  const balances: BalanceRow[] = [
-    {
-      label: usdcSymbol,
-      value: formatBalance(approvals.usdcBalance, approvals.usdcDecimals),
-      dim: !approvals.usdcBalance,
-    },
-    {
-      label: `${collSymbol} option`,
-      value: formatBalance(approvals.optionBalance, approvals.optionDecimals),
-      dim: !approvals.optionBalance,
-    },
-  ];
+  const collDecimals =
+    Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
+    )?.decimals ?? 18;
+  const consDecimals =
+    Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
+    )?.decimals ?? approvals.usdcDecimals;
+
+  const balances: BalanceRow[] = optionBalances
+    ? [
+        {
+          label: collSymbol,
+          value: formatBalance(optionBalances.collateral, collDecimals),
+          dim: optionBalances.collateral === 0n,
+        },
+        {
+          label: consSymbol,
+          value: formatBalance(optionBalances.consideration, consDecimals),
+          dim: optionBalances.consideration === 0n,
+        },
+        {
+          label: "Option",
+          value: formatBalance(optionBalances.option, approvals.optionDecimals),
+          dim: optionBalances.option === 0n,
+        },
+        {
+          label: "Short",
+          value: formatBalance(optionBalances.coll, approvals.optionDecimals),
+          dim: optionBalances.coll === 0n,
+          bottomRow: (
+            <BuyBackRow
+              optionAddress={selectedOption.optionAddress as `0x${string}`}
+              shortAmount={optionBalances.coll}
+            />
+          ),
+        },
+      ]
+    : [];
 
   const steps =
     direction === "buy"

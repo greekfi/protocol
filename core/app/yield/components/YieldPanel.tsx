@@ -8,7 +8,7 @@ import { type TradableOption, useTradableOptions } from "../../trade/hooks/useTr
 import { STABLECOINS, type UnderlyingToken } from "../data";
 import { useSellApprovals } from "../hooks/useSellApprovals";
 import { ApprovalsCard } from "../../components/options/ApprovalsCard";
-import { BuyBackRow } from "./BuyBackButton";
+import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { SellPanel } from "./SellPanel";
 import { StrikeExpirationGrid } from "./StrikeExpirationGrid";
 
