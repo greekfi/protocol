@@ -161,7 +161,9 @@ export class Pricer {
     if (!opt) return this.defaultIV;
     const S = this.getSpotPrice(opt.underlying);
     if (S === undefined || S <= 0) return this.defaultIV;
-    const K = opt.isPut && opt.strike > 0 ? 1 / opt.strike : opt.strike;
+    // `option.strike` is human-readable consideration-per-collateral for both
+    // calls and puts (metadata.ts inverts the contract-stored value for puts).
+    const K = opt.strike;
     if (K <= 0) return this.defaultIV;
     const T = this.timeToExpiry(opt.expiry);
     if (T <= 0) return this.defaultIV;
@@ -198,12 +200,11 @@ export class Pricer {
     const T = this.timeToExpiry(option.expiry);
     const sigma = this.getIV(optionAddress);
 
-    // Put strikes on-chain are stored inverted (collateral per consideration),
-    // e.g. 0.000333 for a $3000 put. Invert back to the real strike for BS.
-    // We return the USD/ETH BS price directly — comparable to call prices on
-    // the same chain. The on-chain per-token conversion happens at settlement.
-    const isInvertedPut = option.isPut && option.strike > 0;
-    const K = isInvertedPut ? 1 / option.strike : option.strike;
+    // `option.strike` is the human-readable strike (consideration per
+    // collateral) for both calls and puts. metadata.ts already un-inverts the
+    // contract's storage form for puts before reaching the pricer, so BS sees
+    // the same encoding for both sides.
+    const K = option.strike;
 
     const bsInput: BlackScholesInput = {
       S: spotPrice,
@@ -247,14 +248,16 @@ export class Pricer {
    * Get quote for buying options (user pays, receives options)
    * Returns the cost in consideration token (e.g., USDC)
    */
-  // For calls, 1 option token = 1 underlying-notional, so the per-ETH BS price is also the
-  // per-option-token price. For puts, 1 option token = 1 USDC-notional (= 1/strike ETH),
-  // so the per-option-token price is BS_price / real_strike. `option.strike` for puts is
-  // stored inverted (collateral per consideration), so real_strike = 1 / option.strike,
-  // and dividing by real_strike is the same as multiplying by option.strike.
+  // For calls, 1 option token = 1 underlying-notional, so the per-underlying
+  // BS price is also the per-option-token price.
+  // For puts, 1 option token = 1 consideration-notional (1 USDC), and the
+  // strike is consideration-per-collateral (e.g. 2000 USDC/ETH), so:
+  //   per-option-token price = BS_per-underlying / strike.
+  // `option.strike` is the human-readable strike for both calls and puts
+  // (metadata.ts inverts the contract's stored form for puts).
   private perTokenPrice(price: number, option: OptionParams): number {
     if (!option.isPut || option.strike <= 0) return price;
-    return price * option.strike;
+    return price / option.strike;
   }
 
   getAskQuote(optionAddress: string, amount: bigint, decimals: number): bigint | null {
