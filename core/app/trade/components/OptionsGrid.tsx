@@ -27,7 +27,7 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
   const { data: options, isLoading } = useTradableOptions(selectedToken);
 
   // Use pricing from context (connection is managed at layout level)
-  const { getPrice, isConnected } = usePricing();
+  const { getPrice } = usePricing();
 
   // Fallback prices polled from the direct quote server. Used for cells where
   // the WebSocket stream has no quote (typical when the relay isn't reachable).
@@ -128,8 +128,8 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
 
   return (
     <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg overflow-x-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-light text-blue-300">Options Chain</h2>
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <h2 className="text-xl font-light text-blue-300 mr-auto">Options Chain</h2>
         <div className="flex gap-2">
           <button
             onClick={() => setShowCalls(!showCalls)}
@@ -148,51 +148,24 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
             Puts
           </button>
         </div>
-      </div>
-
-      {/* Expiration date toggles */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className="text-gray-500 text-sm py-1">Expirations:</span>
-        {expirations.map(exp => {
-          const date = new Date(Number(exp) * 1000);
-          const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-          return (
-            <button
-              key={exp}
-              onClick={() => toggleExpiration(exp)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                visibleExpirations.has(exp)
-                  ? "bg-gray-600 text-white"
-                  : "bg-gray-800 text-gray-400 border border-gray-600"
-              }`}
-            >
-              {dateStr}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="text-sm text-gray-400 mb-4">
-        Click on a price to trade. {isConnected ? "🟢 Live prices" : "⚪ Connecting..."}
-      </div>
-
-      {/* Legend */}
-      <div className="flex gap-4 mb-4 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-orange-900/50 border border-orange-700 rounded"></div>
-          <span>Call Bid</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-blue-900/50 border border-blue-700 rounded"></div>
-          <span>Call Ask</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-yellow-900/50 border border-yellow-700 rounded"></div>
-          <span>Put Bid</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-purple-900/50 border border-purple-700 rounded"></div>
-          <span>Put Ask</span>
+        <div className="flex flex-wrap gap-2 items-center">
+          {expirations.map(exp => {
+            const date = new Date(Number(exp) * 1000);
+            const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+            return (
+              <button
+                key={exp}
+                onClick={() => toggleExpiration(exp)}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                  visibleExpirations.has(exp)
+                    ? "bg-gray-600 text-white"
+                    : "bg-gray-800 text-gray-400 border border-gray-600"
+                }`}
+              >
+                {dateStr}
+              </button>
+            );
+          })}
         </div>
       </div>
 
