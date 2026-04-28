@@ -60,14 +60,19 @@ async function main() {
   const underlyingByOption = new Map<string, string>();
   const feedSymbols = new Set<string>();
   for (const [address, metadata] of optionsMap.entries()) {
-    const tok = getTokenByAddress(chainId, metadata.collateralAddress);
+    // For calls, the collateral IS the underlying (e.g. WETH-collateralized call).
+    // For puts, the collateral is the consideration (e.g. USDC-collateralized
+    // put on WBTC) so the underlying is on the consideration side. Look up the
+    // right side per-option.
+    const refAddress = metadata.isPut ? metadata.considerationAddress : metadata.collateralAddress;
+    const tok = getTokenByAddress(chainId, refAddress);
     const feed = feedSymbolFor(tok?.symbol);
     if (feed) {
       underlyingByOption.set(address, feed);
       feedSymbols.add(feed);
     } else {
       console.warn(
-        `⚠️  Unknown collateral ${metadata.collateralAddress} (chainId ${chainId}) for option ${address}; skipping spot-price registration.`,
+        `⚠️  Unknown ${metadata.isPut ? "consideration" : "collateral"} ${refAddress} (chainId ${chainId}) for option ${address}; skipping spot-price registration.`,
       );
     }
   }

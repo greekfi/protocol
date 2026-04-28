@@ -93,14 +93,21 @@ export async function discoverOptionMetadata(): Promise<OptionMetadata[]> {
   const byAddress = new Map<string, OptionMetadata>();
   for (const log of allLogs) {
     const a = log.args;
-    if (!a.option || !a.coll || !a.collateral) continue;
+    if (!a.option || !a.coll || !a.collateral || !a.consideration) continue;
+    // Strike on-chain is "consideration per collateral". For puts, the contract
+    // stores the inverted form (1e36 / humanStrike) so call/put strikes share
+    // the same encoding. Invert it back here so downstream Black-Scholes sees
+    // the same human-readable strike for both sides.
+    const rawStrike = Number(formatUnits(BigInt(a.strike ?? 0n), 18));
+    const strike = a.isPut && rawStrike > 0 ? 1 / rawStrike : rawStrike;
     byAddress.set(a.option.toLowerCase(), {
       address: a.option,
       redemptionAddress: a.coll,
-      strike: Number(formatUnits(BigInt(a.strike ?? 0n), 18)),
+      strike,
       expirationTimestamp: Number(a.expirationDate ?? 0),
       isPut: Boolean(a.isPut),
       collateralAddress: a.collateral,
+      considerationAddress: a.consideration,
     });
   }
   const metadata = Array.from(byAddress.values());
@@ -157,15 +164,24 @@ const REDEMPTION_ABI = [
     inputs: [],
     outputs: [{ type: "address" }],
   },
+  {
+    name: "consideration",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
 ] as const;
 
 export interface OptionMetadata {
   address: string;
   redemptionAddress: string;
-  strike: number; // In USD (normalized)
+  strike: number; // In USD (normalized; for puts, inverted back from contract's 1/strike encoding)
   expirationTimestamp: number; // Unix timestamp
   isPut: boolean;
   collateralAddress: string;
+  /** Consideration token (USDC for calls, the underlying for puts). */
+  considerationAddress: string;
 }
 
 // Cache for option metadata
@@ -187,7 +203,7 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
     }) as `0x${string}`;
 
     // Then get option parameters from redemption contract
-    const [strike, expirationDate, isPut, collateral] = await Promise.all([
+    const [strike, expirationDate, isPut, collateral, consideration] = await Promise.all([
       client.readContract({
         address: redemptionAddress,
         abi: REDEMPTION_ABI,
@@ -208,6 +224,11 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
         abi: REDEMPTION_ABI,
         functionName: "collateral",
       }) as Promise<`0x${string}`>,
+      client.readContract({
+        address: redemptionAddress,
+        abi: REDEMPTION_ABI,
+        functionName: "consideration",
+      }) as Promise<`0x${string}`>,
     ]);
 
     // Strike is encoded with 18 decimals
@@ -226,6 +247,7 @@ export async function fetchOptionMetadata(optionAddress: string): Promise<Option
       expirationTimestamp: Number(expirationDate),
       isPut,
       collateralAddress: collateral.toLowerCase(),
+      considerationAddress: consideration.toLowerCase(),
     };
 
     metadataCache.set(optionAddress.toLowerCase(), metadata);
