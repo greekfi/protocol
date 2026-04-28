@@ -67,6 +67,9 @@ export interface TradeApprovals {
 
   /** Allowance state. */
   factoryOperatorApproved: boolean | undefined;
+  /** Raw allowance values; useful for "done" flags on the always-visible Approvals card. */
+  usdcAllowance: bigint | undefined;
+  optionAllowance: bigint | undefined;
 
   needsUsdcApproval: boolean;
   handleApproveUsdc: () => void;
@@ -216,6 +219,8 @@ export function useTradeApprovals({
     usdcBalance: usdcBal?.value,
     optionBalance: optBal?.value,
     factoryOperatorApproved,
+    usdcAllowance: usdcAllowance as bigint | undefined,
+    optionAllowance: optionAllowance as bigint | undefined,
     needsUsdcApproval,
     handleApproveUsdc,
     needsOptionApproval,

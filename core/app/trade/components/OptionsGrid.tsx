@@ -12,6 +12,8 @@ export interface OptionSelection {
 interface OptionsGridProps {
   selectedToken: string;
   onSelectOption: (selection: OptionSelection) => void;
+  /** When set, highlights the matching cell as the active selection. */
+  selected?: { optionAddress: string; isBuy: boolean } | null;
 }
 
 interface GridCell {
@@ -19,7 +21,7 @@ interface GridCell {
   put?: TradableOption;
 }
 
-export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps) {
+export function OptionsGrid({ selectedToken, onSelectOption, selected }: OptionsGridProps) {
   const [showCalls, setShowCalls] = useState(true);
   const [showPuts, setShowPuts] = useState(true);
   const [visibleExpirations, setVisibleExpirations] = useState<Set<string>>(new Set());
@@ -237,34 +239,20 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
                     return (
                       <td key={`call-${exp}`} colSpan={2} className="p-0 border-r border-gray-800">
                         <div className="flex">
-                          {/* Call Bid */}
-                          <div className="flex-1 p-0.5">
-                            {cell?.call ? (
-                              <button
-                                onClick={() => onSelectOption({ option: cell.call!, isBuy: false })}
-                                className="w-full px-1 py-1 rounded bg-orange-900/30 hover:bg-orange-800/50 border border-orange-700/50 hover:border-orange-500 text-orange-300 transition-colors text-xs"
-                                title="Sell Call"
-                              >
-                                {callBid !== undefined ? callBid.toFixed(2) : "—"}
-                              </button>
-                            ) : (
-                              <span className="block text-center text-gray-700 text-xs py-1">—</span>
-                            )}
-                          </div>
-                          {/* Call Ask */}
-                          <div className="flex-1 p-0.5">
-                            {cell?.call ? (
-                              <button
-                                onClick={() => onSelectOption({ option: cell.call!, isBuy: true })}
-                                className="w-full px-1 py-1 rounded bg-blue-900/30 hover:bg-blue-800/50 border border-blue-700/50 hover:border-blue-500 text-blue-300 transition-colors text-xs"
-                                title="Buy Call"
-                              >
-                                {callAsk !== undefined ? callAsk.toFixed(2) : "—"}
-                              </button>
-                            ) : (
-                              <span className="block text-center text-gray-700 text-xs py-1">—</span>
-                            )}
-                          </div>
+                          <PriceCell
+                            opt={cell?.call}
+                            price={callBid}
+                            isBuy={false}
+                            selected={selected}
+                            onSelect={onSelectOption}
+                          />
+                          <PriceCell
+                            opt={cell?.call}
+                            price={callAsk}
+                            isBuy={true}
+                            selected={selected}
+                            onSelect={onSelectOption}
+                          />
                         </div>
                       </td>
                     );
@@ -286,34 +274,20 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
                     return (
                       <td key={`put-${exp}`} colSpan={2} className="p-0 border-l border-gray-800">
                         <div className="flex">
-                          {/* Put Bid */}
-                          <div className="flex-1 p-0.5">
-                            {cell?.put ? (
-                              <button
-                                onClick={() => onSelectOption({ option: cell.put!, isBuy: false })}
-                                className="w-full px-1 py-1 rounded bg-yellow-900/30 hover:bg-yellow-800/50 border border-yellow-700/50 hover:border-yellow-500 text-yellow-300 transition-colors text-xs"
-                                title="Sell Put"
-                              >
-                                {putBid !== undefined ? putBid.toFixed(2) : "—"}
-                              </button>
-                            ) : (
-                              <span className="block text-center text-gray-700 text-xs py-1">—</span>
-                            )}
-                          </div>
-                          {/* Put Ask */}
-                          <div className="flex-1 p-0.5">
-                            {cell?.put ? (
-                              <button
-                                onClick={() => onSelectOption({ option: cell.put!, isBuy: true })}
-                                className="w-full px-1 py-1 rounded bg-purple-900/30 hover:bg-purple-800/50 border border-purple-700/50 hover:border-purple-500 text-purple-300 transition-colors text-xs"
-                                title="Buy Put"
-                              >
-                                {putAsk !== undefined ? putAsk.toFixed(2) : "—"}
-                              </button>
-                            ) : (
-                              <span className="block text-center text-gray-700 text-xs py-1">—</span>
-                            )}
-                          </div>
+                          <PriceCell
+                            opt={cell?.put}
+                            price={putBid}
+                            isBuy={false}
+                            selected={selected}
+                            onSelect={onSelectOption}
+                          />
+                          <PriceCell
+                            opt={cell?.put}
+                            price={putAsk}
+                            isBuy={true}
+                            selected={selected}
+                            onSelect={onSelectOption}
+                          />
                         </div>
                       </td>
                     );
@@ -323,6 +297,56 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/**
+ * One bid/ask price slot. Bids paint orange, asks paint blue. The "box"
+ * (border + background) is reserved for the active selection so the user can
+ * see at a glance which spot on the grid feeds the trade panel above.
+ */
+function PriceCell({
+  opt,
+  price,
+  isBuy,
+  selected,
+  onSelect,
+}: {
+  opt: TradableOption | undefined;
+  price: number | undefined;
+  isBuy: boolean;
+  selected: { optionAddress: string; isBuy: boolean } | null | undefined;
+  onSelect: (s: OptionSelection) => void;
+}) {
+  if (!opt) {
+    return (
+      <div className="flex-1 p-0.5">
+        <span className="block text-center text-gray-700 text-xs py-1">—</span>
+      </div>
+    );
+  }
+  const active =
+    selected?.optionAddress.toLowerCase() === opt.optionAddress.toLowerCase() && selected.isBuy === isBuy;
+  // Bid = orange, Ask = blue. Both calls and puts use the same colour scheme.
+  const colour = isBuy
+    ? "text-blue-300 hover:text-blue-200"
+    : "text-orange-300 hover:text-orange-200";
+  const activeBox = isBuy
+    ? "bg-blue-900/30 border border-blue-500"
+    : "bg-orange-900/30 border border-orange-500";
+  const title = `${isBuy ? "Buy" : "Sell"} ${opt.isPut ? "Put" : "Call"}`;
+  return (
+    <div className="flex-1 p-0.5">
+      <button
+        onClick={() => onSelect({ option: opt, isBuy })}
+        title={title}
+        className={`w-full px-1 py-1 rounded transition-colors text-xs tabular-nums ${colour} ${
+          active ? activeBox : ""
+        }`}
+      >
+        {price !== undefined ? price.toFixed(2) : "—"}
+      </button>
     </div>
   );
 }

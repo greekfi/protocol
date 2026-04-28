@@ -202,26 +202,30 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       ]
     : [];
 
-  const steps =
-    direction === "buy"
-      ? [
-          {
-            label: `Approve ${usdcSymbol} → Bebop`,
-            done: !approvals.needsUsdcApproval,
-            pending: approvals.isApproving,
-            onAction: approvals.handleApproveUsdc,
-            title: "Allow Bebop to pull USDC for the option purchase.",
-          },
-        ]
-      : [
-          {
-            label: `Approve option → Bebop`,
-            done: !approvals.needsOptionApproval,
-            pending: approvals.isApproving,
-            onAction: approvals.handleApproveOption,
-            title: "Allow Bebop to pull the option token for the sale.",
-          },
-        ];
+  // Always show both approval rows so the user can see and grant either side at any time —
+  // mirrors /yield's behaviour. "done" reflects whether ANY allowance has been granted, since
+  // most users approve max-uint. The trade button's enabled state still uses the strict,
+  // direction-aware `needs*Approval` flags (via approvals.allSatisfied).
+  const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
+  const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
+  const steps = [
+    {
+      label: `Approve ${usdcSymbol} → Bebop`,
+      done: usdcApproved,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveUsdc,
+      title: "Lets Bebop pull USDC when buying or buying-back option tokens.",
+    },
+    {
+      label: `Approve option → Bebop`,
+      done: optionApproved,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveOption,
+      title: approvals.factoryOperatorApproved
+        ? "Covered by your factory-operator approval."
+        : "Lets Bebop pull the option token when selling.",
+    },
+  ];
 
   const strikeLabel = `$${formatMoney(displayStrike(selectedOption.strike, selectedOption.isPut))}`;
   const expiryLabel = formatExpiry(selectedOption.expiration);

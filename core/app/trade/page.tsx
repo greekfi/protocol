@@ -64,7 +64,15 @@ export default function TradePage() {
 
             <div className="border-t border-gray-800 -mx-6" />
 
-            <OptionsGrid selectedToken={selectedTokenAddress} onSelectOption={handleSelectOption} />
+            <OptionsGrid
+              selectedToken={selectedTokenAddress}
+              onSelectOption={handleSelectOption}
+              selected={
+                selectedOption
+                  ? { optionAddress: selectedOption.optionAddress, isBuy: selectedOption.isBuy }
+                  : null
+              }
+            />
           </div>
         )}
       </div>
