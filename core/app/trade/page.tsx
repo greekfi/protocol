@@ -41,24 +41,30 @@ export default function TradePage() {
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-light text-blue-300 mb-8 mt-6">Trade Options</h1>
-
-        {/* Underlying picker — same TokenGrid as /yield */}
-        <div className="mb-6">
-          <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
+        {/* Header row: title and underlying picker on the same line. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-8 mt-6">
+          <h1 className="text-3xl font-light text-blue-300 shrink-0">Trade Options</h1>
+          <div className="flex-1 min-w-[18rem]">
+            <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
+          </div>
         </div>
 
-        {/* Options Grid (existing /trade matrix) */}
+        {/* Options chain section: trade panel slot on top, grid below. */}
         {selectedTokenAddress && (
-          <div className="mb-6">
-            <OptionsGrid selectedToken={selectedTokenAddress} onSelectOption={handleSelectOption} />
-          </div>
-        )}
+          <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6">
+            <div className="min-h-[6rem]">
+              {selectedOption ? (
+                <TradePanel selectedOption={selectedOption} onClose={() => setSelectedOption(null)} />
+              ) : (
+                <div className="text-sm text-gray-500 italic">
+                  Pick a strike and expiry below to load the trade panel.
+                </div>
+              )}
+            </div>
 
-        {/* Trade Panel */}
-        {selectedOption && (
-          <div className="mt-6">
-            <TradePanel selectedOption={selectedOption} onClose={() => setSelectedOption(null)} />
+            <div className="border-t border-gray-800 -mx-6" />
+
+            <OptionsGrid selectedToken={selectedTokenAddress} onSelectOption={handleSelectOption} />
           </div>
         )}
       </div>

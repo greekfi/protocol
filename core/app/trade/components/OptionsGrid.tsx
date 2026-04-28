@@ -111,23 +111,15 @@ export function OptionsGrid({ selectedToken, onSelectOption }: OptionsGridProps)
   const filteredExpirations = expirations.filter(exp => visibleExpirations.has(exp));
 
   if (isLoading) {
-    return (
-      <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-        <div className="text-blue-300">Loading options...</div>
-      </div>
-    );
+    return <div className="text-blue-300">Loading options...</div>;
   }
 
   if (!options || options.length === 0) {
-    return (
-      <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg">
-        <div className="text-gray-400">No options available for this token</div>
-      </div>
-    );
+    return <div className="text-gray-400">No options available for this token</div>;
   }
 
   return (
-    <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg overflow-x-auto">
+    <div className="overflow-x-auto">
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <h2 className="text-xl font-light text-blue-300 mr-auto">Options Chain</h2>
         <div className="flex gap-2">
