@@ -211,8 +211,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   <th key={`put-${exp}`} colSpan={2} className="p-1 text-center border-l border-gray-800">
                     <div className="text-gray-400 text-xs">{dateStr}</div>
                     <div className="flex text-[10px] mt-1">
-                      <span className="flex-1 text-yellow-400">Bid</span>
-                      <span className="flex-1 text-purple-400">Ask</span>
+                      <span className="flex-1 text-orange-400">Bid</span>
+                      <span className="flex-1 text-blue-400">Ask</span>
                     </div>
                   </th>
                 );

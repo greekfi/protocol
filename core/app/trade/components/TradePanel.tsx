@@ -5,7 +5,6 @@ import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
-import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
@@ -192,12 +191,6 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
           label: "Short",
           value: formatBalance(optionBalances.coll, approvals.optionDecimals),
           dim: optionBalances.coll === 0n,
-          bottomRow: (
-            <BuyBackRow
-              optionAddress={selectedOption.optionAddress as `0x${string}`}
-              shortAmount={optionBalances.coll}
-            />
-          ),
         },
       ]
     : [];
@@ -314,19 +307,16 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 text-xs text-gray-500 hover:text-blue-300 transition-colors"
-        >
-          ← back to grid
-        </button>
       </div>
 
-      {/* Approvals + balances side card */}
-      <div className="min-w-[16rem] flex-1 max-w-sm">
-        <ApprovalsCard steps={steps} balances={balances} />
+      {/* Balances column */}
+      <div className="min-w-[14rem] flex-1 max-w-xs">
+        <ApprovalsCard steps={[]} balances={balances} />
+      </div>
+
+      {/* Approvals column */}
+      <div className="min-w-[14rem] flex-1 max-w-xs">
+        <ApprovalsCard steps={steps} />
       </div>
     </div>
   );
