@@ -126,19 +126,15 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   // Collapse to logo+symbol pills once a pick is made, unless the user has held
   // the cursor over the row long enough to expand.
   const compact = !!selected && !expanded;
+  // Keep column structure constant — animating grid-template-columns isn't
+  // smooth in any browser and reads as a "jump." Cells stay the same width;
+  // only the content area inside each cell expands/collapses.
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={clsx(
-        "grid gap-2 transition-all duration-300 ease-out",
-        compact ? "[grid-template-columns:repeat(auto-fill,minmax(5rem,7rem))]" : "",
-      )}
-      style={
-        compact
-          ? undefined
-          : { gridTemplateColumns: "repeat(auto-fill, minmax(7rem, 9rem))" }
-      }
+      className="grid gap-2"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(7rem, 9rem))" }}
     >
       {tokens.map(token => {
         const active = selected === token.symbol;
@@ -159,21 +155,25 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
               <Logo token={token} size={22} />
               <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
             </div>
-            {/* Always render the extras; toggle visibility via opacity + max-height
-                so the expand/collapse animates instead of popping. */}
+            {/* Always render the extras; toggle visibility via opacity +
+                grid-template-rows so the cell height animates smoothly.
+                grid-template-rows from 0fr → 1fr is the modern way to animate
+                "auto" height — works in all evergreen browsers. */}
             <div
               className={clsx(
-                "flex flex-col items-start gap-1 overflow-hidden transition-all duration-300 ease-out",
-                compact ? "max-h-0 opacity-0" : "max-h-20 opacity-100",
+                "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out",
+                compact ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
               )}
               aria-hidden={compact}
             >
-              {token.apr && (
-                <span className="text-xs font-semibold text-emerald-300 tabular-nums">
-                  {formatAprRange(token.apr)}
-                </span>
-              )}
-              {address && <CopyAddressButton address={address} />}
+              <div className="overflow-hidden flex flex-col items-start gap-1">
+                {token.apr && (
+                  <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+                    {formatAprRange(token.apr)}
+                  </span>
+                )}
+                {address && <CopyAddressButton address={address} />}
+              </div>
             </div>
           </button>
         );
