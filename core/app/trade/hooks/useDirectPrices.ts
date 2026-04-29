@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "http://localhost:3010";
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "https://api.greek.finance";
 
 export interface DirectOption {
   address: string;

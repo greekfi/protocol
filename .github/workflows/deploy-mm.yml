@@ -1,0 +1,38 @@
+name: Deploy market-maker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "market-maker/**"
+      - ".github/workflows/deploy-mm.yml"
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "PM2 apps to reload (space-separated, blank = all)"
+        required: false
+        default: ""
+
+# One deploy at a time. Newer pushes cancel queued runs.
+concurrency:
+  group: deploy-mm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MM_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.MM_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          MM_HOST: ${{ secrets.MM_SSH_USER }}@${{ secrets.MM_SSH_HOST }}
+          MM_PM2_APPS: ${{ github.event.inputs.apps }}
+        run: bash market-maker/scripts/deploy.sh

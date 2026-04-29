@@ -1,0 +1,48 @@
+# Caddy reverse proxy for the Greek market-maker.
+#
+# Caddy auto-provisions a Let's Encrypt cert for {$MM_DOMAIN}, terminates
+# TLS, and proxies to the local PM2 processes on their internal ports.
+#
+# Required for HTTP-01 challenge:
+#   - Ports 80 and 443 reachable from the public internet.
+#   - DNS A record for {$MM_DOMAIN} pointing at this droplet (gray-cloud
+#     in Cloudflare so the challenge actually hits this host — orange-cloud
+#     would short-circuit it).
+#
+# Set MM_DOMAIN and MM_TLS_EMAIL in /etc/caddy/Caddyfile.env before
+# `systemctl reload caddy`. Defaults assume api.greek.finance.
+
+{
+    email {$MM_TLS_EMAIL:admin@greek.finance}
+}
+
+{$MM_DOMAIN:api.greek.finance} {
+    encode gzip
+
+    # Pricing relay WebSocket (Bebop taker prices fanned out to clients).
+    # Frontend hits wss://<host>/pricing.
+    @relay path /pricing /pricing/*
+    handle @relay {
+        reverse_proxy localhost:3004
+    }
+
+    # RFQ pricing stream WebSocket (option-level bid/ask).
+    # Frontend hits wss://<host>/rfq.
+    @rfq path /rfq /rfq/*
+    handle @rfq {
+        reverse_proxy localhost:3011
+    }
+
+    # Everything else → direct HTTP API: /quote, /options, /price/:addr, /health.
+    handle {
+        reverse_proxy localhost:3010
+    }
+
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 50mb
+            roll_keep 5
+        }
+        format console
+    }
+}

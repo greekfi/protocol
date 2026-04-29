@@ -1,233 +1,157 @@
-# Railway Deployment Guide
+# Market-maker Deployment
 
-This guide covers deploying the market-maker services to Railway.
+Deploys to a single DigitalOcean droplet behind Caddy (auto Let's Encrypt TLS),
+managed by PM2, redeployed automatically on `main` pushes via GitHub Actions.
 
-## Services to Deploy
-
-1. **market-maker-bebop**: Bebop RFQ client (receives quote requests)
-2. **market-maker-relay**: Bebop price relay (broadcasts prices to clients)
-
-## Prerequisites
-
-- Railway account ([railway.app](https://railway.app))
-- GitHub repo connected to Railway
-- Environment variables ready (see below)
-
-## Quick Start
-
-### Step 1: Create Railway Project
-
-1. Go to [railway.app](https://railway.app/new)
-2. Click "Deploy from GitHub repo"
-3. Select your `greek-web` repository
-4. Railway creates a new project
-
-### Step 2: Deploy Bebop Service
-
-1. In your Railway project, click the first service created
-2. Go to **Settings** tab:
-   - **Service Name**: `market-maker-bebop`
-   - **Root Directory**: `market-maker`
-   - **Start Command**: `yarn bebop`
-3. Go to **Variables** tab and add environment variables (see below)
-4. Railway auto-deploys when you save
-
-### Step 3: Deploy Relay Service
-
-1. In same Railway project, click **"+ New"** → **"GitHub Repo"**
-2. Select the **same** `greek-web` repository
-3. Railway creates a second service
-4. Go to **Settings** tab:
-   - **Service Name**: `market-maker-relay`
-   - **Root Directory**: `market-maker`
-   - **Start Command**: `yarn relay`
-5. Go to **Variables** tab and add environment variables (see below)
-6. Railway auto-deploys when you save
-
-### Step 4: Verify Deployment
-
-Check logs to ensure services are running:
-```bash
-# Install Railway CLI
-npm i -g @railway/cli
-
-# Link to project
-railway login
-railway link
-
-# View logs
-railway logs --service market-maker-bebop
-railway logs --service market-maker-relay
+```
+                  ┌─────────────────────────────────────────────┐
+  Browser         │  Droplet                                    │
+  ──────► Caddy   │   :80/:443  (TLS, LE certs, auto-renewed)   │
+                  │     │                                       │
+                  │     ├─ /pricing/*   → ws  localhost:3004    │  relay   (PM2)
+                  │     ├─ /rfq/*       → ws  localhost:3011    │  direct  (PM2, ws)
+                  │     └─ everything   → http localhost:3010   │  direct  (PM2, http)
+                  └─────────────────────────────────────────────┘
 ```
 
-Or view logs in Railway dashboard → Service → Deployments → View Logs
+## First-time droplet setup
 
-## Environment Variables
-
-### Common (Both Services)
-
-```bash
-# Required
-CHAIN_ID=8453
-MAKER_ADDRESS=0x...
-PRIVATE_KEY=0x...
-
-# Pricing
-DEFAULT_IV=0.8
-RISK_FREE_RATE=0.05
-BID_SPREAD=0.02
-ASK_SPREAD=0.02
-SPOT_POLL_INTERVAL=30000
-
-# Optional RPC overrides
-RPC_ETHEREUM=https://eth.drpc.org
-RPC_BASE=https://mainnet.base.org
-RPC_ARBITRUM=https://arb1.arbitrum.io/rpc
-```
-
-### Bebop Service Only
+Prereqs: a fresh Ubuntu 24.04 droplet, root SSH access, and a DNS A record for
+`api.greek.finance` pointing at the droplet IP. **Gray-cloud** in Cloudflare —
+proxy off — so the Let's Encrypt HTTP-01 challenge can reach Caddy directly.
 
 ```bash
-BEBOP_MARKETMAKER=xxx
-BEBOP_AUTHORIZATION=xxx
-BEBOP_API_URL=https://api.bebop.xyz
+ssh root@<droplet-ip>
+
+# Run the bootstrap (installs Node 25, PM2, Caddy, ufw, clones repo, builds)
+curl -sSL https://raw.githubusercontent.com/greekfi/protocol/main/market-maker/deploy/bootstrap.sh | bash
+
+# Fill in secrets
+cd /opt/greek/market-maker
+cp .env.example .env
+$EDITOR .env   # MAKER_ADDRESS, PRIVATE_KEY, BEBOP_*, etc.
+
+# Start
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# Verify
+curl https://api.greek.finance/health
 ```
 
-### Relay Service Only
+Caddy will provision the LE cert on first request — give it ~30 seconds.
+
+## Ongoing deploys (zero-touch)
+
+A push to `main` that touches `market-maker/**` triggers
+`.github/workflows/deploy-mm.yml`, which SSHes in, pulls, builds, and PM2-reloads.
+
+**Required GitHub secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `MM_SSH_HOST` | Droplet IP or hostname |
+| `MM_SSH_USER` | `root` (or whatever the deploy user is) |
+| `MM_SSH_KEY` | Private SSH key whose public half is in `~/.ssh/authorized_keys` on the droplet |
+
+Generate a fresh key for CI:
 
 ```bash
-RELAY_WS_PORT=3004
-BEBOP_CHAINS=ethereum,base,arbitrum
+ssh-keygen -t ed25519 -C "github-actions-mm-deploy" -f ~/.ssh/mm-deploy
+ssh-copy-id -i ~/.ssh/mm-deploy.pub root@<droplet-ip>
+# Paste contents of ~/.ssh/mm-deploy (private) into MM_SSH_KEY secret.
 ```
 
-## Setting Environment Variables in Railway
-
-### Via CLI
+## Manual deploy
 
 ```bash
-# Set for specific service
-railway variables set CHAIN_ID=8453 --service market-maker-bebop
-railway variables set PRIVATE_KEY=0x... --service market-maker-bebop
+MM_HOST=root@<droplet-ip> ./scripts/deploy.sh
 
-# Set for all services in project
-railway variables set CHAIN_ID=8453
+# Or reload one app only:
+MM_HOST=root@<droplet-ip> MM_PM2_APPS="direct" ./scripts/deploy.sh
 ```
 
-### Via Dashboard
+The same script the workflow uses — Just SSH + pull + build + `pm2 reload`.
 
-1. Go to service → Variables tab
-2. Click "New Variable"
-3. Add key-value pairs
-4. Railway auto-deploys on variable changes
+## PM2 services
 
-## Monitoring
+Defined in `ecosystem.config.cjs`. All restart on crash, persist across reboots
+(`pm2 startup systemd` was wired up by the bootstrap).
 
-### View Logs
+| Process | Port | Autostart | Purpose |
+|---|---|---|---|
+| `direct` | 3010 (HTTP) + 3011 (WS) | yes | `/quote`, `/options`, `/health`, RFQ pricing stream |
+| `relay` | 3004 | yes | Bebop taker-price WebSocket fan-out |
+| `bebop` | none | **no** | Bebop RFQ maker (start manually) |
+| `deribit` | none | yes | Deribit IV-sourced pricing |
+
+`bebop` and `deribit` share the same Bebop WS connection — only one can run
+at a time. To switch:
 
 ```bash
-# CLI
-railway logs --service market-maker-bebop
-railway logs --service market-maker-relay
-
-# Dashboard
-Go to service → Logs tab
+pm2 stop deribit && pm2 start bebop && pm2 save
 ```
 
-### Check Service Health
+## Switching pricing modes
 
-Both services expose WebSocket endpoints:
-- **Bebop**: Connects to Bebop's WebSocket (no HTTP endpoint)
-- **Relay**: WebSocket server on `$RELAY_WS_PORT` (default 3004)
+```bash
+ssh root@<droplet-ip>
+pm2 stop deribit && pm2 start bebop && pm2 save     # use Bebop pricing
+pm2 stop bebop && pm2 start deribit && pm2 save     # use Deribit pricing
+```
 
-Railway will automatically assign a public URL to each service.
+`relay` and `direct` keep running across either switch.
 
-## Networking
+## Frontend wiring
 
-### Internal Communication
+Vercel project env vars (Production + Preview):
 
-If your frontend or other services need to connect to the relay:
-- Use Railway's internal networking: `${{Relay.RAILWAY_PRIVATE_DOMAIN}}`
-- Or use public domain: `market-maker-relay.up.railway.app`
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_DIRECT_API_URL` | `https://api.greek.finance` |
+| `NEXT_PUBLIC_RFQ_API_URL` | `https://api.greek.finance` |
+| `NEXT_PUBLIC_PRICING_WS_URL` | `wss://api.greek.finance/pricing` |
+| `NEXT_PUBLIC_RFQ_WS_URL` | `wss://api.greek.finance/rfq` |
 
-### External Access
+`NEXT_PUBLIC_*` vars are baked in at build time — **redeploy** after changing.
 
-Railway provides public domains automatically:
-- Format: `[service-name]-production.up.railway.app`
-- Custom domains supported via Railway dashboard
+## Operations
+
+```bash
+# Status / logs
+ssh root@<droplet-ip> "pm2 list"
+ssh root@<droplet-ip> "pm2 logs --lines 50"
+ssh root@<droplet-ip> "pm2 logs direct --lines 30"
+
+# Caddy
+ssh root@<droplet-ip> "systemctl status caddy"
+ssh root@<droplet-ip> "tail -f /var/log/caddy/access.log"
+ssh root@<droplet-ip> "caddy reload --config /etc/caddy/Caddyfile"   # after Caddyfile edit
+
+# Restart everything
+ssh root@<droplet-ip> "pm2 restart all && systemctl restart caddy"
+```
 
 ## Troubleshooting
 
-### Build Failures
+**`ERR_CONNECTION_REFUSED` from the browser**
+Cloudflare A record is gray-cloud (correct), but Caddy isn't running or ports
+80/443 are blocked. Check `systemctl status caddy` and `ufw status`.
 
-If Railway fails to detect Node.js:
-1. Ensure `nixpacks.toml` is in `market-maker/` directory
-2. Or add `package.json` check in Railway settings
+**Cloudflare 521 / 522 / 525**
+The A record is orange-cloud (proxied). Either gray-cloud it, or set CF
+SSL/TLS mode to **Full (strict)** so CF talks to Caddy over HTTPS.
 
-### Service Won't Start
+**LE cert won't issue**
+- DNS A record must point to this droplet.
+- Port 80 must be open *and* CF must not be proxying (gray-cloud).
+- Check `journalctl -u caddy -n 100`.
 
-Check logs for common issues:
-- Missing environment variables
-- WebSocket connection failures (Bebop auth)
-- RPC endpoint issues
+**`yarn install` fails on droplet**
+Old `--immutable` flag bites when deps shifted between commits. The deploy
+script uses plain `yarn install`. If you see a Corepack version mismatch,
+`corepack enable && corepack prepare yarn@stable --activate` on the droplet.
 
-```bash
-railway logs --service market-maker-bebop
-```
-
-### Port Conflicts
-
-Railway automatically assigns `$PORT` environment variable. If you need to bind to a specific port for WebSocket servers, use:
-
-```typescript
-const port = process.env.PORT || process.env.RELAY_WS_PORT || 3004;
-```
-
-## Cost Optimization
-
-- **Hobby Plan**: $5/month for 500 hours
-- **Pro Plan**: $20/month for unlimited hours
-- Both services are lightweight (minimal CPU/memory)
-
-## CI/CD
-
-Railway auto-deploys on:
-- Push to `main` branch (default)
-- Configure deployment triggers in dashboard
-
-To disable auto-deploy:
-```bash
-railway service --disable-auto-deploy
-```
-
-## Rollbacks
-
-```bash
-# View deployment history
-railway deployments
-
-# Rollback to previous deployment
-railway rollback [deployment-id]
-```
-
-## Health Checks
-
-The services don't have HTTP health endpoints by default. Consider adding:
-
-```typescript
-// In src/bebop.ts or src/relay.ts
-import express from 'express';
-
-const app = express();
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Health check on ${PORT}`));
-```
-
-## Resources
-
-- [Railway Docs](https://docs.railway.app)
-- [Nixpacks Config](https://nixpacks.com/docs/configuration/file)
-- [Railway CLI](https://docs.railway.app/develop/cli)
+**Stale local changes blocking deploy**
+The deploy script uses `git fetch && git reset --hard` — it discards anything
+uncommitted on the droplet. Don't edit code in `/opt/greek/market-maker`.

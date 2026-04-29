@@ -1,33 +1,65 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Deploy the market-maker to its droplet.
+#
+# Pulls the current branch, builds, restarts PM2. Idempotent.
+#
+# Usage:
+#   ./scripts/deploy.sh                       # uses MM_HOST env var
+#   ./scripts/deploy.sh root@1.2.3.4          # explicit host
+#   MM_HOST=root@1.2.3.4 ./scripts/deploy.sh
+#
+# Override target dir / branch / app subset:
+#   MM_REMOTE_DIR=/opt/greek/market-maker
+#   MM_BRANCH=main
+#   MM_PM2_APPS="direct relay"   # default: all in ecosystem.config.cjs
+#
+# CI use: this script is invoked by .github/workflows/deploy-mm.yml.
+
 set -euo pipefail
 
-# Deploy market-maker to DigitalOcean droplet
-# Usage: ./scripts/deploy.sh [host]
+HOST="${1:-${MM_HOST:-}}"
+REMOTE_DIR="${MM_REMOTE_DIR:-/opt/greek/market-maker}"
+BRANCH="${MM_BRANCH:-main}"
+PM2_APPS="${MM_PM2_APPS:-}"
 
-HOST="${1:-root@161.35.119.130}"
-REMOTE_DIR="/opt/greek/market-maker"
+if [ -z "$HOST" ]; then
+  echo "ERROR: pass host as arg or set MM_HOST (e.g. root@1.2.3.4)" >&2
+  exit 1
+fi
 
-echo "==> Deploying to $HOST:$REMOTE_DIR"
+echo "==> Deploying $BRANCH to $HOST:$REMOTE_DIR"
 
-# Pull latest code
-echo "==> Pulling latest code..."
-ssh "$HOST" "cd $REMOTE_DIR && git fetch origin && git reset --hard origin/\$(git rev-parse --abbrev-ref HEAD)"
+ssh -o StrictHostKeyChecking=accept-new "$HOST" bash -s "$REMOTE_DIR" "$BRANCH" "$PM2_APPS" <<'REMOTE'
+set -euo pipefail
+REMOTE_DIR="$1"
+BRANCH="$2"
+PM2_APPS="$3"
 
-# Install deps & build
-echo "==> Installing dependencies and building..."
-ssh "$HOST" "cd $REMOTE_DIR && yarn install && yarn build --no-dts"
+cd "$REMOTE_DIR"
 
-# Ensure logs directory exists
-ssh "$HOST" "mkdir -p $REMOTE_DIR/logs"
+echo "==> git fetch && reset --hard origin/$BRANCH"
+git fetch origin
+git reset --hard "origin/$BRANCH"
 
-# Restart PM2 processes
-echo "==> Restarting PM2 processes..."
-ssh "$HOST" "cd $REMOTE_DIR && pm2 restart ecosystem.config.cjs || pm2 start ecosystem.config.cjs"
+echo "==> yarn install + build"
+yarn install
+yarn build --no-dts
 
-# Show status
-echo ""
-echo "==> Status:"
-ssh "$HOST" "pm2 list"
+mkdir -p logs
 
-echo ""
-echo "==> Done. Use 'ssh $HOST \"pm2 logs\"' to tail logs."
+if [ -n "$PM2_APPS" ]; then
+  echo "==> pm2 reload $PM2_APPS"
+  for app in $PM2_APPS; do
+    pm2 reload "$app" --update-env || pm2 start ecosystem.config.cjs --only "$app"
+  done
+else
+  echo "==> pm2 reload ecosystem.config.cjs"
+  pm2 reload ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs
+fi
+
+pm2 save
+pm2 list
+REMOTE
+
+echo
+echo "==> Done. Tail logs: ssh $HOST 'pm2 logs --lines 50'"

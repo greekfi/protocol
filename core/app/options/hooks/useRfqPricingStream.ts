@@ -26,7 +26,7 @@ export interface UseRfqPricingStreamReturn {
   unsubscribe: (options?: string[], underlyings?: string[]) => void;
 }
 
-const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_RFQ_WS_URL || "ws://localhost:3011";
+const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_RFQ_WS_URL || "wss://api.greek.finance/rfq";
 
 export function useRfqPricingStream(options: UseRfqPricingStreamOptions = {}): UseRfqPricingStreamReturn {
   const {
