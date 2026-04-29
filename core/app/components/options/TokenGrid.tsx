@@ -126,6 +126,13 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   // Collapse to logo+symbol pills once a pick is made, unless the user has held
   // the cursor over the row long enough to expand.
   const compact = !!selected && !expanded;
+  // Filter to tokens that exist on the current (browse) chain. The static
+  // CALL_UNDERLYINGS / PUT_UNDERLYINGS lists in yield/data.ts are the
+  // *universe* of supported underlyings; allTokensMap (chain-scoped via
+  // useTokenMap) tells us which of those are actually deployed on the
+  // chain the user is browsing. e.g. cbBTC is only on Base, MORPHO doesn't
+  // have a canonical Arbitrum deployment — those simply don't render.
+  const tokensForChain = tokens.filter(t => allTokensMap[t.symbol]?.address);
   // Keep column structure constant — animating grid-template-columns isn't
   // smooth in any browser and reads as a "jump." Cells stay the same width;
   // only the content area inside each cell expands/collapses.
@@ -136,7 +143,7 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
       className="grid gap-2"
       style={{ gridTemplateColumns: "repeat(auto-fill, minmax(6rem, 7.5rem))" }}
     >
-      {tokens.map(token => {
+      {tokensForChain.map(token => {
         const active = selected === token.symbol;
         const address = allTokensMap[token.symbol]?.address;
         return (

@@ -1,6 +1,6 @@
 import tokenList from "../data/tokenList.json";
 import { useContracts } from "./useContracts";
-import { useChainId } from "wagmi";
+import { useBrowseChainId } from "../../hooks/useBrowseChain";
 
 export interface Token {
   address: string;
@@ -9,7 +9,10 @@ export interface Token {
 }
 
 export const useTokenMap = () => {
-  const chainId = useChainId();
+  // Use the browse chain (which mirrors the wallet chain when connected) so
+  // chain-scoped UI stays consistent: when a user flips the chain selector
+  // without a wallet, the token list reflects the picked chain too.
+  const chainId = useBrowseChainId();
   const contract = useContracts();
 
   const stableTokenAddress = contract?.StableToken?.address;

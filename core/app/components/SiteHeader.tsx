@@ -33,7 +33,7 @@ export const HEADER_NAV: NavItem[] = FOOTER_NAV.filter(
  */
 function WalletButton() {
   const buttonClass =
-    "px-3.5 py-2 rounded-lg border border-gray-700 hover:border-blue-300 transition-colors text-base sm:text-lg";
+    "px-3.5 py-2 rounded-lg border border-gray-700 hover:border-blue-300 transition-colors text-lg sm:text-xl";
 
   return (
     <ConnectButton.Custom>
@@ -121,7 +121,7 @@ export function SiteHeader({ showWallet = true }: SiteHeaderProps) {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
             <div
               style={{ fontFamily: SERIF_STACK }}
-              className="flex flex-wrap items-center gap-x-6 gap-y-2 text-base sm:text-lg"
+              className="flex flex-wrap items-center gap-x-6 gap-y-2 text-lg sm:text-xl"
             >
               {HEADER_NAV.map(item =>
                 item.external ? (

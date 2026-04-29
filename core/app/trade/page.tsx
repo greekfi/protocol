@@ -41,9 +41,8 @@ export default function TradePage() {
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header row: title and underlying picker on the same line. */}
+        {/* Underlying picker — the page title lives in the navbar (SiteHeader). */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-8 mt-6">
-          <h1 className="text-3xl font-light text-blue-300 shrink-0">Trade Options</h1>
           <div className="flex-1 min-w-[18rem]">
             <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
           </div>
