@@ -2,16 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as chains from "viem/chains";
+import { useAccount } from "wagmi";
 import { useBrowseChain } from "../hooks/useBrowseChain";
 import { SERIF_STACK } from "./SiteHeader";
 
 /**
- * Wallet-independent chain picker. Drives `useBrowseChain` so users can
- * browse options on any deployed chain before connecting a wallet.
+ * Fallback chain picker for the *unconnected* case. When a wallet is
+ * connected, RainbowKit's native chain pill + modal (rendered inside
+ * WalletButton) handles chain selection — it has chain icons and the
+ * polished switch-chain UI. RainbowKit's modal can't open without a wallet,
+ * so this component fills that gap with a minimal popover dropdown.
  *
- * Visually matches the WalletButton in SiteHeader: same border/padding/font,
- * dropdown panel on click, click-outside / Escape to close, current chain
- * marked with a checkmark.
+ * Renders nothing when a wallet is connected.
  */
 
 const CHAIN_LABELS: Record<number, string> = Object.values(chains).reduce(
@@ -28,6 +30,7 @@ const BUTTON_CLASS =
   "px-3.5 py-2 rounded-lg border border-gray-700 hover:border-blue-300 transition-colors text-base sm:text-lg text-gray-300 flex items-center gap-2";
 
 export function ChainSelector({ className }: { className?: string }) {
+  const { isConnected } = useAccount();
   const { chainId, setChainId, supportedChainIds } = useBrowseChain();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +53,8 @@ export function ChainSelector({ className }: { className?: string }) {
     };
   }, [open]);
 
+  // Connected → RainbowKit's chain pill in WalletButton handles it.
+  if (isConnected) return null;
   if (supportedChainIds.length <= 1) return null;
 
   const currentLabel = CHAIN_LABELS[chainId] ?? `Chain ${chainId}`;
