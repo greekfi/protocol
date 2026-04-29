@@ -17,6 +17,7 @@ import { OptionUtils } from "./OptionUtils.sol";
 interface IFactoryView {
     function approvedOperator(address owner, address operator) external view returns (bool);
     function autoMintRedeem(address account) external view returns (bool);
+    function exerciseAllowed(address holder, address operator) external view returns (bool);
 }
 
 /**
@@ -92,6 +93,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error ExerciseWindowClosed();
     /// @notice Thrown when pre-expiry exercise is attempted on a European option.
     error EuropeanExerciseDisabled();
+    /// @notice Thrown when the caller has not been authorised to exercise on the holder's behalf.
+    error ExerciseNotAllowed();
 
     /// @dev Blocks mutations while the paired receipt is locked by the owner.
     modifier notLocked() {
@@ -292,32 +295,16 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         exercise(msg.sender, amount);
     }
 
-    /// @notice Exercise `amount` options on behalf of `account`; caller burns own option tokens
-    ///         and pays consideration, `account` receives the collateral.
-    /// @param account Address receiving the collateral payout.
-    /// @param amount  Collateral units to exercise.
-    function exercise(address account, uint256 amount)
-        public
-        withinExerciseWindow
-        notLocked
-        nonReentrant
-        validAmount(amount)
-    {
-        _burn(msg.sender, amount);
-        receipt.exercise(account, amount, msg.sender);
-        emit Exercise(address(this), msg.sender, amount);
-    }
-
-    /// @notice Permissionless exercise on behalf of `holder`: burns `holder`'s options, pulls
-    ///         consideration from `msg.sender`, sends collateral to `recipient`.
-    /// @dev    Allowed any time exercise itself is allowed (pre-expiry through `exerciseDeadline`,
-    ///         or only post-expiry for European). The keeper / periphery contract is responsible
-    ///         for accounting any surplus owed back to `holder`. Useful for sweeping ITM positions
-    ///         during the post-expiry window on behalf of passive holders who would otherwise forfeit.
-    /// @param holder    Option holder whose tokens will be burned.
-    /// @param amount    Collateral units to exercise.
-    /// @param recipient Recipient of the collateral payout (typically the keeper).
-    function exerciseFor(address holder, uint256 amount, address recipient)
+    /// @notice Exercise `amount` options held by `holder`. Caller pays consideration and receives
+    ///         the collateral; if `holder` is owed any economic surplus the caller is responsible
+    ///         for delivering it off-band.
+    /// @dev    Caller must be `holder` themselves or have been authorised by `holder` via
+    ///         `factory.allowExercise` or the blanket `factory.approveOperator`. Allowed any time
+    ///         exercise itself is allowed (pre-expiry for American, plus the post-expiry window
+    ///         for both flavours).
+    /// @param holder Option holder whose tokens will be burned.
+    /// @param amount Collateral units to exercise.
+    function exercise(address holder, uint256 amount)
         public
         withinExerciseWindow
         notLocked
@@ -325,18 +312,22 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         validAmount(amount)
         sufficientBalance(holder, amount)
     {
+        if (msg.sender != holder && !IFactoryView(factory()).exerciseAllowed(holder, msg.sender)) {
+            revert ExerciseNotAllowed();
+        }
         _burn(holder, amount);
-        receipt.exercise(recipient, amount, msg.sender);
+        receipt.exercise(msg.sender, amount, msg.sender);
         emit Exercise(address(this), holder, amount);
     }
 
-    /// @notice Batch variant of {exerciseFor}. Same `recipient` and caller across all entries;
-    ///         entries with zero amount or insufficient holder balance are skipped rather than
-    ///         reverting, so a stale address in a keeper's holder list does not abort the sweep.
-    /// @param holders   Option holders whose tokens will be burned.
-    /// @param amounts   Per-holder collateral units to exercise (must be same length as `holders`).
-    /// @param recipient Address receiving all collateral payouts.
-    function exerciseFor(address[] calldata holders, uint256[] calldata amounts, address recipient)
+    /// @notice Batch variant of {exercise(address,uint256)}. Caller receives all collateral and
+    ///         pays consideration on every entry. Entries that fail the per-holder allowance
+    ///         check, have zero amount, or have insufficient balance are skipped rather than
+    ///         reverting, so a stale or unauthorised address in a keeper's holder list does not
+    ///         abort the sweep.
+    /// @param holders Option holders whose tokens will be burned.
+    /// @param amounts Per-holder collateral units to exercise (must be same length as `holders`).
+    function exercise(address[] calldata holders, uint256[] calldata amounts)
         external
         withinExerciseWindow
         notLocked
@@ -345,13 +336,15 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint256 n = holders.length;
         if (n != amounts.length) revert InvalidValue();
         Receipt r = receipt;
+        IFactoryView f = IFactoryView(factory());
         for (uint256 i = 0; i < n; i++) {
             address h = holders[i];
             uint256 a = amounts[i];
             if (a == 0) continue;
             if (balanceOf(h) < a) continue;
+            if (msg.sender != h && !f.exerciseAllowed(h, msg.sender)) continue;
             _burn(h, a);
-            r.exercise(recipient, a, msg.sender);
+            r.exercise(msg.sender, a, msg.sender);
             emit Exercise(address(this), h, a);
         }
     }

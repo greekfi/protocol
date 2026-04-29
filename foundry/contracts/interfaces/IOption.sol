@@ -55,7 +55,7 @@ struct OptionInfo {
 interface IOption {
     /// @notice Emitted on {IOption.mint}.
     event Mint(address longOption, address holder, uint256 amount);
-    /// @notice Emitted on {IOption.exercise} / {IOption.exerciseFor}.
+    /// @notice Emitted on any {IOption.exercise} overload.
     event Exercise(address longOption, address holder, uint256 amount);
     /// @notice Emitted on {IOption.lock}.
     event ContractLocked();
@@ -120,14 +120,12 @@ interface IOption {
     /// @notice Exercise `amount` options as the caller: pay consideration, receive collateral.
     ///         Allowed pre-expiry and within the post-expiry exercise window.
     function exercise(uint256 amount) external;
-    /// @notice Exercise `amount` options on behalf of `account` (caller burns own options, pays
-    ///         consideration; `account` receives collateral).
-    function exercise(address account, uint256 amount) external;
-    /// @notice Permissionless exercise on behalf of `holder`: burn `holder`'s options, pull
-    ///         consideration from `msg.sender`, send collateral to `recipient`.
-    function exerciseFor(address holder, uint256 amount, address recipient) external;
-    /// @notice Batch variant of {exerciseFor}; same recipient + caller across all entries.
-    function exerciseFor(address[] calldata holders, uint256[] calldata amounts, address recipient) external;
+    /// @notice Authorised on-behalf exercise: burn `holder`'s options, pull consideration from
+    ///         `msg.sender`, send collateral to `msg.sender`. Caller must be `holder` or have been
+    ///         authorised via `factory.allowExercise` / `factory.approveOperator`.
+    function exercise(address holder, uint256 amount) external;
+    /// @notice Batch variant of {exercise}; caller receives all collateral, pays all consideration.
+    function exercise(address[] calldata holders, uint256[] calldata amounts) external;
     /// @notice Burn matched Option + Collateral pair; return collateral. Available the entire option lifetime.
     function redeem(uint256 amount) external;
     /// @notice Emergency pause (owner-only).

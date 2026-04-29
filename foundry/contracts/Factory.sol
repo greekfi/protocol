@@ -76,6 +76,10 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @dev Operator approval table: `_approvedOperators[owner][operator] -> bool`.
     mapping(address => mapping(address => bool)) private _approvedOperators;
 
+    /// @dev Exercise-allowance table: `_exerciseAllowed[holder][operator] -> bool`. Lets `operator`
+    ///      burn `holder`'s options via the on-behalf {Option.exercise} overload.
+    mapping(address => mapping(address => bool)) private _exerciseAllowed;
+
     /// @notice Per-account opt-in for auto-mint on transfer and auto-redeem on receive in {Option}.
     mapping(address => bool) public autoMintRedeem;
 
@@ -104,6 +108,8 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     event TokenBlocked(address token, bool blocked);
     /// @notice Emitted on {approveOperator}.
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
+    /// @notice Emitted on {allowExercise}.
+    event ExerciseApproval(address indexed holder, address indexed operator, bool allowed);
     /// @notice Emitted on {enableAutoMintRedeem}.
     event AutoMintRedeemUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set by token owner).
@@ -272,6 +278,35 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @notice Is `operator` an approved operator for `owner_`?
     function approvedOperator(address owner_, address operator) external view returns (bool) {
         return _approvedOperators[owner_][operator];
+    }
+
+    /// @notice Authorise `operator` to exercise the caller's options on their behalf.
+    /// @dev    Consumed by the on-behalf {Option.exercise(address,uint256,address)} overload, which
+    ///         burns the holder's option tokens, pulls consideration from `operator`, and delivers
+    ///         collateral to the operator-chosen recipient. Blanket {approveOperator} also satisfies
+    ///         the check, so callers who already trust an operator for transfers don't need to set
+    ///         this separately. Defaults to `false`; revoke by passing `allowed = false`.
+    /// @param operator Account being authorised (must differ from `msg.sender`).
+    /// @param allowed  `true` to grant, `false` to revoke.
+    function allowExercise(address operator, bool allowed) external {
+        if (operator == address(0)) revert InvalidAddress();
+        if (operator == msg.sender) revert InvalidAddress();
+        _exerciseAllowed[msg.sender][operator] = allowed;
+        emit ExerciseApproval(msg.sender, operator, allowed);
+    }
+
+    /// @notice Single-arg convenience: shorthand for `allowExercise(operator, true)`.
+    function allowExercise(address operator) external {
+        if (operator == address(0)) revert InvalidAddress();
+        if (operator == msg.sender) revert InvalidAddress();
+        _exerciseAllowed[msg.sender][operator] = true;
+        emit ExerciseApproval(msg.sender, operator, true);
+    }
+
+    /// @notice Is `operator` authorised to exercise `holder`'s options? `true` if the holder set
+    ///         it via {allowExercise} or granted blanket {approveOperator}.
+    function exerciseAllowed(address holder, address operator) external view returns (bool) {
+        return _exerciseAllowed[holder][operator] || _approvedOperators[holder][operator];
     }
 
     /// @notice Opt in to {Option}'s auto-mint-on-send and auto-redeem-on-receive transfer behaviour.

@@ -91,33 +91,33 @@ contract ExerciseWindowTest is Test {
         option.exercise(1e18);
     }
 
-    // ============ exerciseFor transitions ============
+    // ============ on-behalf exercise transitions ============
 
-    function test_ExerciseFor_InWindow_Works() public {
-        // Holder cannot consume own option here — keeper does it.
-        address keeper = address(0xBEEF);
+    function _setupKeeper() internal returns (address keeper) {
+        keeper = address(0xBEEF);
         cons.mint(keeper, 100e18);
         vm.startPrank(keeper);
         IERC20(address(cons)).approve(address(factory), MAX256);
         factory.approve(address(cons), MAX160);
         vm.stopPrank();
+        // Holder authorises the keeper to exercise on their behalf.
+        factory.allowExercise(keeper, true);
+    }
+
+    function test_ExerciseOnBehalf_InWindow_Works() public {
+        address keeper = _setupKeeper();
 
         vm.warp(option.expirationDate() + 1);
 
         vm.prank(keeper);
-        option.exerciseFor(address(this), 1e18, keeper);
+        option.exercise(address(this), 1e18);
 
         assertEq(option.balanceOf(address(this)), 9e18);
+        // Keeper receives the collateral and is responsible for any owed surplus to holder.
         assertEq(coll.balanceOf(keeper), 1e18);
     }
 
-    function test_ExerciseFor_AfterWindow_Reverts() public {
-        vm.warp(option.exerciseDeadline() + 1);
-        vm.expectRevert(Option.ExerciseWindowClosed.selector);
-        option.exerciseFor(address(this), 1e18, address(this));
-    }
-
-    function test_ExerciseFor_BatchSkipsBadEntries() public {
+    function test_ExerciseOnBehalf_Unauthorised_Reverts() public {
         address keeper = address(0xBEEF);
         cons.mint(keeper, 100e18);
         vm.startPrank(keeper);
@@ -127,29 +127,75 @@ contract ExerciseWindowTest is Test {
 
         vm.warp(option.expirationDate() + 1);
 
-        address[] memory holders = new address[](3);
-        holders[0] = address(this);
-        holders[1] = address(0xDEAD); // no balance — should be skipped
-        holders[2] = address(this);
+        vm.prank(keeper);
+        vm.expectRevert(Option.ExerciseNotAllowed.selector);
+        option.exercise(address(this), 1e18);
+    }
 
-        uint256[] memory amounts = new uint256[](3);
-        amounts[0] = 1e18;
-        amounts[1] = 1e18;
-        amounts[2] = 2e18;
+    function test_ExerciseOnBehalf_RevokeWorks() public {
+        address keeper = _setupKeeper();
+        factory.allowExercise(keeper, false);
+
+        vm.warp(option.expirationDate() + 1);
 
         vm.prank(keeper);
-        option.exerciseFor(holders, amounts, keeper);
+        vm.expectRevert(Option.ExerciseNotAllowed.selector);
+        option.exercise(address(this), 1e18);
+    }
 
-        // 1e18 + 2e18 burned from this; the 0xDEAD entry skipped.
+    function test_ExerciseOnBehalf_BlanketOperatorOk() public {
+        address keeper = address(0xBEEF);
+        cons.mint(keeper, 100e18);
+        vm.startPrank(keeper);
+        IERC20(address(cons)).approve(address(factory), MAX256);
+        factory.approve(address(cons), MAX160);
+        vm.stopPrank();
+        // approveOperator alone (no allowExercise) should also satisfy the check.
+        factory.approveOperator(keeper, true);
+
+        vm.warp(option.expirationDate() + 1);
+
+        vm.prank(keeper);
+        option.exercise(address(this), 1e18);
+        assertEq(coll.balanceOf(keeper), 1e18);
+    }
+
+    function test_ExerciseOnBehalf_AfterWindow_Reverts() public {
+        vm.warp(option.exerciseDeadline() + 1);
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
+        option.exercise(address(this), 1e18);
+    }
+
+    function test_ExerciseOnBehalf_BatchSkipsBadEntries() public {
+        address keeper = _setupKeeper();
+
+        vm.warp(option.expirationDate() + 1);
+
+        address[] memory holders = new address[](4);
+        holders[0] = address(this);
+        holders[1] = address(0xDEAD);    // no balance — skipped
+        holders[2] = address(0xC0FFEE);  // no allowance from this address — skipped
+        holders[3] = address(this);
+
+        uint256[] memory amounts = new uint256[](4);
+        amounts[0] = 1e18;
+        amounts[1] = 1e18;
+        amounts[2] = 1e18;
+        amounts[3] = 2e18;
+
+        vm.prank(keeper);
+        option.exercise(holders, amounts);
+
+        // Only entries 0 and 3 burn (1e18 + 2e18); 1 lacks balance, 2 lacks allowance.
         assertEq(option.balanceOf(address(this)), 7e18);
         assertEq(coll.balanceOf(keeper), 3e18);
     }
 
-    function test_ExerciseFor_BatchLengthMismatch_Reverts() public {
+    function test_ExerciseOnBehalf_BatchLengthMismatch_Reverts() public {
         address[] memory holders = new address[](2);
         uint256[] memory amounts = new uint256[](1);
         vm.expectRevert(Option.InvalidValue.selector);
-        option.exerciseFor(holders, amounts, address(this));
+        option.exercise(holders, amounts);
     }
 
     // ============ redeem (post-expiry pro-rata) transitions ============
@@ -246,10 +292,10 @@ contract ExerciseWindowTest is Test {
         euro.exercise(1e18);
     }
 
-    function test_European_ExerciseFor_PreExpiry_Reverts() public {
+    function test_European_ExerciseOnBehalf_PreExpiry_Reverts() public {
         Option euro = _createEuro();
         vm.expectRevert(Rct.EuropeanExerciseDisabled.selector);
-        euro.exerciseFor(address(this), 1e18, address(this));
+        euro.exercise(address(this), 1e18);
     }
 
     function test_European_ReportsFlag() public {
