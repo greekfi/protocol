@@ -8,8 +8,7 @@
   },
   "workspaces": [
     "foundry",
-    "core",
-    "event-sync"
+    "core"
   ],
   "scripts": {
     "postinstall": "husky",
@@ -17,8 +16,6 @@
     "dev": "yarn workspace @greek/core dev",
     "build": "yarn workspace @greek/core build",
     "next:check-types": "yarn workspace @greek/core check-types",
-    "event-sync": "yarn workspace @greek/event-sync start",
-    "dev:event-sync": "yarn workspace @greek/event-sync dev",
     "docs:gen": "yarn workspace @greek/foundry docs:gen && cd docs && node scripts/gen-reference.mjs"
   },
   "devDependencies": {
