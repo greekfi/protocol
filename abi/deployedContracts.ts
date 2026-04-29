@@ -3,12 +3,16 @@
  * You should not edit it manually or your changes might be overwritten.
  */
 import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
-import mainnetContracts from "./chains/mainnet";
 import baseContracts from "./chains/base";
 import foundryContracts from "./chains/foundry";
 import arbitrumContracts from "./chains/arbitrum";
+
+// Chain 1 (Ethereum mainnet) is intentionally absent — no Greek Factory has
+// been deployed there. The previous `mainnet` entry was a stub with a
+// copy-pasted Base factory address and deploymentBlock=0, which made the UI
+// try to scan the entire mainnet history for events that don't exist.
+// Re-add when there's an actual deployment, with the real address and block.
 const deployedContracts = {
-  1: mainnetContracts,
   8453: baseContracts,
   31337: foundryContracts,
   42161: arbitrumContracts,

@@ -37,9 +37,21 @@ export function useTradableOptions(underlyingToken: string | null) {
         return [];
       }
 
+      // Refuse to scan from genesis on a real chain. Only foundry/anvil
+      // (chainId 31337) is allowed deploymentBlock=0 — for everything else,
+      // a 0 floor means the abi/chains/<chain>.ts entry is a stub or
+      // wasn't regenerated after deploy. Scanning from 0 across mainnet/L2
+      // would saturate the public RPC for nothing.
+      if (chainId !== 31337 && deploymentBlock === 0n) {
+        console.warn(
+          `[useTradableOptions] chain=${chainId} factory=${factoryAddress} has deploymentBlock=0 — bailing. ` +
+            `Either the chain's abi/chains/<chain>.ts entry is a stub, or this chain has no Greek deployment yet. ` +
+            `Switch to Arbitrum (42161) or Base (8453) where deployments exist.`,
+        );
+        return [];
+      }
+
       const currentBlock = await publicClient.getBlockNumber();
-      // Factory can't emit OptionCreated before it was deployed, so deploymentBlock is the
-      // natural floor. Falls back to 0 for local/anvil (deploymentBlock undefined).
       const fromBlock = deploymentBlock;
       const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
       for (let b = fromBlock; b <= currentBlock; b += LOG_CHUNK_SIZE) {

@@ -34,6 +34,17 @@ export function useOptions() {
     queryFn: async () => {
       if (!publicClient || !factoryAddress) return [];
 
+      // Same guard as useTradableOptions — never scan from 0 on a real chain.
+      // A 0 deploymentBlock outside foundry means the abi/chains/<chain>.ts
+      // entry is a stub or wasn't regenerated post-deploy.
+      if (chainId !== 31337 && deploymentBlock === 0) {
+        console.warn(
+          `[useOptions] chain=${chainId} factory=${factoryAddress} has deploymentBlock=0 — bailing. ` +
+            `Switch to Arbitrum (42161) or Base (8453).`,
+        );
+        return [];
+      }
+
       const currentBlock = await publicClient.getBlockNumber();
       // Scan from deploymentBlock through current — matches useTradableOptions on
       // /trade and /yield. The previous 500k-block cap was hiding any option older
