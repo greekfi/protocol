@@ -32,3 +32,7 @@ dist
 
 # Claude Code — per-user state, not shared
 .claude/
+# track design plans even though .claude/ is otherwise ignored
+!.claude/
+!.claude/plans/
+!.claude/plans/**
