@@ -11,7 +11,7 @@ module.exports = {
     {
       name: "bebop",
       script: "dist/bebop.mjs",
-      node_args: "--env-file=.env",
+      node_args: "--env-file-if-exists=.env",
       autorestart: true,
       autostart: false, // Start manually: pm2 start bebop
       max_restarts: 50,
@@ -26,7 +26,7 @@ module.exports = {
     {
       name: "deribit",
       script: "dist/deribit.mjs",
-      node_args: "--env-file=.env",
+      node_args: "--env-file-if-exists=.env",
       autorestart: true,
       max_restarts: 50,
       restart_delay: 5000,
@@ -40,7 +40,7 @@ module.exports = {
     {
       name: "relay",
       script: "dist/relay.mjs",
-      node_args: "--env-file=.env",
+      node_args: "--env-file-if-exists=.env",
       autorestart: true,
       max_restarts: 50,
       restart_delay: 5000,
@@ -54,7 +54,7 @@ module.exports = {
     {
       name: "direct",
       script: "dist/direct.mjs",
-      node_args: "--env-file=.env",
+      node_args: "--env-file-if-exists=.env",
       autorestart: true,
       max_restarts: 50,
       restart_delay: 5000,

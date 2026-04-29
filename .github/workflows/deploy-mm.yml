@@ -5,15 +5,14 @@ on:
     branches: [main]
     paths:
       - "market-maker/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "core/abi/**"
       - ".github/workflows/deploy-mm.yml"
   workflow_dispatch:
-    inputs:
-      apps:
-        description: "PM2 apps to reload (space-separated, blank = all)"
-        required: false
-        default: ""
 
-# One deploy at a time. Newer pushes cancel queued runs.
+# One deploy at a time. New runs queue, they don't cancel — Fly's rolling
+# strategy makes mid-flight cancels messy.
 concurrency:
   group: deploy-mm
   cancel-in-progress: false
@@ -24,15 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.MM_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.MM_SSH_HOST }}" >> ~/.ssh/known_hosts
+      - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy
+      - name: fly deploy
         env:
-          MM_HOST: ${{ secrets.MM_SSH_USER }}@${{ secrets.MM_SSH_HOST }}
-          MM_PM2_APPS: ${{ github.event.inputs.apps }}
-        run: bash market-maker/scripts/deploy.sh
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --config market-maker/fly.toml --remote-only --wait-timeout 300

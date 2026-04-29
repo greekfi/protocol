@@ -1,0 +1,40 @@
+# Aggressive dockerignore — only the market-maker workspace + its workspace
+# metadata is needed. Everything else is excluded to keep the build context
+# small. (The build context is uploaded to Fly's builder on every deploy.)
+
+# By default ignore everything; whitelist what we need.
+**
+
+# Workspace root metadata
+!package.json
+!yarn.lock
+!.yarnrc.yml
+!.yarn
+
+# Workspaces: include only their package.json so yarn install can resolve
+# the workspace graph. Source for non-mm workspaces is not needed.
+!core/package.json
+!foundry/package.json
+
+# Market-maker workspace itself
+!market-maker
+market-maker/node_modules
+market-maker/dist
+market-maker/.env
+market-maker/.env.local
+market-maker/logs
+market-maker/data
+market-maker/test
+
+# Deploy assets used by the Dockerfile
+!Dockerfile
+!.dockerignore
+
+# Common noise
+**/*.log
+**/.DS_Store
+**/.git
+**/.idea
+**/.vscode
+**/coverage
+**/.next

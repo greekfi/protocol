@@ -1,106 +1,133 @@
 # Market-maker Deployment
 
-Deploys to a single DigitalOcean droplet behind Caddy (auto Let's Encrypt TLS),
-managed by PM2, redeployed automatically on `main` pushes via GitHub Actions.
+Deployed to **[Fly.io](https://fly.io)** as a single Docker container running
+all four PM2 processes (`direct`, `relay`, `bebop`, `deribit`). Caddy inside
+the container path-routes the public ports to the right service.
 
 ```
-                  ┌─────────────────────────────────────────────┐
-  Browser         │  Droplet                                    │
-  ──────► Caddy   │   :80/:443  (TLS, LE certs, auto-renewed)   │
-                  │     │                                       │
-                  │     ├─ /pricing/*   → ws  localhost:3004    │  relay   (PM2)
-                  │     ├─ /rfq/*       → ws  localhost:3011    │  direct  (PM2, ws)
-                  │     └─ everything   → http localhost:3010   │  direct  (PM2, http)
-                  └─────────────────────────────────────────────┘
+Browser
+   │  https/wss://api.greek.finance
+   ▼
+Fly edge ──TLS terminate──▶ VM port 8080 ──Caddy──▶ /pricing  → :3004 (relay WS)
+                                                     /rfq      → :3011 (direct WS)
+                                                     *         → :3010 (direct HTTP)
+                                                     ▲
+                                                     │  PM2 manages 4 procs
+                                                     │  inside the same VM:
+                                                     │   • direct  — HTTP+WS quotes
+                                                     │   • relay   — Bebop fan-out
+                                                     │   • bebop   — Bebop maker
+                                                     │   • deribit — IV source
 ```
 
-## First-time droplet setup
+App: **`greek-protocol`** at `https://greek-protocol.fly.dev`. Custom domain
+**`api.greek.finance`** is added as a Fly cert (see `Custom domain` below).
 
-Prereqs: a fresh Ubuntu 24.04 droplet, root SSH access, and a DNS A record for
-`api.greek.finance` pointing at the droplet IP. **Gray-cloud** in Cloudflare —
-proxy off — so the Let's Encrypt HTTP-01 challenge can reach Caddy directly.
+## Files
+
+- `Dockerfile` — multi-stage build (yarn install + tsup build → caddy + pm2 runtime)
+- `.dockerignore` — whitelists only the market-maker workspace + workspace metadata
+- `market-maker/fly.toml` — Fly app config
+- `market-maker/deploy/Caddyfile` — internal path routing (no TLS, Fly handles it)
+- `market-maker/deploy/entrypoint.sh` — starts caddy + pm2-runtime
+- `market-maker/ecosystem.config.cjs` — PM2 process definitions
+
+## Deploy
+
+**Automatic:** push to `main` with changes under `market-maker/**`,
+`Dockerfile`, or `core/abi/**` triggers `.github/workflows/deploy-mm.yml`,
+which runs `flyctl deploy --remote-only`. Concurrency-guarded: one deploy at a time.
+
+**Manual:**
 
 ```bash
-ssh root@<droplet-ip>
-
-# Run the bootstrap (installs Node 25, PM2, Caddy, ufw, clones repo, builds)
-curl -sSL https://raw.githubusercontent.com/greekfi/protocol/main/market-maker/deploy/bootstrap.sh | bash
-
-# Fill in secrets
-cd /opt/greek/market-maker
-cp .env.example .env
-$EDITOR .env   # MAKER_ADDRESS, PRIVATE_KEY, BEBOP_*, etc.
-
-# Start
-pm2 start ecosystem.config.cjs
-pm2 save
-
-# Verify
-curl https://api.greek.finance/health
+# From repo root
+fly deploy --config market-maker/fly.toml
 ```
 
-Caddy will provision the LE cert on first request — give it ~30 seconds.
+`fly deploy` builds remotely on Fly's builder by default (no local Docker
+required), pushes the image to Fly's registry, then rolls the machine.
 
-## Ongoing deploys (zero-touch)
+## Required GitHub secret
 
-A push to `main` that touches `market-maker/**` triggers
-`.github/workflows/deploy-mm.yml`, which SSHes in, pulls, builds, and PM2-reloads.
-
-**Required GitHub secrets** (Settings → Secrets and variables → Actions):
-
-| Secret | Value |
+| Secret | How to get it |
 |---|---|
-| `MM_SSH_HOST` | Droplet IP or hostname |
-| `MM_SSH_USER` | `root` (or whatever the deploy user is) |
-| `MM_SSH_KEY` | Private SSH key whose public half is in `~/.ssh/authorized_keys` on the droplet |
+| `FLY_API_TOKEN` | `fly tokens create deploy --app greek-protocol` and paste the value |
 
-Generate a fresh key for CI:
+That's it — no SSH keys, no host secrets. Fly is the only auth boundary.
 
-```bash
-ssh-keygen -t ed25519 -C "github-actions-mm-deploy" -f ~/.ssh/mm-deploy
-ssh-copy-id -i ~/.ssh/mm-deploy.pub root@<droplet-ip>
-# Paste contents of ~/.ssh/mm-deploy (private) into MM_SSH_KEY secret.
-```
+## Secrets (runtime env vars)
 
-## Manual deploy
+Set sensitive vars with `fly secrets`:
 
 ```bash
-MM_HOST=root@<droplet-ip> ./scripts/deploy.sh
-
-# Or reload one app only:
-MM_HOST=root@<droplet-ip> MM_PM2_APPS="direct" ./scripts/deploy.sh
+fly secrets import --app greek-protocol <<EOF
+PRIVATE_KEY=0x...
+MAKER_ADDRESS=0x...
+BEBOP_MARKETMAKER=...
+BEBOP_AUTHORIZATION=...
+EOF
 ```
 
-The same script the workflow uses — Just SSH + pull + build + `pm2 reload`.
+Non-sensitive vars live in `[env]` of `fly.toml` — committed to the repo.
 
-## PM2 services
+To see what's set: `fly secrets list --app greek-protocol` (digest-only, never values).
 
-Defined in `ecosystem.config.cjs`. All restart on crash, persist across reboots
-(`pm2 startup systemd` was wired up by the bootstrap).
+To rotate: `fly secrets set KEY=newvalue` then `fly deploy` (a secret change
+triggers a rolling restart of the VM by default).
 
-| Process | Port | Autostart | Purpose |
-|---|---|---|---|
-| `direct` | 3010 (HTTP) + 3011 (WS) | yes | `/quote`, `/options`, `/health`, RFQ pricing stream |
-| `relay` | 3004 | yes | Bebop taker-price WebSocket fan-out |
-| `bebop` | none | **no** | Bebop RFQ maker (start manually) |
-| `deribit` | none | yes | Deribit IV-sourced pricing |
-
-`bebop` and `deribit` share the same Bebop WS connection — only one can run
-at a time. To switch:
+## Custom domain (api.greek.finance)
 
 ```bash
-pm2 stop deribit && pm2 start bebop && pm2 save
+# Add the cert (Fly issues + auto-renews via Let's Encrypt)
+fly certs add api.greek.finance --app greek-protocol
+
+# fly will print which DNS records to set. Typically:
+#   CNAME api.greek.finance → greek-protocol.fly.dev
+# Cloudflare: gray-cloud the record (Fly issues its own cert).
+
+# Verify (~30s after DNS propagates):
+fly certs show api.greek.finance --app greek-protocol
 ```
 
-## Switching pricing modes
+## Switching pricing modes (bebop ↔ deribit)
+
+Both share Bebop's WebSocket — only one can run at a time. The default
+ecosystem.config.cjs has `bebop` set to `autostart: false`. To switch on the
+fly machine:
 
 ```bash
-ssh root@<droplet-ip>
-pm2 stop deribit && pm2 start bebop && pm2 save     # use Bebop pricing
-pm2 stop bebop && pm2 start deribit && pm2 save     # use Deribit pricing
+fly ssh console --app greek-protocol --command 'pm2 stop deribit && pm2 start bebop'
+fly ssh console --app greek-protocol --command 'pm2 stop bebop && pm2 start deribit'
 ```
 
-`relay` and `direct` keep running across either switch.
+(The change persists for the lifetime of the machine — a redeploy resets to
+the ecosystem.config.cjs defaults.)
+
+## Operations
+
+```bash
+# App status
+fly status --app greek-protocol
+
+# Tail logs (all processes)
+fly logs --app greek-protocol
+
+# SSH into the VM
+fly ssh console --app greek-protocol
+
+# Inside the VM
+pm2 list
+pm2 logs --lines 50
+pm2 logs direct --lines 30
+
+# Restart everything
+fly machine restart --app greek-protocol
+
+# Rollback to a previous release
+fly releases --app greek-protocol
+fly deploy --image registry.fly.io/greek-protocol:deployment-<id> --config market-maker/fly.toml
+```
 
 ## Frontend wiring
 
@@ -113,45 +140,34 @@ Vercel project env vars (Production + Preview):
 | `NEXT_PUBLIC_PRICING_WS_URL` | `wss://api.greek.finance/pricing` |
 | `NEXT_PUBLIC_RFQ_WS_URL` | `wss://api.greek.finance/rfq` |
 
-`NEXT_PUBLIC_*` vars are baked in at build time — **redeploy** after changing.
+`NEXT_PUBLIC_*` vars bake at build time — **redeploy** Vercel after changing.
 
-## Operations
+## Why Fly.io and not Caddy-on-a-droplet
 
-```bash
-# Status / logs
-ssh root@<droplet-ip> "pm2 list"
-ssh root@<droplet-ip> "pm2 logs --lines 50"
-ssh root@<droplet-ip> "pm2 logs direct --lines 30"
+The previous setup was nginx/Caddy + PM2 on a $6 DigitalOcean droplet, with
+a hand-rolled bootstrap script, GH Actions tarball flow, and an env-render
+script. Three reasons we moved off it:
 
-# Caddy
-ssh root@<droplet-ip> "systemctl status caddy"
-ssh root@<droplet-ip> "tail -f /var/log/caddy/access.log"
-ssh root@<droplet-ip> "caddy reload --config /etc/caddy/Caddyfile"   # after Caddyfile edit
+1. **TLS** — Fly issues + renews Let's Encrypt automatically. Zero config.
+2. **WS support** — Fly's edge proxies WebSocket upgrades on standard ports
+   (no Cloudflare port whitelist gymnastics).
+3. **Deploy is `fly deploy`** — no SSH, no `pm2 reload`, no env-file scping.
+   Image build + atomic machine swap, all managed.
 
-# Restart everything
-ssh root@<droplet-ip> "pm2 restart all && systemctl restart caddy"
-```
+Cost is similar (~$5-8/mo on shared-cpu-1x@512MB) and the deploy code surface
+shrunk from ~600 lines of bash + YAML to ~150 lines of Dockerfile + fly.toml.
 
 ## Troubleshooting
 
-**`ERR_CONNECTION_REFUSED` from the browser**
-Cloudflare A record is gray-cloud (correct), but Caddy isn't running or ports
-80/443 are blocked. Check `systemctl status caddy` and `ufw status`.
+**Deploy fails at "build context too large"**
+The `.dockerignore` whitelist excludes everything by default. If a new
+workspace was added, add its `package.json` to the whitelist (yarn needs all
+workspace package.jsons to resolve the graph).
 
-**Cloudflare 521 / 522 / 525**
-The A record is orange-cloud (proxied). Either gray-cloud it, or set CF
-SSL/TLS mode to **Full (strict)** so CF talks to Caddy over HTTPS.
+**`/health` check fails after deploy**
+`pm2 list` from `fly ssh console` will show which process crashed. Most
+common: missing secret. `fly secrets list` to verify.
 
-**LE cert won't issue**
-- DNS A record must point to this droplet.
-- Port 80 must be open *and* CF must not be proxying (gray-cloud).
-- Check `journalctl -u caddy -n 100`.
-
-**`yarn install` fails on droplet**
-Old `--immutable` flag bites when deps shifted between commits. The deploy
-script uses plain `yarn install`. If you see a Corepack version mismatch,
-`corepack enable && corepack prepare yarn@stable --activate` on the droplet.
-
-**Stale local changes blocking deploy**
-The deploy script uses `git fetch && git reset --hard` — it discards anything
-uncommitted on the droplet. Don't edit code in `/opt/greek/market-maker`.
+**Bebop disconnects after 5min idle**
+Bebop's WS code reconnects with exponential backoff. If you see this with no
+recovery, check the `bebop` process logs — usually a stale auth token.

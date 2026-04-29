@@ -1,22 +1,21 @@
-# Caddy reverse proxy for the Greek market-maker.
+# Internal reverse proxy for the market-maker on Fly.io.
 #
-# Caddy auto-provisions a Let's Encrypt cert for {$MM_DOMAIN}, terminates
-# TLS, and proxies to the local PM2 processes on their internal ports.
-#
-# Required for HTTP-01 challenge:
-#   - Ports 80 and 443 reachable from the public internet.
-#   - DNS A record for {$MM_DOMAIN} pointing at this droplet (gray-cloud
-#     in Cloudflare so the challenge actually hits this host — orange-cloud
-#     would short-circuit it).
-#
-# Set MM_DOMAIN and MM_TLS_EMAIL in /etc/caddy/Caddyfile.env before
-# `systemctl reload caddy`. Defaults assume api.greek.finance.
+# Fly's edge handles TLS termination — Caddy here listens on plain HTTP
+# (port 8080) and routes to the local PM2 services by path. The Fly proxy
+# transparently proxies WebSocket upgrades.
 
 {
-    email {$MM_TLS_EMAIL:admin@greek.finance}
+    # Disable Caddy's automatic HTTPS — Fly does that.
+    auto_https off
+    admin off
+    # Trust Fly's edge so X-Forwarded-* headers are honored.
+    servers {
+        trusted_proxies static private_ranges 100.64.0.0/10
+    }
 }
 
-{$MM_DOMAIN:api.greek.finance} {
+# Bind to all interfaces on 8080 — Fly maps 443 → 8080 inside the VM.
+:8080 {
     encode gzip
 
     # Pricing relay WebSocket (Bebop taker prices fanned out to clients).
@@ -39,10 +38,7 @@
     }
 
     log {
-        output file /var/log/caddy/access.log {
-            roll_size 50mb
-            roll_keep 5
-        }
+        output stdout
         format console
     }
 }
