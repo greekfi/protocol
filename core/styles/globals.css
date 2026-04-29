@@ -29,6 +29,21 @@
     min-height: 100vh;
   }
 
+  /*
+    Tailwind CSS v4 follows the spec and renders <button> with
+    cursor: default. Restore the pointer hand on actually-clickable
+    things — what every user expects when they hover something
+    interactive. Disabled buttons stay non-interactive.
+  */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
   h1,
   h2,
   h3,
