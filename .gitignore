@@ -30,9 +30,5 @@ dist
 .env*.local
 .env
 
-# Claude Code — per-user state, not shared
+# Claude Code — per-user state (incl. design plans), not shared
 .claude/
-# track design plans even though .claude/ is otherwise ignored
-!.claude/
-!.claude/plans/
-!.claude/plans/**
