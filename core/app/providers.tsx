@@ -5,6 +5,7 @@ import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowki
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { WagmiProvider } from "wagmi";
+import { BrowseChainProvider } from "./hooks/useBrowseChain";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={isDarkMode ? darkTheme() : lightTheme()}>{children}</RainbowKitProvider>
+        <RainbowKitProvider theme={isDarkMode ? darkTheme() : lightTheme()}>
+          <BrowseChainProvider>{children}</BrowseChainProvider>
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

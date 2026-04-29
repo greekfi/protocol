@@ -1,13 +1,14 @@
 import { useCallback, useMemo } from "react";
 import type { OptionListItem } from "./types";
-import { useChainId, useReadContracts } from "wagmi";
+import { useReadContracts } from "wagmi";
+import { useBrowseChainId } from "../../hooks/useBrowseChain";
 import { useQueryClient } from "@tanstack/react-query";
 import { Address } from "viem";
 import { optionAbi } from "~~/generated";
 import { useChainEvents, type OptionCreatedEvent } from "../../hooks/useChainEvents";
 
 export function useOptions() {
-  const chainId = useChainId();
+  const chainId = useBrowseChainId();
   const queryClient = useQueryClient();
 
   const {

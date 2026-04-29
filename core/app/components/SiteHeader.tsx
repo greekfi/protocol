@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ChainSelector } from "./ChainSelector";
 
 export const SERIF_STACK = "var(--font-instrument-serif), ui-serif, Georgia, serif";
 
@@ -140,7 +141,12 @@ export function SiteHeader({ showWallet = true }: SiteHeaderProps) {
                 ),
               )}
             </div>
-            {showWallet && <WalletButton />}
+            {showWallet && (
+              <div className="flex items-center gap-2">
+                <ChainSelector className="rounded-lg border border-gray-700 bg-black/40 px-2.5 py-2 text-base sm:text-lg text-gray-200 hover:border-blue-300 transition-colors focus:outline-none" />
+                <WalletButton />
+              </div>
+            )}
           </div>
         </div>
       </div>
