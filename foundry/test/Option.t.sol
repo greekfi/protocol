@@ -61,9 +61,7 @@ contract OptionTest is Test {
             expirationDate: uint40(block.timestamp + 1 days),
             strike: 1e18,
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         address optionAddress = factory.createOption(
@@ -234,11 +232,20 @@ contract OptionTest is Test {
         option.exercise(1);
     }
 
-    function test_ExerciseAfterExpiration() public {
+    function test_ExerciseAfterWindow() public {
         option.mint(1);
+        // Default window is 8h; warp well past expiration + window.
         vm.warp(block.timestamp + 2 days);
-        vm.expectRevert(Option.ContractExpired.selector);
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
         option.exercise(1);
+    }
+
+    function test_ExerciseDuringWindow() public {
+        option.mint(1);
+        // Move just past expiration but inside the 8h window.
+        vm.warp(block.timestamp + 1 days + 1 hours);
+        option.exercise(1);
+        assertEq(option.balanceOf(address(this)), 0);
     }
 
     function test_MintAfterExpiration() public {
@@ -247,11 +254,15 @@ contract OptionTest is Test {
         option.mint(1);
     }
 
-    function test_RedeemAfterExpiration() public {
+    function test_PairRedeemAfterExpirationStillWorks() public {
+        // Pair redemption stays valid the entire option lifetime — it doesn't depend on the window.
         option.mint(1);
         vm.warp(block.timestamp + 2 days);
-        vm.expectRevert(Option.ContractExpired.selector);
+        uint256 collBefore = shakyToken.balanceOf(address(this));
         option.redeem(1);
+        assertEq(option.balanceOf(address(this)), 0);
+        assertEq(redemption.balanceOf(address(this)), 0);
+        assertEq(shakyToken.balanceOf(address(this)) - collBefore, 1);
     }
 
     function test_ShortRedeemAfterExpiration() public {
@@ -900,9 +911,7 @@ contract OptionTest is Test {
             expirationDate: uint40(block.timestamp + 1 days),
             strike: 1e18,
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
         params[1] = CreateParams({
             collateral: shakyTokenAddr,
@@ -910,9 +919,7 @@ contract OptionTest is Test {
             expirationDate: uint40(block.timestamp + 7 days),
             strike: 2e18,
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
         params[2] = CreateParams({
             collateral: shakyTokenAddr,
@@ -920,9 +927,7 @@ contract OptionTest is Test {
             expirationDate: uint40(block.timestamp + 30 days),
             strike: 5e18,
             isPut: true,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         address[] memory addrs = factory.createOptions(params);
@@ -1028,8 +1033,7 @@ contract OptionTest is Test {
             uint40(block.timestamp + 1 days),
             1e18,
             false,
-            false,
-            address(0),
+            uint40(8 hours),
             address(option),
             factoryAddr
         );

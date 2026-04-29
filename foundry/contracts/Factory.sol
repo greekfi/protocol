@@ -10,8 +10,6 @@ import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/Reentran
 import { Option } from "./Option.sol";
 import { Collateral } from "./Collateral.sol";
 import { CreateParams } from "./interfaces/IFactory.sol";
-import { IPriceOracle } from "./oracles/IPriceOracle.sol";
-import { IUniswapV3Pool, UniV3Oracle } from "./oracles/UniV3Oracle.sol";
 
 using SafeERC20 for ERC20;
 
@@ -42,43 +40,20 @@ using SafeERC20 for ERC20;
  *         against known-problematic tokens (fee-on-transfer, rebasing, exploited). It never affects
  *         already-created options — only new creations.
  *
- *         ### Oracle sources
+ *         ### Exercise window
  *
- *         `createOption(params)` auto-detects the oracle source in `params.oracleSource`:
- *
- *         - Pre-deployed `IPriceOracle` whose `expiration()` matches → reused in place.
- *         - Uniswap v3 pool (detected via `token0()`) → a fresh {UniV3Oracle} is deployed inline,
- *           bound to `(collateral, consideration, expiration, twapWindow)`.
- *         - Anything else → reverts with `UnsupportedOracleSource`. A Chainlink branch is planned.
- *
- * @dev    Example (create + approve + mint):
- *         ```solidity
- *         // Create a 30-day WETH/USDC 3000 call, European, settled by a v3 TWAP on a WETH/USDC pool.
- *         address opt = factory.createOption(
- *             CreateParams({
- *                 collateral:     WETH,
- *                 consideration:  USDC,
- *                 expirationDate: uint40(block.timestamp + 30 days),
- *                 strike:         uint96(3000e18),
- *                 isPut:          false,
- *                 isEuro:         true,
- *                 oracleSource:   UNIV3_WETH_USDC_POOL,
- *                 twapWindow:     1800                   // 30-min TWAP
- *             })
- *         );
- *
- *         // Single approval feeds every option this factory creates.
- *         IERC20(WETH).approve(address(factory), type(uint256).max);
- *         factory.approve(WETH, type(uint256).max);
- *
- *         Option(opt).mint(1e18);
- *         ```
+ *         There is no oracle. Settlement is purely time-gated. `windowSeconds` on {CreateParams}
+ *         sets how long after expiration the holder may still exercise; passing `0` selects
+ *         {DEFAULT_EXERCISE_WINDOW} (8 hours). After `expirationDate + windowSeconds`, exercise
+ *         reverts and short-side redemption opens.
  */
 contract Factory is Ownable, ReentrancyGuardTransient {
     /// @notice Template Collateral contract; per-option instances are EIP-1167 clones of this.
     address public immutable COLL_CLONE;
     /// @notice Template Option contract; per-option instances are EIP-1167 clones of this.
     address public immutable OPTION_CLONE;
+    /// @notice Default post-expiry exercise window when `CreateParams.windowSeconds == 0`.
+    uint40 public constant DEFAULT_EXERCISE_WINDOW = 8 hours;
 
     /// @dev Registered Collateral clones — `transferFrom` is only callable by these.
     mapping(address => bool) private colls;
@@ -106,10 +81,6 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     error InvalidTokens();
     /// @notice Thrown when {transferFrom} is called with `allowance < amount`.
     error InsufficientAllowance();
-    /// @notice Thrown when `isEuro == true` but no oracle source was provided.
-    error EuropeanRequiresOracle();
-    /// @notice Thrown when {createOption} cannot classify `oracleSource` (neither an `IPriceOracle` nor a v3 pool).
-    error UnsupportedOracleSource();
 
     /// @notice Emitted for every newly-created option.
     event OptionCreated(
@@ -118,8 +89,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         uint40 expirationDate,
         uint96 strike,
         bool isPut,
-        bool isEuro,
-        address oracle,
+        uint40 windowSeconds,
         address indexed option,
         address coll
     );
@@ -144,48 +114,33 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     // ============ OPTION CREATION ============
 
     /// @notice Deploy a new Option + Collateral pair.
-    /// @dev    Clones the templates, classifies / deploys an oracle if needed, and initialises both
-    ///         sides. Emits {OptionCreated}. The caller becomes the {Option}'s admin owner.
+    /// @dev    Clones the templates and initialises both sides. Emits {OptionCreated}. The caller
+    ///         becomes the {Option}'s admin owner.
     /// @param p See {CreateParams}:
     ///          - `collateral`, `consideration`: ERC20 addresses; must differ and not be blocklisted.
     ///          - `expirationDate`: unix timestamp; must be in the future.
     ///          - `strike`: 18-decimal fixed point (consideration per collateral, inverted for puts).
-    ///          - `isPut`, `isEuro`: option flavour flags. `isEuro` requires an oracle.
-    ///          - `oracleSource`: pre-deployed `IPriceOracle`, a Uniswap v3 pool, or `address(0)`.
-    ///          - `twapWindow`: seconds of TWAP when `oracleSource` is a v3 pool (ignored otherwise).
+    ///          - `isPut`: option flavour.
+    ///          - `windowSeconds`: post-expiry exercise window length; `0` → {DEFAULT_EXERCISE_WINDOW}.
     /// @return The new {Option} address.
     function createOption(CreateParams memory p) public nonReentrant returns (address) {
         if (blocklist[p.collateral] || blocklist[p.consideration]) revert BlocklistedToken();
         if (p.collateral == p.consideration) revert InvalidTokens();
-        if (p.isEuro && p.oracleSource == address(0)) revert EuropeanRequiresOracle();
+
+        uint40 windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
 
         address coll_ = Clones.clone(COLL_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
 
-        address oracle_ = address(0);
-        if (p.oracleSource != address(0)) {
-            oracle_ = _deployOracle(p);
-        }
-
         Collateral(coll_)
-            .init(
-                p.collateral,
-                p.consideration,
-                p.expirationDate,
-                p.strike,
-                p.isPut,
-                p.isEuro,
-                oracle_,
-                option_,
-                address(this)
-            );
+            .init(p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, windowSeconds, option_, address(this));
         Option(option_).init(coll_, msg.sender);
 
         colls[coll_] = true;
         options[option_] = true;
 
         emit OptionCreated(
-            p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, p.isEuro, oracle_, option_, coll_
+            p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, windowSeconds, option_, coll_
         );
         return option_;
     }
@@ -200,7 +155,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Backward-compatibility overload for the American non-settled case (no oracle, American).
+    /// @notice Backward-compatibility overload that defaults `windowSeconds` to {DEFAULT_EXERCISE_WINDOW}.
     /// @param collateral_    Collateral token.
     /// @param consideration_ Consideration token.
     /// @param expirationDate_ Expiration timestamp.
@@ -221,28 +176,9 @@ contract Factory is Ownable, ReentrancyGuardTransient {
                 expirationDate: expirationDate_,
                 strike: strike_,
                 isPut: isPut_,
-                isEuro: false,
-                oracleSource: address(0),
-                twapWindow: 0
+                windowSeconds: 0
             })
         );
-    }
-
-    /// @dev Classify `p.oracleSource` and return a concrete oracle address.
-    ///      Detection order:
-    ///        1. Object already quacks like an `IPriceOracle` and its `expiration()` matches — reuse.
-    ///        2. Object quacks like a Uniswap v3 pool (`token0()` succeeds) — wrap in a fresh {UniV3Oracle}.
-    ///        3. Otherwise — revert.
-    ///      A Chainlink aggregator branch is reserved for a later change.
-    function _deployOracle(CreateParams memory p) internal returns (address) {
-        try IPriceOracle(p.oracleSource).expiration() returns (uint256 exp) {
-            if (exp == p.expirationDate) return p.oracleSource;
-        } catch { }
-        try IUniswapV3Pool(p.oracleSource).token0() returns (address) {
-            return
-                address(new UniV3Oracle(p.oracleSource, p.collateral, p.consideration, p.expirationDate, p.twapWindow));
-        } catch { }
-        revert UnsupportedOracleSource();
     }
 
     // ============ CENTRALIZED TRANSFER ============
@@ -313,14 +249,6 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Opt in to {Option}'s auto-mint-on-send and auto-redeem-on-receive transfer behaviour.
-    /// @dev    Scoped to `msg.sender`. See {Option} for the full semantics — in short, enabling lets
-    ///         the caller treat Option and its backing collateral as interchangeable.
-    ///
-    /// Example:
-    /// ```solidity
-    /// factory.enableAutoMintRedeem(true);
-    /// // Now: `option.transfer(bob, 1e18)` will auto-mint if the sender is short Option but long collateral.
-    /// ```
     function enableAutoMintRedeem(bool enabled) external {
         autoMintRedeem[msg.sender] = enabled;
         emit AutoMintRedeemUpdated(msg.sender, enabled);

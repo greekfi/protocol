@@ -181,9 +181,7 @@ contract FeeOnTransferTest is Test {
             expirationDate: uint40(block.timestamp + 1 days),
             strike: uint96(1e18),
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         address optionAddress = factory.createOption(

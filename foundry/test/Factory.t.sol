@@ -8,9 +8,8 @@ import { Collateral } from "../contracts/Collateral.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
-import { MockPriceOracle } from "./mocks/MockPriceOracle.sol";
 
-/// @notice Factory creation validation (mode combos, oracle detection, standard rules).
+/// @notice Factory creation validation (window defaulting, standard rules, blocklist).
 contract FactoryTest is Test {
     Factory factory;
     MockERC20 coll;
@@ -33,70 +32,29 @@ contract FactoryTest is Test {
             expirationDate: EXP,
             strike: 1000e18,
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
     }
 
-    // ======== Mode combos ========
+    // ======== Window default + override ========
 
-    function test_AmericanNonSettled_OK() public {
+    function test_Create_DefaultsTo8hWindow() public {
         CreateParams memory p = _basicParams();
         address opt = factory.createOption(p);
         assertTrue(factory.options(opt));
-        assertFalse(Option(opt).isEuro());
-        assertEq(Option(opt).oracle(), address(0));
+        Collateral c = Collateral(Option(opt).coll());
+        assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
     }
 
-    function test_Euro_RequiresOracle() public {
+    function test_Create_CustomWindow() public {
         CreateParams memory p = _basicParams();
-        p.isEuro = true;
-        // oracleSource still 0
-        vm.expectRevert(Factory.EuropeanRequiresOracle.selector);
-        factory.createOption(p);
-    }
-
-    function test_Euro_WithOracle_OK() public {
-        MockPriceOracle oracle = new MockPriceOracle(EXP);
-        CreateParams memory p = _basicParams();
-        p.isEuro = true;
-        p.oracleSource = address(oracle);
+        p.windowSeconds = 1 hours;
         address opt = factory.createOption(p);
-        assertTrue(Option(opt).isEuro());
-        assertEq(Option(opt).oracle(), address(oracle));
+        Collateral c = Collateral(Option(opt).coll());
+        assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 1 hours);
     }
 
-    function test_AmericanSettled_WithOracle_OK() public {
-        MockPriceOracle oracle = new MockPriceOracle(EXP);
-        CreateParams memory p = _basicParams();
-        p.oracleSource = address(oracle);
-        address opt = factory.createOption(p);
-        assertFalse(Option(opt).isEuro());
-        assertEq(Option(opt).oracle(), address(oracle));
-    }
-
-    // ======== Oracle detection ========
-
-    function test_UnsupportedOracleSource_Reverts() public {
-        CreateParams memory p = _basicParams();
-        // A contract with neither expiration() nor token0() — use the factory itself as bogus source
-        p.oracleSource = address(factory);
-        vm.expectRevert(Factory.UnsupportedOracleSource.selector);
-        factory.createOption(p);
-    }
-
-    function test_OracleExpirationMismatch_FallsThroughAndReverts() public {
-        // Oracle expiration doesn't match option expiration → factory tries next detector,
-        // which calls token0() on the mock oracle and fails, so UnsupportedOracleSource.
-        MockPriceOracle wrong = new MockPriceOracle(EXP + 1 days);
-        CreateParams memory p = _basicParams();
-        p.oracleSource = address(wrong);
-        vm.expectRevert(Factory.UnsupportedOracleSource.selector);
-        factory.createOption(p);
-    }
-
-    // ======== Standard validations (shared with American non-settled) ========
+    // ======== Standard validations ========
 
     function test_SameTokenReverts() public {
         CreateParams memory p = _basicParams();
@@ -128,11 +86,11 @@ contract FactoryTest is Test {
 
     // ======== Backward-compat overload ========
 
-    function test_LegacyCreateOption_NoOracle() public {
+    function test_LegacyCreateOption_DefaultsWindow() public {
         address opt = factory.createOption(address(coll), address(cons), EXP, 1000e18, false);
         assertTrue(factory.options(opt));
-        assertFalse(Option(opt).isEuro());
-        assertEq(Option(opt).oracle(), address(0));
+        Collateral c = Collateral(Option(opt).coll());
+        assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
     }
 
     // ======== Template validation ========

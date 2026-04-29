@@ -67,9 +67,7 @@ contract GasAnalysis is Test {
             expirationDate: uint40(block.timestamp + 30 days),
             strike: uint96(1e18),
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         address optionAddress = factory.createOption(
@@ -108,9 +106,7 @@ contract GasAnalysis is Test {
             expirationDate: uint40(block.timestamp + 60 days),
             strike: uint96(2e18),
             isPut: false,
-            isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         factory.createOptions(params);
@@ -131,9 +127,7 @@ contract GasAnalysis is Test {
                 expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
                 strike: uint96(1e18 + (i * 0.1e18)),
                 isPut: false,
-                isEuro: false,
-                oracleSource: address(0),
-                twapWindow: 0
+                windowSeconds: 0
             });
         }
 
