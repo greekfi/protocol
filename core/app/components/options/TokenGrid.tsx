@@ -134,7 +134,7 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className="grid gap-2"
-      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(7rem, 9rem))" }}
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(6rem, 7.5rem))" }}
     >
       {tokens.map(token => {
         const active = selected === token.symbol;
