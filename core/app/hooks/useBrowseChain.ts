@@ -1,23 +1,23 @@
 "use client";
 
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useChainId } from "wagmi";
+import { createContext, createElement, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import deployedContracts from "~~/abi/deployedContracts";
 
 /**
- * "Browse chain" — the chain whose data the UI is currently showing. Distinct
- * from the connected wallet's chain because we want users to be able to
- * inspect options on any deployed chain *before* connecting a wallet (and
- * to flip between chains without reconnecting).
+ * Single chain-selection abstraction:
  *
- * Resolution order on first render:
- *   1. localStorage `greek.browseChain` (if a previously chosen chain)
- *   2. connected wallet's chain (if any, and it has a deployment)
- *   3. first chain with a Greek deployment (currently Arbitrum)
+ * - When a wallet is connected, the browse chain *is* the wallet chain. The
+ *   selector calls wagmi `switchChainAsync` so picking a chain re-points the
+ *   wallet. (Fallback: if the user rejects the switch, the local pick still
+ *   updates so they can browse without transacting.)
+ * - When no wallet is connected, the browse chain is held in local state and
+ *   persisted to localStorage. First-render default: previously picked chain
+ *   → first chain with a Greek deployment (Arbitrum today).
  *
- * After mount, the user can change the browse chain via {@link useBrowseChain}.
- * Wallet chain changes do NOT auto-override the user's pick — once they've
- * picked, it sticks until they change it.
+ * Net effect: there's only one chain UI to look at — the {@link ChainSelector}
+ * in the header. RainbowKit's separate chain pill is hidden in the
+ * WalletButton render to avoid the duplicated selector.
  */
 
 const LS_KEY = "greek.browseChain";
@@ -28,7 +28,7 @@ const SUPPORTED_CHAIN_IDS = (Object.keys(deployedContracts) as (keyof typeof dep
 
 export interface BrowseChainContextValue {
   chainId: number;
-  setChainId: (id: number) => void;
+  setChainId: (id: number) => void | Promise<void>;
   /** Chains the UI knows about, in render order. Excludes foundry (local dev). */
   supportedChainIds: number[];
 }
@@ -57,37 +57,55 @@ function writeStoredChain(id: number) {
 }
 
 export function BrowseChainProvider({ children }: { children: ReactNode }) {
+  const { isConnected } = useAccount();
   const walletChainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
 
-  // Lazy initial — runs once. Picks localStorage → wallet → first supported.
-  const [chainId, setChainIdState] = useState<number>(() => {
+  // Local pick — used when no wallet is connected, and as the fallback if the
+  // user rejects a wallet switch.
+  const [localChainId, setLocalChainId] = useState<number>(() => {
     const stored = readStoredChain();
     if (stored && SUPPORTED_CHAIN_IDS.includes(stored)) return stored;
     if (walletChainId && SUPPORTED_CHAIN_IDS.includes(walletChainId)) return walletChainId;
     return SUPPORTED_CHAIN_IDS[0] ?? 42161;
   });
 
-  // If the user has never picked a chain explicitly and the wallet later
-  // connects to a supported chain, drift the browse chain to follow it (one-time).
-  useEffect(() => {
-    if (readStoredChain() !== null) return; // user picked → don't override
-    if (walletChainId && SUPPORTED_CHAIN_IDS.includes(walletChainId)) {
-      setChainIdState(walletChainId);
-    }
-  }, [walletChainId]);
+  // When connected, the browse chain mirrors the wallet chain. When not, it's
+  // the local pick. Falls back to the first supported chain if the wallet is
+  // on a chain we don't have a deployment for.
+  const effectiveChainId = isConnected
+    ? SUPPORTED_CHAIN_IDS.includes(walletChainId)
+      ? walletChainId
+      : SUPPORTED_CHAIN_IDS[0] ?? walletChainId
+    : localChainId;
 
-  const setChainId = useCallback((id: number) => {
-    if (!SUPPORTED_CHAIN_IDS.includes(id)) {
-      console.warn(`[useBrowseChain] unsupported chainId ${id}; ignoring`);
-      return;
-    }
-    setChainIdState(id);
-    writeStoredChain(id);
-  }, []);
+  const setChainId = useCallback(
+    async (id: number) => {
+      if (!SUPPORTED_CHAIN_IDS.includes(id)) {
+        console.warn(`[useBrowseChain] unsupported chainId ${id}; ignoring`);
+        return;
+      }
+      // Always update the local pick so an unconnected user (or a connected
+      // user who later disconnects) sees their choice persisted.
+      setLocalChainId(id);
+      writeStoredChain(id);
+
+      if (isConnected && walletChainId !== id) {
+        try {
+          await switchChainAsync({ chainId: id });
+        } catch {
+          // Wallet rejected the switch (or doesn't support it). The local
+          // pick is already updated; the wallet stays where it was, and the
+          // user can switch manually in their wallet UI.
+        }
+      }
+    },
+    [isConnected, walletChainId, switchChainAsync],
+  );
 
   const value = useMemo(
-    () => ({ chainId, setChainId, supportedChainIds: SUPPORTED_CHAIN_IDS }),
-    [chainId, setChainId],
+    () => ({ chainId: effectiveChainId, setChainId, supportedChainIds: SUPPORTED_CHAIN_IDS }),
+    [effectiveChainId, setChainId],
   );
 
   return createElement(Ctx.Provider, { value }, children);

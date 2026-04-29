@@ -59,22 +59,12 @@ function WalletButton() {
               </button>
             )}
             {connected && !chain.unsupported && (
-              <div className="flex gap-2">
-                <button
-                  onClick={openChainModal}
-                  type="button"
-                  className={`${buttonClass} text-gray-300 flex items-center gap-1.5`}
-                >
-                  {chain.hasIcon && chain.iconUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={chain.iconUrl} alt={chain.name ?? ""} className="w-4 h-4 rounded-full" />
-                  )}
-                  <span>{chain.name}</span>
-                </button>
-                <button onClick={openAccountModal} type="button" className={`${buttonClass} text-gray-200`}>
-                  {account.displayName}
-                </button>
-              </div>
+              // Chain pill is intentionally omitted — ChainSelector in the
+              // header is the single source of truth for chain selection
+              // (drives both browse-data fetching and wallet switching).
+              <button onClick={openAccountModal} type="button" className={`${buttonClass} text-gray-200`}>
+                {account.displayName}
+              </button>
             )}
           </div>
         );
