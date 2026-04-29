@@ -55,6 +55,7 @@ export function useRfqQuote({ buyToken, sellToken, sellAmount, buyAmount, enable
         buyToken,
         sellToken,
         takerAddress,
+        chainId: String(chainId),
       };
 
       if (sellAmount) {
@@ -101,7 +102,7 @@ export function useRfqOptions() {
     queryKey: ["rfqOptions", chainId],
     queryFn: async () => {
       const rfqApiUrl = RFQ_API_URLS[chainId] || RFQ_API_URLS[1];
-      const url = `${rfqApiUrl}/options`;
+      const url = `${rfqApiUrl}/options?chainId=${chainId}`;
 
       const response = await fetch(url);
       if (!response.ok) {
