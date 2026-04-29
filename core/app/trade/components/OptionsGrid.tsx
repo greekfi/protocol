@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
+import { formatStrikeValue } from "../../lib/strike";
 import { useDirectPrices } from "../hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
@@ -221,8 +222,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
         </thead>
         <tbody>
           {strikes.map(strike => {
-            const strikeNum = parseFloat(formatUnits(BigInt(strike), 18));
-            const strikeFormatted = strikeNum.toFixed(2);
+            const strikeFormatted = formatStrikeValue(BigInt(strike));
 
             return (
               <tr key={strike} className="border-b border-gray-800">

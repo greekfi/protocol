@@ -29,7 +29,7 @@ const CHAIN_LABELS: Record<number, string> = Object.values(chains).reduce(
 const BUTTON_CLASS =
   "px-3.5 py-2 rounded-lg border border-gray-700 hover:border-blue-300 transition-colors text-base sm:text-lg text-gray-300 flex items-center gap-2";
 
-export function ChainSelector({ className }: { className?: string }) {
+export function ChainSelector() {
   const { isConnected } = useAccount();
   const { chainId, setChainId, supportedChainIds } = useBrowseChain();
   const [open, setOpen] = useState(false);
@@ -60,7 +60,7 @@ export function ChainSelector({ className }: { className?: string }) {
   const currentLabel = CHAIN_LABELS[chainId] ?? `Chain ${chainId}`;
 
   return (
-    <div ref={wrapperRef} className={`relative ${className ?? ""}`} style={{ fontFamily: SERIF_STACK, fontWeight: 400 }}>
+    <div ref={wrapperRef} className="relative" style={{ fontFamily: SERIF_STACK, fontWeight: 400 }}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
