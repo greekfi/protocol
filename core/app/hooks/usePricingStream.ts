@@ -32,7 +32,7 @@ export interface UsePricingStreamReturn {
   unsubscribe: (chains?: number[], pairs?: string[]) => void;
 }
 
-const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_PRICING_WS_URL || "wss://api.greek.finance";
+const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_PRICING_WS_URL || "wss://api.greek.finance/pricing";
 
 // USDC address (Ethereum mainnet)
 const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";

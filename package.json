@@ -8,7 +8,6 @@
   },
   "workspaces": [
     "foundry",
-    "market-maker",
     "core",
     "event-sync"
   ],
@@ -18,13 +17,6 @@
     "dev": "yarn workspace @greek/core dev",
     "build": "yarn workspace @greek/core build",
     "next:check-types": "yarn workspace @greek/core check-types",
-    "direct": "yarn workspace @greek/market-maker direct",
-    "bebop": "yarn workspace @greek/market-maker bebop",
-    "relay": "yarn workspace @greek/market-maker relay",
-    "dev:direct": "yarn workspace @greek/market-maker dev:direct",
-    "dev:bebop": "yarn workspace @greek/market-maker dev:bebop",
-    "dev:relay": "yarn workspace @greek/market-maker dev:relay",
-    "fetch-metadata": "yarn workspace @greek/market-maker fetch-metadata",
     "event-sync": "yarn workspace @greek/event-sync start",
     "dev:event-sync": "yarn workspace @greek/event-sync dev",
     "docs:gen": "yarn workspace @greek/foundry docs:gen && cd docs && node scripts/gen-reference.mjs"
