@@ -25,13 +25,15 @@ const arbitrumRpc = userAlchemyKey
   : "https://arbitrum-one-rpc.publicnode.com";
 
 const scaffoldConfig = {
-  // The networks on which the protocol is deployed. Order matters: the first
-  // non-foundry chain is wagmi's default when no wallet is connected (so a user
-  // landing on /trade without a wallet sees Arbitrum's options). Mainnet is
-  // intentionally absent — there's no Greek factory on Ethereum yet, and
-  // including it caused chain-1 fallbacks to scan from genesis (see #69).
-  // `foundry` is filtered out at runtime in wagmiConfig when not on localhost.
-  targetNetworks: [chains.foundry, chains.arbitrum, chains.base],
+  // The networks on which the protocol is deployed. Order matters: wagmi
+  // treats the first chain as the default for contract reads when no chainId
+  // hint is passed. Arbitrum is first so unconnected users (and stray
+  // wagmi `useReadContract` calls) hit a real chain instead of foundry. The
+  // wagmiConfig moves foundry to the *end* of the list on localhost (and
+  // strips it elsewhere), so localhost dev still has it available in the
+  // chain switcher without ever being the default.
+  // Mainnet is intentionally absent — no Greek factory on Ethereum yet.
+  targetNetworks: [chains.arbitrum, chains.base, chains.foundry],
   // The interval at which your front-end polls the RPC servers for new data (it has no effect if you only target the local network (default is 4000))
   pollingInterval: 30000,
   // This is ours Alchemy's default API key.
