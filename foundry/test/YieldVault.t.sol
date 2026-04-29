@@ -4,7 +4,9 @@ pragma solidity ^0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Factory, Collateral, Option } from "../contracts/Factory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
@@ -133,7 +135,7 @@ contract YieldVaultTest is Test {
     Factory public factory;
     YieldVault public vault;
     Option public option;
-    Collateral public redemption;
+    Rct public redemption;
 
     address public lp = address(0x1111);
     uint256 public operatorPk = 0xA11CE;
@@ -162,7 +164,7 @@ contract YieldVaultTest is Test {
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
 
-        Collateral redemptionClone = new Collateral("Short Option", "SHORT");
+        Rct redemptionClone = new Rct("Short Option", "SHORT");
         Option optionClone = new Option("Long Option", "LONG");
         factory = new Factory(address(redemptionClone), address(optionClone));
 
@@ -174,7 +176,7 @@ contract YieldVaultTest is Test {
             address(shakyToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
         );
         option = Option(optionAddr);
-        redemption = option.coll();
+        redemption = option.receipt();
         vault.addOption(address(option), address(0));
 
         shakyToken.mint(address(this), 1_000_000e18);

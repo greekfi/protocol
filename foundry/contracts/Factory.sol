@@ -8,7 +8,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 import { Option } from "./Option.sol";
-import { Collateral } from "./Collateral.sol";
+import { Receipt } from "./Receipt.sol";
 import { CreateParams } from "./interfaces/IFactory.sol";
 
 using SafeERC20 for ERC20;
@@ -17,13 +17,13 @@ using SafeERC20 for ERC20;
  * @title  Factory — deployer, allowance hub, operator registry
  * @author Greek.fi
  * @notice The only on-chain contract users need to interact with to *create* options. Once deployed,
- *         every Option + Collateral pair runs off pre-compiled template clones, so creation is
+ *         every Option + Receipt pair runs off pre-compiled template clones, so creation is
  *         cheap and the factory is never an upgradeable rug vector (the templates are immutable).
  *
  *         The factory also plays three lasting roles post-creation:
  *
  *         1. **Single allowance point.** Users `approve(collateralToken, amount)` on the factory once,
- *            and any Option / Collateral pair created by this factory can pull from that allowance
+ *            and any Option / Receipt pair created by this factory can pull from that allowance
  *            via {transferFrom}. No need to approve every new option individually.
  *
  *         2. **Operator registry.** {approveOperator} gives an address blanket authority to move
@@ -31,7 +31,7 @@ using SafeERC20 for ERC20;
  *            pattern. Used by trading venues and aggregators.
  *
  *         3. **Auto-mint / auto-redeem opt-in.** {enableAutoMintRedeem} flips a per-account flag that
- *            Option consults on transfer to auto-mint deficits and auto-redeem matched Option+Collateral
+ *            Option consults on transfer to auto-mint deficits and auto-redeem matched Option+Receipt
  *            on the receiving side.
  *
  *         ### Token blocklist
@@ -42,21 +42,27 @@ using SafeERC20 for ERC20;
  *
  *         ### Exercise window
  *
- *         There is no oracle. Settlement is purely time-gated. `windowSeconds` on {CreateParams}
- *         sets how long after expiration the holder may still exercise; passing `0` selects
- *         {DEFAULT_EXERCISE_WINDOW} (8 hours). After `expirationDate + windowSeconds`, exercise
- *         reverts and short-side redemption opens.
+ *         There is no oracle. Settlement is purely time-gated:
+ *
+ *         - `isEuro = false` (American) — exercise allowed from creation through `exerciseDeadline`.
+ *         - `isEuro = true`  (European) — exercise allowed only between `expirationDate` and
+ *           `exerciseDeadline`.
+ *
+ *         `windowSeconds` on {CreateParams} sets how long after expiration the window stays open;
+ *         passing `0` selects {DEFAULT_EXERCISE_WINDOW} (8 hours). After
+ *         `expirationDate + windowSeconds`, exercise reverts (for both flavours) and short-side
+ *         redemption opens.
  */
 contract Factory is Ownable, ReentrancyGuardTransient {
-    /// @notice Template Collateral contract; per-option instances are EIP-1167 clones of this.
-    address public immutable COLL_CLONE;
+    /// @notice Template Receipt contract; per-option instances are EIP-1167 clones of this.
+    address public immutable RECEIPT_CLONE;
     /// @notice Template Option contract; per-option instances are EIP-1167 clones of this.
     address public immutable OPTION_CLONE;
     /// @notice Default post-expiry exercise window when `CreateParams.windowSeconds == 0`.
     uint40 public constant DEFAULT_EXERCISE_WINDOW = 8 hours;
 
-    /// @dev Registered Collateral clones — `transferFrom` is only callable by these.
-    mapping(address => bool) private colls;
+    /// @dev Registered Receipt clones — `transferFrom` is only callable by these.
+    mapping(address => bool) private receipts;
 
     /// @notice `true` if the address is a Option clone this factory created.
     mapping(address => bool) public options;
@@ -89,9 +95,10 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         uint40 expirationDate,
         uint96 strike,
         bool isPut,
+        bool isEuro,
         uint40 windowSeconds,
         address indexed option,
-        address coll
+        address receipt
     );
     /// @notice Emitted on {blockToken} / {unblockToken}.
     event TokenBlocked(address token, bool blocked);
@@ -103,17 +110,17 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
     /// @notice Bind the factory to its immutable templates.
-    /// @param collClone_   Deployed Collateral template.
-    /// @param optionClone_ Deployed Option template.
-    constructor(address collClone_, address optionClone_) Ownable(msg.sender) {
-        if (collClone_ == address(0) || optionClone_ == address(0)) revert InvalidAddress();
-        COLL_CLONE = collClone_;
+    /// @param receiptClone_ Deployed Receipt template.
+    /// @param optionClone_  Deployed Option template.
+    constructor(address receiptClone_, address optionClone_) Ownable(msg.sender) {
+        if (receiptClone_ == address(0) || optionClone_ == address(0)) revert InvalidAddress();
+        RECEIPT_CLONE = receiptClone_;
         OPTION_CLONE = optionClone_;
     }
 
     // ============ OPTION CREATION ============
 
-    /// @notice Deploy a new Option + Collateral pair.
+    /// @notice Deploy a new Option + Receipt pair.
     /// @dev    Clones the templates and initialises both sides. Emits {OptionCreated}. The caller
     ///         becomes the {Option}'s admin owner.
     /// @param p See {CreateParams}:
@@ -121,6 +128,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     ///          - `expirationDate`: unix timestamp; must be in the future.
     ///          - `strike`: 18-decimal fixed point (consideration per collateral, inverted for puts).
     ///          - `isPut`: option flavour.
+    ///          - `isEuro`: `true` for European (no pre-expiry exercise), `false` for American.
     ///          - `windowSeconds`: post-expiry exercise window length; `0` → {DEFAULT_EXERCISE_WINDOW}.
     /// @return The new {Option} address.
     function createOption(CreateParams memory p) public nonReentrant returns (address) {
@@ -129,18 +137,35 @@ contract Factory is Ownable, ReentrancyGuardTransient {
 
         uint40 windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
 
-        address coll_ = Clones.clone(COLL_CLONE);
+        address receipt_ = Clones.clone(RECEIPT_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
 
-        Collateral(coll_)
-            .init(p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, windowSeconds, option_, address(this));
-        Option(option_).init(coll_, msg.sender);
+        Receipt(receipt_).init(
+            p.collateral,
+            p.consideration,
+            p.expirationDate,
+            p.strike,
+            p.isPut,
+            p.isEuro,
+            windowSeconds,
+            option_,
+            address(this)
+        );
+        Option(option_).init(receipt_, msg.sender);
 
-        colls[coll_] = true;
+        receipts[receipt_] = true;
         options[option_] = true;
 
         emit OptionCreated(
-            p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, windowSeconds, option_, coll_
+            p.collateral,
+            p.consideration,
+            p.expirationDate,
+            p.strike,
+            p.isPut,
+            p.isEuro,
+            windowSeconds,
+            option_,
+            receipt_
         );
         return option_;
     }
@@ -155,7 +180,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Backward-compatibility overload that defaults `windowSeconds` to {DEFAULT_EXERCISE_WINDOW}.
+    /// @notice Backward-compatibility overload for the American flavour with the default window.
     /// @param collateral_    Collateral token.
     /// @param consideration_ Consideration token.
     /// @param expirationDate_ Expiration timestamp.
@@ -176,6 +201,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
                 expirationDate: expirationDate_,
                 strike: strike_,
                 isPut: isPut_,
+                isEuro: false,
                 windowSeconds: 0
             })
         );
@@ -183,13 +209,13 @@ contract Factory is Ownable, ReentrancyGuardTransient {
 
     // ============ CENTRALIZED TRANSFER ============
 
-    /// @notice Pull `amount` of `token` from `from` to `to`. Only callable by Collateral clones
+    /// @notice Pull `amount` of `token` from `from` to `to`. Only callable by Receipt clones
     ///         that this factory has created.
     /// @dev    Decrements `_allowances[token][from]` (unless it is `type(uint256).max`).
     ///         This is the mechanism by which a single user approval on the factory flows to every
-    ///         option pair it creates, rather than requiring approvals on each Collateral clone.
+    ///         option pair it creates, rather than requiring approvals on each Receipt clone.
     /// @param from   Token owner.
-    /// @param to     Recipient (typically the calling Collateral contract).
+    /// @param to     Recipient (typically the calling Receipt contract).
     /// @param amount Token amount to transfer (≤ `uint160.max`, matching Permit2 semantics).
     /// @param token  Token to move.
     /// @return success Always `true` on success; reverts otherwise.
@@ -198,7 +224,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         nonReentrant
         returns (bool)
     {
-        if (!colls[msg.sender]) revert InvalidAddress();
+        if (!receipts[msg.sender]) revert InvalidAddress();
         uint256 currentAllowance = _allowances[token][from];
         if (currentAllowance < amount) revert InsufficientAllowance();
         if (currentAllowance != type(uint256).max) {
@@ -217,7 +243,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     }
 
     /// @notice Set the caller's factory-level allowance for `token` to `amount`.
-    /// @dev    This is the shared approval consumed by every Option + Collateral pair created by
+    /// @dev    This is the shared approval consumed by every Option + Receipt pair created by
     ///         this factory. Does not replace the ERC20-level `token.approve(factory, ...)` the
     ///         user must also grant so the factory can call `safeTransferFrom` on the token.
     /// @param token  ERC20 to be approved.

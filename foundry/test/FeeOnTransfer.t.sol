@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
@@ -51,13 +51,13 @@ contract FeeOnTransferTest is Test {
     StableToken public stableToken;
     ShakyToken public shakyToken;
     FeeOnTransferToken public fotToken;
-    Collateral public redemptionClone;
+    Rct public redemptionClone;
     Option public optionClone;
     Factory public factory;
 
     IPermit2 permit2 = IPermit2(PERMIT2);
     Option option;
-    Collateral redemption;
+    Rct redemption;
 
     address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
@@ -79,7 +79,7 @@ contract FeeOnTransferTest is Test {
         fotToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy Collateral template
-        redemptionClone = new Collateral("Collateral Template", "COLL");
+        redemptionClone = new Rct("Rct Template", "RCT");
 
         // Deploy Option template
         optionClone = new Option("Option Template", "OPTT");
@@ -158,7 +158,7 @@ contract FeeOnTransferTest is Test {
         );
 
         option = Option(optionAddress);
-        redemption = Collateral(option.coll());
+        redemption = Rct(option.receipt());
 
         // Approve tokens
         fotToken.approve(address(factory), MAX160);
@@ -167,7 +167,7 @@ contract FeeOnTransferTest is Test {
         uint256 mintAmount = 1000 * 10 ** 18;
 
         // Try to mint - should fail because FOT token transfers less than requested
-        vm.expectRevert(Collateral.FeeOnTransferNotSupported.selector);
+        vm.expectRevert(Rct.FeeOnTransferNotSupported.selector);
         option.mint(mintAmount);
     }
 
@@ -181,6 +181,7 @@ contract FeeOnTransferTest is Test {
             expirationDate: uint40(block.timestamp + 1 days),
             strike: uint96(1e18),
             isPut: false,
+            isEuro: false,
             windowSeconds: 0
         });
 
@@ -192,7 +193,7 @@ contract FeeOnTransferTest is Test {
             options[0].isPut
         );
         option = Option(optionAddress);
-        redemption = Collateral(option.coll());
+        redemption = Rct(option.receipt());
 
         // Approve tokens
         shakyToken.approve(address(factory), MAX160);

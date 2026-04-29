@@ -14,7 +14,7 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import { IOption } from "./interfaces/IOption.sol";
-import { ICollateral } from "./interfaces/ICollateral.sol";
+import { IReceipt } from "./interfaces/IReceipt.sol";
 import { IFactory } from "./interfaces/IFactory.sol";
 import { IERC7540Redeem, IERC7540Operator } from "./interfaces/IERC7540.sol";
 
@@ -87,7 +87,7 @@ contract YieldVault is
     event OptionAdded(address indexed option);
     /// @notice Emitted when an option is removed from the active set via {removeOption} or {cleanupOptions}.
     event OptionRemoved(address indexed option);
-    /// @notice Emitted when the vault pair-redeems held Option + Collateral tokens via {burn}.
+    /// @notice Emitted when the vault pair-redeems held Option + Receipt tokens via {burn}.
     event OptionsBurned(address indexed option, uint256 amount);
 
     // ============ STATE ============
@@ -339,9 +339,9 @@ contract YieldVault is
         return result;
     }
 
-    /// @notice Pre-expiry: burn matched Option + Collateral tokens held by the vault to recover
+    /// @notice Pre-expiry: burn matched Option + Receipt tokens held by the vault to recover
     ///         the underlying collateral (calls {Option.redeem}).
-    /// @param option Option contract whose Option + Collateral are paired in the vault.
+    /// @param option Option contract whose Option + Receipt are paired in the vault.
     /// @param amount Collateral-denominated pair amount to redeem.
     function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
         if (amount == 0) revert ZeroAmount();
@@ -349,14 +349,14 @@ contract YieldVault is
         emit OptionsBurned(option, amount);
     }
 
-    /// @notice Post-expiry: redeem all Collateral tokens this vault holds for `option`, pulling
+    /// @notice Post-window: redeem all Receipt tokens this vault holds for `option`, pulling
     ///         leftover collateral + any consideration earned during exercise.
     /// @param option Option contract whose short side is held by the vault.
     function redeemExpired(address option) external onlyOperatorOrOwner {
-        address r = IOption(option).coll();
+        address r = IOption(option).receipt();
         uint256 balance = IERC20(r).balanceOf(address(this));
         if (balance == 0) revert ZeroAmount();
-        ICollateral(r).redeem(address(this), balance);
+        IReceipt(r).redeem(address(this), balance);
     }
 
     /// @notice Untrack an option (does not affect token balances).
@@ -442,7 +442,7 @@ contract YieldVault is
         uint256 i = 0;
         while (i < len) {
             address opt = activeOptions[i];
-            uint256 bal = IERC20(IOption(opt).coll()).balanceOf(address(this));
+            uint256 bal = IERC20(IOption(opt).receipt()).balanceOf(address(this));
             if (bal == 0 && block.timestamp >= IOption(opt).expirationDate()) {
                 activeOptions[i] = activeOptions[len - 1];
                 activeOptions.pop();
@@ -465,17 +465,17 @@ contract YieldVault is
 
     // ============ VIEW ============
 
-    /// @notice Sum of the vault's Collateral-token balances across every tracked option —
+    /// @notice Sum of the vault's Receipt-token balances across every tracked option —
     ///         i.e. collateral currently locked backing live short positions.
     function totalCommitted() public view returns (uint256 total) {
         for (uint256 i = 0; i < activeOptions.length; i++) {
-            total += IERC20(IOption(activeOptions[i]).coll()).balanceOf(address(this));
+            total += IERC20(IOption(activeOptions[i]).receipt()).balanceOf(address(this));
         }
     }
 
-    /// @notice Collateral committed to a single option (Collateral-token balance for that option).
+    /// @notice Collateral committed to a single option (Receipt-token balance for that option).
     function committed(address option) public view returns (uint256) {
-        return IERC20(IOption(option).coll()).balanceOf(address(this));
+        return IERC20(IOption(option).receipt()).balanceOf(address(this));
     }
 
     /// @notice Collateral sitting in the vault that is free to use (idle balance minus earmarked redeems).

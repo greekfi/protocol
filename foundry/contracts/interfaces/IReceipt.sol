@@ -4,11 +4,11 @@ pragma solidity ^0.8.30;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenData } from "./IOption.sol";
 
-/// @title  ICollateral — short-side token interface
+/// @title  IReceipt — short-side token interface (collateral receipt)
 /// @author Greek.fi
 /// @notice ERC20 extension for the short-side position: holds underlying collateral, receives
 ///         consideration on exercise, and handles post-window pro-rata redemption math.
-interface ICollateral {
+interface IReceipt {
     /// @notice Emitted whenever collateral or consideration is returned to a user.
     event Redeemed(address option, address token, address holder, uint256 amount);
 
@@ -16,7 +16,7 @@ interface ICollateral {
     error ContractNotExpired();
     /// @notice Post-expiry-only path was called before expiration.
     error ContractExpired();
-    /// @notice Account lacks enough Collateral tokens for this operation.
+    /// @notice Account lacks enough Receipt tokens for this operation.
     error InsufficientBalance();
     /// @notice Zero-amount (or derived-zero) mutation rejected.
     error InvalidValue();
@@ -36,6 +36,8 @@ interface ICollateral {
     error ExerciseWindowClosed();
     /// @notice Post-window-only path called while the exercise window is still open.
     error ExerciseWindowOpen();
+    /// @notice Pre-expiry exercise was attempted on a European option.
+    error EuropeanExerciseDisabled();
 
     /// @notice Strike price (18-decimal fixed point, consideration per collateral; inverted for puts).
     function strike() external view returns (uint256);
@@ -49,6 +51,8 @@ interface ICollateral {
     function exerciseDeadline() external view returns (uint40);
     /// @notice `true` if this is a put.
     function isPut() external view returns (bool);
+    /// @notice `true` if European-style (exercise only allowed in the post-expiry window).
+    function isEuro() external view returns (bool);
     /// @notice Owner-controlled emergency pause flag.
     function locked() external view returns (bool);
     /// @notice Cached `consideration.decimals()`.
@@ -65,12 +69,13 @@ interface ICollateral {
         uint40 expirationDate_,
         uint256 strike_,
         bool isPut_,
+        bool isEuro_,
         uint40 windowSeconds_,
         address option_,
         address factory_
     ) external;
 
-    /// @notice ERC20 name (rendered `CLL-coll-cons-strike-YYYY-MM-DD`).
+    /// @notice ERC20 name (rendered `RCT[E]-coll-cons-strike-YYYY-MM-DD`).
     function name() external view returns (string memory);
     /// @notice ERC20 symbol (matches `name`).
     function symbol() external view returns (string memory);
@@ -93,13 +98,13 @@ interface ICollateral {
 
     /// @notice Mint (Option-only). Pulls collateral from `account` via the factory.
     function mint(address account, uint256 amount) external;
-    /// @notice Redeem `amount` of caller's Collateral after the exercise window closes.
+    /// @notice Redeem `amount` of caller's Receipt after the exercise window closes.
     function redeem(uint256 amount) external;
-    /// @notice Redeem `amount` of `account`'s Collateral after the exercise window closes (anyone may call — sweeps).
+    /// @notice Redeem `amount` of `account`'s Receipt after the exercise window closes (anyone may call — sweeps).
     function redeem(address account, uint256 amount) external;
     /// @notice Pair-redeem helper called by the paired {IOption}; valid the entire option lifetime.
     function _redeemPair(address account, uint256 amount) external;
-    /// @notice Convert Collateral directly to consideration at the strike rate.
+    /// @notice Convert Receipt directly to consideration at the strike rate.
     function redeemConsideration(uint256 amount) external;
     /// @notice Exercise path invoked by {IOption}: `caller` pays consideration; `account` receives collateral.
     function exercise(address account, uint256 amount, address caller) external;

@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
@@ -17,7 +17,7 @@ contract ExerciseWindowTest is Test {
     MockERC20 coll;
     MockERC20 cons;
     Option option;
-    Collateral redemption;
+    Rct redemption;
 
     uint40 constant EXP_DELTA = 1 days;
     uint40 constant WINDOW = 1 hours;
@@ -27,7 +27,7 @@ contract ExerciseWindowTest is Test {
     uint256 constant MAX256 = type(uint256).max;
 
     function setUp() public {
-        Collateral collTpl = new Collateral("C", "C");
+        Rct collTpl = new Rct("C", "C");
         Option optTpl = new Option("O", "O");
         factory = new Factory(address(collTpl), address(optTpl));
 
@@ -48,11 +48,12 @@ contract ExerciseWindowTest is Test {
                 expirationDate: uint40(block.timestamp + EXP_DELTA),
                 strike: STRIKE,
                 isPut: false,
+                isEuro: false,
                 windowSeconds: WINDOW
             })
         );
         option = Option(opt);
-        redemption = Collateral(option.coll());
+        redemption = Rct(option.receipt());
 
         option.mint(10e18);
     }
@@ -154,13 +155,13 @@ contract ExerciseWindowTest is Test {
     // ============ redeem (post-expiry pro-rata) transitions ============
 
     function test_RedeemPreExpiry_Reverts() public {
-        vm.expectRevert(Collateral.ExerciseWindowOpen.selector);
+        vm.expectRevert(Rct.ExerciseWindowOpen.selector);
         redemption.redeem(1e18);
     }
 
     function test_RedeemDuringWindow_Reverts() public {
         vm.warp(option.expirationDate() + (WINDOW / 2));
-        vm.expectRevert(Collateral.ExerciseWindowOpen.selector);
+        vm.expectRevert(Rct.ExerciseWindowOpen.selector);
         redemption.redeem(1e18);
     }
 
@@ -175,7 +176,7 @@ contract ExerciseWindowTest is Test {
     }
 
     function test_SweepBeforeWindow_Reverts() public {
-        vm.expectRevert(Collateral.ExerciseWindowOpen.selector);
+        vm.expectRevert(Rct.ExerciseWindowOpen.selector);
         redemption.sweep(address(this));
     }
 
@@ -205,5 +206,75 @@ contract ExerciseWindowTest is Test {
         option.redeem(1e18);
         assertEq(option.balanceOf(address(this)), 9e18);
         assertEq(redemption.balanceOf(address(this)), 9e18);
+    }
+
+    // ============ European-flavour gating ============
+
+    function _createEuro() internal returns (Option e) {
+        address opt = factory.createOption(
+            CreateParams({
+                collateral: address(coll),
+                consideration: address(cons),
+                expirationDate: uint40(block.timestamp + EXP_DELTA),
+                strike: STRIKE,
+                isPut: false,
+                isEuro: true,
+                windowSeconds: WINDOW
+            })
+        );
+        e = Option(opt);
+        e.mint(10e18);
+    }
+
+    function test_European_PreExpiry_Reverts() public {
+        Option euro = _createEuro();
+        vm.expectRevert(Rct.EuropeanExerciseDisabled.selector);
+        euro.exercise(1e18);
+    }
+
+    function test_European_InWindow_Works() public {
+        Option euro = _createEuro();
+        vm.warp(euro.expirationDate() + 1);
+        euro.exercise(1e18);
+        assertEq(euro.balanceOf(address(this)), 9e18);
+    }
+
+    function test_European_AfterWindow_Reverts() public {
+        Option euro = _createEuro();
+        vm.warp(euro.exerciseDeadline() + 1);
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
+        euro.exercise(1e18);
+    }
+
+    function test_European_ExerciseFor_PreExpiry_Reverts() public {
+        Option euro = _createEuro();
+        vm.expectRevert(Rct.EuropeanExerciseDisabled.selector);
+        euro.exerciseFor(address(this), 1e18, address(this));
+    }
+
+    function test_European_ReportsFlag() public {
+        Option euro = _createEuro();
+        assertTrue(euro.isEuro());
+        // American baseline (the suite's default `option`) reports false.
+        assertFalse(option.isEuro());
+    }
+
+    function test_European_NamePrefixIsRCTE() public {
+        Option euro = _createEuro();
+        Rct euroReceipt = Rct(euro.receipt());
+        bytes memory n = bytes(euroReceipt.name());
+        // Format: "RCTE-..."
+        assertEq(n[0], "R");
+        assertEq(n[1], "C");
+        assertEq(n[2], "T");
+        assertEq(n[3], "E");
+        assertEq(n[4], "-");
+        // And Option side uses OPTE-
+        bytes memory en = bytes(euro.name());
+        assertEq(en[0], "O");
+        assertEq(en[1], "P");
+        assertEq(en[2], "T");
+        assertEq(en[3], "E");
+        assertEq(en[4], "-");
     }
 }

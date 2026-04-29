@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
@@ -22,13 +22,13 @@ contract GasAnalysis is Test {
     // Contracts
     StableToken public stableToken;
     ShakyToken public shakyToken;
-    Collateral public redemptionTemplate;
+    Rct public redemptionTemplate;
     Option public optionTemplate;
     Factory public factory;
 
     // Deployed via factory
     Option public option;
-    Collateral public redemption;
+    Rct public redemption;
 
     // Permit2
     IPermit2 public permit2 = IPermit2(PERMIT2);
@@ -52,7 +52,7 @@ contract GasAnalysis is Test {
         shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy template contracts (these will be cloned by factory)
-        redemptionTemplate = new Collateral("Short Template", "SHORT");
+        redemptionTemplate = new Rct("Short Template", "SHORT");
 
         optionTemplate = new Option("Long Template", "LONG");
 
@@ -67,6 +67,7 @@ contract GasAnalysis is Test {
             expirationDate: uint40(block.timestamp + 30 days),
             strike: uint96(1e18),
             isPut: false,
+            isEuro: false,
             windowSeconds: 0
         });
 
@@ -76,7 +77,7 @@ contract GasAnalysis is Test {
 
         // Get the deployed option and redemption
         option = Option(optionAddress);
-        redemption = option.coll();
+        redemption = option.receipt();
 
         // Setup approvals for testing
         _setupApprovals();
@@ -106,6 +107,7 @@ contract GasAnalysis is Test {
             expirationDate: uint40(block.timestamp + 60 days),
             strike: uint96(2e18),
             isPut: false,
+            isEuro: false,
             windowSeconds: 0
         });
 
@@ -127,6 +129,7 @@ contract GasAnalysis is Test {
                 expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
                 strike: uint96(1e18 + (i * 0.1e18)),
                 isPut: false,
+                isEuro: false,
                 windowSeconds: 0
             });
         }

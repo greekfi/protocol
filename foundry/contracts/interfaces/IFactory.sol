@@ -8,6 +8,8 @@ pragma solidity ^0.8.30;
 /// @param strike         Strike price, 18-decimal fixed point (consideration per collateral; for puts
 ///                       this should be the inverted `1e36 / humanStrike`).
 /// @param isPut          `true` for puts.
+/// @param isEuro         `true` for European-style options (exercise barred pre-expiry; only the
+///                       post-expiry window is exercisable). `false` for American.
 /// @param windowSeconds  Length in seconds of the post-expiry exercise window. `0` means use the
 ///                       protocol default (8 hours = 28800). After `expirationDate + windowSeconds`,
 ///                       exercise reverts and short-side redemption opens.
@@ -17,12 +19,13 @@ struct CreateParams {
     uint40 expirationDate;
     uint96 strike;
     bool isPut;
+    bool isEuro;
     uint40 windowSeconds;
 }
 
 /// @title  IFactory — option pair deployer + allowance hub
 /// @author Greek.fi
-/// @notice Deploys Option + Collateral pairs via EIP-1167 clones, serves as the single ERC20 approval
+/// @notice Deploys Option + Receipt pairs via EIP-1167 clones, serves as the single ERC20 approval
 ///         point for every option pair it creates, and holds an operator + auto-mint-redeem registry.
 interface IFactory {
     /// @notice Emitted for every newly-created option.
@@ -32,9 +35,10 @@ interface IFactory {
         uint40 expirationDate,
         uint96 strike,
         bool isPut,
+        bool isEuro,
         uint40 windowSeconds,
         address indexed option,
-        address coll
+        address receipt
     );
     /// @notice Emitted on {blockToken} / {unblockToken}.
     event TokenBlocked(address token, bool blocked);
@@ -54,8 +58,8 @@ interface IFactory {
     /// @notice {transferFrom} called with `allowance < amount`.
     error InsufficientAllowance();
 
-    /// @notice Collateral template clone.
-    function COLL_CLONE() external view returns (address);
+    /// @notice Receipt template clone.
+    function RECEIPT_CLONE() external view returns (address);
     /// @notice Option template clone.
     function OPTION_CLONE() external view returns (address);
     /// @notice Default exercise window in seconds when `windowSeconds == 0` is supplied.

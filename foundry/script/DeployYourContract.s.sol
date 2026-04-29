@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
@@ -14,9 +14,9 @@ contract DeployYourContract is ScaffoldETHDeploy {
         stableToken;
         shakyToken;
 
-        Collateral short = new Collateral("Collateral", "COLL");
-        Option long = new Option("Option", "OPT");
+        Rct receiptTpl = new Rct("Rct", "RCT");
+        Option optionTpl = new Option("Option", "OPT");
 
-        new Factory(address(short), address(long));
+        new Factory(address(receiptTpl), address(optionTpl));
     }
 }

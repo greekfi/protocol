@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Options protocol implementing a dual-token system where both long (Option) and short (Collateral) positions are fully transferable ERC20 tokens. Supports any ERC20 token pairs as collateral/consideration.
+Options protocol implementing a dual-token system where both long (Option) and short (Receipt) positions are fully transferable ERC20 tokens. Supports any ERC20 token pairs as collateral/consideration.
 
 Smart contracts, frontend, and docs all live in this repo as a Yarn workspace (managed by Corepack — run `corepack enable` once per machine).
 
@@ -18,7 +18,7 @@ Neither shares types with this repo — they couple only on contract addresses (
 ```
 .
 ├── foundry/                # Solidity contracts, forge tests, deploy scripts
-│   ├── contracts/                # Option, Collateral, Factory, YieldVault, OptionUtils, mocks (MockERC20, ShakyToken), interfaces, libraries
+│   ├── contracts/                # Option, Receipt, Factory, YieldVault, OptionUtils, mocks (MockERC20, ShakyToken), interfaces, libraries
 │   ├── test/                     # Forge tests
 │   ├── script/                   # Deploy + demo scripts (DeployOp, DeployFullDemo, DeployBaseDemo, DeployBookDemo, DeployVaults, Populate*, AddTokens, FixVaults, FundMaker, DeployHelpers)
 │   ├── future/                   # Parked Uniswap v4 hook stack — see future/README.md
@@ -90,27 +90,31 @@ cast send $FACTORY "createOption(address,address,uint40,uint96,bool)" ...
 ## Core Contracts
 
 ### Settlement model — manual exercise, no oracle
-This branch removes oracle-driven settlement entirely. Settlement is purely time-gated:
+This branch removes oracle-driven settlement entirely. Settlement is purely time-gated. Two
+flavours coexist, chosen at creation by `isEuro`:
 
-- **Pre-expiry** (`now < expirationDate`): mint, transfer, exercise, pair-redeem.
-- **Exercise window** (`expirationDate ≤ now < exerciseDeadline`): exercise stays open. The
-  holder decides off-chain whether the option is profitably ITM and pays strike to exercise.
-  Default window is 8 hours; per-option overridable via `CreateParams.windowSeconds`.
-- **Post-window** (`now ≥ exerciseDeadline`): only short-side pro-rata redemption
-  (`Collateral.redeem` / `sweep`) and pair-redeem are allowed.
+| Mode      | `isEuro` | Pre-expiry exercise | In-window exercise | Post-window      |
+| --------- | -------- | ------------------- | ------------------ | ---------------- |
+| American  | `false`  | allowed             | allowed            | short pro-rata   |
+| European  | `true`   | reverts             | allowed            | short pro-rata   |
+
+The exercise window closes for everyone at `exerciseDeadline = expirationDate + windowSeconds`
+(default 8 hours, settable per option via `CreateParams.windowSeconds`). After the deadline,
+short-side pro-rata redemption opens (`Receipt.redeem` / `sweep`).
 
 Pair-redeem (long + short burned 1:1) stays available the *entire* lifetime — it doesn't
 depend on the window because it nets out both sides. There is no `oracle`, `claim`, `settle`,
-`isEuro`, or `settlementPrice` — the protocol never reads price on-chain.
+or `settlementPrice` — the protocol never reads price on-chain. The holder watches spot
+off-chain and decides whether the option is ITM.
 
 ### Factory.sol
-Immutable factory (`Ownable`, `ReentrancyGuardTransient`) that deploys Option + Collateral pairs using EIP-1167 minimal proxy clones. Not upgradeable — eliminates the rug vector from owner-controlled implementation swaps (users approve tokens to the factory). Manages token blocklist, centralized `transferFrom()` for all collateral/consideration transfers, ERC-1155-style universal operator approvals (`setApprovalForAll`), and opt-in auto-mint/redeem (`enableAutoMintRedeem`). `CreateParams.windowSeconds` selects the post-expiry exercise window length; passing `0` defaults to `DEFAULT_EXERCISE_WINDOW = 8 hours`. **No protocol fees** — mint/exercise/redeem are 1:1. Revenue model lives in the vault layer (bid/ask spread).
+Immutable factory (`Ownable`, `ReentrancyGuardTransient`) that deploys Option + Receipt pairs using EIP-1167 minimal proxy clones. Not upgradeable — eliminates the rug vector from owner-controlled implementation swaps (users approve tokens to the factory). Manages token blocklist, centralized `transferFrom()` for all collateral/consideration transfers, ERC-1155-style universal operator approvals (`setApprovalForAll`), and opt-in auto-mint/redeem (`enableAutoMintRedeem`). `CreateParams` carries `isPut`, `isEuro`, and `windowSeconds`; passing `windowSeconds = 0` defaults to `DEFAULT_EXERCISE_WINDOW = 8 hours`. **No protocol fees** — mint/exercise/redeem are 1:1. Revenue model lives in the vault layer (bid/ask spread).
 
 ### Option.sol — Long Position
-ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the right to exercise. Key functions: `mint(amount)`, `exercise(amount)`, `exerciseFor(holder, amount, recipient)` (single + array overload — permissionless keeper path that burns `holder`'s options, pulls consideration from `msg.sender`, sends collateral to `recipient`), and `redeem(amount)` (pair). Exercise is gated by `withinExerciseWindow` (pre-expiry through `exerciseDeadline`); pair-redeem is unrestricted in time. Opt-in auto-settling transfers: auto-mint if sender balance < amount, auto-redeem matched Collateral pairs on receive. Both require the sender/recipient to have called `factory.enableAutoMintRedeem(true)`.
+ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the right to exercise. Token name renders as `OPT-…` (American) or `OPTE-…` (European). Key functions: `mint(amount)`, `exercise(amount)`, `exerciseFor(holder, amount, recipient)` (single + array overload — permissionless keeper path that burns `holder`'s options, pulls consideration from `msg.sender`, sends collateral to `recipient`), and `redeem(amount)` (pair). Exercise is gated by `withinExerciseWindow` (which also enforces the European pre-expiry block); pair-redeem is unrestricted in time. Opt-in auto-settling transfers: auto-mint if sender balance < amount, auto-redeem matched Receipt pairs on receive. Both require the sender/recipient to have called `factory.enableAutoMintRedeem(true)`.
 
-### Collateral.sol — Short Position
-ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the obligation side. Holds all collateral, receives consideration on exercise. Two conversion functions: `toConsideration()` (rounds DOWN, for payouts) and `toNeededConsideration()` (rounds UP, for exercise collections). Stores `exerciseDeadline = expirationDate + windowSeconds` and gates short-side paths with `afterExerciseWindow`. After the window closes, holders have two redemption paths: `redeem()` for pro-rata collateral+consideration, or `redeemConsideration()` for consideration at strike price. Has `sweep(holders[])` for batch post-window redemption.
+### Receipt.sol — Short Position (collateral receipt)
+ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the obligation side. Holding the receipt means you deposited the collateral and bear the exercise payoff. Token name renders as `RCT-…` (American) or `RCTE-…` (European). Note: in test/script files the contract is imported as `Receipt as Rct` to dodge a name collision with `forge-std`'s `StdCheats.Receipt` struct that's inherited via `Test`/`Script`. Two conversion functions: `toConsideration()` (rounds DOWN, for payouts) and `toNeededConsideration()` (rounds UP, for exercise collections). Stores `exerciseDeadline = expirationDate + windowSeconds` and gates short-side paths with `afterExerciseWindow`. After the window closes, holders have two redemption paths: `redeem()` for pro-rata collateral+consideration, or `redeemConsideration()` for consideration at strike price. Has `sweep(holders[])` for batch post-window redemption.
 
 ### YieldVault.sol — Operator-Managed Vault
 ERC-7540 async-redeem vault for the demo flow. Operator can `execute(target, calldata)` to route trades (e.g., call Bebop `swapSingle` as `msg.sender == vault`). `addOption(option, spender)` whitelists + approves. `redeemExpired()` sweeps post-expiry collateral. `setupFactoryApproval()` sets ERC20 + factory internal allowances. `approveToken(token, spender, amount)` for Bebop or other settlement contracts. No pricing on-chain — RFQ-driven.
@@ -131,7 +135,7 @@ See `foundry/future/README.md` for how to bring them back into an active build.
 ```
 Factory (owner: deployer, immutable)
   └→ creates clones:
-     Option (owner: user) ←→ Collateral (owner: Option contract)
+     Option (owner: user) ←→ Receipt (owner: Option contract)
 ```
 
 ## Key Design Details
@@ -140,7 +144,7 @@ Factory (owner: deployer, immutable)
 
 **Rounding policy**: round UP when collecting (exercise via `toNeededConsideration`), round DOWN when distributing (payouts via `toConsideration`). This ensures protocol solvency — dust stays in the contract.
 
-**Strike encoding**: Always 18 decimals internally, passed as `uint96` in `createOption()`. Independent of token decimals — decimal normalization happens in Collateral's conversion functions.
+**Strike encoding**: Always 18 decimals internally, passed as `uint96` in `createOption()`. Independent of token decimals — decimal normalization happens in Receipt's conversion functions.
 - Call: consideration per collateral (e.g., 3000e18 = $3000 USDC per WETH)
 - Put: collateral per consideration, inverted (e.g., `1e36 / 3000e18` ≈ 0.000333e18)
 - No on-chain price comparison — the holder watches spot off-chain and decides whether to pay strike during the exercise window.
@@ -155,7 +159,7 @@ toNeededConsideration(amount) = mulDiv(amount, strike * 10^consDecimals, 10^18 *
 
 **Clone pattern**: Template contracts deployed once, then `Clones.clone()` for each option. `initializer` modifier prevents re-init.
 
-**Centralized transfers**: All token moves go through `factory.transferFrom()` — single approval point, only callable by registered Collateral contracts.
+**Centralized transfers**: All token moves go through `factory.transferFrom()` — single approval point, only callable by registered Receipt contracts.
 
 **Auto-mint/redeem**: Opt-in per account via `factory.enableAutoMintRedeem(true)`. Auto-mint on transfer: if sender balance < amount, factory pulls the deficit in collateral from sender, mints, then transfers. Auto-redeem on receive: factory burns matched Option/Collateral pairs and returns collateral.
 

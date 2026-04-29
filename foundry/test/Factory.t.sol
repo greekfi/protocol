@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { Test } from "forge-std/Test.sol";
 
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
@@ -17,7 +17,7 @@ contract FactoryTest is Test {
     uint40 EXP;
 
     function setUp() public {
-        Collateral collTpl = new Collateral("C", "C");
+        Rct collTpl = new Rct("C", "C");
         Option optionTpl = new Option("O", "O");
         factory = new Factory(address(collTpl), address(optionTpl));
         coll = new MockERC20("Coll", "COLL", 18);
@@ -32,6 +32,7 @@ contract FactoryTest is Test {
             expirationDate: EXP,
             strike: 1000e18,
             isPut: false,
+            isEuro: false,
             windowSeconds: 0
         });
     }
@@ -42,7 +43,7 @@ contract FactoryTest is Test {
         CreateParams memory p = _basicParams();
         address opt = factory.createOption(p);
         assertTrue(factory.options(opt));
-        Collateral c = Collateral(Option(opt).coll());
+        Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
     }
 
@@ -50,7 +51,7 @@ contract FactoryTest is Test {
         CreateParams memory p = _basicParams();
         p.windowSeconds = 1 hours;
         address opt = factory.createOption(p);
-        Collateral c = Collateral(Option(opt).coll());
+        Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 1 hours);
     }
 
@@ -73,14 +74,14 @@ contract FactoryTest is Test {
     function test_ZeroStrikeReverts() public {
         CreateParams memory p = _basicParams();
         p.strike = 0;
-        vm.expectRevert(Collateral.InvalidValue.selector);
+        vm.expectRevert(Rct.InvalidValue.selector);
         factory.createOption(p);
     }
 
     function test_PastExpiryReverts() public {
         CreateParams memory p = _basicParams();
         p.expirationDate = uint40(block.timestamp - 1);
-        vm.expectRevert(Collateral.InvalidValue.selector);
+        vm.expectRevert(Rct.InvalidValue.selector);
         factory.createOption(p);
     }
 
@@ -89,7 +90,7 @@ contract FactoryTest is Test {
     function test_LegacyCreateOption_DefaultsWindow() public {
         address opt = factory.createOption(address(coll), address(cons), EXP, 1000e18, false);
         assertTrue(factory.options(opt));
-        Collateral c = Collateral(Option(opt).coll());
+        Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
     }
 

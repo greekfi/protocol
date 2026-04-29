@@ -14,28 +14,30 @@ using SafeERC20 for IERC20;
 import { TokenData } from "./interfaces/IOption.sol";
 import { OptionUtils } from "./OptionUtils.sol";
 
-/// @dev Narrow view of {Factory} used by {Collateral} to pull collateral/consideration tokens via the
+/// @dev Narrow view of {Factory} used by {Receipt} to pull collateral/consideration tokens via the
 ///      factory's centralised allowance registry.
 interface IFactoryTransfer {
     function transferFrom(address from, address to, uint160 amount, address token) external;
 }
 
 /**
- * @title  Collateral — short-side ERC20
+ * @title  Receipt — short-side ERC20 (collateral receipt)
  * @author Greek.fi
- * @notice The short side of a Greek option pair. Holding this token means you have *sold* the
- *         option: you received the premium (off-chain) and now bear the obligation of the
- *         exercise payoff. It holds all collateral for the pair and receives the consideration
- *         paid on exercise.
+ * @notice The short side of a Greek option pair. Holding this token is a receipt for the
+ *         collateral you deposited when minting: you received the premium (off-chain) and now
+ *         bear the obligation of the exercise payoff. It holds all collateral for the pair and
+ *         receives the consideration paid on exercise.
  *
  *         No oracle is consulted at any point. Settlement is purely time-gated:
  *
- *         - **Pre-expiry** (`block.timestamp < expirationDate`): mint, exercise, pair-redeem.
- *         - **Exercise window** (`expirationDate ≤ block.timestamp < exerciseDeadline`): exercise
- *           only. The holder decides off-chain whether ITM is profitable; the protocol just enforces
- *           timing and the 1:1 collateral invariant.
- *         - **Post-window** (`block.timestamp ≥ exerciseDeadline`): pro-rata short-side redemption
- *           over `(collateral, consideration)` via {redeem} / {sweep}.
+ *         | Mode      | `isEuro` | Pre-expiry exercise | In-window exercise | Post-window      |
+ *         | --------- | -------- | ------------------- | ------------------ | ---------------- |
+ *         | American  | `false`  | allowed             | allowed            | short pro-rata   |
+ *         | European  | `true`   | reverts             | allowed            | short pro-rata   |
+ *
+ *         The exercise window closes for everyone at `exerciseDeadline = expirationDate + windowSeconds`.
+ *         The holder decides off-chain whether the option is ITM and pays strike to exercise; the
+ *         protocol just enforces timing and the 1:1 collateral invariant.
  *
  *         Pair-redeem (`_redeemPair`, called by Option) stays available the entire lifetime —
  *         it doesn't depend on the window because it burns matched long+short pairs.
@@ -52,7 +54,7 @@ interface IFactoryTransfer {
  *         `init()` is used instead of a constructor. Owner of each clone is its paired
  *         {Option} contract — only Option can drive mint / exercise / pair-redeem.
  */
-contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
+contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @notice Strike price, 18-decimal fixed point, "consideration per collateral".
     /// @dev For puts this is the *inverted* human strike (see {Option} `name()` for display).
     uint256 public strike;
@@ -73,6 +75,9 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     uint40 public exerciseDeadline;
     /// @notice `true` if put, `false` if call.
     bool public isPut;
+    /// @notice `true` if European-style: exercise is barred pre-expiry and only allowed within the
+    ///         post-expiry window. `false` for American-style: exercise allowed pre-expiry too.
+    bool public isEuro;
     /// @notice Owner-controlled emergency pause flag.
     bool public locked;
     /// @notice Cached `consideration.decimals()` used in conversion math.
@@ -87,7 +92,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error ContractNotExpired();
     /// @notice Thrown when a post-expiry-only path runs before expiration.
     error ContractExpired();
-    /// @notice Thrown when an account does not hold enough Collateral tokens for the operation.
+    /// @notice Thrown when an account does not hold enough Receipt tokens for the operation.
     error InsufficientBalance();
     /// @notice Thrown on `amount == 0` (or any derived zero-amount the invariant requires to be positive).
     error InvalidValue();
@@ -107,6 +112,8 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error ExerciseWindowClosed();
     /// @notice Thrown when a post-window-only path is called before the window closes.
     error ExerciseWindowOpen();
+    /// @notice Thrown when pre-expiry exercise is attempted on a European option.
+    error EuropeanExerciseDisabled();
 
     /// @notice Emitted on every path that returns collateral or consideration to a user.
     /// @param option The paired Option contract (also this contract's owner).
@@ -121,9 +128,12 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    /// @dev Blocks exercise paths once the post-expiry window has closed.
+    /// @dev Gates the exercise paths. Window closes for everyone at `exerciseDeadline`. For
+    ///      European options, the window only *opens* at `expirationDate` — pre-expiry exercise
+    ///      reverts with `EuropeanExerciseDisabled`.
     modifier withinExerciseWindow() {
         if (block.timestamp >= exerciseDeadline) revert ExerciseWindowClosed();
+        if (isEuro && block.timestamp < expirationDate) revert EuropeanExerciseDisabled();
         _;
     }
 
@@ -145,7 +155,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    /// @dev Ensures `account` holds at least `amount` of this Collateral token.
+    /// @dev Ensures `account` holds at least `amount` of this Receipt token.
     modifier sufficientBalance(address account, uint256 amount) {
         if (balanceOf(account) < amount) revert InsufficientBalance();
         _;
@@ -176,14 +186,16 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _disableInitializers();
     }
 
-    /// @notice Initialises a freshly-cloned Collateral. Called exactly once by the factory.
+    /// @notice Initialises a freshly-cloned Receipt. Called exactly once by the factory.
     /// @param collateral_    Underlying collateral token.
     /// @param consideration_ Quote / consideration token.
     /// @param expirationDate_ Unix timestamp at which the option expires; must be in the future.
     /// @param strike_        Strike price in 18-decimal fixed point (consideration per collateral).
     /// @param isPut_         True if put, false if call.
+    /// @param isEuro_        True for European (exercise only post-expiry within the window), false
+    ///                       for American (exercise any time before `exerciseDeadline`).
     /// @param windowSeconds_ Length of the post-expiry exercise window in seconds.
-    /// @param option_        Paired {Option} contract — becomes this Collateral's owner.
+    /// @param option_        Paired {Option} contract — becomes this Receipt's owner.
     /// @param factory_       {Factory} used as the centralised allowance / transfer authority.
     function init(
         address collateral_,
@@ -191,6 +203,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint40 expirationDate_,
         uint256 strike_,
         bool isPut_,
+        bool isEuro_,
         uint40 windowSeconds_,
         address option_,
         address factory_
@@ -209,6 +222,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         exerciseDeadline = expirationDate_ + windowSeconds_;
         strike = strike_;
         isPut = isPut_;
+        isEuro = isEuro_;
         _factory = IFactoryTransfer(factory_);
         consDecimals = IERC20Metadata(consideration_).decimals();
         collDecimals = IERC20Metadata(collateral_).decimals();
@@ -217,12 +231,12 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ MINT ============
 
-    /// @notice Mint `amount` Collateral tokens to `account`, pulling the matching amount of
+    /// @notice Mint `amount` Receipt tokens to `account`, pulling the matching amount of
     ///         underlying collateral through the factory's allowance registry.
     /// @dev    Only callable by the paired {Option} contract (the owner). `amount` is capped at
     ///         `uint160.max` because the factory's transfer path uses Permit2-compatible typing.
     ///         Fee-on-transfer tokens are detected and rejected (balance-diff check).
-    /// @param account Recipient of the newly-minted Collateral tokens.
+    /// @param account Recipient of the newly-minted Receipt tokens.
     /// @param amount  Collateral-denominated amount (same decimals as the collateral token).
     function mint(address account, uint256 amount)
         public
@@ -247,13 +261,13 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ PAIR REDEEM (called by Option, valid the entire lifetime) ============
 
-    /// @notice Burn matched Option + Collateral pair, return collateral. Only callable by Option.
+    /// @notice Burn matched Option + Receipt pair, return collateral. Only callable by Option.
     /// @dev    Available the entire option lifetime — pair redemption doesn't depend on the
     ///         exercise window because both long and short are burned in equal amount.
     ///         Falls back to a consideration payout if the contract is under-collateralized at
     ///         the collateral layer (defense-in-depth).
     /// @param account Recipient of the collateral.
-    /// @param amount  Amount of Collateral tokens to burn.
+    /// @param amount  Amount of Receipt tokens to burn.
     function _redeemPair(address account, uint256 amount) public notLocked onlyOwner nonReentrant {
         _redeemPairInternal(account, amount);
     }
@@ -313,22 +327,22 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ POST-WINDOW REDEEM ============
 
-    /// @notice Redeem the caller's full Collateral balance after the exercise window closes.
+    /// @notice Redeem the caller's full Receipt balance after the exercise window closes.
     ///         Pro-rata over `(collateral, consideration)` held by this contract.
     function redeem() public notLocked {
         redeem(msg.sender, balanceOf(msg.sender));
     }
 
-    /// @notice Redeem `amount` of the caller's Collateral after the exercise window closes.
-    /// @param amount Collateral tokens to burn.
+    /// @notice Redeem `amount` of the caller's Receipt after the exercise window closes.
+    /// @param amount Receipt tokens to burn.
     function redeem(uint256 amount) public notLocked {
         redeem(msg.sender, amount);
     }
 
     /// @notice Redeem `amount` for `account` after the exercise window closes (anyone may call —
     ///         used by keepers to sweep short-side holders).
-    /// @param account The Collateral holder whose position is redeemed.
-    /// @param amount  Amount of Collateral tokens to burn.
+    /// @param account The Receipt holder whose position is redeemed.
+    /// @param amount  Amount of Receipt tokens to burn.
     function redeem(address account, uint256 amount) public afterExerciseWindow notLocked nonReentrant {
         _redeemProRata(account, amount);
     }
@@ -359,10 +373,10 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ REDEEM CONSIDERATION ============
 
-    /// @notice Convert `amount` Collateral tokens straight into consideration at the strike rate.
+    /// @notice Convert `amount` Receipt tokens straight into consideration at the strike rate.
     /// @dev    Useful for a short-side holder who wants their payout settled in quote currency
     ///         rather than a mix of collateral and consideration.
-    /// @param amount Collateral tokens to burn.
+    /// @param amount Receipt tokens to burn.
     function redeemConsideration(uint256 amount) public notLocked nonReentrant {
         _redeemConsideration(msg.sender, amount);
     }
@@ -383,7 +397,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ SWEEPS ============
 
-    /// @notice Redeem `holder`'s full Collateral balance after the exercise window closes.
+    /// @notice Redeem `holder`'s full Receipt balance after the exercise window closes.
     ///         No-op for zero-balance accounts. Useful for gas-sponsored cleanup.
     /// @param holder The short-side holder to sweep.
     function sweep(address holder) public afterExerciseWindow notLocked nonReentrant {
@@ -447,13 +461,13 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     // ============ METADATA ============
 
-    /// @notice Human-readable token name, mirroring {Option} but with a `CLL-` prefix.
+    /// @notice Human-readable token name, mirroring {Option} but with a `RCT[E]-` prefix.
     ///         Puts display the inverted strike back in human form (`1e36 / strike`).
     function name() public view override returns (string memory) {
         uint256 displayStrike = isPut ? (1e36 / strike) : strike;
         return string(
             abi.encodePacked(
-                "CLL-",
+                isEuro ? "RCTE-" : "RCT-",
                 IERC20Metadata(address(collateral)).symbol(),
                 "-",
                 IERC20Metadata(address(consideration)).symbol(),
@@ -470,7 +484,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return name();
     }
 
-    /// @notice Decimals match the underlying collateral so 1 Collateral unit ↔ 1 collateral unit.
+    /// @notice Decimals match the underlying collateral so 1 Receipt unit ↔ 1 collateral unit.
     function decimals() public view override returns (uint8) {
         return collDecimals;
     }
@@ -488,7 +502,7 @@ contract Collateral is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
             TokenData({ address_: address(consideration), name: m.name(), symbol: m.symbol(), decimals: m.decimals() });
     }
 
-    /// @notice Paired Option contract (also this Collateral's owner).
+    /// @notice Paired Option contract (also this Receipt's owner).
     function option() public view returns (address) {
         return owner();
     }

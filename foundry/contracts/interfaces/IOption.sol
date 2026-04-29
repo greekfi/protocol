@@ -17,31 +17,33 @@ struct TokenData {
 /// @param collateral     Balance of the underlying collateral token.
 /// @param consideration  Balance of the consideration token.
 /// @param option         Balance of the long-side Option ERC20.
-/// @param coll           Balance of the short-side Collateral ERC20.
+/// @param receipt        Balance of the short-side Receipt ERC20.
 struct Balances {
     uint256 collateral;
     uint256 consideration;
     uint256 option;
-    uint256 coll;
+    uint256 receipt;
 }
 
 /// @notice One-shot descriptor for a single option, returned by {IOption.details}.
 /// @param option            Option contract address.
-/// @param coll              Paired Collateral contract address.
+/// @param receipt           Paired Receipt contract address.
 /// @param collateral        Collateral token metadata.
 /// @param consideration     Consideration token metadata.
 /// @param expiration        Unix expiration timestamp.
 /// @param strike            18-decimal fixed-point strike price (consideration per collateral).
 /// @param isPut             `true` for puts.
+/// @param isEuro            `true` for European options (no pre-expiry exercise).
 /// @param exerciseDeadline  Unix timestamp at which the post-expiry exercise window closes.
 struct OptionInfo {
     address option;
-    address coll;
+    address receipt;
     TokenData collateral;
     TokenData consideration;
     uint256 expiration;
     uint256 strike;
     bool isPut;
+    bool isEuro;
     uint40 exerciseDeadline;
 }
 
@@ -72,11 +74,13 @@ interface IOption {
     error LockedContract();
     /// @notice Exercise was attempted after `exerciseDeadline`.
     error ExerciseWindowClosed();
+    /// @notice Pre-expiry exercise was attempted on a European option.
+    error EuropeanExerciseDisabled();
 
-    /// @notice Paired short-side {Collateral} contract.
-    function coll() external view returns (address);
+    /// @notice Paired short-side {Receipt} contract.
+    function receipt() external view returns (address);
     /// @notice One-time initialisation (factory-only for clones).
-    function init(address coll_, address owner) external;
+    function init(address receipt_, address owner) external;
 
     /// @notice ERC20 name (rendered `OPT-coll-cons-strike-YYYY-MM-DD`).
     function name() external view returns (string memory);
@@ -94,6 +98,8 @@ interface IOption {
     function strike() external view returns (uint256);
     /// @notice `true` if this is a put.
     function isPut() external view returns (bool);
+    /// @notice `true` if European-style (exercise only allowed in the post-expiry window).
+    function isEuro() external view returns (bool);
     /// @notice Unix timestamp at which the post-expiry exercise window closes.
     function exerciseDeadline() external view returns (uint40);
     /// @notice ERC20 balance.
