@@ -58,10 +58,11 @@ async function fetchDirectQuote(
   buyToken: string,
   sellToken: string,
   takerAddress: string,
+  chainId: number,
   sellAmount?: string,
   buyAmount?: string,
 ): Promise<BebopQuote | null> {
-  const params: Record<string, string> = { buyToken, sellToken, takerAddress };
+  const params: Record<string, string> = { buyToken, sellToken, takerAddress, chainId: String(chainId) };
   if (sellAmount) params.sellAmount = sellAmount;
   else if (buyAmount) params.buyAmount = buyAmount;
 
@@ -87,12 +88,12 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
       // Opt-out: skip Bebop and always hit the local direct server. Useful in dev
       // when Bebop doesn't have liquidity on our option contracts yet.
       if (process.env.NEXT_PUBLIC_USE_DIRECT_QUOTE === "true") {
-        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
 
       const bebopApiUrl = BEBOP_API_URLS[chainId];
       if (!bebopApiUrl) {
-        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
 
       // Source name and auth from env
@@ -154,7 +155,7 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
         return { ...data, source: "bebop" };
       } catch (err) {
         console.warn("⚠️  Bebop failed, trying direct:", err instanceof Error ? err.message : err);
-        return fetchDirectQuote(buyToken, sellToken, takerAddress, sellAmount, buyAmount);
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
     },
     enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && (!!sellAmount || !!buyAmount),

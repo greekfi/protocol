@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useChainId } from "wagmi";
 
 const DIRECT_API_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || "https://api.greek.finance";
 
@@ -25,10 +26,11 @@ export interface DirectPrice {
  * for the WebSocket pricing stream when the relay is unavailable.
  */
 export function useDirectPrices() {
+  const chainId = useChainId();
   return useQuery<Map<string, DirectPrice>>({
-    queryKey: ["directPrices", DIRECT_API_URL],
+    queryKey: ["directPrices", DIRECT_API_URL, chainId],
     queryFn: async () => {
-      const res = await fetch(`${DIRECT_API_URL}/options`);
+      const res = await fetch(`${DIRECT_API_URL}/options?chainId=${chainId}`);
       if (!res.ok) throw new Error(`Direct /options failed: ${res.status}`);
       const body = (await res.json()) as { options: DirectOption[] };
       const map = new Map<string, DirectPrice>();
