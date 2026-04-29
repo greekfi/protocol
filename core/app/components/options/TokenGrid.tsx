@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 
 // ===== Types and helpers (shared by /yield and /trade) =====
@@ -90,17 +90,48 @@ function CopyAddressButton({ address }: { address: string }) {
   );
 }
 
+// Hover-to-expand timing.
+//   ENTER_DELAY: how long the cursor must rest before the grid expands.
+//     500ms feels deliberate without blocking — common pattern for
+//     hover-expand panels (Material uses 300-500ms; macOS Dock ≈ 350ms).
+//   LEAVE_DELAY: small grace window before collapsing so quick re-entries
+//     (e.g. mouse jitter, crossing a gap) don't flicker.
+const ENTER_DELAY = 500;
+const LEAVE_DELAY = 150;
+
 export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   const { allTokensMap } = useTokenMap();
   const [expanded, setExpanded] = useState(false);
-  // Collapse to logo+symbol pills once a pick is made, unless the user is hovering the row.
+  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = () => {
+    if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    enterTimerRef.current = null;
+    leaveTimerRef.current = null;
+  };
+
+  const onMouseEnter = () => {
+    clearTimers();
+    enterTimerRef.current = setTimeout(() => setExpanded(true), ENTER_DELAY);
+  };
+  const onMouseLeave = () => {
+    clearTimers();
+    leaveTimerRef.current = setTimeout(() => setExpanded(false), LEAVE_DELAY);
+  };
+  // Clean up on unmount so a stray timer doesn't fire after the grid is gone.
+  useEffect(() => () => clearTimers(), []);
+
+  // Collapse to logo+symbol pills once a pick is made, unless the user has held
+  // the cursor over the row long enough to expand.
   const compact = !!selected && !expanded;
   return (
     <div
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={clsx(
-        "grid gap-2 transition-all",
+        "grid gap-2 transition-all duration-300 ease-out",
         compact ? "[grid-template-columns:repeat(auto-fill,minmax(5rem,7rem))]" : "",
       )}
       style={
@@ -128,16 +159,22 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
               <Logo token={token} size={22} />
               <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
             </div>
-            {!compact && (
-              <>
-                {token.apr && (
-                  <span className="text-xs font-semibold text-emerald-300 tabular-nums">
-                    {formatAprRange(token.apr)}
-                  </span>
-                )}
-                {address && <CopyAddressButton address={address} />}
-              </>
-            )}
+            {/* Always render the extras; toggle visibility via opacity + max-height
+                so the expand/collapse animates instead of popping. */}
+            <div
+              className={clsx(
+                "flex flex-col items-start gap-1 overflow-hidden transition-all duration-300 ease-out",
+                compact ? "max-h-0 opacity-0" : "max-h-20 opacity-100",
+              )}
+              aria-hidden={compact}
+            >
+              {token.apr && (
+                <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+                  {formatAprRange(token.apr)}
+                </span>
+              )}
+              {address && <CopyAddressButton address={address} />}
+            </div>
           </button>
         );
       })}
