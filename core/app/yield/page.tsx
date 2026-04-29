@@ -25,39 +25,31 @@ export default function YieldPage() {
   return (
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="mt-6 mb-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-light text-blue-300">Earn Yield From:</h1>
-            <span
-              tabIndex={0}
-              className="group relative inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-700 text-gray-500 text-xs cursor-help hover:border-blue-400 hover:text-blue-300 focus:outline-none focus:border-blue-400 focus:text-blue-300"
-              aria-label="About earning yield"
-            >
-              i
-              <span
-                role="tooltip"
-                className="pointer-events-none absolute left-0 top-full mt-2 w-72 p-3 rounded-lg border border-gray-700 bg-black/95 text-xs text-gray-300 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus:opacity-100 group-focus:visible transition-opacity z-10"
-              >
-                Sell fully-collateralized options to collect premium. Your collateral stays yours until
-                the option exercises or expires.
-              </span>
-            </span>
-          </div>
+      <div className="max-w-7xl mx-auto p-6 flex flex-col items-center text-center">
+        {/* Mode toggle (with per-mode tooltips); the page title is in the
+            navbar (SiteHeader) — explicit "Earn Yield From" header dropped. */}
+        <div className="mt-6 mb-8 w-full flex justify-center">
           <ModeToggle mode={mode} onChange={handleModeChange} />
         </div>
 
         {mode === "puts" && (
-          <div className="mb-6 p-4 rounded-xl border border-gray-800 bg-black/40">
-            <div className="text-xs uppercase tracking-wider text-gray-500 mb-3">Collateral stablecoin</div>
-            <StablecoinTabs selected={selectedStable} onSelect={setSelectedStable} />
+          <div className="mb-6 w-full p-4 rounded-xl border border-gray-800 bg-black/40">
+            <div className="text-xs uppercase tracking-wider text-gray-500 mb-3 text-center">
+              Collateral stablecoin
+            </div>
+            <div className="flex justify-center">
+              <StablecoinTabs selected={selectedStable} onSelect={setSelectedStable} />
+            </div>
           </div>
         )}
 
         <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
 
         {selected && (
-          <div className="mt-6">
+          // text-center on the wrapper makes the inline-block strike grid
+          // (and any other content inside YieldPanel that uses intrinsic
+          // width) sit at the page center instead of pinned to the left.
+          <div className="mt-6 w-full text-center">
             <YieldPanel
               mode={mode}
               token={selected}

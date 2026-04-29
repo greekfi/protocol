@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
+import { useAccount } from "wagmi";
 
 interface Step {
   label: string;
@@ -24,6 +25,12 @@ interface ApprovalsCardProps {
 }
 
 export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
+  const { isConnected } = useAccount();
+  // Balances and approvals only make sense for a connected wallet — both are
+  // wallet-scoped (your token balance, your allowance to the protocol). Hide
+  // the whole card when no wallet, instead of showing an empty/zero state.
+  if (!isConnected) return null;
+
   const allDone = steps.every(s => s.done);
 
   return (

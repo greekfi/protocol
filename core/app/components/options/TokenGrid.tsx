@@ -140,8 +140,16 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="grid gap-2"
-      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(6rem, 7.5rem))" }}
+      // Flex (not grid) so items center on every row — including a partial
+      // last row. Each cell is fixed-width via flex-basis; rows wrap and
+      // `justify-center` centers items on each line, which CSS grid won't
+      // do reliably when the container width is much greater than the
+      // total cell width.
+      // `mx-auto w-fit max-w-full` — shrink-wrap to content width and center
+      // the whole grid in its parent. Without this, a flex container as a
+      // child of another flex layout takes full width and the grid sits
+      // left-aligned in a too-wide column.
+      className="flex flex-wrap justify-center gap-2 mx-auto w-fit max-w-full"
     >
       {tokensForChain.map(token => {
         const active = selected === token.symbol;
@@ -151,6 +159,9 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
             key={token.symbol}
             type="button"
             onClick={() => onSelect(token.symbol)}
+            // basis 7.5rem, no grow/shrink — cells are uniform width and
+            // wrap predictably regardless of container width.
+            style={{ flex: "0 0 7.5rem" }}
             className={clsx(
               "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
               active

@@ -1,7 +1,9 @@
 "use client";
 
+import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ChainSelector } from "./ChainSelector";
 
@@ -87,6 +89,57 @@ function WalletButton() {
   );
 }
 
+/**
+ * Primary nav links. Highlights the link whose href matches the current
+ * pathname (or is a parent prefix, e.g. `/trade/foo` still lights up
+ * "Trade Options"). Active route also gets `aria-current="page"` for a11y.
+ */
+function NavLinks() {
+  const pathname = usePathname();
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+  return (
+    <div
+      style={{ fontFamily: SERIF_STACK }}
+      // `items-baseline` so the bigger active link doesn't drag everything
+      // taller — the inactive links sit on the same baseline as the active one.
+      className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-lg sm:text-xl"
+    >
+      {HEADER_NAV.map(item => {
+        const active = !item.external && isActive(item.href);
+        const linkClass = clsx(
+          "transition-colors hover:text-blue-300",
+          // Active link gets a font bump (text-lg→xl, sm:text-xl→2xl) on top
+          // of the color change, so the current page is unmistakable.
+          active ? "text-blue-300 text-xl sm:text-2xl" : "text-gray-300",
+        );
+        return item.external ? (
+          <a
+            key={item.label}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+          >
+            {item.label}
+          </a>
+        ) : (
+          <Link
+            key={item.label}
+            href={item.href}
+            className={linkClass}
+            aria-current={active ? "page" : undefined}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 interface SiteHeaderProps {
   /** Show the wallet button on the right (default: true). */
   showWallet?: boolean;
@@ -119,32 +172,7 @@ export function SiteHeader({ showWallet = true }: SiteHeaderProps) {
           </Link>
 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
-            <div
-              style={{ fontFamily: SERIF_STACK }}
-              className="flex flex-wrap items-center gap-x-6 gap-y-2 text-lg sm:text-xl"
-            >
-              {HEADER_NAV.map(item =>
-                item.external ? (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-300 hover:text-blue-300 transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="text-gray-300 hover:text-blue-300 transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ),
-              )}
-            </div>
+            <NavLinks />
             {showWallet && (
               <div className="flex items-center gap-2">
                 <ChainSelector />

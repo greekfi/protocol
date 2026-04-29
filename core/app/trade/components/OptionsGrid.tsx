@@ -164,7 +164,9 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
         </div>
       </div>
 
-      <table className="w-full border-collapse text-sm">
+      {/* w-auto + mx-auto: cells size to content (no padding stretch on wide
+          windows), and the table sits centered in its scrollable wrapper. */}
+      <table className="w-auto mx-auto border-collapse text-sm">
         <thead>
           {/* Top header row - CALLS | Strike | PUTS */}
           <tr className="border-b border-gray-700">
@@ -332,17 +334,23 @@ function PriceCell({
   const colour = isBuy
     ? "text-blue-300 hover:text-blue-200"
     : "text-orange-300 hover:text-orange-200";
+  // Same fill+border on hover as on active, so the hovered cell previews
+  // exactly what selecting it will look like. Transparent default border
+  // reserves the 1px so hovering doesn't nudge the layout.
   const activeBox = isBuy
-    ? "bg-blue-900/30 border border-blue-500"
-    : "bg-orange-900/30 border border-orange-500";
+    ? "bg-blue-900/30 border-blue-500"
+    : "bg-orange-900/30 border-orange-500";
+  const hoverBox = isBuy
+    ? "hover:bg-blue-900/30 hover:border-blue-500"
+    : "hover:bg-orange-900/30 hover:border-orange-500";
   const title = `${isBuy ? "Buy" : "Sell"} ${opt.isPut ? "Put" : "Call"}`;
   return (
     <div className="flex-1 p-0.5">
       <button
         onClick={() => onSelect({ option: opt, isBuy })}
         title={title}
-        className={`w-full px-1 py-1 rounded transition-colors text-xs tabular-nums ${colour} ${
-          active ? activeBox : ""
+        className={`w-full px-1 py-1 rounded border border-transparent transition-colors text-xs tabular-nums ${colour} ${
+          active ? activeBox : hoverBox
         }`}
       >
         {price !== undefined ? price.toFixed(2) : "—"}
