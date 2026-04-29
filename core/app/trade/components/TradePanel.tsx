@@ -229,9 +229,9 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div>
-            <span className="text-xs uppercase tracking-wider text-white/80 mb-1 inline-block">
-              {direction === "buy" ? "Buy option" : "Sell option"}
-            </span>
+            {/* "Buy option / Sell option" eyebrow removed — the buy/sell toggle
+                immediately to the right plus the action button at the bottom
+                already make the direction obvious. */}
             <div className="text-base font-semibold text-white tabular-nums">
               {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
             </div>

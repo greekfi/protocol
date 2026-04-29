@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { formatUnits } from "viem";
 import type { TradableOption } from "../../trade/hooks/useTradableOptions";
 import type { DirectPrice } from "../../trade/hooks/useDirectPrices";
+import { displayStrike, formatStrikeValue } from "../../lib/strike";
 
 interface StrikeExpirationGridProps {
   options: TradableOption[];
@@ -9,19 +10,6 @@ interface StrikeExpirationGridProps {
   selectedAddress: string | null;
   onSelect: (opt: TradableOption) => void;
   prices?: Map<string, DirectPrice>;
-}
-
-// Strike price is 18-decimal fixed point. Puts store the inverse, so flip for display.
-function displayStrike(opt: TradableOption): bigint {
-  return opt.isPut && opt.strike > 0n ? 10n ** 36n / opt.strike : opt.strike;
-}
-
-function formatStrikeValue(strike: bigint): string {
-  const n = Number(formatUnits(strike, 18));
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  return n.toLocaleString(undefined, { maximumSignificantDigits: 3 });
 }
 
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;

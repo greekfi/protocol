@@ -40,23 +40,23 @@ export default function TradePage() {
   return (
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header row: title and underlying picker on the same line. */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-8 mt-6">
-          <h1 className="text-3xl font-light text-blue-300 shrink-0">Trade Options</h1>
-          <div className="flex-1 min-w-[18rem]">
-            <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
-          </div>
+      <div className="max-w-7xl mx-auto p-6 flex flex-col items-center text-center">
+        {/* Underlying picker — the page title lives in the navbar (SiteHeader). */}
+        <div className="mb-8 mt-6">
+          <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
         </div>
 
-        {/* Options chain section: trade panel slot on top, grid below. */}
+        {/* Options chain section: trade panel slot on top, grid below.
+            text-center centers the placeholder/inline content; the
+            min-h-[6rem] wrapper around TradePanel uses flex justify-center
+            so the action+approvals row sits in the middle of the card. */}
         {selectedTokenAddress && (
-          <div className="p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6">
-            <div className="min-h-[6rem]">
+          <div className="w-full p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6 text-center">
+            <div className="min-h-[6rem] flex justify-center">
               {selectedOption ? (
                 <TradePanel selectedOption={selectedOption} onClose={() => setSelectedOption(null)} />
               ) : (
-                <div className="text-sm text-gray-500 italic">
+                <div className="text-sm text-gray-500 italic self-center">
                   Pick a strike and expiry below to load the trade panel.
                 </div>
               )}

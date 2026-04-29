@@ -74,20 +74,65 @@ async function fetchDirectQuote(
   return { ...data, source: "direct" };
 }
 
+// Indicative-quote placeholder taker. Used when no wallet is connected so
+// users see Cost / Per-option prices before they ever click "Connect."
+// The signed order returned with this taker is non-executable (zero address
+// can't approve/spend) — that's fine, the UI doesn't try to settle it.
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+// Per-chain Bebop circuit breaker. Once Bebop has failed `BEBOP_TRIP_THRESHOLD`
+// times in a row on a given chain, we stop trying for the rest of the page
+// session and route everything to the direct server instead. Resets on
+// successful quote (in case Bebop comes back) and on full page reload.
+//
+// State lives at module scope, so it survives component remounts but doesn't
+// leak across browser tabs or page navigations to a fresh load.
+const BEBOP_TRIP_THRESHOLD = 2;
+const bebopFailures: Record<number, number> = {};
+const bebopTripped: Record<number, boolean> = {};
+
+function recordBebopFailure(chainId: number) {
+  bebopFailures[chainId] = (bebopFailures[chainId] ?? 0) + 1;
+  if (bebopFailures[chainId] >= BEBOP_TRIP_THRESHOLD) {
+    bebopTripped[chainId] = true;
+    console.warn(
+      `[bebop] tripped on chain ${chainId} after ${bebopFailures[chainId]} failures — routing to direct for this session`,
+    );
+  }
+}
+function recordBebopSuccess(chainId: number) {
+  bebopFailures[chainId] = 0;
+  bebopTripped[chainId] = false;
+}
+
 export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enabled = true }: UseBebopQuoteParams) {
-  const { address: takerAddress } = useAccount();
+  const { address: walletTaker } = useAccount();
   const chainId = useChainId();
+  const takerAddress = walletTaker ?? ZERO_ADDRESS;
+  const isIndicative = !walletTaker;
 
   return useQuery<BebopQuote | null>({
     queryKey: ["bebopQuote", buyToken, sellToken, sellAmount, buyAmount, takerAddress, chainId],
     queryFn: async () => {
-      if (!takerAddress || !buyToken || !sellToken || (!sellAmount && !buyAmount)) {
+      if (!buyToken || !sellToken || (!sellAmount && !buyAmount)) {
         return null;
+      }
+
+      // Pre-connect: skip Bebop's RFQ flow (requires a real taker for the
+      // signed order) and pull an indicative quote from our direct server.
+      if (isIndicative) {
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
 
       // Opt-out: skip Bebop and always hit the local direct server. Useful in dev
       // when Bebop doesn't have liquidity on our option contracts yet.
       if (process.env.NEXT_PUBLIC_USE_DIRECT_QUOTE === "true") {
+        return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
+      }
+
+      // Circuit breaker: Bebop already failed ≥ BEBOP_TRIP_THRESHOLD times on
+      // this chain in this session. Don't try again until the page reloads.
+      if (bebopTripped[chainId]) {
         return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
 
@@ -152,13 +197,20 @@ export function useBebopQuote({ buyToken, sellToken, sellAmount, buyAmount, enab
           throw new Error(data?.error || "Bebop response has zero buy/sell amount");
         }
         console.log("✅ Bebop response:", data);
+        recordBebopSuccess(chainId);
         return { ...data, source: "bebop" };
       } catch (err) {
-        console.warn("⚠️  Bebop failed, trying direct:", err instanceof Error ? err.message : err);
+        recordBebopFailure(chainId);
+        console.warn(
+          `⚠️  Bebop failed (${bebopFailures[chainId]}/${BEBOP_TRIP_THRESHOLD}), trying direct:`,
+          err instanceof Error ? err.message : err,
+        );
         return fetchDirectQuote(buyToken, sellToken, takerAddress, chainId, sellAmount, buyAmount);
       }
     },
-    enabled: enabled && !!takerAddress && !!buyToken && !!sellToken && (!!sellAmount || !!buyAmount),
+    // takerAddress always resolves (wallet or zero) so we don't gate on it —
+    // pre-connect users get indicative quotes from the direct server.
+    enabled: enabled && !!buyToken && !!sellToken && (!!sellAmount || !!buyAmount),
     staleTime: 15_000, // 15 seconds
     refetchInterval: 15_000, // Refresh every 15 seconds
     retry: 2,

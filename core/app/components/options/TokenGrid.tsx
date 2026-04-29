@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 
 // ===== Types and helpers (shared by /yield and /trade) =====
@@ -90,26 +90,68 @@ function CopyAddressButton({ address }: { address: string }) {
   );
 }
 
+// Hover-to-expand timing.
+//   ENTER_DELAY: how long the cursor must rest before the grid expands.
+//     500ms feels deliberate without blocking — common pattern for
+//     hover-expand panels (Material uses 300-500ms; macOS Dock ≈ 350ms).
+//   LEAVE_DELAY: small grace window before collapsing so quick re-entries
+//     (e.g. mouse jitter, crossing a gap) don't flicker.
+const ENTER_DELAY = 500;
+const LEAVE_DELAY = 150;
+
 export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   const { allTokensMap } = useTokenMap();
   const [expanded, setExpanded] = useState(false);
-  // Collapse to logo+symbol pills once a pick is made, unless the user is hovering the row.
+  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = () => {
+    if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    enterTimerRef.current = null;
+    leaveTimerRef.current = null;
+  };
+
+  const onMouseEnter = () => {
+    clearTimers();
+    enterTimerRef.current = setTimeout(() => setExpanded(true), ENTER_DELAY);
+  };
+  const onMouseLeave = () => {
+    clearTimers();
+    leaveTimerRef.current = setTimeout(() => setExpanded(false), LEAVE_DELAY);
+  };
+  // Clean up on unmount so a stray timer doesn't fire after the grid is gone.
+  useEffect(() => () => clearTimers(), []);
+
+  // Collapse to logo+symbol pills once a pick is made, unless the user has held
+  // the cursor over the row long enough to expand.
   const compact = !!selected && !expanded;
+  // Filter to tokens that exist on the current (browse) chain. The static
+  // CALL_UNDERLYINGS / PUT_UNDERLYINGS lists in yield/data.ts are the
+  // *universe* of supported underlyings; allTokensMap (chain-scoped via
+  // useTokenMap) tells us which of those are actually deployed on the
+  // chain the user is browsing. e.g. cbBTC is only on Base, MORPHO doesn't
+  // have a canonical Arbitrum deployment — those simply don't render.
+  const tokensForChain = tokens.filter(t => allTokensMap[t.symbol]?.address);
+  // Keep column structure constant — animating grid-template-columns isn't
+  // smooth in any browser and reads as a "jump." Cells stay the same width;
+  // only the content area inside each cell expands/collapses.
   return (
     <div
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-      className={clsx(
-        "grid gap-2 transition-all",
-        compact ? "[grid-template-columns:repeat(auto-fill,minmax(5rem,7rem))]" : "",
-      )}
-      style={
-        compact
-          ? undefined
-          : { gridTemplateColumns: "repeat(auto-fill, minmax(7rem, 9rem))" }
-      }
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      // Flex (not grid) so items center on every row — including a partial
+      // last row. Each cell is fixed-width via flex-basis; rows wrap and
+      // `justify-center` centers items on each line, which CSS grid won't
+      // do reliably when the container width is much greater than the
+      // total cell width.
+      // `mx-auto w-fit max-w-full` — shrink-wrap to content width and center
+      // the whole grid in its parent. Without this, a flex container as a
+      // child of another flex layout takes full width and the grid sits
+      // left-aligned in a too-wide column.
+      className="flex flex-wrap justify-center gap-2 mx-auto w-fit max-w-full"
     >
-      {tokens.map(token => {
+      {tokensForChain.map(token => {
         const active = selected === token.symbol;
         const address = allTokensMap[token.symbol]?.address;
         return (
@@ -117,6 +159,9 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
             key={token.symbol}
             type="button"
             onClick={() => onSelect(token.symbol)}
+            // basis 7.5rem, no grow/shrink — cells are uniform width and
+            // wrap predictably regardless of container width.
+            style={{ flex: "0 0 7.5rem" }}
             className={clsx(
               "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
               active
@@ -128,16 +173,26 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
               <Logo token={token} size={22} />
               <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
             </div>
-            {!compact && (
-              <>
+            {/* Always render the extras; toggle visibility via opacity +
+                grid-template-rows so the cell height animates smoothly.
+                grid-template-rows from 0fr → 1fr is the modern way to animate
+                "auto" height — works in all evergreen browsers. */}
+            <div
+              className={clsx(
+                "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out",
+                compact ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+              )}
+              aria-hidden={compact}
+            >
+              <div className="overflow-hidden flex flex-col items-start gap-1">
                 {token.apr && (
                   <span className="text-xs font-semibold text-emerald-300 tabular-nums">
                     {formatAprRange(token.apr)}
                   </span>
                 )}
                 {address && <CopyAddressButton address={address} />}
-              </>
-            )}
+              </div>
+            </div>
           </button>
         );
       })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import Approvals from "./components/Approvals";
 import Create from "./components/Create";
 import ContractDetails from "./components/Details";
@@ -18,6 +19,7 @@ import { Address } from "viem";
 
 function OptionsApp() {
   const [optionAddress, setOptionAddress] = useState<Address | undefined>(undefined);
+  const { isConnected } = useAccount();
 
   // Use new hooks
   const { options } = useOptions();
@@ -51,13 +53,17 @@ function OptionsApp() {
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
-                <Approvals optionAddress={optionAddress} />
-                <Transfer optionAddress={optionAddress} />
-                <Redeem optionAddress={optionAddress} />
+            {/* Approvals + Transfer + Redeem are wallet-scoped — hide the
+                whole row when no wallet is connected. */}
+            {isConnected && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-800">
+                  <Approvals optionAddress={optionAddress} />
+                  <Transfer optionAddress={optionAddress} />
+                  <Redeem optionAddress={optionAddress} />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4 bg-gray-800">
@@ -67,7 +73,7 @@ function OptionsApp() {
           </div>
         </div>
 
-        <footer className="py-8 px-6 text-gray-200 bg-gray-700">
+        <footer className="py-8 px-6 text-gray-200 bg-gray-700 text-center">
           <div id="about"></div>
           <span className="text-gray-500">Greek.fi © 2025</span>
         </footer>

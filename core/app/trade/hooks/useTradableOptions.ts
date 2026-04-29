@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useChainId } from "wagmi";
+import { useBrowseChainId } from "../../hooks/useBrowseChain";
 import { useChainEvents, type OptionCreatedEvent } from "../../hooks/useChainEvents";
 
 export interface TradableOption {
@@ -21,7 +21,7 @@ export interface TradableOption {
  * yet, returns [] cleanly.
  */
 export function useTradableOptions(underlyingToken: string | null) {
-  const chainId = useChainId();
+  const chainId = useBrowseChainId();
   const { data: events = [], isLoading, error } = useChainEvents(chainId);
 
   const data = useMemo<TradableOption[]>(() => {
