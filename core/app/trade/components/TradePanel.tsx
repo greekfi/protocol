@@ -28,6 +28,12 @@ interface TradePanelProps {
     isBuy: boolean;
   };
   onClose: () => void;
+  /** Optional element rendered at the top of the swap card — used to "house"
+   *  the underlying token selector pill once an option is picked. */
+  tokenSelector?: React.ReactNode;
+  /** Optional 4th-column slot — rendered alongside Balances + Approvals so
+   *  every panel shares the same flex-wrap row. */
+  holdings?: React.ReactNode;
 }
 
 function displayStrike(strike: bigint, isPut: boolean): number {
@@ -56,7 +62,7 @@ function formatBalance(raw: bigint | undefined, decimals: number): string {
   return n.toPrecision(2);
 }
 
-export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
+export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }: TradePanelProps) {
   const chainId = useChainId();
   const { allTokensMap } = useTokenMap();
   const { address: userAddress } = useAccount();
@@ -79,6 +85,15 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
   const optionToken = selectedOption.optionAddress;
   const paymentToken = USDC[chainId] ?? USDC[1];
 
+  // Option ERC20 decimals mirror collateral decimals (see Option.sol). The
+  // Bebop quote needs the *raw* token amount, so we must use this — not the
+  // hard-coded 18 — or puts on USDC-collateralised collateral come back with
+  // a price ~10^12× off.
+  const optionDecimals =
+    Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
+    )?.decimals ?? 18;
+
   // Build the "TradableOption" shape useTradeApprovals needs from the selection.
   const optionForApprovals: TradableOption = {
     optionAddress: selectedOption.optionAddress,
@@ -96,13 +111,15 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       ? {
           buyToken: optionToken,
           sellToken: paymentToken,
-          buyAmount: amount && parseFloat(amount) > 0 ? parseUnits(amount, 18).toString() : undefined,
+          buyAmount:
+            amount && parseFloat(amount) > 0 ? parseUnits(amount, optionDecimals).toString() : undefined,
           enabled: amount !== "" && parseFloat(amount) > 0,
         }
       : {
           buyToken: paymentToken,
           sellToken: optionToken,
-          sellAmount: amount && parseFloat(amount) > 0 ? parseUnits(amount, 18).toString() : undefined,
+          sellAmount:
+            amount && parseFloat(amount) > 0 ? parseUnits(amount, optionDecimals).toString() : undefined,
           enabled: amount !== "" && parseFloat(amount) > 0,
         },
   );
@@ -131,13 +148,16 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
 
   const isTrading = status === "preparing" || status === "pending";
 
-  // Money side of the quote: buys show "cost", sells show "receive".
-  const usdcAmount = direction === "buy" ? quote?.sellAmount : quote?.buyAmount;
-  const usdcDisplay = usdcAmount
-    ? Number(formatUnits(BigInt(usdcAmount), approvals.usdcDecimals))
-    : undefined;
-  const pricePerOption =
-    usdcDisplay !== undefined && parseFloat(amount) > 0 ? usdcDisplay / parseFloat(amount) : undefined;
+  // The MM normalises `buyAmount`/`sellAmount` by spot (e.g. for an ETH put
+  // they come back as `BS_price / spot` in 1e18 form, NOT raw USDC) — so we
+  // can't `formatUnits(..., 6)` them. Use the `price` field instead, which
+  // is the per-option USDC price ready to display.
+  const pricePerOption = quote?.price ? parseFloat(quote.price) : undefined;
+  const amountFloat = parseFloat(amount);
+  const usdcDisplay =
+    pricePerOption !== undefined && Number.isFinite(amountFloat) && amountFloat > 0
+      ? pricePerOption * amountFloat
+      : undefined;
 
   const disabledReason = !approvals.allSatisfied
     ? "Finish the approvals in the card on the right"
@@ -224,34 +244,13 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
   const expiryLabel = formatExpiry(selectedOption.expiration);
 
   return (
-    <div className="flex flex-wrap gap-4 items-stretch">
+    <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
-        <div className="flex items-start justify-between gap-4 mb-3">
-          <div>
-            {/* "Buy option / Sell option" eyebrow removed — the buy/sell toggle
-                immediately to the right plus the action button at the bottom
-                already make the direction obvious. */}
-            <div className="text-base font-semibold text-white tabular-nums">
-              {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
-            </div>
-          </div>
-
-          <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs">
-            <button
-              type="button"
-              onClick={() => setDirection("buy")}
-              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-blue-300 hover:bg-black/60"}`}
-            >
-              Buy
-            </button>
-            <button
-              type="button"
-              onClick={() => setDirection("sell")}
-              className={`px-2 py-1 ${direction === "sell" ? "bg-orange-500 text-white" : "bg-black/40 text-orange-300 hover:bg-black/60"}`}
-            >
-              Sell
-            </button>
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 min-w-[18rem] max-w-[22rem] flex-1">
+        <div className="mb-3 flex items-center gap-3 flex-wrap">
+          {tokenSelector}
+          <div className="text-base font-semibold text-white tabular-nums">
+            {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
           </div>
         </div>
 
@@ -307,6 +306,23 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
+          {/* Buy/Sell toggle sits flush right next to the per-option price. */}
+          <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs ml-auto">
+            <button
+              type="button"
+              onClick={() => setDirection("buy")}
+              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-blue-300 hover:bg-black/60"}`}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => setDirection("sell")}
+              className={`px-2 py-1 ${direction === "sell" ? "bg-orange-500 text-white" : "bg-black/40 text-orange-300 hover:bg-black/60"}`}
+            >
+              Sell
+            </button>
+          </div>
         </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
@@ -314,14 +330,18 @@ export function TradePanel({ selectedOption, onClose }: TradePanelProps) {
       </div>
 
       {/* Balances column */}
-      <div className="min-w-[14rem] flex-1 max-w-xs">
+      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
         <ApprovalsCard steps={[]} balances={balances} />
       </div>
 
       {/* Approvals column */}
-      <div className="min-w-[14rem] flex-1 max-w-xs">
+      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
         <ApprovalsCard steps={steps} />
       </div>
+
+      {/* Holdings column — populated by the page so it's visible alongside
+          the trade-flow columns when an option is selected. */}
+      {holdings && <div className="min-w-[11rem] flex-1 max-w-[14rem]">{holdings}</div>}
     </div>
   );
 }

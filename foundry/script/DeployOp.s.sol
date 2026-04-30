@@ -5,7 +5,7 @@ import { Script, console } from "forge-std/Script.sol";
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
 
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
@@ -18,10 +18,10 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         StableToken stableToken = new StableToken();
         ShakyToken shakyToken = new ShakyToken();
 
-        Collateral short = new Collateral("Collateral", "COLL");
-        Option long = new Option("Option", "OPT");
+        Rct receiptTpl = new Rct("Rct", "RCT");
+        Option optionTpl = new Option("Option", "OPT");
 
-        Factory factory = new Factory(address(short), address(long));
+        Factory factory = new Factory(address(receiptTpl), address(optionTpl));
         console.log("Factory deployed at:", address(factory));
 
         YieldVault shakyVault =

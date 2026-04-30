@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
@@ -22,13 +22,13 @@ contract GasAnalysis is Test {
     // Contracts
     StableToken public stableToken;
     ShakyToken public shakyToken;
-    Collateral public redemptionTemplate;
+    Rct public redemptionTemplate;
     Option public optionTemplate;
     Factory public factory;
 
     // Deployed via factory
     Option public option;
-    Collateral public redemption;
+    Rct public redemption;
 
     // Permit2
     IPermit2 public permit2 = IPermit2(PERMIT2);
@@ -52,7 +52,7 @@ contract GasAnalysis is Test {
         shakyToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy template contracts (these will be cloned by factory)
-        redemptionTemplate = new Collateral("Short Template", "SHORT");
+        redemptionTemplate = new Rct("Short Template", "SHORT");
 
         optionTemplate = new Option("Long Template", "LONG");
 
@@ -68,17 +68,14 @@ contract GasAnalysis is Test {
             strike: uint96(1e18),
             isPut: false,
             isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
-        address optionAddress = factory.createOption(
-            params[0].collateral, params[0].consideration, params[0].expirationDate, params[0].strike, params[0].isPut
-        );
+        address optionAddress = factory.createOption(params[0]);
 
         // Get the deployed option and redemption
         option = Option(optionAddress);
-        redemption = option.coll();
+        redemption = option.receipt();
 
         // Setup approvals for testing
         _setupApprovals();
@@ -109,15 +106,14 @@ contract GasAnalysis is Test {
             strike: uint96(2e18),
             isPut: false,
             isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
         factory.createOptions(params);
     }
 
     function test_Gas_Factory_CreateOption_DirectCall() public {
-        factory.createOption(address(shakyToken), address(stableToken), uint40(block.timestamp + 60 days), 2e18, false);
+        factory.createOption(CreateParams({collateral: address(shakyToken), consideration: address(stableToken), expirationDate: uint40(block.timestamp + 60 days), strike: 2e18, isPut: false, isEuro: false, windowSeconds: 0}));
     }
 
     function testFuzz_Gas_Factory_CreateMultipleOptions(uint8 count) public {
@@ -132,8 +128,7 @@ contract GasAnalysis is Test {
                 strike: uint96(1e18 + (i * 0.1e18)),
                 isPut: false,
                 isEuro: false,
-                oracleSource: address(0),
-                twapWindow: 0
+                windowSeconds: 0
             });
         }
 
@@ -172,7 +167,7 @@ contract GasAnalysis is Test {
         mintAmt = bound(mintAmt, 1, 1_000e18);
         redeemAmt = bound(redeemAmt, 1, mintAmt);
         option.mint(mintAmt);
-        option.redeem(redeemAmt);
+        option.burn(redeemAmt);
     }
 
     // ============================================
@@ -187,7 +182,7 @@ contract GasAnalysis is Test {
 
     function test_Gas_Option_Transfer_AutoMint() public {
         // Transfer more than balance triggers auto-mint (requires opt-in)
-        factory.enableAutoMintRedeem(true);
+        factory.enableAutoMintBurn(true);
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(address(option)).transfer(address(0x123), 5);
     }
@@ -285,7 +280,7 @@ contract GasAnalysis is Test {
 
         // Redeem via option contract's internal function before expiration
         vm.prank(address(option));
-        redemption._redeemPair(address(this), 5);
+        redemption.burn(address(this), 5);
     }
 
     function test_Gas_Collateral_Redeem_PostExpiration() public {
@@ -418,7 +413,7 @@ contract GasAnalysis is Test {
         option.exercise(20);
 
         // Redeem some
-        option.redeem(30);
+        option.burn(30);
 
         // Check balances
         option.balancesOf(address(this));
@@ -442,7 +437,7 @@ contract GasAnalysis is Test {
         vm.stopPrank();
 
         // User 1 redeems
-        option.redeem(40);
+        option.burn(40);
     }
 
     function test_Gas_Workflow_PostExpiration() public {

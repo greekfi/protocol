@@ -4,9 +4,12 @@ pragma solidity ^0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Factory, Collateral, Option } from "../contracts/Factory.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
 import { YieldVault } from "../contracts/YieldVault.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 
 // ============ Bebop addresses on Base ============
 address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
@@ -133,7 +136,7 @@ contract YieldVaultTest is Test {
     Factory public factory;
     YieldVault public vault;
     Option public option;
-    Collateral public redemption;
+    Rct public redemption;
 
     address public lp = address(0x1111);
     uint256 public operatorPk = 0xA11CE;
@@ -162,19 +165,25 @@ contract YieldVaultTest is Test {
         stableToken = new StableToken();
         shakyToken = new ShakyToken();
 
-        Collateral redemptionClone = new Collateral("Short Option", "SHORT");
+        Rct redemptionClone = new Rct("Short Option", "SHORT");
         Option optionClone = new Option("Long Option", "LONG");
         factory = new Factory(address(redemptionClone), address(optionClone));
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         vault.setupFactoryApproval();
-        vault.enableAutoMintRedeem(true);
+        vault.enableAutoMintBurn(true);
 
-        address optionAddr = factory.createOption(
-            address(shakyToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
-        );
+        address optionAddr = factory.createOption(CreateParams({
+            collateral: address(shakyToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
         option = Option(optionAddr);
-        redemption = option.coll();
+        redemption = option.receipt();
         vault.addOption(address(option), address(0));
 
         shakyToken.mint(address(this), 1_000_000e18);
@@ -620,9 +629,15 @@ contract YieldVaultTest is Test {
     // ============ ADMIN ============
 
     function test_AddOption() public {
-        address opt2 = factory.createOption(
-            address(shakyToken), address(stableToken), uint40(block.timestamp + 2 days), 2e18, false
-        );
+        address opt2 = factory.createOption(CreateParams({
+            collateral: address(shakyToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 2 days),
+            strike: 2e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
         vault.addOption(opt2, address(0));
         assertEq(vault.activeOptions(1), opt2);
     }

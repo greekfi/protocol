@@ -13,7 +13,7 @@ pragma solidity ^0.8.30;
  *                             scientific notation for very small values (e.g. inverted put strikes).
  *         - `epoch2str`     — unix timestamp → `YYYY-MM-DD` (UTC).
  *
- *         The helpers live here (not inline in Option / Collateral) so every option-pair clone
+ *         The helpers live here (not inline in Option / Receipt) so every option-pair clone
  *         shares a single deployed copy of the rendering logic.
  */
 library OptionUtils {

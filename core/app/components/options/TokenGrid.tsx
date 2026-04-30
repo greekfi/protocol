@@ -123,9 +123,6 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   // Clean up on unmount so a stray timer doesn't fire after the grid is gone.
   useEffect(() => () => clearTimers(), []);
 
-  // Collapse to logo+symbol pills once a pick is made, unless the user has held
-  // the cursor over the row long enough to expand.
-  const compact = !!selected && !expanded;
   // Filter to tokens that exist on the current (browse) chain. The static
   // CALL_UNDERLYINGS / PUT_UNDERLYINGS lists in yield/data.ts are the
   // *universe* of supported underlyings; allTokensMap (chain-scoped via
@@ -133,69 +130,118 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
   // chain the user is browsing. e.g. cbBTC is only on Base, MORPHO doesn't
   // have a canonical Arbitrum deployment — those simply don't render.
   const tokensForChain = tokens.filter(t => allTokensMap[t.symbol]?.address);
-  // Keep column structure constant — animating grid-template-columns isn't
-  // smooth in any browser and reads as a "jump." Cells stay the same width;
-  // only the content area inside each cell expands/collapses.
+
+  // Three render states:
+  //   1. No selection         → full grid inline (initial picker).
+  //   2. Selected, collapsed  → just the selected pill + chevron.
+  //   3. Selected, expanded   → selected pill stays inline, full list
+  //                             renders as a floating overlay so the
+  //                             surrounding layout doesn't shift.
+  const compact = !!selected && !expanded;
+  const inlineTokens = selected ? tokensForChain.filter(t => t.symbol === selected) : tokensForChain;
+  const showOverlay = !!selected && expanded;
+
+  const renderPill = (token: UnderlyingToken, opts: { isAnchor: boolean; collapsedExtras: boolean }) => {
+    const active = selected === token.symbol;
+    const address = allTokensMap[token.symbol]?.address;
+    const handleClick = () => {
+      if (opts.isAnchor && active && compact) {
+        // Anchor pill in compact mode acts as the dropdown trigger.
+        setExpanded(true);
+      } else {
+        onSelect(token.symbol);
+        setExpanded(false);
+      }
+    };
+    return (
+      <button
+        key={token.symbol}
+        type="button"
+        onClick={handleClick}
+        style={{ flex: "0 0 7.5rem" }}
+        className={clsx(
+          "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
+          active
+            ? "bg-[#2F50FF]/15 border-[#2F50FF]"
+            : "bg-black/40 border-gray-800 hover:border-gray-700 hover:bg-black/60",
+        )}
+      >
+        <div className="flex items-center gap-2 w-full">
+          <Logo token={token} size={22} />
+          <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
+          {opts.isAnchor && active && compact && (
+            <svg
+              className="ml-auto text-gray-400"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden
+            >
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+        <div
+          className={clsx(
+            "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out",
+            opts.collapsedExtras ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+          )}
+          aria-hidden={opts.collapsedExtras}
+        >
+          <div className="overflow-hidden flex flex-col items-start gap-1">
+            {token.apr && (
+              <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+                {formatAprRange(token.apr)}
+              </span>
+            )}
+            {address && <CopyAddressButton address={address} />}
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const selectedToken = selected ? tokensForChain.find(t => t.symbol === selected) : undefined;
+  const overlayTokens = selectedToken
+    ? [selectedToken, ...tokensForChain.filter(t => t.symbol !== selected)]
+    : tokensForChain;
+
   return (
-    <div
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      // Flex (not grid) so items center on every row — including a partial
-      // last row. Each cell is fixed-width via flex-basis; rows wrap and
-      // `justify-center` centers items on each line, which CSS grid won't
-      // do reliably when the container width is much greater than the
-      // total cell width.
-      // `mx-auto w-fit max-w-full` — shrink-wrap to content width and center
-      // the whole grid in its parent. Without this, a flex container as a
-      // child of another flex layout takes full width and the grid sits
-      // left-aligned in a too-wide column.
-      className="flex flex-wrap justify-center gap-2 mx-auto w-fit max-w-full"
-    >
-      {tokensForChain.map(token => {
-        const active = selected === token.symbol;
-        const address = allTokensMap[token.symbol]?.address;
-        return (
-          <button
-            key={token.symbol}
-            type="button"
-            onClick={() => onSelect(token.symbol)}
-            // basis 7.5rem, no grow/shrink — cells are uniform width and
-            // wrap predictably regardless of container width.
-            style={{ flex: "0 0 7.5rem" }}
+    <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+      {/* Anchor row — centered. When nothing is selected this is the full
+          picker; once a token is picked, only the chosen pill stays inline.
+          The inner `relative` wrapper is sized to the pill itself so the
+          overlay anchors to the pill's edge, not the card's. */}
+      <div className="flex justify-center">
+        <div className="relative">
+          {/* The inline pill stays in the DOM (so it reserves layout space
+              and the buy card doesn't reflow) but is hidden while the
+              overlay is open — the overlay's first cell takes its place
+              visually. */}
+          <div
             className={clsx(
-              "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
-              active
-                ? "bg-[#2F50FF]/15 border-[#2F50FF]"
-                : "bg-black/40 border-gray-800 hover:border-gray-700 hover:bg-black/60",
+              "flex flex-wrap justify-center gap-2 w-fit max-w-full",
+              showOverlay && "invisible",
             )}
           >
-            <div className="flex items-center gap-2">
-              <Logo token={token} size={22} />
-              <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
-            </div>
-            {/* Always render the extras; toggle visibility via opacity +
-                grid-template-rows so the cell height animates smoothly.
-                grid-template-rows from 0fr → 1fr is the modern way to animate
-                "auto" height — works in all evergreen browsers. */}
-            <div
-              className={clsx(
-                "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out",
-                compact ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
-              )}
-              aria-hidden={compact}
-            >
-              <div className="overflow-hidden flex flex-col items-start gap-1">
-                {token.apr && (
-                  <span className="text-xs font-semibold text-emerald-300 tabular-nums">
-                    {formatAprRange(token.apr)}
-                  </span>
-                )}
-                {address && <CopyAddressButton address={address} />}
+            {inlineTokens.map(token => renderPill(token, { isAnchor: true, collapsedExtras: compact }))}
+          </div>
+
+          {/* Floating overlay — bordered card that contains the full token
+              row, selected pill first, so it reads as a single grouped
+              dropdown. -top-2 / -left-2 cancels the card's px-2/py-2
+              padding so the first overlay cell sits exactly where the
+              hidden inline pill was. */}
+          {showOverlay && (
+            <div className="absolute -top-2 -left-2 z-30 rounded-xl border border-gray-700 bg-black/95 px-2 py-2 shadow-2xl backdrop-blur-sm">
+              <div className="flex flex-nowrap gap-2">
+                {overlayTokens.map(token => renderPill(token, { isAnchor: false, collapsedExtras: false }))}
               </div>
             </div>
-          </button>
-        );
-      })}
+          )}
+        </div>
+      </div>
     </div>
   );
 }

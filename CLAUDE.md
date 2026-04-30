@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Options protocol implementing a dual-token system where both long (Option) and short (Collateral) positions are fully transferable ERC20 tokens. Supports any ERC20 token pairs as collateral/consideration.
+Options protocol implementing a dual-token system where both long (Option) and short (Receipt) positions are fully transferable ERC20 tokens. Supports any ERC20 token pairs as collateral/consideration.
 
 Smart contracts, frontend, and docs all live in this repo as a Yarn workspace (managed by Corepack — run `corepack enable` once per machine).
 
@@ -18,7 +18,7 @@ Neither shares types with this repo — they couple only on contract addresses (
 ```
 .
 ├── foundry/                # Solidity contracts, forge tests, deploy scripts
-│   ├── contracts/                # Option, Collateral, Factory, YieldVault, OptionUtils, mocks (MockERC20, ShakyToken), interfaces, libraries, oracles
+│   ├── contracts/                # Option, Receipt, Factory, YieldVault, OptionUtils, mocks (MockERC20, ShakyToken), interfaces, libraries
 │   ├── test/                     # Forge tests
 │   ├── script/                   # Deploy + demo scripts (DeployOp, DeployFullDemo, DeployBaseDemo, DeployBookDemo, DeployVaults, Populate*, AddTokens, FixVaults, FundMaker, DeployHelpers)
 │   ├── future/                   # Parked Uniswap v4 hook stack — see future/README.md
@@ -89,14 +89,32 @@ cast send $FACTORY "createOption(address,address,uint40,uint96,bool)" ...
 
 ## Core Contracts
 
+### Settlement model — manual exercise, no oracle
+This branch removes oracle-driven settlement entirely. Settlement is purely time-gated. Two
+flavours coexist, chosen at creation by `isEuro`:
+
+| Mode      | `isEuro` | Pre-expiry exercise | In-window exercise | Post-window      |
+| --------- | -------- | ------------------- | ------------------ | ---------------- |
+| American  | `false`  | allowed             | allowed            | short pro-rata   |
+| European  | `true`   | reverts             | allowed            | short pro-rata   |
+
+The exercise window closes for everyone at `exerciseDeadline = expirationDate + windowSeconds`
+(default 8 hours, settable per option via `CreateParams.windowSeconds`). After the deadline,
+short-side pro-rata redemption opens (`Receipt.redeem` / `sweep`).
+
+Pair-redeem (long + short burned 1:1) stays available the *entire* lifetime — it doesn't
+depend on the window because it nets out both sides. There is no `oracle`, `claim`, `settle`,
+or `settlementPrice` — the protocol never reads price on-chain. The holder watches spot
+off-chain and decides whether the option is ITM.
+
 ### Factory.sol
-Immutable factory (`Ownable`, `ReentrancyGuardTransient`) that deploys Option + Collateral pairs using EIP-1167 minimal proxy clones. Not upgradeable — eliminates the rug vector from owner-controlled implementation swaps (users approve tokens to the factory). Manages token blocklist, centralized `transferFrom()` for all collateral/consideration transfers, ERC-1155-style universal operator approvals (`setApprovalForAll`), and opt-in auto-mint/redeem (`enableAutoMintRedeem`). **No protocol fees** — mint/exercise/redeem are 1:1. Revenue model lives in the vault layer (bid/ask spread).
+Immutable factory (`Ownable`, `ReentrancyGuardTransient`) that deploys Option + Receipt pairs using EIP-1167 minimal proxy clones. Not upgradeable — eliminates the rug vector from owner-controlled implementation swaps (users approve tokens to the factory). Manages token blocklist, centralized `transferFrom()` for all collateral/consideration transfers, ERC-1155-style universal operator approvals (`setApprovalForAll`), and opt-in auto-mint/redeem (`enableAutoMintRedeem`). `CreateParams` carries `isPut`, `isEuro`, and `windowSeconds`; passing `windowSeconds = 0` defaults to `DEFAULT_EXERCISE_WINDOW = 8 hours`. **No protocol fees** — mint/exercise/redeem are 1:1. Revenue model lives in the vault layer (bid/ask spread).
 
 ### Option.sol — Long Position
-ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the right to exercise. Key functions: `mint(amount)`, `exercise(amount)`, `redeem(amount)`. Opt-in auto-settling transfers: auto-mint if sender balance < amount, auto-redeem matched Collateral pairs on receive. Both require the sender/recipient to have called `factory.enableAutoMintRedeem(true)`.
+ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the right to exercise. Token name renders as `OPT-…` (American) or `OPTE-…` (European). Key functions: `mint(amount)`, `exercise(amount)`, `exerciseFor(holder, amount, recipient)` (single + array overload — permissionless keeper path that burns `holder`'s options, pulls consideration from `msg.sender`, sends collateral to `recipient`), and `redeem(amount)` (pair). Exercise is gated by `withinExerciseWindow` (which also enforces the European pre-expiry block); pair-redeem is unrestricted in time. Opt-in auto-settling transfers: auto-mint if sender balance < amount, auto-redeem matched Receipt pairs on receive. Both require the sender/recipient to have called `factory.enableAutoMintRedeem(true)`.
 
-### Collateral.sol — Short Position
-ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the obligation side. Holds all collateral, receives consideration on exercise. Two conversion functions: `toConsideration()` (rounds DOWN, for payouts) and `toNeededConsideration()` (rounds UP, for exercise collections). After expiration, holders have two redemption paths: `redeem()` for pro-rata collateral+consideration, or `redeemConsideration()` for consideration at strike price. Has `sweep(holders[])` for batch post-expiry redemption.
+### Receipt.sol — Short Position (collateral receipt)
+ERC20 (`Initializable`, `ReentrancyGuardTransient`) representing the obligation side. Holding the receipt means you deposited the collateral and bear the exercise payoff. Token name renders as `RCT-…` (American) or `RCTE-…` (European). Note: in test/script files the contract is imported as `Receipt as Rct` to dodge a name collision with `forge-std`'s `StdCheats.Receipt` struct that's inherited via `Test`/`Script`. Two conversion functions: `toConsideration()` (rounds DOWN, for payouts) and `toNeededConsideration()` (rounds UP, for exercise collections). Stores `exerciseDeadline = expirationDate + windowSeconds` and gates short-side paths with `afterExerciseWindow`. After the window closes, holders have two redemption paths: `redeem()` for pro-rata collateral+consideration, or `redeemConsideration()` for consideration at strike price. Has `sweep(holders[])` for batch post-window redemption.
 
 ### YieldVault.sol — Operator-Managed Vault
 ERC-7540 async-redeem vault for the demo flow. Operator can `execute(target, calldata)` to route trades (e.g., call Bebop `swapSingle` as `msg.sender == vault`). `addOption(option, spender)` whitelists + approves. `redeemExpired()` sweeps post-expiry collateral. `setupFactoryApproval()` sets ERC20 + factory internal allowances. `approveToken(token, spender, amount)` for Bebop or other settlement contracts. No pricing on-chain — RFQ-driven.
@@ -117,7 +135,7 @@ See `foundry/future/README.md` for how to bring them back into an active build.
 ```
 Factory (owner: deployer, immutable)
   └→ creates clones:
-     Option (owner: user) ←→ Collateral (owner: Option contract)
+     Option (owner: user) ←→ Receipt (owner: Option contract)
 ```
 
 ## Key Design Details
@@ -126,10 +144,10 @@ Factory (owner: deployer, immutable)
 
 **Rounding policy**: round UP when collecting (exercise via `toNeededConsideration`), round DOWN when distributing (payouts via `toConsideration`). This ensures protocol solvency — dust stays in the contract.
 
-**Strike encoding**: Always 18 decimals internally, passed as `uint96` in `createOption()`. Independent of token decimals — decimal normalization happens in Collateral's conversion functions.
+**Strike encoding**: Always 18 decimals internally, passed as `uint96` in `createOption()`. Independent of token decimals — decimal normalization happens in Receipt's conversion functions.
 - Call: consideration per collateral (e.g., 3000e18 = $3000 USDC per WETH)
 - Put: collateral per consideration, inverted (e.g., `1e36 / 3000e18` ≈ 0.000333e18)
-- Chainlink settlement comparison: `uint256 spot = uint256(chainlinkPrice) * 1e10; bool itm = spot > strike;` (both 18 dec)
+- No on-chain price comparison — the holder watches spot off-chain and decides whether to pay strike during the exercise window.
 
 **Decimal normalization**:
 ```solidity
@@ -141,7 +159,7 @@ toNeededConsideration(amount) = mulDiv(amount, strike * 10^consDecimals, 10^18 *
 
 **Clone pattern**: Template contracts deployed once, then `Clones.clone()` for each option. `initializer` modifier prevents re-init.
 
-**Centralized transfers**: All token moves go through `factory.transferFrom()` — single approval point, only callable by registered Collateral contracts.
+**Centralized transfers**: All token moves go through `factory.transferFrom()` — single approval point, only callable by registered Receipt contracts.
 
 **Auto-mint/redeem**: Opt-in per account via `factory.enableAutoMintRedeem(true)`. Auto-mint on transfer: if sender balance < amount, factory pulls the deficit in collateral from sender, mints, then transfers. Auto-redeem on receive: factory burns matched Option/Collateral pairs and returns collateral.
 
@@ -228,26 +246,29 @@ core/app/book/
 - Depth bars: cumulative, widest at spread, contained within Size column
 - %Spot column: `price / spotPrice * 100`
 
-## Oracle Strategy
+## Settlement Strategy
 
-For settlement pricing (especially European-style options):
+There is no on-chain oracle. Settlement is purely time-gated and holder-driven:
 
-- **Primary: Chainlink** — free to read, industry standard (Aave V4 exclusive oracle). USD-denominated feeds with 8 decimals. Available on Base for ETH/USD, BTC/USD, AAVE/USD, UNI/USD.
-- **Fallback: Uniswap V3 TWAP** — already wired in OptionPricer.
-- **Cross-asset pricing**: derive from two USD feeds (e.g., `ETH/USD ÷ USDC/USD`). This is what Aave, Compound, GMX, Synthetix all do. No direct pair feeds needed.
-- **Strike comparison**: `uint256 spot = uint256(chainlinkPrice) * 1e10; bool itm = spot > strike;` — both 18-decimal, direct compare.
+- The holder watches spot off-chain. If the option is ITM, they (or a keeper acting via
+  `Option.exerciseFor`) call `exercise` during the window and pay strike.
+- After `exerciseDeadline = expirationDate + windowSeconds`, exercise reverts and short-side
+  holders get a pro-rata payout of whatever collateral and consideration the contract holds.
+- This eliminates the entire oracle attack surface (price spoofing, Chainlink staleness,
+  TWAP manipulation, oracle bricking) at the cost of holder UX: passive holders forfeit ITM
+  value once the window closes. Mitigate with a keeper running `exerciseFor`.
 
 ## Testing
 
 Test files in `foundry/test/`:
-- `Option.t.sol` — canonical Option/Collateral suite. Fork-tests Base mainnet at block 43189435; covers both Permit2 (`t1`) and standard ERC20 (`t2`) approval paths; includes fuzz tests for mint/exercise/redeem and transfer auto-redeem.
-- `OptionSettlement.t.sol` — oracle-settled options. Shared `OptionSettlementBase` parameterized by `_isEuro`; subclasses `OptionAmericanSettledTest` + `OptionEuroTest` hold variant-specific tests.
-- `Factory.t.sol` — factory creation, oracle detection, mode combos, template validation, blocklist.
+- `Option.t.sol` — canonical Option/Collateral suite. Fork-tests Base mainnet at block 43189435; covers both Permit2 and standard ERC20 approval paths; includes fuzz tests for mint/exercise/redeem and transfer auto-redeem.
+- `Factory.t.sol` — factory creation, window defaulting, template validation, blocklist.
+- `ExerciseWindow.t.sol` — exercise / `exerciseFor` / redeem transitions across pre-expiry, in-window, and post-window states.
 - `FeeOnTransfer.t.sol` — FOT token detection + blocklist.
 - `GasAnalysis.t.sol` — fuzzed gas benchmarks for factory / option / collateral flows (no assertions; run with `--gas-report`).
 - `YieldVault.t.sol` — ERC-7540 vault + Bebop settlement (JAM, Blend, RFQ-T).
 - `StrikeTest.t.sol` — strike-formatting utility.
-- Mock tokens: `StableToken` (6 dec), `ShakyToken` (18 dec), `MockERC20` (configurable). Oracle mock: `test/mocks/MockPriceOracle.sol`.
+- Mock tokens: `StableToken` (6 dec), `ShakyToken` (18 dec), `MockERC20` (configurable).
 
 CLOBAMM and NuAMM (and their test suites) are parked in `foundry/future/` and not built by default.
 
@@ -256,7 +277,7 @@ CLOBAMM and NuAMM (and their test suites) are parked in `foundry/future/` and no
 - `ReentrancyGuardTransient` (EIP-1153 transient storage) on Option, Collateral, Factory
 - CLOBAMM + NuAMMv2: transient-storage reentrancy lock via raw TSTORE/TLOAD
 - Checks-Effects-Interactions pattern
-- Custom modifiers: `validAmount`, `validAddress`, `sufficientBalance`, `sufficientCollateral`, `sufficientConsideration`, `notLocked`, `notExpired`
+- Custom modifiers: `validAmount`, `validAddress`, `sufficientBalance`, `sufficientCollateral`, `sufficientConsideration`, `notLocked`, `notExpired`, `withinExerciseWindow`, `afterExerciseWindow`
 - Emergency pause via `locked` flag
 - Fee-on-transfer token detection (balance check on mint) and blocklist
 - Permit2 compatibility (uint160 amount checks in Collateral)

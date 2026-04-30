@@ -8,10 +8,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 import { Option } from "./Option.sol";
-import { Collateral } from "./Collateral.sol";
+import { Receipt } from "./Receipt.sol";
 import { CreateParams } from "./interfaces/IFactory.sol";
-import { IPriceOracle } from "./oracles/IPriceOracle.sol";
-import { IUniswapV3Pool, UniV3Oracle } from "./oracles/UniV3Oracle.sol";
 
 using SafeERC20 for ERC20;
 
@@ -19,21 +17,21 @@ using SafeERC20 for ERC20;
  * @title  Factory — deployer, allowance hub, operator registry
  * @author Greek.fi
  * @notice The only on-chain contract users need to interact with to *create* options. Once deployed,
- *         every Option + Collateral pair runs off pre-compiled template clones, so creation is
+ *         every Option + Receipt pair runs off pre-compiled template clones, so creation is
  *         cheap and the factory is never an upgradeable rug vector (the templates are immutable).
  *
  *         The factory also plays three lasting roles post-creation:
  *
  *         1. **Single allowance point.** Users `approve(collateralToken, amount)` on the factory once,
- *            and any Option / Collateral pair created by this factory can pull from that allowance
+ *            and any Option / Receipt pair created by this factory can pull from that allowance
  *            via {transferFrom}. No need to approve every new option individually.
  *
  *         2. **Operator registry.** {approveOperator} gives an address blanket authority to move
  *            any Option produced by this factory on your behalf — the ERC-1155-style "setApprovalForAll"
  *            pattern. Used by trading venues and aggregators.
  *
- *         3. **Auto-mint / auto-redeem opt-in.** {enableAutoMintRedeem} flips a per-account flag that
- *            Option consults on transfer to auto-mint deficits and auto-redeem matched Option+Collateral
+ *         3. **Auto-mint / auto-redeem opt-in.** {enableAutoMintBurn} flips a per-account flag that
+ *            Option consults on transfer to auto-mint deficits and auto-redeem matched Option+Receipt
  *            on the receiving side.
  *
  *         ### Token blocklist
@@ -42,48 +40,32 @@ using SafeERC20 for ERC20;
  *         against known-problematic tokens (fee-on-transfer, rebasing, exploited). It never affects
  *         already-created options — only new creations.
  *
- *         ### Oracle sources
+ *         ### Exercise window
  *
- *         `createOption(params)` auto-detects the oracle source in `params.oracleSource`:
+ *         There is no oracle. Settlement is purely time-gated:
  *
- *         - Pre-deployed `IPriceOracle` whose `expiration()` matches → reused in place.
- *         - Uniswap v3 pool (detected via `token0()`) → a fresh {UniV3Oracle} is deployed inline,
- *           bound to `(collateral, consideration, expiration, twapWindow)`.
- *         - Anything else → reverts with `UnsupportedOracleSource`. A Chainlink branch is planned.
+ *         - `isEuro = false` (American) — exercise allowed from creation through `exerciseDeadline`.
+ *         - `isEuro = true`  (European) — exercise allowed only between `expirationDate` and
+ *           `exerciseDeadline`.
  *
- * @dev    Example (create + approve + mint):
- *         ```solidity
- *         // Create a 30-day WETH/USDC 3000 call, European, settled by a v3 TWAP on a WETH/USDC pool.
- *         address opt = factory.createOption(
- *             CreateParams({
- *                 collateral:     WETH,
- *                 consideration:  USDC,
- *                 expirationDate: uint40(block.timestamp + 30 days),
- *                 strike:         uint96(3000e18),
- *                 isPut:          false,
- *                 isEuro:         true,
- *                 oracleSource:   UNIV3_WETH_USDC_POOL,
- *                 twapWindow:     1800                   // 30-min TWAP
- *             })
- *         );
- *
- *         // Single approval feeds every option this factory creates.
- *         IERC20(WETH).approve(address(factory), type(uint256).max);
- *         factory.approve(WETH, type(uint256).max);
- *
- *         Option(opt).mint(1e18);
- *         ```
+ *         `windowSeconds` on {CreateParams} sets how long after expiration the window stays open;
+ *         passing `0` selects {DEFAULT_EXERCISE_WINDOW} (8 hours). After
+ *         `expirationDate + windowSeconds`, exercise reverts (for both flavours) and short-side
+ *         redemption opens.
  */
 contract Factory is Ownable, ReentrancyGuardTransient {
-    /// @notice Template Collateral contract; per-option instances are EIP-1167 clones of this.
-    address public immutable COLL_CLONE;
+    /// @notice Template Receipt contract; per-option instances are EIP-1167 clones of this.
+    address public immutable RECEIPT_CLONE;
     /// @notice Template Option contract; per-option instances are EIP-1167 clones of this.
     address public immutable OPTION_CLONE;
+    /// @notice Default post-expiry exercise window when `CreateParams.windowSeconds == 0`.
+    uint40 public constant DEFAULT_EXERCISE_WINDOW = 8 hours;
 
-    /// @dev Registered Collateral clones — `transferFrom` is only callable by these.
-    mapping(address => bool) private colls;
+    /// @notice `true` if the address is a Receipt clone this factory created. Doubles as the auth
+    ///         gate for {transferFrom} — only registered Receipts can pull from factory allowances.
+    mapping(address => bool) public receipts;
 
-    /// @notice `true` if the address is a Option clone this factory created.
+    /// @notice `true` if the address is an Option clone this factory created.
     mapping(address => bool) public options;
 
     /// @notice Tokens rejected for new option creation. Does not affect already-created options.
@@ -95,8 +77,12 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @dev Operator approval table: `_approvedOperators[owner][operator] -> bool`.
     mapping(address => mapping(address => bool)) private _approvedOperators;
 
+    /// @dev Exercise-allowance table: `_exerciseAllowed[holder][operator] -> bool`. Lets `operator`
+    ///      burn `holder`'s options via the on-behalf {Option.exercise} overload.
+    mapping(address => mapping(address => bool)) private _exerciseAllowed;
+
     /// @notice Per-account opt-in for auto-mint on transfer and auto-redeem on receive in {Option}.
-    mapping(address => bool) public autoMintRedeem;
+    mapping(address => bool) public autoMintBurn;
 
     /// @notice Thrown when {createOption} is called against a blocklisted collateral or consideration token.
     error BlocklistedToken();
@@ -106,10 +92,6 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     error InvalidTokens();
     /// @notice Thrown when {transferFrom} is called with `allowance < amount`.
     error InsufficientAllowance();
-    /// @notice Thrown when `isEuro == true` but no oracle source was provided.
-    error EuropeanRequiresOracle();
-    /// @notice Thrown when {createOption} cannot classify `oracleSource` (neither an `IPriceOracle` nor a v3 pool).
-    error UnsupportedOracleSource();
 
     /// @notice Emitted for every newly-created option.
     event OptionCreated(
@@ -119,73 +101,78 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         uint96 strike,
         bool isPut,
         bool isEuro,
-        address oracle,
+        uint40 windowSeconds,
         address indexed option,
-        address coll
+        address receipt
     );
     /// @notice Emitted on {blockToken} / {unblockToken}.
     event TokenBlocked(address token, bool blocked);
     /// @notice Emitted on {approveOperator}.
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
-    /// @notice Emitted on {enableAutoMintRedeem}.
-    event AutoMintRedeemUpdated(address indexed account, bool enabled);
+    /// @notice Emitted on {allowExercise}.
+    event ExerciseApproval(address indexed holder, address indexed exercisor, bool allowed);
+    /// @notice Emitted on {enableAutoMintBurn}.
+    event AutoMintBurnUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set by token owner).
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
     /// @notice Bind the factory to its immutable templates.
-    /// @param collClone_   Deployed Collateral template.
-    /// @param optionClone_ Deployed Option template.
-    constructor(address collClone_, address optionClone_) Ownable(msg.sender) {
-        if (collClone_ == address(0) || optionClone_ == address(0)) revert InvalidAddress();
-        COLL_CLONE = collClone_;
+    /// @param receiptClone_ Deployed Receipt template.
+    /// @param optionClone_  Deployed Option template.
+    constructor(address receiptClone_, address optionClone_) Ownable(msg.sender) {
+        if (receiptClone_ == address(0) || optionClone_ == address(0)) revert InvalidAddress();
+        RECEIPT_CLONE = receiptClone_;
         OPTION_CLONE = optionClone_;
     }
 
     // ============ OPTION CREATION ============
 
-    /// @notice Deploy a new Option + Collateral pair.
-    /// @dev    Clones the templates, classifies / deploys an oracle if needed, and initialises both
-    ///         sides. Emits {OptionCreated}. The caller becomes the {Option}'s admin owner.
+    /// @notice Deploy a new Option + Receipt pair.
+    /// @dev    Clones the templates and initialises both sides. Emits {OptionCreated}. The caller
+    ///         becomes the {Option}'s admin owner.
     /// @param p See {CreateParams}:
     ///          - `collateral`, `consideration`: ERC20 addresses; must differ and not be blocklisted.
     ///          - `expirationDate`: unix timestamp; must be in the future.
     ///          - `strike`: 18-decimal fixed point (consideration per collateral, inverted for puts).
-    ///          - `isPut`, `isEuro`: option flavour flags. `isEuro` requires an oracle.
-    ///          - `oracleSource`: pre-deployed `IPriceOracle`, a Uniswap v3 pool, or `address(0)`.
-    ///          - `twapWindow`: seconds of TWAP when `oracleSource` is a v3 pool (ignored otherwise).
+    ///          - `isPut`: option flavour.
+    ///          - `isEuro`: `true` for European (no pre-expiry exercise), `false` for American.
+    ///          - `windowSeconds`: post-expiry exercise window length; `0` → {DEFAULT_EXERCISE_WINDOW}.
     /// @return The new {Option} address.
     function createOption(CreateParams memory p) public nonReentrant returns (address) {
         if (blocklist[p.collateral] || blocklist[p.consideration]) revert BlocklistedToken();
         if (p.collateral == p.consideration) revert InvalidTokens();
-        if (p.isEuro && p.oracleSource == address(0)) revert EuropeanRequiresOracle();
 
-        address coll_ = Clones.clone(COLL_CLONE);
+        uint40 windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
+
+        address receipt_ = Clones.clone(RECEIPT_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
 
-        address oracle_ = address(0);
-        if (p.oracleSource != address(0)) {
-            oracle_ = _deployOracle(p);
-        }
+        Receipt(receipt_).init(
+            p.collateral,
+            p.consideration,
+            p.expirationDate,
+            p.strike,
+            p.isPut,
+            p.isEuro,
+            windowSeconds,
+            option_,
+            address(this)
+        );
+        Option(option_).init(receipt_, msg.sender);
 
-        Collateral(coll_)
-            .init(
-                p.collateral,
-                p.consideration,
-                p.expirationDate,
-                p.strike,
-                p.isPut,
-                p.isEuro,
-                oracle_,
-                option_,
-                address(this)
-            );
-        Option(option_).init(coll_, msg.sender);
-
-        colls[coll_] = true;
+        receipts[receipt_] = true;
         options[option_] = true;
 
         emit OptionCreated(
-            p.collateral, p.consideration, p.expirationDate, p.strike, p.isPut, p.isEuro, oracle_, option_, coll_
+            p.collateral,
+            p.consideration,
+            p.expirationDate,
+            p.strike,
+            p.isPut,
+            p.isEuro,
+            windowSeconds,
+            option_,
+            receipt_
         );
         return option_;
     }
@@ -200,60 +187,15 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Backward-compatibility overload for the American non-settled case (no oracle, American).
-    /// @param collateral_    Collateral token.
-    /// @param consideration_ Consideration token.
-    /// @param expirationDate_ Expiration timestamp.
-    /// @param strike_        18-decimal strike.
-    /// @param isPut_         Put/call flag.
-    /// @return New {Option} address.
-    function createOption(
-        address collateral_,
-        address consideration_,
-        uint40 expirationDate_,
-        uint96 strike_,
-        bool isPut_
-    ) external returns (address) {
-        return createOption(
-            CreateParams({
-                collateral: collateral_,
-                consideration: consideration_,
-                expirationDate: expirationDate_,
-                strike: strike_,
-                isPut: isPut_,
-                isEuro: false,
-                oracleSource: address(0),
-                twapWindow: 0
-            })
-        );
-    }
-
-    /// @dev Classify `p.oracleSource` and return a concrete oracle address.
-    ///      Detection order:
-    ///        1. Object already quacks like an `IPriceOracle` and its `expiration()` matches — reuse.
-    ///        2. Object quacks like a Uniswap v3 pool (`token0()` succeeds) — wrap in a fresh {UniV3Oracle}.
-    ///        3. Otherwise — revert.
-    ///      A Chainlink aggregator branch is reserved for a later change.
-    function _deployOracle(CreateParams memory p) internal returns (address) {
-        try IPriceOracle(p.oracleSource).expiration() returns (uint256 exp) {
-            if (exp == p.expirationDate) return p.oracleSource;
-        } catch { }
-        try IUniswapV3Pool(p.oracleSource).token0() returns (address) {
-            return
-                address(new UniV3Oracle(p.oracleSource, p.collateral, p.consideration, p.expirationDate, p.twapWindow));
-        } catch { }
-        revert UnsupportedOracleSource();
-    }
-
     // ============ CENTRALIZED TRANSFER ============
 
-    /// @notice Pull `amount` of `token` from `from` to `to`. Only callable by Collateral clones
+    /// @notice Pull `amount` of `token` from `from` to `to`. Only callable by Receipt clones
     ///         that this factory has created.
     /// @dev    Decrements `_allowances[token][from]` (unless it is `type(uint256).max`).
     ///         This is the mechanism by which a single user approval on the factory flows to every
-    ///         option pair it creates, rather than requiring approvals on each Collateral clone.
+    ///         option pair it creates, rather than requiring approvals on each Receipt clone.
     /// @param from   Token owner.
-    /// @param to     Recipient (typically the calling Collateral contract).
+    /// @param to     Recipient (typically the calling Receipt contract).
     /// @param amount Token amount to transfer (≤ `uint160.max`, matching Permit2 semantics).
     /// @param token  Token to move.
     /// @return success Always `true` on success; reverts otherwise.
@@ -262,7 +204,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         nonReentrant
         returns (bool)
     {
-        if (!colls[msg.sender]) revert InvalidAddress();
+        if (!receipts[msg.sender]) revert InvalidAddress();
         uint256 currentAllowance = _allowances[token][from];
         if (currentAllowance < amount) revert InsufficientAllowance();
         if (currentAllowance != type(uint256).max) {
@@ -280,10 +222,10 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         return _allowances[token][owner_];
     }
 
-    /// @notice Set the caller's factory-level allowance for `token` to `amount`.
-    /// @dev    This is the shared approval consumed by every Option + Collateral pair created by
-    ///         this factory. Does not replace the ERC20-level `token.approve(factory, ...)` the
-    ///         user must also grant so the factory can call `safeTransferFrom` on the token.
+    /// @notice Permit2-style allowance: caller authorises the factory to pull up to `amount` of
+    ///         `token` (collateral or consideration) on their behalf when any Option / Receipt
+    ///         pair created by this factory needs to move it. The user must also have granted the
+    ///         underlying `token.approve(factory, ...)` so `safeTransferFrom` can land.
     /// @param token  ERC20 to be approved.
     /// @param amount Allowance to grant (use `type(uint256).max` for infinite).
     function approve(address token, uint256 amount) public {
@@ -312,18 +254,32 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         return _approvedOperators[owner_][operator];
     }
 
+    /// @notice Authorise `exercisor` to exercise the caller's options on their behalf.
+    /// @dev    Consumed by the on-behalf {Option.exercise(address,uint256)} overloads, which burn
+    ///         the holder's option tokens, pull consideration from `exercisor`, and deliver the
+    ///         collateral to `exercisor`. Distinct from {approveOperator}: that grants transfer
+    ///         authority over the holder's option tokens, this grants the right to *consume* them
+    ///         (burn). Defaults to `false`; revoke by passing `allowed = false`.
+    /// @param exercisor Account being authorised (must differ from `msg.sender`).
+    /// @param allowed   `true` to grant, `false` to revoke.
+    function allowExercise(address exercisor, bool allowed) external {
+        if (exercisor == address(0)) revert InvalidAddress();
+        if (exercisor == msg.sender) revert InvalidAddress();
+        _exerciseAllowed[msg.sender][exercisor] = allowed;
+        emit ExerciseApproval(msg.sender, exercisor, allowed);
+    }
+
+    /// @notice Is `exercisor` authorised to burn `holder`'s options on their behalf? Set/cleared
+    ///         only via {allowExercise} — independent of {approveOperator}, which grants transfer
+    ///         (not burn) authority.
+    function exerciseAllowed(address holder, address exercisor) external view returns (bool) {
+        return _exerciseAllowed[holder][exercisor];
+    }
+
     /// @notice Opt in to {Option}'s auto-mint-on-send and auto-redeem-on-receive transfer behaviour.
-    /// @dev    Scoped to `msg.sender`. See {Option} for the full semantics — in short, enabling lets
-    ///         the caller treat Option and its backing collateral as interchangeable.
-    ///
-    /// Example:
-    /// ```solidity
-    /// factory.enableAutoMintRedeem(true);
-    /// // Now: `option.transfer(bob, 1e18)` will auto-mint if the sender is short Option but long collateral.
-    /// ```
-    function enableAutoMintRedeem(bool enabled) external {
-        autoMintRedeem[msg.sender] = enabled;
-        emit AutoMintRedeemUpdated(msg.sender, enabled);
+    function enableAutoMintBurn(bool enabled) external {
+        autoMintBurn[msg.sender] = enabled;
+        emit AutoMintBurnUpdated(msg.sender, enabled);
     }
 
     // ============ BLOCKLIST ============

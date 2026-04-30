@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Factory } from "../contracts/Factory.sol";
-import { Collateral } from "../contracts/Collateral.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
 import { Option } from "../contracts/Option.sol";
 import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
@@ -51,13 +51,13 @@ contract FeeOnTransferTest is Test {
     StableToken public stableToken;
     ShakyToken public shakyToken;
     FeeOnTransferToken public fotToken;
-    Collateral public redemptionClone;
+    Rct public redemptionClone;
     Option public optionClone;
     Factory public factory;
 
     IPermit2 permit2 = IPermit2(PERMIT2);
     Option option;
-    Collateral redemption;
+    Rct redemption;
 
     address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
@@ -79,7 +79,7 @@ contract FeeOnTransferTest is Test {
         fotToken.mint(address(this), 1_000_000 * 10 ** 18);
 
         // Deploy Collateral template
-        redemptionClone = new Collateral("Collateral Template", "COLL");
+        redemptionClone = new Rct("Rct Template", "RCT");
 
         // Deploy Option template
         optionClone = new Option("Option Template", "OPTT");
@@ -98,13 +98,15 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted collateral - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(
-            address(fotToken), // Blocklisted collateral
-            address(stableToken),
-            uint40(block.timestamp + 1 days),
-            1e18,
-            false
-        );
+        factory.createOption(CreateParams({
+            collateral: address(fotToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted consideration
@@ -114,13 +116,15 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted consideration - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(
-            address(stableToken),
-            address(fotToken), // Blocklisted consideration
-            uint40(block.timestamp + 1 days),
-            1e18,
-            false
-        );
+        factory.createOption(CreateParams({
+            collateral: address(stableToken),
+            consideration: address(fotToken),
+            expirationDate: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
     }
 
     /// @notice Test that owner can remove token from blocklist
@@ -134,9 +138,15 @@ contract FeeOnTransferTest is Test {
         assertFalse(factory.isBlocked(address(fotToken)));
 
         // Should now be able to create option (will fail at mint time though)
-        address optionAddress = factory.createOption(
-            address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
-        );
+        address optionAddress = factory.createOption(CreateParams({
+            collateral: address(fotToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
 
         assertTrue(optionAddress != address(0));
     }
@@ -153,12 +163,18 @@ contract FeeOnTransferTest is Test {
     /// @notice Test that FOT token fails at mint time due to balance check
     function test_FeeOnTransferFailsAtMint() public {
         // Create option with FOT token as collateral (not blocklisted)
-        address optionAddress = factory.createOption(
-            address(fotToken), address(stableToken), uint40(block.timestamp + 1 days), 1e18, false
-        );
+        address optionAddress = factory.createOption(CreateParams({
+            collateral: address(fotToken),
+            consideration: address(stableToken),
+            expirationDate: uint40(block.timestamp + 1 days),
+            strike: 1e18,
+            isPut: false,
+            isEuro: false,
+            windowSeconds: 0
+        }));
 
         option = Option(optionAddress);
-        redemption = Collateral(option.coll());
+        redemption = Rct(option.receipt());
 
         // Approve tokens
         fotToken.approve(address(factory), MAX160);
@@ -167,7 +183,7 @@ contract FeeOnTransferTest is Test {
         uint256 mintAmount = 1000 * 10 ** 18;
 
         // Try to mint - should fail because FOT token transfers less than requested
-        vm.expectRevert(Collateral.FeeOnTransferNotSupported.selector);
+        vm.expectRevert(Rct.FeeOnTransferNotSupported.selector);
         option.mint(mintAmount);
     }
 
@@ -182,19 +198,12 @@ contract FeeOnTransferTest is Test {
             strike: uint96(1e18),
             isPut: false,
             isEuro: false,
-            oracleSource: address(0),
-            twapWindow: 0
+            windowSeconds: 0
         });
 
-        address optionAddress = factory.createOption(
-            options[0].collateral,
-            options[0].consideration,
-            options[0].expirationDate,
-            options[0].strike,
-            options[0].isPut
-        );
+        address optionAddress = factory.createOption(options[0]);
         option = Option(optionAddress);
-        redemption = Collateral(option.coll());
+        redemption = Rct(option.receipt());
 
         // Approve tokens
         shakyToken.approve(address(factory), MAX160);

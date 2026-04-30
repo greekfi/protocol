@@ -8,10 +8,11 @@ pragma solidity ^0.8.30;
 /// @param strike         Strike price, 18-decimal fixed point (consideration per collateral; for puts
 ///                       this should be the inverted `1e36 / humanStrike`).
 /// @param isPut          `true` for puts.
-/// @param isEuro         `true` for European-style (no pre-expiry exercise; requires an oracle source).
-/// @param oracleSource   Optional: a deployed `IPriceOracle` whose expiration matches, OR a Uniswap v3 pool
-///                       to wrap inline, OR `address(0)` for American non-settled.
-/// @param twapWindow     TWAP window in seconds (used only when `oracleSource` is a v3 pool).
+/// @param isEuro         `true` for European-style options (exercise barred pre-expiry; only the
+///                       post-expiry window is exercisable). `false` for American.
+/// @param windowSeconds  Length in seconds of the post-expiry exercise window. `0` means use the
+///                       protocol default (8 hours = 28800). After `expirationDate + windowSeconds`,
+///                       exercise reverts and short-side redemption opens.
 struct CreateParams {
     address collateral;
     address consideration;
@@ -19,13 +20,12 @@ struct CreateParams {
     uint96 strike;
     bool isPut;
     bool isEuro;
-    address oracleSource;
-    uint32 twapWindow;
+    uint40 windowSeconds;
 }
 
 /// @title  IFactory — option pair deployer + allowance hub
 /// @author Greek.fi
-/// @notice Deploys Option + Collateral pairs via EIP-1167 clones, serves as the single ERC20 approval
+/// @notice Deploys Option + Receipt pairs via EIP-1167 clones, serves as the single ERC20 approval
 ///         point for every option pair it creates, and holds an operator + auto-mint-redeem registry.
 interface IFactory {
     /// @notice Emitted for every newly-created option.
@@ -36,16 +36,16 @@ interface IFactory {
         uint96 strike,
         bool isPut,
         bool isEuro,
-        address oracle,
+        uint40 windowSeconds,
         address indexed option,
-        address coll
+        address receipt
     );
     /// @notice Emitted on {blockToken} / {unblockToken}.
     event TokenBlocked(address token, bool blocked);
     /// @notice Emitted on {approveOperator}.
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
-    /// @notice Emitted on {enableAutoMintRedeem}.
-    event AutoMintRedeemUpdated(address indexed account, bool enabled);
+    /// @notice Emitted on {enableAutoMintBurn}.
+    event AutoMintBurnUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set).
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
@@ -57,15 +57,13 @@ interface IFactory {
     error InvalidTokens();
     /// @notice {transferFrom} called with `allowance < amount`.
     error InsufficientAllowance();
-    /// @notice `isEuro` requires an oracle source; none was provided.
-    error EuropeanRequiresOracle();
-    /// @notice `oracleSource` couldn't be classified (neither a deployed oracle nor a v3 pool).
-    error UnsupportedOracleSource();
 
-    /// @notice Collateral template clone.
-    function COLL_CLONE() external view returns (address);
+    /// @notice Receipt template clone.
+    function RECEIPT_CLONE() external view returns (address);
     /// @notice Option template clone.
     function OPTION_CLONE() external view returns (address);
+    /// @notice Default exercise window in seconds when `windowSeconds == 0` is supplied.
+    function DEFAULT_EXERCISE_WINDOW() external view returns (uint40);
     /// @notice `true` if `token` is blocklisted for new option creation.
     function blocklist(address token) external view returns (bool);
     /// @notice `true` if `opt` is an Option produced by this factory.
@@ -75,13 +73,13 @@ interface IFactory {
     /// @notice Alias for {blocklist}.
     function isBlocked(address token) external view returns (bool);
     /// @notice `true` if `account` has opted into Option's auto-mint / auto-redeem transfer hooks.
-    function autoMintRedeem(address account) external view returns (bool);
+    function autoMintBurn(address account) external view returns (bool);
     /// @notice `true` if `operator` has blanket authority over `owner`'s Option tokens.
     function approvedOperator(address owner, address operator) external view returns (bool);
 
     /// @notice Create a new Option + Collateral pair per the given parameters.
     function createOption(CreateParams memory params) external returns (address);
-    /// @notice Backward-compatibility overload for American non-settled options.
+    /// @notice Backward-compatibility overload: defaults `windowSeconds` to the protocol default.
     function createOption(address collateral, address consideration, uint40 expirationDate, uint96 strike, bool isPut)
         external
         returns (address);
@@ -96,7 +94,7 @@ interface IFactory {
     /// @notice Owner-only: reverse of {blockToken}.
     function unblockToken(address token) external;
     /// @notice Opt-in / opt-out of Option's auto-mint-on-transfer / auto-redeem-on-receive behaviour.
-    function enableAutoMintRedeem(bool enabled) external;
+    function enableAutoMintBurn(bool enabled) external;
     /// @notice Grant / revoke blanket operator authority over the caller's options.
     function approveOperator(address operator, bool approved) external;
 }

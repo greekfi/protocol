@@ -14,14 +14,14 @@ contract FixVaults is Script {
 
         // Vault 1 (WETH)
         v1.setupFactoryApproval();
-        v1.enableAutoMintRedeem(true);
+        v1.enableAutoMintBurn(true);
         // Have vault approve Bebop as operator on factory
         v1.execute(factory, abi.encodeWithSignature("approveOperator(address,bool)", bebop, true));
         console.log("Vault1 setup done");
 
         // Vault 2 (USDC)
         v2.setupFactoryApproval();
-        v2.enableAutoMintRedeem(true);
+        v2.enableAutoMintBurn(true);
         v2.execute(factory, abi.encodeWithSignature("approveOperator(address,bool)", bebop, true));
         console.log("Vault2 setup done");
 
