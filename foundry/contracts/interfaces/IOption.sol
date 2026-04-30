@@ -126,8 +126,8 @@ interface IOption {
     function exercise(address holder, uint256 amount) external;
     /// @notice Batch variant of {exercise}; caller receives all collateral, pays all consideration.
     function exercise(address[] calldata holders, uint256[] calldata amounts) external;
-    /// @notice Burn matched Option + Collateral pair; return collateral. Available the entire option lifetime.
-    function redeem(uint256 amount) external;
+    /// @notice Burn matched Option + Receipt pair; return collateral. Allowed pre-deadline only.
+    function burn(uint256 amount) external;
     /// @notice Emergency pause (owner-only).
     function lock() external;
     /// @notice Reverse of {lock}.

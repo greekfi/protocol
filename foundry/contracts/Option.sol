@@ -12,12 +12,12 @@ import { Receipt } from "./Receipt.sol";
 import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
 import { OptionUtils } from "./OptionUtils.sol";
 
-/// @dev Narrow view of {Factory} used by {Option} for auto-mint/auto-redeem lookups
+/// @dev Narrow view of {Factory} used by {Option} for auto-mint/auto-burn lookups
 ///      and operator (ERC1155-style blanket allowance) checks on transfers.
-interface IFactoryView {
+interface IFactory {
     function approvedOperator(address owner, address operator) external view returns (bool);
-    function autoMintRedeem(address account) external view returns (bool);
-    function exerciseAllowed(address holder, address operator) external view returns (bool);
+    function autoMintBurn(address account) external view returns (bool);
+    function exerciseAllowed(address holder, address exercisor) external view returns (bool);
 }
 
 /**
@@ -39,17 +39,17 @@ interface IFactoryView {
  *         `exerciseDeadline = expirationDate + windowSeconds` (default 8 hours, settable per
  *         option). The holder decides off-chain whether ITM is profitable and pays strike to
  *         exercise; the protocol just enforces timing and the 1:1 collateral invariant.
- *         Pair `redeem` (matched long+short burn) stays valid the entire option lifetime.
+ *         Pair `burn` (matched long+short burn) stays valid the entire option lifetime.
  *
- *         ### Auto-mint / auto-redeem
+ *         ### Auto-mint / auto-burn
  *
- *         Addresses that have opted in via `factory.enableAutoMintRedeem(true)` get two
+ *         Addresses that have opted in via `factory.enableAutoMintBurn(true)` get two
  *         transfer-time conveniences:
  *
  *         - **Auto-mint** — if the sender tries to transfer more `Option` than they hold,
  *           the contract pulls enough collateral from the sender and mints the deficit.
- *         - **Auto-redeem** — if the receiver already holds the matching {Receipt} ("short")
- *           token, incoming `Option` is immediately redeemed pair-wise, returning collateral.
+ *         - **Auto-burn** — if the receiver already holds the matching {Receipt} ("short")
+ *           token, incoming `Option` is immediately burned pair-wise, returning collateral.
  *
  *         Both behaviours are opt-in per-account and make it possible to treat `Option` and
  *         its underlying collateral as interchangeable for power users (e.g. vaults).
@@ -70,9 +70,10 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /// @notice Emitted when an option is exercised.
     /// @param longOption  The Option contract (always `address(this)`).
+    /// @param caller      The account that initiated the exercise.
     /// @param holder      The account whose options were burned.
     /// @param amount      Collateral units delivered (consideration paid is `toNeededConsideration(amount)`).
-    event Exercise(address longOption, address holder, uint256 amount);
+    event Exercise(address longOption, address caller, address holder, uint256 amount);
 
     /// @notice Emitted when the owner pauses the contract.
     event ContractLocked();
@@ -102,15 +103,24 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _;
     }
 
-    /// @dev Blocks transfer paths once the option has expired (long token stops circulating).
+    /// @dev Blocks `mint_` once the option has expired — no new options past expiration.
     modifier notExpired() {
         if (block.timestamp >= expirationDate()) revert ContractExpired();
         _;
     }
 
-    /// @dev Blocks exercise paths once the post-expiry window has closed.
-    modifier withinExerciseWindow() {
+    /// @dev Blocks transfer / pair-burn paths once the exercise window has closed; the long token
+    ///      remains circulating throughout the window so holders can still sell to keepers.
+    modifier notPastDeadline() {
         if (block.timestamp >= receipt.exerciseDeadline()) revert ExerciseWindowClosed();
+        _;
+    }
+
+    /// @dev Gates exercise paths. European reverts pre-expiry with the specific reason; both
+    ///      flavours revert with `ExerciseWindowClosed` past `exerciseDeadline`.
+    modifier canExercise() {
+        if (isEuro() && block.timestamp < expirationDate()) revert EuropeanExerciseDisabled();
+        if (block.timestamp > receipt.exerciseDeadline()) revert ExerciseWindowClosed();
         _;
     }
 
@@ -148,7 +158,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
     /// @notice Address of the {Factory} that created this option. Read from the paired Receipt.
     function factory() public view returns (address) {
-        return receipt.factory();
+        return address(receipt.factory());
     }
 
     /// @notice Underlying collateral token (e.g. WETH for a WETH/USDC call).
@@ -193,14 +203,14 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return IERC20Metadata(collateral()).decimals();
     }
 
-    /// @notice Human-readable token name in the form `OPT[E]-<coll>-<cons>-<strike>-<YYYY-MM-DD>`.
-    ///         The `OPTE-` prefix flags European options.
+    /// @notice Human-readable token name in the form `OPT[E/A]-<coll>-<cons>-<strike>-<YYYY-MM-DD>`.
+    ///         The `OPTE-` prefix flags European options, `OPTA-` flags American options.
     /// @dev For puts the displayed strike is inverted back (`1e36 / strike`) to the human form.
     function name() public view override returns (string memory) {
         uint256 displayStrike = isPut() && strike() > 0 ? (1e36 / strike()) : strike();
         return string(
             abi.encodePacked(
-                isEuro() ? "OPTE-" : "OPT-",
+                isEuro() ? "OPTE-" : "OPTA-",
                 IERC20Metadata(collateral()).symbol(),
                 "-",
                 IERC20Metadata(consideration()).symbol(),
@@ -238,32 +248,33 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         emit Mint(address(this), account, amount);
     }
 
-    // ============ TRANSFER (auto-mint + auto-redeem) ============
+    // ============ TRANSFER (auto-mint + auto-burn) ============
 
-    /// @dev Core transfer hook implementing auto-mint (sender) and auto-redeem (receiver).
-    ///      Both are gated on each party's `autoMintRedeem` opt-in held on the factory.
-    function _settledTransfer(address from, address to, uint256 amount) internal {
+    /// @dev Auto-mint (sender) + auto-burn (receiver) hook around the underlying ERC20 transfer.
+    ///      Both legs are gated on each party's `autoMintBurn` opt-in held on the factory.
+    ///      Not an override of OZ's `_transfer` (which is non-virtual) — callable from the public
+    ///      transfer paths only, so mint/burn don't trigger it.
+    function _settledTransfer(address from, address to, uint256 value) internal {
         uint256 balance = balanceOf(from);
-        if (balance < amount) {
-            if (!IFactoryView(factory()).autoMintRedeem(from)) revert InsufficientBalance();
-            uint256 deficit = amount - balance;
-            mint_(from, deficit);
+        if (balance < value) {
+            if (!IFactory(factory()).autoMintBurn(from)) revert InsufficientBalance();
+            mint_(from, value - balance);
         }
 
-        _transfer(from, to, amount);
+        _transfer(from, to, value);
 
-        if (IFactoryView(factory()).autoMintRedeem(to)) {
+        if (IFactory(factory()).autoMintBurn(to)) {
             uint256 receiptBal = receipt.balanceOf(to);
             if (receiptBal > 0) {
-                redeem_(to, Math.min(receiptBal, amount));
+                burn_(to, Math.min(receiptBal, value));
             }
         }
     }
 
     /// @inheritdoc ERC20
-    /// @dev Overridden to run the auto-mint / auto-redeem hook. Reverts post-expiry —
+    /// @dev Overridden to run the auto-mint / auto-burn hook. Reverts post-expiry —
     ///      the long token stops circulating once expiration passes.
-    function transfer(address to, uint256 amount) public override notExpired notLocked nonReentrant returns (bool) {
+    function transfer(address to, uint256 amount) public override notPastDeadline notLocked nonReentrant returns (bool) {
         _settledTransfer(msg.sender, to, amount);
         return true;
     }
@@ -274,12 +285,12 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function transferFrom(address from, address to, uint256 amount)
         public
         override
-        notExpired
+        notPastDeadline
         notLocked
         nonReentrant
         returns (bool)
     {
-        if (msg.sender != from && !IFactoryView(factory()).approvedOperator(from, msg.sender)) {
+        if (msg.sender != from && !IFactory(factory()).approvedOperator(from, msg.sender)) {
             _spendAllowance(from, msg.sender, amount);
         }
         _settledTransfer(from, to, amount);
@@ -306,18 +317,18 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @param amount Collateral units to exercise.
     function exercise(address holder, uint256 amount)
         public
-        withinExerciseWindow
+        canExercise
         notLocked
         nonReentrant
         validAmount(amount)
         sufficientBalance(holder, amount)
     {
-        if (msg.sender != holder && !IFactoryView(factory()).exerciseAllowed(holder, msg.sender)) {
+        if (msg.sender != holder && !IFactory(factory()).exerciseAllowed(holder, msg.sender)) {
             revert ExerciseNotAllowed();
         }
         _burn(holder, amount);
         receipt.exercise(msg.sender, amount, msg.sender);
-        emit Exercise(address(this), holder, amount);
+        emit Exercise(address(this), msg.sender, holder, amount);
     }
 
     /// @notice Batch variant of {exercise(address,uint256)}. Caller receives all collateral and
@@ -329,42 +340,42 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @param amounts Per-holder collateral units to exercise (must be same length as `holders`).
     function exercise(address[] calldata holders, uint256[] calldata amounts)
         external
-        withinExerciseWindow
+        canExercise
         notLocked
         nonReentrant
     {
         uint256 n = holders.length;
         if (n != amounts.length) revert InvalidValue();
         Receipt r = receipt;
-        IFactoryView f = IFactoryView(factory());
+        IFactory f = IFactory(factory());
         for (uint256 i = 0; i < n; i++) {
             address h = holders[i];
             uint256 a = amounts[i];
-            if (a == 0) continue;
+            if (a == 0) a = balanceOf(h);
             if (balanceOf(h) < a) continue;
             if (msg.sender != h && !f.exerciseAllowed(h, msg.sender)) continue;
             _burn(h, a);
             r.exercise(msg.sender, a, msg.sender);
-            emit Exercise(address(this), h, a);
+            emit Exercise(address(this), msg.sender, h, a);
         }
     }
 
-    // ============ PAIR REDEEM (always valid) ============
+    // ============ PAIR burn (always valid) ============
 
     /// @notice Burn matched `Option` + `Receipt` pairs to recover the underlying collateral.
     /// @dev    Available the entire option lifetime (pair redemption is always valid; it doesn't
     ///         depend on the window because both long and short are burned in equal amount).
     ///         Caller must hold both sides in equal amount.
-    /// @param amount Collateral-denominated amount to redeem from each side.
-    function redeem(uint256 amount) public notLocked nonReentrant {
-        redeem_(msg.sender, amount);
+    /// @param amount Collateral-denominated amount to burn from each side.
+    function burn(uint256 amount) public notLocked nonReentrant {
+        burn_(msg.sender, amount);
     }
 
-    /// @dev Internal pair-redeem. Burns Option side here, delegates Receipt-side burn + payout
+    /// @dev Internal pair-burn. Burns Option side here, delegates Receipt-side burn + payout
     ///      to the paired {Receipt} contract.
-    function redeem_(address account, uint256 amount) internal sufficientBalance(account, amount) {
+    function burn_(address account, uint256 amount) internal sufficientBalance(account, amount) {
         _burn(account, amount);
-        receipt._redeemPair(account, amount);
+        receipt.burn(account, amount);
     }
 
     // ============ QUERY ============

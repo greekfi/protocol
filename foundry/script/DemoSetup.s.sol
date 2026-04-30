@@ -28,14 +28,14 @@ contract DemoSetup is Script {
         vm.startBroadcast();
 
         // 1. Create options: shaky collateral, stable consideration, different expiries
-        address option1 = factory.createOption(shakyAddr, stableAddr, uint40(block.timestamp + 7 days), 1e18, true);
-        address option2 = factory.createOption(shakyAddr, stableAddr, uint40(block.timestamp + 30 days), 1e18, true);
+        address option1 = factory.createOption(CreateParams({collateral: shakyAddr, consideration: stableAddr, expirationDate: uint40(block.timestamp + 7 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
+        address option2 = factory.createOption(CreateParams({collateral: shakyAddr, consideration: stableAddr, expirationDate: uint40(block.timestamp + 30 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
         console.log("Option 7d:", option1);
         console.log("Option 30d:", option2);
 
         // 2. Configure vault
         vault.setupFactoryApproval();
-        vault.enableAutoMintRedeem(true);
+        vault.enableAutoMintBurn(true);
         vault.addOption(option1, BEBOP);
         vault.addOption(option2, BEBOP);
         vault.approveToken(address(shaky), BEBOP, type(uint256).max);

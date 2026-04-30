@@ -65,12 +65,7 @@ contract OptionTest is Test {
             windowSeconds: 0
         });
 
-        address optionAddress = factory.createOption(
-            options[0].collateral,
-            options[0].consideration,
-            options[0].expirationDate,
-            options[0].strike,
-            options[0].isPut
+        address optionAddress = factory.createOption(options[0]
         );
         option = Option(optionAddress);
 
@@ -110,7 +105,7 @@ contract OptionTest is Test {
     }
 
     function test_Transfer1() public {
-        factory.enableAutoMintRedeem(true);
+        factory.enableAutoMintBurn(true);
         uint256 collBefore = shakyToken.balanceOf(address(this));
         // Transfer without minting first — triggers auto-mint (requires opt-in)
         safeTransfer(address(option), address(0x123), 5);
@@ -126,7 +121,7 @@ contract OptionTest is Test {
     }
 
     function test_TransferTransfer() public {
-        factory.enableAutoMintRedeem(true); // opt-in for auto-redeem on receive
+        factory.enableAutoMintBurn(true); // opt-in for auto-redeem on receive
         option.mint(10);
         uint256 balance = option.balanceOf(address(this));
 
@@ -168,7 +163,7 @@ contract OptionTest is Test {
         uint256 optBalance = option.balanceOf(address(this));
 
         uint256 collBefore = shakyToken.balanceOf(address(this));
-        option.redeem(optBalance);
+        option.burn(optBalance);
 
         // Both option and redemption burned
         assertEq(option.balanceOf(address(this)), 0);
@@ -211,7 +206,7 @@ contract OptionTest is Test {
     function test_ZeroAmountRedeem() public {
         option.mint(1);
         vm.expectRevert(Rct.InvalidValue.selector);
-        option.redeem(0);
+        option.burn(0);
     }
 
     function test_InsufficientBalanceExercise() public {
@@ -223,7 +218,7 @@ contract OptionTest is Test {
     function test_InsufficientBalanceRedeem() public {
         option.mint(1);
         vm.expectRevert(Option.InsufficientBalance.selector);
-        option.redeem(2);
+        option.burn(2);
     }
 
     function test_DoubleExercise() public {
@@ -255,15 +250,12 @@ contract OptionTest is Test {
         option.mint(1);
     }
 
-    function test_PairRedeemAfterExpirationStillWorks() public {
-        // Pair redemption stays valid the entire option lifetime — it doesn't depend on the window.
+    function test_PairRedeemAfterDeadlineReverts() public {
+        // Past the exercise deadline, pair burn is closed — short side must use Receipt.redeem.
         option.mint(1);
         vm.warp(block.timestamp + 2 days);
-        uint256 collBefore = shakyToken.balanceOf(address(this));
-        option.redeem(1);
-        assertEq(option.balanceOf(address(this)), 0);
-        assertEq(redemption.balanceOf(address(this)), 0);
-        assertEq(shakyToken.balanceOf(address(this)) - collBefore, 1);
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
+        option.burn(1);
     }
 
     function test_ShortRedeemAfterExpiration() public {
@@ -342,7 +334,7 @@ contract OptionTest is Test {
     }
 
     function test_TransferChain() public {
-        factory.enableAutoMintRedeem(true); // opt-in for auto-redeem on receive
+        factory.enableAutoMintBurn(true); // opt-in for auto-redeem on receive
         option.mint(10);
         safeTransfer(address(option), address(0x123), 5);
 
@@ -383,7 +375,7 @@ contract OptionTest is Test {
     }
 
     function test_TransferAutoMint() public {
-        factory.enableAutoMintRedeem(true); // opt-in for auto-mint
+        factory.enableAutoMintBurn(true); // opt-in for auto-mint
         safeTransfer(address(option), address(0x123), 5);
         assertEq(option.balanceOf(address(0x123)), 5);
         // Fee-adjusted: mints slightly more to cover fee, so redemption balance >= 5
@@ -391,7 +383,7 @@ contract OptionTest is Test {
     }
 
     function test_TransferFromAutoRedeem() public {
-        factory.enableAutoMintRedeem(true); // opt-in for auto-redeem on receive
+        factory.enableAutoMintBurn(true); // opt-in for auto-redeem on receive
         option.mint(10);
         safeTransfer(address(option), address(0x123), 5);
 
@@ -409,7 +401,7 @@ contract OptionTest is Test {
         option.mint(5);
         option.exercise(5);
         vm.expectRevert(Option.InsufficientBalance.selector);
-        option.redeem(1);
+        option.burn(1);
     }
 
     function test_ShortRedeemWithMixedCollateral() public {
@@ -469,9 +461,9 @@ contract OptionTest is Test {
 
     function test_MultipleRedeemSessions() public {
         option.mint(10);
-        option.redeem(2);
-        option.redeem(3);
-        option.redeem(1);
+        option.burn(2);
+        option.burn(3);
+        option.burn(1);
 
         assertEq(option.balanceOf(address(this)), 4);
         assertEq(redemption.balanceOf(address(this)), 4);
@@ -539,7 +531,7 @@ contract OptionTest is Test {
         vm.prank(address(0x123));
         safeTransfer(address(option), address(0x456), 3);
 
-        option.redeem(5);
+        option.burn(5);
 
         assertEq(option.balanceOf(address(this)), 0);
         assertEq(redemption.balanceOf(address(this)), 5);
@@ -583,7 +575,7 @@ contract OptionTest is Test {
         // Put: collateral=stableToken, consideration=shakyToken
         // Exercising a put = selling collateral at strike price
         address putAddr =
-            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+            factory.createOption(CreateParams({collateral: stableTokenAddr, consideration: shakyTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
         Option putOption = Option(putAddr);
         Rct putReceipt = Rct(putOption.receipt());
 
@@ -615,7 +607,7 @@ contract OptionTest is Test {
     function test_PutNameDisplay() public {
         // Create put with strike=2000e18. For puts, name shows inverted: 1e36/2000e18 = 0.0005e18
         address putAddr =
-            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 2000e18, true);
+            factory.createOption(CreateParams({collateral: stableTokenAddr, consideration: shakyTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: true, isEuro: false, windowSeconds: 0}));
         Option putOption = Option(putAddr);
 
         assertTrue(putOption.isPut());
@@ -623,16 +615,17 @@ contract OptionTest is Test {
         // Name should start with "OPT-" and contain token symbols
         bytes memory nb = bytes(n);
         assertGt(nb.length, 10);
-        // Verify it starts with "OPT-"
+        // Verify it starts with "OPTA-" (American)
         assertEq(nb[0], "O");
         assertEq(nb[1], "P");
         assertEq(nb[2], "T");
-        assertEq(nb[3], "-");
+        assertEq(nb[3], "A");
+        assertEq(nb[4], "-");
     }
 
     function test_PutRedeem() public {
         address putAddr =
-            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+            factory.createOption(CreateParams({collateral: stableTokenAddr, consideration: shakyTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
         Option putOption = Option(putAddr);
         Rct putReceipt = Rct(putOption.receipt());
 
@@ -644,7 +637,7 @@ contract OptionTest is Test {
 
         // Redeem returns collateral (stableToken) and burns both tokens
         uint256 stableBefore = stableToken.balanceOf(address(this));
-        putOption.redeem(putBalance);
+        putOption.burn(putBalance);
 
         assertEq(putOption.balanceOf(address(this)), 0);
         assertEq(putReceipt.balanceOf(address(this)), 0);
@@ -653,7 +646,7 @@ contract OptionTest is Test {
 
     function test_PutPostExpirationRedeem() public {
         address putAddr =
-            factory.createOption(stableTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, true);
+            factory.createOption(CreateParams({collateral: stableTokenAddr, consideration: shakyTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
         Option putOption = Option(putAddr);
         Rct putReceipt = Rct(putOption.receipt());
 
@@ -687,7 +680,7 @@ contract OptionTest is Test {
 
         // Create option: 6-decimal collateral, 18-decimal consideration
         address optAddr =
-            factory.createOption(token6Addr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: token6Addr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Option opt = Option(optAddr);
         Rct red = opt.receipt();
 
@@ -715,7 +708,7 @@ contract OptionTest is Test {
 
         // Create option: 18-decimal collateral, 6-decimal consideration
         address optAddr =
-            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: token6Addr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Option opt = Option(optAddr);
         Rct red = opt.receipt();
 
@@ -738,7 +731,7 @@ contract OptionTest is Test {
 
         // 18-decimal collateral, 6-decimal consideration, strike=2000
         address optAddr =
-            factory.createOption(shakyTokenAddr, token6Addr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: token6Addr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Option opt = Option(optAddr);
         Rct red = opt.receipt();
 
@@ -765,7 +758,7 @@ contract OptionTest is Test {
     function test_Strike2000_Exercise() public {
         // ETH/USDC-like: strike=2000, both 18 decimals
         address optAddr =
-            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Option opt = Option(optAddr);
         Rct red = opt.receipt();
 
@@ -787,7 +780,7 @@ contract OptionTest is Test {
 
     function test_Strike2000_ToConsideration() public {
         address optAddr =
-            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Rct red = Option(optAddr).receipt();
 
         assertEq(red.toConsideration(1e18), 2000e18);
@@ -796,7 +789,7 @@ contract OptionTest is Test {
 
     function test_Strike2000_ToCollateral() public {
         address optAddr =
-            factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 2000e18, false);
+            factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 2000e18, isPut: false, isEuro: false, windowSeconds: 0}));
         Rct red = Option(optAddr).receipt();
 
         assertEq(red.toCollateral(2000e18), 1e18);
@@ -856,12 +849,12 @@ contract OptionTest is Test {
         string memory n = option.name();
         bytes memory nb = bytes(n);
 
-        // Format: "OPT-{collSymbol}-{consSymbol}-{strike}-{date}"
-        // Verify prefix
+        // Format: "OPT[A|E]-{collSymbol}-{consSymbol}-{strike}-{date}"
         assertEq(nb[0], "O");
         assertEq(nb[1], "P");
         assertEq(nb[2], "T");
-        assertEq(nb[3], "-");
+        assertEq(nb[3], "A");
+        assertEq(nb[4], "-");
         // Symbol == name
         assertEq(option.symbol(), n);
         // Decimals match collateral
@@ -892,7 +885,7 @@ contract OptionTest is Test {
     function test_ExerciseEmitsEvent() public {
         option.mint(1);
         vm.expectEmit(true, true, false, true);
-        emit Option.Exercise(address(option), address(this), 1);
+        emit Option.Exercise(address(option), address(this), address(this), 1);
         option.exercise(1);
     }
 
@@ -954,7 +947,7 @@ contract OptionTest is Test {
         uint256 optBalance = option.balanceOf(address(this));
         assertGt(optBalance, 0);
 
-        option.redeem(optBalance);
+        option.burn(optBalance);
 
         // Both tokens zero
         assertEq(option.balanceOf(address(this)), 0);
@@ -1009,17 +1002,17 @@ contract OptionTest is Test {
 
     function test_CreateOptionSameTokenReverts() public {
         vm.expectRevert(Factory.InvalidTokens.selector);
-        factory.createOption(shakyTokenAddr, shakyTokenAddr, uint40(block.timestamp + 1 days), 1e18, false);
+        factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: shakyTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 1e18, isPut: false, isEuro: false, windowSeconds: 0}));
     }
 
     function test_CreateOptionPastExpirationReverts() public {
         vm.expectRevert(Rct.InvalidValue.selector);
-        factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp - 1), 1e18, false);
+        factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp - 1), strike: 1e18, isPut: false, isEuro: false, windowSeconds: 0}));
     }
 
     function test_CreateOptionZeroStrikeReverts() public {
         vm.expectRevert(Rct.InvalidValue.selector);
-        factory.createOption(shakyTokenAddr, stableTokenAddr, uint40(block.timestamp + 1 days), 0, false);
+        factory.createOption(CreateParams({collateral: shakyTokenAddr, consideration: stableTokenAddr, expirationDate: uint40(block.timestamp + 1 days), strike: 0, isPut: false, isEuro: false, windowSeconds: 0}));
     }
 
     function test_ReinitCloneReverts() public {
@@ -1064,7 +1057,7 @@ contract OptionTest is Test {
         option.lock();
 
         vm.expectRevert(Option.LockedContract.selector);
-        option.redeem(1);
+        option.burn(1);
     }
 
     function test_LockPreventsCollateralRedeem() public {

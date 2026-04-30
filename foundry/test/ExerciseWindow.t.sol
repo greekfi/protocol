@@ -143,21 +143,22 @@ contract ExerciseWindowTest is Test {
         option.exercise(address(this), 1e18);
     }
 
-    function test_ExerciseOnBehalf_BlanketOperatorOk() public {
+    function test_ExerciseOnBehalf_OperatorAlone_Reverts() public {
+        // approveOperator grants transfer authority, NOT exercise authority — exercise must still
+        // be granted explicitly via allowExercise.
         address keeper = address(0xBEEF);
         cons.mint(keeper, 100e18);
         vm.startPrank(keeper);
         IERC20(address(cons)).approve(address(factory), MAX256);
         factory.approve(address(cons), MAX160);
         vm.stopPrank();
-        // approveOperator alone (no allowExercise) should also satisfy the check.
         factory.approveOperator(keeper, true);
 
         vm.warp(option.expirationDate() + 1);
 
         vm.prank(keeper);
+        vm.expectRevert(Option.ExerciseNotAllowed.selector);
         option.exercise(address(this), 1e18);
-        assertEq(coll.balanceOf(keeper), 1e18);
     }
 
     function test_ExerciseOnBehalf_AfterWindow_Reverts() public {
@@ -232,26 +233,46 @@ contract ExerciseWindowTest is Test {
         assertEq(redemption.balanceOf(address(this)), 0);
     }
 
-    // ============ pair redeem stays valid the entire lifetime ============
+    // ============ transfer follows the exercise deadline ============
+
+    function test_Transfer_PreExpiry_Works() public {
+        option.transfer(address(0xBEEF), 1e18);
+        assertEq(option.balanceOf(address(0xBEEF)), 1e18);
+    }
+
+    function test_Transfer_InWindow_Works() public {
+        // Inside the window, options should still circulate so holders can sell to keepers.
+        vm.warp(option.expirationDate() + (WINDOW / 2));
+        option.transfer(address(0xBEEF), 1e18);
+        assertEq(option.balanceOf(address(0xBEEF)), 1e18);
+    }
+
+    function test_Transfer_AfterDeadline_Reverts() public {
+        vm.warp(option.exerciseDeadline());
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
+        option.transfer(address(0xBEEF), 1e18);
+    }
+
+    // ============ pair burn follows the exercise deadline ============
 
     function test_PairRedeem_PreExpiry_Works() public {
-        option.redeem(1e18);
+        option.burn(1e18);
         assertEq(option.balanceOf(address(this)), 9e18);
         assertEq(redemption.balanceOf(address(this)), 9e18);
     }
 
     function test_PairRedeem_InWindow_Works() public {
         vm.warp(option.expirationDate() + (WINDOW / 2));
-        option.redeem(1e18);
+        option.burn(1e18);
         assertEq(option.balanceOf(address(this)), 9e18);
         assertEq(redemption.balanceOf(address(this)), 9e18);
     }
 
-    function test_PairRedeem_AfterWindow_Works() public {
+    function test_PairRedeem_AfterWindow_Reverts() public {
+        // Past the deadline pair burn is closed — short side must use Receipt.redeem (pro-rata).
         vm.warp(option.exerciseDeadline() + 1 days);
-        option.redeem(1e18);
-        assertEq(option.balanceOf(address(this)), 9e18);
-        assertEq(redemption.balanceOf(address(this)), 9e18);
+        vm.expectRevert(Option.ExerciseWindowClosed.selector);
+        option.burn(1e18);
     }
 
     // ============ European-flavour gating ============

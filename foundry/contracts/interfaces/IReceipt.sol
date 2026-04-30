@@ -103,7 +103,7 @@ interface IReceipt {
     /// @notice Redeem `amount` of `account`'s Receipt after the exercise window closes (anyone may call — sweeps).
     function redeem(address account, uint256 amount) external;
     /// @notice Pair-redeem helper called by the paired {IOption}; valid the entire option lifetime.
-    function _redeemPair(address account, uint256 amount) external;
+    function burn(address account, uint256 amount) external;
     /// @notice Convert Receipt directly to consideration at the strike rate.
     function redeemConsideration(uint256 amount) external;
     /// @notice Exercise path invoked by {IOption}: `caller` pays consideration; `account` receives collateral.

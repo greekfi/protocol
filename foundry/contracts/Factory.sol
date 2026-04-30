@@ -30,7 +30,7 @@ using SafeERC20 for ERC20;
  *            any Option produced by this factory on your behalf — the ERC-1155-style "setApprovalForAll"
  *            pattern. Used by trading venues and aggregators.
  *
- *         3. **Auto-mint / auto-redeem opt-in.** {enableAutoMintRedeem} flips a per-account flag that
+ *         3. **Auto-mint / auto-redeem opt-in.** {enableAutoMintBurn} flips a per-account flag that
  *            Option consults on transfer to auto-mint deficits and auto-redeem matched Option+Receipt
  *            on the receiving side.
  *
@@ -61,10 +61,11 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @notice Default post-expiry exercise window when `CreateParams.windowSeconds == 0`.
     uint40 public constant DEFAULT_EXERCISE_WINDOW = 8 hours;
 
-    /// @dev Registered Receipt clones — `transferFrom` is only callable by these.
-    mapping(address => bool) private receipts;
+    /// @notice `true` if the address is a Receipt clone this factory created. Doubles as the auth
+    ///         gate for {transferFrom} — only registered Receipts can pull from factory allowances.
+    mapping(address => bool) public receipts;
 
-    /// @notice `true` if the address is a Option clone this factory created.
+    /// @notice `true` if the address is an Option clone this factory created.
     mapping(address => bool) public options;
 
     /// @notice Tokens rejected for new option creation. Does not affect already-created options.
@@ -81,7 +82,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     mapping(address => mapping(address => bool)) private _exerciseAllowed;
 
     /// @notice Per-account opt-in for auto-mint on transfer and auto-redeem on receive in {Option}.
-    mapping(address => bool) public autoMintRedeem;
+    mapping(address => bool) public autoMintBurn;
 
     /// @notice Thrown when {createOption} is called against a blocklisted collateral or consideration token.
     error BlocklistedToken();
@@ -109,9 +110,9 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @notice Emitted on {approveOperator}.
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
     /// @notice Emitted on {allowExercise}.
-    event ExerciseApproval(address indexed holder, address indexed operator, bool allowed);
-    /// @notice Emitted on {enableAutoMintRedeem}.
-    event AutoMintRedeemUpdated(address indexed account, bool enabled);
+    event ExerciseApproval(address indexed holder, address indexed exercisor, bool allowed);
+    /// @notice Emitted on {enableAutoMintBurn}.
+    event AutoMintBurnUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set by token owner).
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
@@ -186,33 +187,6 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Backward-compatibility overload for the American flavour with the default window.
-    /// @param collateral_    Collateral token.
-    /// @param consideration_ Consideration token.
-    /// @param expirationDate_ Expiration timestamp.
-    /// @param strike_        18-decimal strike.
-    /// @param isPut_         Put/call flag.
-    /// @return New {Option} address.
-    function createOption(
-        address collateral_,
-        address consideration_,
-        uint40 expirationDate_,
-        uint96 strike_,
-        bool isPut_
-    ) external returns (address) {
-        return createOption(
-            CreateParams({
-                collateral: collateral_,
-                consideration: consideration_,
-                expirationDate: expirationDate_,
-                strike: strike_,
-                isPut: isPut_,
-                isEuro: false,
-                windowSeconds: 0
-            })
-        );
-    }
-
     // ============ CENTRALIZED TRANSFER ============
 
     /// @notice Pull `amount` of `token` from `from` to `to`. Only callable by Receipt clones
@@ -248,10 +222,10 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         return _allowances[token][owner_];
     }
 
-    /// @notice Set the caller's factory-level allowance for `token` to `amount`.
-    /// @dev    This is the shared approval consumed by every Option + Receipt pair created by
-    ///         this factory. Does not replace the ERC20-level `token.approve(factory, ...)` the
-    ///         user must also grant so the factory can call `safeTransferFrom` on the token.
+    /// @notice Permit2-style allowance: caller authorises the factory to pull up to `amount` of
+    ///         `token` (collateral or consideration) on their behalf when any Option / Receipt
+    ///         pair created by this factory needs to move it. The user must also have granted the
+    ///         underlying `token.approve(factory, ...)` so `safeTransferFrom` can land.
     /// @param token  ERC20 to be approved.
     /// @param amount Allowance to grant (use `type(uint256).max` for infinite).
     function approve(address token, uint256 amount) public {
@@ -280,39 +254,32 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         return _approvedOperators[owner_][operator];
     }
 
-    /// @notice Authorise `operator` to exercise the caller's options on their behalf.
-    /// @dev    Consumed by the on-behalf {Option.exercise(address,uint256,address)} overload, which
-    ///         burns the holder's option tokens, pulls consideration from `operator`, and delivers
-    ///         collateral to the operator-chosen recipient. Blanket {approveOperator} also satisfies
-    ///         the check, so callers who already trust an operator for transfers don't need to set
-    ///         this separately. Defaults to `false`; revoke by passing `allowed = false`.
-    /// @param operator Account being authorised (must differ from `msg.sender`).
-    /// @param allowed  `true` to grant, `false` to revoke.
-    function allowExercise(address operator, bool allowed) external {
-        if (operator == address(0)) revert InvalidAddress();
-        if (operator == msg.sender) revert InvalidAddress();
-        _exerciseAllowed[msg.sender][operator] = allowed;
-        emit ExerciseApproval(msg.sender, operator, allowed);
+    /// @notice Authorise `exercisor` to exercise the caller's options on their behalf.
+    /// @dev    Consumed by the on-behalf {Option.exercise(address,uint256)} overloads, which burn
+    ///         the holder's option tokens, pull consideration from `exercisor`, and deliver the
+    ///         collateral to `exercisor`. Distinct from {approveOperator}: that grants transfer
+    ///         authority over the holder's option tokens, this grants the right to *consume* them
+    ///         (burn). Defaults to `false`; revoke by passing `allowed = false`.
+    /// @param exercisor Account being authorised (must differ from `msg.sender`).
+    /// @param allowed   `true` to grant, `false` to revoke.
+    function allowExercise(address exercisor, bool allowed) external {
+        if (exercisor == address(0)) revert InvalidAddress();
+        if (exercisor == msg.sender) revert InvalidAddress();
+        _exerciseAllowed[msg.sender][exercisor] = allowed;
+        emit ExerciseApproval(msg.sender, exercisor, allowed);
     }
 
-    /// @notice Single-arg convenience: shorthand for `allowExercise(operator, true)`.
-    function allowExercise(address operator) external {
-        if (operator == address(0)) revert InvalidAddress();
-        if (operator == msg.sender) revert InvalidAddress();
-        _exerciseAllowed[msg.sender][operator] = true;
-        emit ExerciseApproval(msg.sender, operator, true);
-    }
-
-    /// @notice Is `operator` authorised to exercise `holder`'s options? `true` if the holder set
-    ///         it via {allowExercise} or granted blanket {approveOperator}.
-    function exerciseAllowed(address holder, address operator) external view returns (bool) {
-        return _exerciseAllowed[holder][operator] || _approvedOperators[holder][operator];
+    /// @notice Is `exercisor` authorised to burn `holder`'s options on their behalf? Set/cleared
+    ///         only via {allowExercise} — independent of {approveOperator}, which grants transfer
+    ///         (not burn) authority.
+    function exerciseAllowed(address holder, address exercisor) external view returns (bool) {
+        return _exerciseAllowed[holder][exercisor];
     }
 
     /// @notice Opt in to {Option}'s auto-mint-on-send and auto-redeem-on-receive transfer behaviour.
-    function enableAutoMintRedeem(bool enabled) external {
-        autoMintRedeem[msg.sender] = enabled;
-        emit AutoMintRedeemUpdated(msg.sender, enabled);
+    function enableAutoMintBurn(bool enabled) external {
+        autoMintBurn[msg.sender] = enabled;
+        emit AutoMintBurnUpdated(msg.sender, enabled);
     }
 
     // ============ BLOCKLIST ============

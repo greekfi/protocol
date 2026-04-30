@@ -37,7 +37,7 @@ using SafeERC20 for IERC20;
  *           operators sign RFQ quotes on its behalf.
  *         - **Operator registry** — `setOperator` delegates the vault's trading powers (`execute`,
  *           `burn`, `redeemExpired`, `removeOption`, signing). The vault owner is always authorised.
- *         - **Auto-mint** — with `setupFactoryApproval` + `enableAutoMintRedeem`, selling an option
+ *         - **Auto-mint** — with `setupFactoryApproval` + `enableAutoMintBurn`, selling an option
  *             inside a Bebop `swapSingle` automatically mints it against vault collateral.
  *
  *         ### Flow
@@ -345,7 +345,7 @@ contract YieldVault is
     /// @param amount Collateral-denominated pair amount to redeem.
     function burn(address option, uint256 amount) external onlyOperatorOrOwner nonReentrant {
         if (amount == 0) revert ZeroAmount();
-        IOption(option).redeem(amount);
+        IOption(option).burn(amount);
         emit OptionsBurned(option, amount);
     }
 
@@ -409,8 +409,8 @@ contract YieldVault is
 
     /// @notice Opt the vault into {Option}'s auto-mint-on-transfer / auto-redeem-on-receive hooks.
     /// @param enabled `true` to opt in, `false` to opt out.
-    function enableAutoMintRedeem(bool enabled) external onlyOwner {
-        factory.enableAutoMintRedeem(enabled);
+    function enableAutoMintBurn(bool enabled) external onlyOwner {
+        factory.enableAutoMintBurn(enabled);
     }
 
     /// @notice Approve `spender` to pull `amount` of `token` from the vault.

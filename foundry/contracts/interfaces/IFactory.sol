@@ -44,8 +44,8 @@ interface IFactory {
     event TokenBlocked(address token, bool blocked);
     /// @notice Emitted on {approveOperator}.
     event OperatorApproval(address indexed owner, address indexed operator, bool approved);
-    /// @notice Emitted on {enableAutoMintRedeem}.
-    event AutoMintRedeemUpdated(address indexed account, bool enabled);
+    /// @notice Emitted on {enableAutoMintBurn}.
+    event AutoMintBurnUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set).
     event Approval(address indexed token, address indexed owner, uint256 amount);
 
@@ -73,7 +73,7 @@ interface IFactory {
     /// @notice Alias for {blocklist}.
     function isBlocked(address token) external view returns (bool);
     /// @notice `true` if `account` has opted into Option's auto-mint / auto-redeem transfer hooks.
-    function autoMintRedeem(address account) external view returns (bool);
+    function autoMintBurn(address account) external view returns (bool);
     /// @notice `true` if `operator` has blanket authority over `owner`'s Option tokens.
     function approvedOperator(address owner, address operator) external view returns (bool);
 
@@ -94,7 +94,7 @@ interface IFactory {
     /// @notice Owner-only: reverse of {blockToken}.
     function unblockToken(address token) external;
     /// @notice Opt-in / opt-out of Option's auto-mint-on-transfer / auto-redeem-on-receive behaviour.
-    function enableAutoMintRedeem(bool enabled) external;
+    function enableAutoMintBurn(bool enabled) external;
     /// @notice Grant / revoke blanket operator authority over the caller's options.
     function approveOperator(address operator, bool approved) external;
 }

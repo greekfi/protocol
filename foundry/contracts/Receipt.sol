@@ -39,7 +39,7 @@ interface IFactoryTransfer {
  *         The holder decides off-chain whether the option is ITM and pays strike to exercise; the
  *         protocol just enforces timing and the 1:1 collateral invariant.
  *
- *         Pair-redeem (`_redeemPair`, called by Option) stays available the entire lifetime —
+ *         Pair-redeem (`burn`, called by Option) stays available the entire lifetime —
  *         it doesn't depend on the window because it burns matched long+short pairs.
  *
  *         ### Rounding
@@ -65,8 +65,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @notice Consideration / quote token (e.g. USDC). Accrues here from exercise payments.
     IERC20 public consideration;
 
-    /// @dev Factory handle used to pull tokens through its centralised allowance registry.
-    IFactoryTransfer public _factory;
+    /// @notice Factory that created this option, used to pull tokens through its Permit2-style
+    ///         allowance registry.
+    IFactoryTransfer public factory;
 
     /// @notice Unix timestamp at which the option expires.
     uint40 public expirationDate;
@@ -214,7 +215,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         if (option_ == address(0)) revert InvalidAddress();
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
-        if (windowSeconds_ == 0) revert InvalidValue();
+        if (isEuro_ && windowSeconds_ == 0) revert InvalidValue();
 
         collateral = IERC20(collateral_);
         consideration = IERC20(consideration_);
@@ -223,7 +224,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         strike = strike_;
         isPut = isPut_;
         isEuro = isEuro_;
-        _factory = IFactoryTransfer(factory_);
+        factory = IFactoryTransfer(factory_);
         consDecimals = IERC20Metadata(consideration_).decimals();
         collDecimals = IERC20Metadata(collateral_).decimals();
         _transferOwnership(option_);
@@ -251,7 +252,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
 
         uint256 balanceBefore = collateral.balanceOf(address(this));
         // forge-lint: disable-next-line(unsafe-typecast)
-        _factory.transferFrom(account, address(this), uint160(amount), address(collateral));
+        factory.transferFrom(account, address(this), uint160(amount), address(collateral));
         if (collateral.balanceOf(address(this)) - balanceBefore != amount) {
             revert FeeOnTransferNotSupported();
         }
@@ -259,7 +260,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         _mint(account, amount);
     }
 
-    // ============ PAIR REDEEM (called by Option, valid the entire lifetime) ============
+    // ============ PAIR BURN (called by Option, valid the entire lifetime) ============
 
     /// @notice Burn matched Option + Receipt pair, return collateral. Only callable by Option.
     /// @dev    Available the entire option lifetime — pair redemption doesn't depend on the
@@ -268,30 +269,21 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     ///         the collateral layer (defense-in-depth).
     /// @param account Recipient of the collateral.
     /// @param amount  Amount of Receipt tokens to burn.
-    function _redeemPair(address account, uint256 amount) public notLocked onlyOwner nonReentrant {
-        _redeemPairInternal(account, amount);
-    }
-
-    /// @dev Waterfall used by both `_redeemPair` and exercise-path fallback.
-    function _redeemPairInternal(address account, uint256 amount)
-        internal
+    function burn(address account, uint256 amount)
+        public
+        notLocked
+        onlyOwner
+        nonReentrant
         sufficientBalance(account, amount)
         validAmount(amount)
     {
-        // Waterfall: collateral first, consideration fallback (defense-in-depth).
-        uint256 balance = collateral.balanceOf(address(this));
-        uint256 collateralToSend = amount <= balance ? amount : balance;
-
-        _burn(account, collateralToSend);
-
-        if (balance < amount) {
-            _redeemConsideration(account, amount - balance);
-        }
-
-        if (collateralToSend > 0) {
-            collateral.safeTransfer(account, collateralToSend);
-        }
-        emit Redeemed(address(owner()), address(collateral), account, collateralToSend);
+        if (block.timestamp >= exerciseDeadline) revert ExerciseWindowClosed();
+        // Pair burn: caller already proved `Option.balanceOf >= amount` at the Option layer, and
+        // the global invariant `collateral.balanceOf(this) == Option.totalSupply()` guarantees
+        // enough collateral is on hand.
+        _burn(account, amount);
+        collateral.safeTransfer(account, amount);
+        emit Redeemed(address(owner()), address(collateral), account, amount);
     }
 
     // ============ EXERCISE ============
@@ -313,15 +305,16 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         sufficientCollateral(amount)
         validAmount(amount)
     {
+        address this_ = address(this);
         uint256 consAmount = toNeededConsideration(amount);
         if (consideration.balanceOf(caller) < consAmount) revert InsufficientConsideration();
         if (consAmount == 0) revert InvalidValue();
         if (consAmount > type(uint160).max) revert ArithmeticOverflow();
 
-        uint256 consBefore = consideration.balanceOf(address(this));
+        uint256 consBefore = consideration.balanceOf(this_);
         // forge-lint: disable-next-line(unsafe-typecast)
-        _factory.transferFrom(caller, address(this), uint160(consAmount), address(consideration));
-        if (consideration.balanceOf(address(this)) - consBefore < consAmount) revert FeeOnTransferNotSupported();
+        factory.transferFrom(caller, this_, uint160(consAmount), address(consideration));
+        if (consideration.balanceOf(this_) - consBefore < consAmount) revert FeeOnTransferNotSupported();
         collateral.safeTransfer(account, amount);
     }
 
@@ -507,8 +500,4 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return owner();
     }
 
-    /// @notice Factory that created this option.
-    function factory() public view returns (address) {
-        return address(_factory);
-    }
 }
