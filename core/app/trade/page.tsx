@@ -6,6 +6,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 import { useTokenMap } from "../mint/hooks/useTokenMap";
 import { CALL_UNDERLYINGS } from "../yield/data";
+import { HoldingsCard } from "./components/HoldingsCard";
 import { type OptionSelection, OptionsGrid } from "./components/OptionsGrid";
 import { TradePanel } from "./components/TradePanel";
 
@@ -25,6 +26,12 @@ export default function TradePage() {
     isBuy: boolean;
   } | null>(null);
 
+  const handleSelectSymbol = (symbol: string) => {
+    // Switching the underlying invalidates any in-flight buy/sell — drop it.
+    if (symbol !== selectedSymbol) setSelectedOption(null);
+    setSelectedSymbol(symbol);
+  };
+
   const handleSelectOption = (selection: OptionSelection) => {
     setSelectedOption({
       optionAddress: selection.option.optionAddress,
@@ -41,40 +48,55 @@ export default function TradePage() {
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
       <div className="max-w-7xl mx-auto p-6 flex flex-col items-center text-center">
-        {/* Underlying picker — the page title lives in the navbar (SiteHeader). */}
-        <div className="mb-8 mt-6">
-          <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={setSelectedSymbol} />
-        </div>
+        {/* Single unified card. Once an option is picked, the TokenGrid pill
+            moves *inside* the buy action card. */}
+        <div className="w-full mt-6 p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6 text-center">
+          {!selectedOption && (
+            <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={handleSelectSymbol} />
+          )}
 
-        {/* Options chain section: trade panel slot on top, grid below.
-            text-center centers the placeholder/inline content; the
-            min-h-[6rem] wrapper around TradePanel uses flex justify-center
-            so the action+approvals row sits in the middle of the card. */}
-        {selectedTokenAddress && (
-          <div className="w-full p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6 text-center">
-            <div className="min-h-[6rem] flex justify-center">
+          {selectedTokenAddress && (
+            <>
+              {/* Top row: when an option is selected the TradePanel hosts
+                  all 4 columns (action, balances, approvals, holdings)
+                  inline. Otherwise the placeholder + Holdings sit
+                  side-by-side. */}
               {selectedOption ? (
-                <TradePanel selectedOption={selectedOption} onClose={() => setSelectedOption(null)} />
+                <TradePanel
+                  selectedOption={selectedOption}
+                  onClose={() => setSelectedOption(null)}
+                  tokenSelector={
+                    <TokenGrid
+                      tokens={CALL_UNDERLYINGS}
+                      selected={selectedSymbol}
+                      onSelect={handleSelectSymbol}
+                    />
+                  }
+                  holdings={<HoldingsCard />}
+                />
               ) : (
-                <div className="text-sm text-gray-500 italic self-center">
-                  Pick a strike and expiry below to load the trade panel.
+                <div className="min-h-[6rem] flex flex-wrap justify-center items-start gap-4">
+                  <div className="flex-1 flex justify-center min-w-0">
+                    <div className="text-sm text-gray-500 italic self-center">
+                      Pick a strike and expiry below to load the trade panel.
+                    </div>
+                  </div>
+                  <HoldingsCard />
                 </div>
               )}
-            </div>
 
-            <div className="border-t border-gray-800 -mx-6" />
-
-            <OptionsGrid
-              selectedToken={selectedTokenAddress}
-              onSelectOption={handleSelectOption}
-              selected={
-                selectedOption
-                  ? { optionAddress: selectedOption.optionAddress, isBuy: selectedOption.isBuy }
-                  : null
-              }
-            />
-          </div>
-        )}
+              <OptionsGrid
+                selectedToken={selectedTokenAddress}
+                onSelectOption={handleSelectOption}
+                selected={
+                  selectedOption
+                    ? { optionAddress: selectedOption.optionAddress, isBuy: selectedOption.isBuy }
+                    : null
+                }
+              />
+            </>
+          )}
+        </div>
       </div>
       <SiteFooter />
     </div>

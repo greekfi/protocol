@@ -1,9 +1,54 @@
+import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
 import { formatStrikeValue } from "../../lib/strike";
 import { useDirectPrices } from "../hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
+
+function CheckboxToggle({
+  checked,
+  onChange,
+  label,
+  accent,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+  /** Tailwind color suffix used for the checked state (e.g. "blue", "purple", "gray"). */
+  accent: "blue" | "purple" | "gray";
+}) {
+  // Pre-build the class strings — Tailwind's JIT can't pick up dynamic
+  // template-literal classes like `bg-${accent}-600`.
+  const accentClasses = {
+    blue: "bg-blue-600 border-blue-600",
+    purple: "bg-purple-600 border-purple-600",
+    gray: "bg-gray-500 border-gray-500",
+  }[accent];
+  const labelColor = checked ? "text-white" : "text-gray-400";
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex items-center gap-2 px-2 py-1 rounded text-sm font-medium hover:bg-gray-800/60 transition-colors"
+    >
+      <span
+        className={clsx(
+          "inline-flex items-center justify-center w-4 h-4 rounded-sm border transition-colors",
+          checked ? accentClasses : "border-gray-600 bg-transparent",
+        )}
+        aria-hidden
+      >
+        {checked && (
+          <svg viewBox="0 0 12 12" width="10" height="10" fill="none">
+            <path d="M2.5 6.2L4.8 8.5L9.5 3.8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span className={labelColor}>{label}</span>
+    </button>
+  );
+}
 
 export interface OptionSelection {
   option: TradableOption;
@@ -123,45 +168,24 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
 
   return (
     <div className="overflow-x-auto">
-      <div className="flex flex-wrap items-center gap-4 mb-4">
-        <h2 className="text-xl font-light text-blue-300 mr-auto">Options Chain</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCalls(!showCalls)}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              showCalls ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-600"
-            }`}
-          >
-            Calls
-          </button>
-          <button
-            onClick={() => setShowPuts(!showPuts)}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              showPuts ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-400 border border-gray-600"
-            }`}
-          >
-            Puts
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          {expirations.map(exp => {
-            const date = new Date(Number(exp) * 1000);
-            const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-            return (
-              <button
-                key={exp}
-                onClick={() => toggleExpiration(exp)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  visibleExpirations.has(exp)
-                    ? "bg-gray-600 text-white"
-                    : "bg-gray-800 text-gray-400 border border-gray-600"
-                }`}
-              >
-                {dateStr}
-              </button>
-            );
-          })}
-        </div>
+      {/* Filter row — Calls / Puts and expiration dates as a single group of
+          checkbox-style toggles so it's obvious they multi-select. */}
+      <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 mb-4">
+        <CheckboxToggle checked={showCalls} onChange={() => setShowCalls(!showCalls)} label="Calls" accent="blue" />
+        <CheckboxToggle checked={showPuts} onChange={() => setShowPuts(!showPuts)} label="Puts" accent="purple" />
+        {expirations.map(exp => {
+          const date = new Date(Number(exp) * 1000);
+          const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          return (
+            <CheckboxToggle
+              key={exp}
+              checked={visibleExpirations.has(exp)}
+              onChange={() => toggleExpiration(exp)}
+              label={dateStr}
+              accent="gray"
+            />
+          );
+        })}
       </div>
 
       {/* w-auto + mx-auto: cells size to content (no padding stretch on wide
