@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
 import { formatStrikeValue } from "../../lib/strike";
 import { useTokenSpot } from "../../lib/useTokenSpot";
@@ -95,9 +95,9 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   const spotFromLlama = useTokenSpot(selectedSymbol);
 
   // Group options by strike and expiration
-  const { strikes, expirations, grid } = useMemo(() => {
+  const { strikes, expirations, grid, spot } = useMemo(() => {
     if (!options || options.length === 0) {
-      return { strikes: [], expirations: [], grid: new Map<string, GridCell>() };
+      return { strikes: [], expirations: [], grid: new Map<string, GridCell>(), spot: undefined };
     }
 
     // Strike window: ±100% of spot, i.e. |strike − spot| ≤ spot ⇒ strike ∈
@@ -158,7 +158,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
     });
 
     const sortedStrikes = Array.from(strikesSet).sort((a, b) => {
-      return Number(BigInt(a) - BigInt(b));
+      return Number(BigInt(b) - BigInt(a));
     });
 
     const sortedExpirations = Array.from(expirationsSet).sort((a, b) => {
@@ -169,6 +169,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
       strikes: sortedStrikes,
       expirations: sortedExpirations,
       grid: gridMap,
+      spot,
     };
   }, [options, directPrices, spotFromLlama]);
 
@@ -194,6 +195,20 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   // Filter expirations to only show visible ones
   const filteredExpirations = expirations.filter(exp => visibleExpirations.has(exp));
 
+  // Find the strike row index where the spot price line should sit. Strikes
+  // are sorted descending, so we insert *before* the first strike <= spot —
+  // a spot of 2350 between strikes 2400 and 2300 paints the line between
+  // those two rows. If spot is below or above every strike (or unknown) we
+  // don't render the line.
+  const spotWei = spot !== undefined ? BigInt(Math.round(spot * 1e18)) : undefined;
+  const spotInsertIndex =
+    spotWei !== undefined ? strikes.findIndex(s => BigInt(s) <= spotWei) : -1;
+  const showSpotLine = spotInsertIndex > 0 && spotInsertIndex < strikes.length;
+  const totalCols =
+    (showCalls ? filteredExpirations.length * 2 : 0) +
+    1 +
+    (showPuts ? filteredExpirations.length * 2 : 0);
+
   if (isLoading) {
     return <div className="text-blue-300">Loading options...</div>;
   }
@@ -204,11 +219,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
 
   return (
     <div className="overflow-x-auto">
-      {/* Filter row — Calls / Puts and expiration dates as a single group of
-          checkbox-style toggles so it's obvious they multi-select. */}
+      {/* Filter row — expiration dates only (calls + puts always render). */}
       <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 mb-4">
-        <CheckboxToggle checked={showCalls} onChange={() => setShowCalls(!showCalls)} label="Calls" accent="blue" />
-        <CheckboxToggle checked={showPuts} onChange={() => setShowPuts(!showPuts)} label="Puts" accent="purple" />
         {expirations.map(exp => {
           const date = new Date(Number(exp) * 1000);
           const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -233,7 +245,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
             {showCalls && (
               <th
                 colSpan={filteredExpirations.length * 2}
-                className="p-2 text-center text-blue-400 bg-blue-900/20 border-r border-gray-700"
+                className="p-2 text-center text-gray-400 border-r border-gray-700"
               >
                 CALLS
               </th>
@@ -244,7 +256,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
             {showPuts && (
               <th
                 colSpan={filteredExpirations.length * 2}
-                className="p-2 text-center text-purple-400 bg-purple-900/20 border-l border-gray-700"
+                className="p-2 text-center text-gray-400 border-l border-gray-700"
               >
                 PUTS
               </th>
@@ -260,8 +272,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   <th key={`call-${exp}`} colSpan={2} className="p-1 text-center border-r border-gray-800">
                     <div className="text-gray-400 text-xs">{dateStr}</div>
                     <div className="flex text-[10px] mt-1">
-                      <span className="flex-1 text-orange-400">Bid</span>
-                      <span className="flex-1 text-blue-400">Ask</span>
+                      <span className="flex-1 text-gray-500">Bid</span>
+                      <span className="flex-1 text-gray-500">Ask</span>
                     </div>
                   </th>
                 );
@@ -274,8 +286,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   <th key={`put-${exp}`} colSpan={2} className="p-1 text-center border-l border-gray-800">
                     <div className="text-gray-400 text-xs">{dateStr}</div>
                     <div className="flex text-[10px] mt-1">
-                      <span className="flex-1 text-orange-400">Bid</span>
-                      <span className="flex-1 text-blue-400">Ask</span>
+                      <span className="flex-1 text-gray-500">Bid</span>
+                      <span className="flex-1 text-gray-500">Ask</span>
                     </div>
                   </th>
                 );
@@ -283,11 +295,24 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
           </tr>
         </thead>
         <tbody>
-          {strikes.map(strike => {
+          {strikes.map((strike, idx) => {
             const strikeFormatted = formatStrikeValue(BigInt(strike));
+            const renderSpotLine = showSpotLine && idx === spotInsertIndex;
 
             return (
-              <tr key={strike} className="border-b border-gray-800">
+              <Fragment key={strike}>
+                {renderSpotLine && (
+                  <tr aria-label={`spot price ${spot}`}>
+                    <td colSpan={totalCols} className="p-0">
+                      <div className="relative h-0 border-t border-emerald-400/70">
+                        <span className="absolute -top-[9px] left-1/2 -translate-x-1/2 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 bg-black">
+                          spot ${spot !== undefined ? spot.toLocaleString(undefined, { maximumFractionDigits: 2 }) : ""}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                <tr className="border-b border-gray-800">
                 {/* Call columns for each expiration */}
                 {showCalls &&
                   filteredExpirations.map(exp => {
@@ -354,7 +379,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                       </td>
                     );
                   })}
-              </tr>
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>
@@ -390,10 +416,9 @@ function PriceCell({
   }
   const active =
     selected?.optionAddress.toLowerCase() === opt.optionAddress.toLowerCase() && selected.isBuy === isBuy;
-  // Bid = orange, Ask = blue. Both calls and puts use the same colour scheme.
-  const colour = isBuy
-    ? "text-blue-300 hover:text-blue-200"
-    : "text-orange-300 hover:text-orange-200";
+  // Bid + Ask both render white for a quieter grid; the active/hover box still
+  // distinguishes the two via colour.
+  const colour = "text-white/90 hover:text-white";
   // Same fill+border on hover as on active, so the hovered cell previews
   // exactly what selecting it will look like. Transparent default border
   // reserves the 1px so hovering doesn't nudge the layout.

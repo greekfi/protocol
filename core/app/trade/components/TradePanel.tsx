@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
-import { useReadOptionBalancesOf } from "~~/generated";
+import { useReadOptionBalancesOf, useReadOptionIsEuro } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
 import { Hint } from "../../components/Hint";
 import { useTokenSpot } from "../../lib/useTokenSpot";
@@ -32,6 +32,9 @@ interface TradePanelProps {
   /** Optional 4th-column slot — rendered alongside Balances + Approvals so
    *  every panel shares the same flex-wrap row. */
   holdings?: React.ReactNode;
+  /** Counter bumped by callers (e.g. HoldingsCard's Exercise link) to
+   *  request the exercise box be opened. */
+  openExerciseSignal?: number;
 }
 
 function displayStrike(strike: bigint, isPut: boolean): number {
@@ -60,7 +63,13 @@ function formatBalance(raw: bigint | undefined, decimals: number): string {
   return n.toPrecision(2);
 }
 
-export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }: TradePanelProps) {
+export function TradePanel({
+  selectedOption,
+  onClose,
+  tokenSelector,
+  holdings,
+  openExerciseSignal,
+}: TradePanelProps) {
   const chainId = useChainId();
   const { allTokensMap } = useTokenMap();
   const { address: userAddress } = useAccount();
@@ -71,14 +80,31 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!userAddress },
   });
+  const { data: isEuro } = useReadOptionIsEuro({
+    address: selectedOption.optionAddress as `0x${string}`,
+  });
 
   const [direction, setDirection] = useState<TradeDirection>(selectedOption.isBuy ? "buy" : "sell");
   const [amount, setAmount] = useState<string>("1");
+  // The two inputs are linked; activeInput tracks which side the user typed
+  // last so we don't overwrite their cursor. The option amount is the source
+  // of truth for the quote — USDC is just a derived view (or the inverse,
+  // depending on which side is active).
+  const [usdcInput, setUsdcInput] = useState<string>("");
+  const [activeInput, setActiveInput] = useState<"option" | "usdc">("option");
 
   // Sync direction with the selection coming from OptionsGrid (Buy/Sell button).
   useEffect(() => {
     setDirection(selectedOption.isBuy ? "buy" : "sell");
   }, [selectedOption.isBuy, selectedOption.optionAddress]);
+
+  const [showExercise, setShowExercise] = useState(false);
+  // Collapse exercise when the user picks a different option.
+  useEffect(() => setShowExercise(false), [selectedOption.optionAddress]);
+  // Open exercise when the parent bumps the signal (e.g. HoldingsCard click).
+  useEffect(() => {
+    if (openExerciseSignal !== undefined && openExerciseSignal > 0) setShowExercise(true);
+  }, [openExerciseSignal]);
 
   const optionToken = selectedOption.optionAddress;
   const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
@@ -157,12 +183,36 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       ? pricePerOption * amountFloat
       : undefined;
 
+  // Keep the USDC input mirrored to the quote when the user is driving the
+  // option side. When the user is typing in the USDC input, leave their
+  // text alone — we already updated `amount` to keep the quote in sync.
+  useEffect(() => {
+    if (activeInput === "option" && usdcDisplay !== undefined) {
+      setUsdcInput(usdcDisplay.toFixed(2));
+    }
+  }, [activeInput, usdcDisplay]);
+
   const usdcCostWei = quote?.sellAmount ? BigInt(quote.sellAmount) : undefined;
   const hasEnoughUsdc =
     direction === "buy" &&
     usdcCostWei !== undefined &&
     approvals.usdcBalance !== undefined &&
     approvals.usdcBalance >= usdcCostWei;
+
+  const sellAmountWei = approvals.optionAmountWei;
+  const hasEnoughOption =
+    direction === "sell" &&
+    optionBalances !== undefined &&
+    sellAmountWei > 0n &&
+    optionBalances.option >= sellAmountWei;
+  const insufficientMessage =
+    direction === "buy"
+      ? !hasEnoughUsdc && usdcCostWei !== undefined && usdcCostWei > 0n
+        ? "Not enough USDC"
+        : null
+      : !hasEnoughOption && sellAmountWei > 0n
+        ? "Not enough OPT"
+        : null;
 
   const disabledReason = !approvals.allSatisfied
     ? "Finish the approvals in the card on the right"
@@ -172,7 +222,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         : "No quote available — is the market maker running?"
       : isTrading
         ? "Waiting for on-chain confirmation"
-        : undefined;
+        : insufficientMessage ?? undefined;
 
   // ApprovalsCard inputs.
   const usdcSymbol =
@@ -199,12 +249,24 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
     )?.decimals ?? approvals.usdcDecimals;
 
+  // OPT row collapses long + short into one number. Long-only renders as a
+  // positive amount, short-only as negative. If the user holds both sides the
+  // row shows them side-by-side with explicit signs, e.g. "+1, -0.3".
+  const optValue = optionBalances
+    ? optionBalances.option > 0n && optionBalances.receipt > 0n
+      ? `+${formatBalance(optionBalances.option, approvals.optionDecimals)}, -${formatBalance(optionBalances.receipt, approvals.optionDecimals)}`
+      : optionBalances.option > 0n
+        ? formatBalance(optionBalances.option, approvals.optionDecimals)
+        : optionBalances.receipt > 0n
+          ? `-${formatBalance(optionBalances.receipt, approvals.optionDecimals)}`
+          : "0"
+    : "—";
   const balances: BalanceRow[] = optionBalances
     ? [
         {
-          label: collSymbol,
-          value: formatBalance(optionBalances.collateral, collDecimals),
-          dim: optionBalances.collateral === 0n,
+          label: "OPT",
+          value: optValue,
+          dim: optionBalances.option === 0n && optionBalances.receipt === 0n,
         },
         {
           label: consSymbol,
@@ -212,14 +274,9 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           dim: optionBalances.consideration === 0n,
         },
         {
-          label: "Option",
-          value: formatBalance(optionBalances.option, approvals.optionDecimals),
-          dim: optionBalances.option === 0n,
-        },
-        {
-          label: "Short",
-          value: formatBalance(optionBalances.receipt, approvals.optionDecimals),
-          dim: optionBalances.receipt === 0n,
+          label: collSymbol,
+          value: formatBalance(optionBalances.collateral, collDecimals),
+          dim: optionBalances.collateral === 0n,
         },
       ]
     : [];
@@ -290,115 +347,202 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 min-w-[18rem] max-w-[22rem] flex-1">
-        <div className="mb-3 flex items-center gap-3 flex-wrap">
-          {tokenSelector}
-          {spotPrice !== undefined && (
-            <span className="text-sm text-gray-400">
-              spot <span className="text-emerald-300 tabular-nums">${formatMoney(spotPrice)}</span>
-            </span>
-          )}
-          <div className="text-base font-semibold text-white tabular-nums">
-            {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
+        {/* Left side: descriptor + inputs + price + warnings */}
+        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="mb-3 text-base font-semibold text-white tabular-nums leading-tight">
+          <div>
+            {strikeLabel} · {expiryLabel}
+          </div>
+          <div>
+            {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+            {selectedOption.isPut ? "Put" : "Call"}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 items-stretch">
-          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-44">
-            <input
-              type="text"
-              inputMode="decimal"
-              maxLength={8}
-              value={amount}
-              onChange={e => {
-                const v = e.target.value;
-                if (/^\d*\.?\d*$/.test(v) && v.length <= 8) setAmount(v);
-              }}
-              placeholder="0"
-              className="w-full px-3 py-2 bg-transparent text-blue-100 text-base outline-none tabular-nums"
-            />
-            <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">option</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleTrade}
-            disabled={!quote || isTrading || !approvals.allSatisfied}
-            className={`px-3 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors ${
-              direction === "buy"
-                ? "bg-blue-500 hover:bg-blue-400"
-                : "bg-orange-500 hover:bg-orange-400"
-            }`}
-            title={disabledReason}
-          >
-            {isTrading
-              ? direction === "buy"
-                ? "Buying…"
-                : "Selling…"
-              : status === "success"
-                ? direction === "buy"
-                  ? "Bought ✓"
-                  : "Sold ✓"
-                : direction === "buy"
-                  ? "Buy"
-                  : "Sell"}
-          </button>
+        <div className="mb-2 text-sm text-gray-500">
+          <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>{" "}
+          per option
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className={direction === "buy" ? "text-blue-300" : "text-orange-300"}>
-            {direction === "buy" ? "Cost" : "Receive"}{" "}
-            <span className="font-medium tabular-nums">
-              {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
-            </span>
-            {direction === "buy" && usdcCostWei !== undefined && (
-              <span
-                className={`ml-1 ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
-                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+        <div className="flex flex-col gap-2">
+          {/* Row 1: OPT input + Sell|Buy direction toggle */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
+              <input
+                type="text"
+                inputMode="decimal"
+                maxLength={8}
+                value={amount}
+                onFocus={() => setActiveInput("option")}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (!/^\d*\.?\d*$/.test(v) || v.length > 8) return;
+                  setActiveInput("option");
+                  setAmount(v);
+                }}
+                placeholder="0"
+                className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
+              />
+              {(() => {
+                // sell → user's long balance; buy → most options affordable
+                // with current USDC at the current per-option price.
+                let maxN: number | undefined;
+                if (direction === "sell" && optionBalances?.option !== undefined) {
+                  maxN = Number(formatUnits(optionBalances.option, optionDecimals));
+                } else if (
+                  direction === "buy" &&
+                  approvals.usdcBalance !== undefined &&
+                  pricePerOption !== undefined &&
+                  pricePerOption > 0
+                ) {
+                  maxN = Number(formatUnits(approvals.usdcBalance, approvals.usdcDecimals)) / pricePerOption;
+                }
+                if (!maxN || !Number.isFinite(maxN) || maxN <= 0) return null;
+                const maxStr = maxN >= 1 ? maxN.toFixed(4) : maxN.toPrecision(4);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveInput("option");
+                      setAmount(maxStr);
+                    }}
+                    className="px-1 text-[10px] uppercase tracking-wider text-blue-300 hover:text-blue-200"
+                  >
+                    max
+                  </button>
+                );
+              })()}
+              <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">OPT</span>
+            </div>
+            <div className="flex rounded-md border border-gray-700 overflow-hidden text-[11px] shrink-0">
+              <button
+                type="button"
+                onClick={() => setDirection("sell")}
+                className={`px-1.5 py-0.5 ${direction === "sell" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
               >
-                {hasEnoughUsdc ? "✓" : "✗"}
-              </span>
-            )}
-          </span>
-          <span className="text-gray-500">
-            Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
-          </span>
-          {/* Buy/Sell toggle sits flush right next to the per-option price. */}
-          <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs ml-auto">
-            <button
-              type="button"
-              onClick={() => setDirection("buy")}
-              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-blue-300 hover:bg-black/60"}`}
-            >
-              Buy
-            </button>
-            <button
-              type="button"
-              onClick={() => setDirection("sell")}
-              className={`px-2 py-1 ${direction === "sell" ? "bg-orange-500 text-white" : "bg-black/40 text-orange-300 hover:bg-black/60"}`}
-            >
-              Sell
-            </button>
+                Sell
+              </button>
+              <button
+                type="button"
+                onClick={() => setDirection("buy")}
+                className={`px-1.5 py-0.5 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+              >
+                Buy
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: USDC input + primary action button */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
+              <input
+                type="text"
+                inputMode="decimal"
+                maxLength={12}
+                value={usdcInput}
+                onFocus={() => setActiveInput("usdc")}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (!/^\d*\.?\d*$/.test(v) || v.length > 12) return;
+                  setActiveInput("usdc");
+                  setUsdcInput(v);
+                  const usdcN = parseFloat(v);
+                  if (pricePerOption !== undefined && pricePerOption > 0 && Number.isFinite(usdcN)) {
+                    if (usdcN > 0) {
+                      const opts = usdcN / pricePerOption;
+                      setAmount(opts >= 1 ? opts.toFixed(4) : opts.toPrecision(4));
+                    } else {
+                      setAmount("");
+                    }
+                  }
+                }}
+                placeholder="0"
+                className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
+              />
+              <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
+            </div>
+            {(() => {
+              const tradeBtn = (
+                <button
+                  type="button"
+                  onClick={handleTrade}
+                  disabled={
+                    !quote ||
+                    isTrading ||
+                    !approvals.allSatisfied ||
+                    !!insufficientMessage
+                  }
+                  className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
+                >
+                  {isTrading
+                    ? direction === "buy"
+                      ? "Buying…"
+                      : "Selling…"
+                    : status === "success"
+                      ? direction === "buy"
+                        ? "Bought ✓"
+                        : "Sold ✓"
+                      : direction === "buy"
+                        ? "Buy"
+                        : "Sell"}
+                </button>
+              );
+              return disabledReason ? (
+                <Hint tip={disabledReason} above underline={false}>
+                  {tradeBtn}
+                </Hint>
+              ) : (
+                tradeBtn
+              );
+            })()}
           </div>
         </div>
+
+        {insufficientMessage && (
+          <div className="mt-2 text-xs text-amber-300/90">{insufficientMessage}</div>
+        )}
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
+        </div>
+
+        {/* Right side: token selector + spot, balances, holdings */}
+        <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
+          <div className="flex flex-col items-start gap-1">
+            {tokenSelector}
+            {spotPrice !== undefined && (
+              <span className="text-xs text-gray-400">
+                spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
+              </span>
+            )}
+          </div>
+          {balances.length > 0 && (
+            <div className="pt-2 border-t border-gray-700/40">
+              <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                Balances
+              </div>
+              <ul className="flex flex-col gap-1 text-sm tabular-nums">
+                {balances.map(b => (
+                  <li key={b.label} className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
+                    <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="pt-2 border-t border-gray-700/40">{holdings}</div>
+        </div>
       </div>
 
-      {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
-          Holdings on the left, the Approvals list on the right, on one
-          row. Drops the second card entirely so the panel reads
-          left-to-right (action → balances + holdings/approvals). */}
-      <div className="min-w-[20rem] flex-1 max-w-[28rem]">
+      {/* Trading Approvals column */}
+      <div className="w-[16rem] max-w-full">
         <ApprovalsCard
           steps={[]}
-          balances={balances}
-          balancesLayout="grid"
           footer={
             <div className="space-y-3">
-              <div>{holdings}</div>
-              <div className="pt-3 border-t border-gray-700/40">
+              <div>
                 <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
                   <Hint
                     width="w-72"
@@ -427,13 +571,16 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         />
       </div>
 
-      <ExercisePanel
-        optionAddress={selectedOption.optionAddress}
-        considerationAddress={selectedOption.considerationAddress}
-        optionDecimals={optionDecimals}
-        consDecimals={consDecimals}
-        consSymbol={consSymbol}
-      />
+      {showExercise && (
+        <ExercisePanel
+          optionAddress={selectedOption.optionAddress}
+          considerationAddress={selectedOption.considerationAddress}
+          optionDecimals={optionDecimals}
+          consDecimals={consDecimals}
+          consSymbol={consSymbol}
+          onClose={() => setShowExercise(false)}
+        />
+      )}
     </div>
   );
 }
@@ -460,14 +607,14 @@ function ApprovalsList({
   // checkmark once done. Same shape/size in both states so the labels stay
   // at the same x-position across rows. Done pills are non-interactive.
   const PILL_BASE =
-    "inline-flex items-center justify-center min-w-[4.25rem] px-2 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
+    "inline-flex items-center justify-center min-w-[3rem] px-1 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+    <ul className="flex flex-col gap-1.5 text-sm">
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
           {step.done ? (
             <span
-              className="inline-flex items-center justify-center min-w-[4.25rem] text-emerald-400 text-base shrink-0"
+              className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base shrink-0"
               aria-hidden
             >
               ✓
