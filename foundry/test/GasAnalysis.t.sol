@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Test } from "forge-std/Test.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Factory } from "../contracts/Factory.sol";
-import { Receipt as Rct } from "../contracts/Receipt.sol";
-import { Option } from "../contracts/Option.sol";
-import { CreateParams } from "../contracts/interfaces/IFactory.sol";
-import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
+import {Test} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Factory} from "../contracts/Factory.sol";
+import {Receipt as Rct} from "../contracts/Receipt.sol";
+import {Option} from "../contracts/Option.sol";
+import {CreateParams} from "../contracts/interfaces/IFactory.sol";
+import {ShakyToken, StableToken} from "../contracts/mocks/ShakyToken.sol";
+import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
 
 /**
  * @title GasAnalysis
@@ -113,7 +113,17 @@ contract GasAnalysis is Test {
     }
 
     function test_Gas_Factory_CreateOption_DirectCall() public {
-        factory.createOption(CreateParams({collateral: address(shakyToken), consideration: address(stableToken), expirationDate: uint40(block.timestamp + 60 days), strike: 2e18, isPut: false, isEuro: false, windowSeconds: 0}));
+        factory.createOption(
+            CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 60 days),
+                strike: 2e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
     }
 
     function testFuzz_Gas_Factory_CreateMultipleOptions(uint8 count) public {
