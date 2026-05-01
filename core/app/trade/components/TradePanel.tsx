@@ -221,16 +221,19 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   // direction-aware `needs*Approval` flags (via approvals.allSatisfied).
   const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
   const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
+  // Labels are token-only — the Approve button next to each row already
+  // says "Approve". Tooltips carry the longer "for Bebop / via operator"
+  // explanation for users who hover.
   const steps = [
     {
-      label: `Approve ${usdcSymbol} → Bebop`,
+      label: usdcSymbol,
       done: usdcApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveUsdc,
       title: "Lets Bebop pull USDC when buying or buying-back option tokens.",
     },
     {
-      label: `Approve option → Bebop`,
+      label: "Option",
       done: optionApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveOption,
@@ -329,22 +332,80 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
       </div>
 
-      {/* Balances column. Four token rows pack as a 2×2 grid; Holdings
-          renders in the card's footer slot so it shares the column width
-          and isn't its own flex item. */}
-      <div className="min-w-[16rem] flex-1 max-w-[20rem]">
+      {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
+          Holdings on the left, the Approvals list on the right, on one
+          row. Drops the second card entirely so the panel reads
+          left-to-right (action → balances + holdings/approvals). */}
+      <div className="min-w-[20rem] flex-1 max-w-[28rem]">
         <ApprovalsCard
           steps={[]}
           balances={balances}
           balancesLayout="grid"
-          footer={holdings}
+          footer={
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <div>{holdings}</div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                  Approvals
+                </div>
+                <ApprovalsList steps={steps} />
+              </div>
+            </div>
+          }
         />
       </div>
-
-      {/* Approvals column */}
-      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
-        <ApprovalsCard steps={steps} />
-      </div>
     </div>
+  );
+}
+
+/**
+ * Inline approvals list extracted so the trade panel can render it inside
+ * the combined balances+holdings+approvals card without nesting another
+ * full ApprovalsCard (which would re-print the section headers and chrome).
+ */
+function ApprovalsList({
+  steps,
+}: {
+  steps: Array<{
+    label: string;
+    done: boolean;
+    pending: boolean;
+    onAction?: () => void;
+    title?: string;
+  }>;
+}) {
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {steps.map(step => (
+        <li key={step.label} className="flex items-center justify-between gap-2 text-sm">
+          <span className="flex items-center gap-2 min-w-0">
+            <span
+              className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
+                step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
+              }`}
+              aria-hidden
+            >
+              {step.done ? "✓" : ""}
+            </span>
+            <span
+              className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
+              title={step.title}
+            >
+              {step.label}
+            </span>
+          </span>
+          {!step.done && step.onAction && (
+            <button
+              type="button"
+              onClick={step.onAction}
+              disabled={step.pending}
+              className="px-2 py-0.5 rounded-md bg-[#FF8300] hover:bg-[#e07400] text-black text-xs font-semibold disabled:opacity-50 transition-colors shrink-0"
+            >
+              {step.pending ? "…" : "Approve"}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
