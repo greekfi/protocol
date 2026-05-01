@@ -10,12 +10,7 @@ import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
 import type { TradableOption } from "../hooks/useTradableOptions";
 import { type TradeDirection, useTradeApprovals } from "../hooks/useTradeApprovals";
-
-const USDC: Record<number, string> = {
-  1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-};
+import { usdcFor } from "../../data/chains";
 
 interface TradePanelProps {
   selectedOption: {
@@ -83,7 +78,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   }, [selectedOption.isBuy, selectedOption.optionAddress]);
 
   const optionToken = selectedOption.optionAddress;
-  const paymentToken = USDC[chainId] ?? USDC[1];
+  const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
 
   // Option ERC20 decimals mirror collateral decimals (see Option.sol). The
   // Bebop quote needs the *raw* token amount, so we must use this — not the

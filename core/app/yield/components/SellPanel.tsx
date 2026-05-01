@@ -6,6 +6,7 @@ import { useBebopTrade } from "../../trade/hooks/useBebopTrade";
 import type { TradableOption } from "../../trade/hooks/useTradableOptions";
 import type { SellApprovals } from "../hooks/useSellApprovals";
 import { PayoffSummary } from "./PayoffSummary";
+import { usdcFor } from "../../data/chains";
 
 const ERC20_ABI = [
   {
@@ -16,12 +17,6 @@ const ERC20_ABI = [
     outputs: [{ type: "uint8" }],
   },
 ] as const;
-
-const USDC: Record<number, string> = {
-  1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-};
 
 function displayStrike(opt: TradableOption): number {
   const raw = opt.isPut && opt.strike > 0n ? 10n ** 36n / opt.strike : opt.strike;
@@ -62,7 +57,7 @@ export function SellPanel({
   approvals,
 }: SellPanelProps) {
   const chainId = useChainId();
-  const paymentToken = USDC[chainId] ?? USDC[1];
+  const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
   const optionToken = option?.optionAddress;
 
   const { data: usdcDecimalsData } = useReadContract({
