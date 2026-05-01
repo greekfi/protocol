@@ -368,14 +368,6 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
       </div>
 
-      <ExercisePanel
-        optionAddress={selectedOption.optionAddress}
-        considerationAddress={selectedOption.considerationAddress}
-        optionDecimals={optionDecimals}
-        consDecimals={consDecimals}
-        consSymbol={consSymbol}
-      />
-
       {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
           Holdings on the left, the Approvals list on the right, on one
           row. Drops the second card entirely so the panel reads
@@ -401,6 +393,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           }
         />
       </div>
+
+      <ExercisePanel
+        optionAddress={selectedOption.optionAddress}
+        considerationAddress={selectedOption.considerationAddress}
+        optionDecimals={optionDecimals}
+        consDecimals={consDecimals}
+        consSymbol={consSymbol}
+      />
     </div>
   );
 }
