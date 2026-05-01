@@ -27,8 +27,17 @@ const enabledNetworks = filteredNetworks.length > 0 ? filteredNetworks : targetN
 
 export const enabledChains = enabledNetworks;
 
+// Each viem chain object carries discriminated literals (transaction type,
+// formatters, contract refs) that don't unify across an array — adding Ink
+// alongside Arbitrum/Base produces a heterogeneous tuple. `createConfig`'s
+// generic inference picks up those literal types and chokes on the tuple
+// even when the array element type is plainly `Chain`. Cast through `any`
+// to short-circuit the inference; runtime is unchanged.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const chainsForConfig = enabledChains as any as readonly [chains.Chain, ...chains.Chain[]];
+
 export const wagmiConfig = createConfig({
-  chains: enabledChains as unknown as readonly [chains.Chain, ...chains.Chain[]],
+  chains: chainsForConfig,
   ssr: true,
   client: ({ chain }) => {
     const rpcUrl = rpcOverrides?.[chain.id as keyof typeof rpcOverrides];
