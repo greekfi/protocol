@@ -33,9 +33,13 @@ interface HoldingsCardProps {
    *  is nested inside another card (e.g. as the footer of the balances
    *  ApprovalsCard on /trade). Default: standalone with chrome. */
   bare?: boolean;
+  /** When provided, each row becomes clickable and emits the holding back
+   *  to the parent — same selection flow as clicking Sell/Buy on the
+   *  options grid. */
+  onSelect?: (h: HeldOption) => void;
 }
 
-export function HoldingsCard({ bare = false }: HoldingsCardProps = {}) {
+export function HoldingsCard({ bare = false, onSelect }: HoldingsCardProps = {}) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
   const { allTokensMap } = useTokenMap();
 
@@ -50,8 +54,8 @@ export function HoldingsCard({ bare = false }: HoldingsCardProps = {}) {
     const symbol = underlying?.symbol ?? `${underlyingAddr.slice(0, 6)}…`;
     // Option/Receipt ERC20s mirror the collateral's decimals.
     const decimals = tokenFor(h.collateral)?.decimals ?? 18;
-    return (
-      <li key={h.option} className="flex items-baseline justify-between gap-3 tabular-nums">
+    const inner = (
+      <>
         <span className="truncate text-gray-300">
           {symbol} {formatStrike(h.strike, h.isPut)} {h.isPut ? "P" : "C"} ·{" "}
           <span className="text-gray-500">{formatExpiry(h.expiration)}</span>
@@ -64,6 +68,26 @@ export function HoldingsCard({ bare = false }: HoldingsCardProps = {}) {
             <span className="text-orange-300">S {formatAmount(h.receiptBalance, decimals)}</span>
           )}
         </span>
+      </>
+    );
+
+    if (!onSelect) {
+      return (
+        <li key={h.option} className="flex items-baseline justify-between gap-3 tabular-nums">
+          {inner}
+        </li>
+      );
+    }
+
+    return (
+      <li key={h.option}>
+        <button
+          type="button"
+          onClick={() => onSelect(h)}
+          className="w-full flex items-baseline justify-between gap-3 tabular-nums px-1.5 py-1 -mx-1.5 rounded hover:bg-blue-500/10 hover:text-white transition-colors text-left"
+        >
+          {inner}
+        </button>
       </li>
     );
   };

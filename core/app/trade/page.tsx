@@ -6,6 +6,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 import { useTokenMap } from "../mint/hooks/useTokenMap";
 import { CALL_UNDERLYINGS } from "../yield/data";
+import type { HeldOption } from "./hooks/useAllHeldOptions";
 import { HoldingsCard } from "./components/HoldingsCard";
 import { type OptionSelection, OptionsGrid } from "./components/OptionsGrid";
 import { TradePanel } from "./components/TradePanel";
@@ -44,6 +45,26 @@ export default function TradePage() {
     });
   };
 
+  // Click a holding → jump into the trade panel for that option. Switch the
+  // underlying selector so the OptionsGrid shows the matching chain. Default
+  // direction: sell to close a long; buy to close a naked short.
+  const handleSelectHolding = (h: HeldOption) => {
+    const underlyingAddr = h.isPut ? h.consideration : h.collateral;
+    const symbol = Object.values(allTokensMap).find(
+      t => t.address.toLowerCase() === underlyingAddr.toLowerCase(),
+    )?.symbol;
+    if (symbol) setSelectedSymbol(symbol);
+    setSelectedOption({
+      optionAddress: h.option,
+      strike: h.strike,
+      expiration: h.expiration,
+      isPut: h.isPut,
+      collateralAddress: h.collateral,
+      considerationAddress: h.consideration,
+      isBuy: h.optionBalance > 0n ? false : true,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
@@ -72,7 +93,7 @@ export default function TradePage() {
                       onSelect={handleSelectSymbol}
                     />
                   }
-                  holdings={<HoldingsCard bare />}
+                  holdings={<HoldingsCard bare onSelect={handleSelectHolding} />}
                 />
               ) : (
                 <div className="min-h-[6rem] flex flex-wrap justify-center items-start gap-4">
@@ -81,7 +102,7 @@ export default function TradePage() {
                       Pick a strike and expiry below to load the trade panel.
                     </div>
                   </div>
-                  <HoldingsCard />
+                  <HoldingsCard onSelect={handleSelectHolding} />
                 </div>
               )}
 
