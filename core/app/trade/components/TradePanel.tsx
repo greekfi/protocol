@@ -340,81 +340,102 @@ export function TradePanel({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-stretch">
-          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
-            <input
-              type="text"
-              inputMode="decimal"
-              maxLength={8}
-              value={amount}
-              onFocus={() => setActiveInput("option")}
-              onChange={e => {
-                const v = e.target.value;
-                if (!/^\d*\.?\d*$/.test(v) || v.length > 8) return;
-                setActiveInput("option");
-                setAmount(v);
-              }}
-              placeholder="0"
-              className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
-            />
-            <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">OPT</span>
-          </div>
-
-          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
-            <input
-              type="text"
-              inputMode="decimal"
-              maxLength={12}
-              value={usdcInput}
-              onFocus={() => setActiveInput("usdc")}
-              onChange={e => {
-                const v = e.target.value;
-                if (!/^\d*\.?\d*$/.test(v) || v.length > 12) return;
-                setActiveInput("usdc");
-                setUsdcInput(v);
-                const usdcN = parseFloat(v);
-                if (pricePerOption !== undefined && pricePerOption > 0 && Number.isFinite(usdcN)) {
-                  if (usdcN > 0) {
-                    const opts = usdcN / pricePerOption;
-                    setAmount(opts >= 1 ? opts.toFixed(4) : opts.toPrecision(4));
-                  } else {
-                    setAmount("");
-                  }
-                }
-              }}
-              placeholder="0"
-              className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
-            />
-            {direction === "buy" && usdcCostWei !== undefined && (
-              <span
-                className={`pr-1 text-xs ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
-                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+        <div className="flex flex-col gap-2">
+          {/* Row 1: OPT input + Sell|Buy direction toggle */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] flex-1">
+              <input
+                type="text"
+                inputMode="decimal"
+                maxLength={8}
+                value={amount}
+                onFocus={() => setActiveInput("option")}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (!/^\d*\.?\d*$/.test(v) || v.length > 8) return;
+                  setActiveInput("option");
+                  setAmount(v);
+                }}
+                placeholder="0"
+                className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
+              />
+              <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">OPT</span>
+            </div>
+            <div className="flex rounded-md border border-gray-700 overflow-hidden text-[11px] shrink-0">
+              <button
+                type="button"
+                onClick={() => setDirection("sell")}
+                className={`px-1.5 py-0.5 ${direction === "sell" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
               >
-                {hasEnoughUsdc ? "✓" : "✗"}
-              </span>
-            )}
-            <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
+                Sell
+              </button>
+              <button
+                type="button"
+                onClick={() => setDirection("buy")}
+                className={`px-1.5 py-0.5 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+              >
+                Buy
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleTrade}
-            disabled={!quote || isTrading || !approvals.allSatisfied}
-            className="px-3 py-1 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
-            title={disabledReason}
-          >
-            {isTrading
-              ? direction === "buy"
-                ? "Buying…"
-                : "Selling…"
-              : status === "success"
+          {/* Row 2: USDC input + primary action button */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] flex-1">
+              <input
+                type="text"
+                inputMode="decimal"
+                maxLength={12}
+                value={usdcInput}
+                onFocus={() => setActiveInput("usdc")}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (!/^\d*\.?\d*$/.test(v) || v.length > 12) return;
+                  setActiveInput("usdc");
+                  setUsdcInput(v);
+                  const usdcN = parseFloat(v);
+                  if (pricePerOption !== undefined && pricePerOption > 0 && Number.isFinite(usdcN)) {
+                    if (usdcN > 0) {
+                      const opts = usdcN / pricePerOption;
+                      setAmount(opts >= 1 ? opts.toFixed(4) : opts.toPrecision(4));
+                    } else {
+                      setAmount("");
+                    }
+                  }
+                }}
+                placeholder="0"
+                className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
+              />
+              {direction === "buy" && usdcCostWei !== undefined && (
+                <span
+                  className={`pr-1 text-xs ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
+                  title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+                >
+                  {hasEnoughUsdc ? "✓" : "✗"}
+                </span>
+              )}
+              <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleTrade}
+              disabled={!quote || isTrading || !approvals.allSatisfied}
+              className="shrink-0 px-3 py-1 rounded-lg text-white text-base font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
+              title={disabledReason}
+            >
+              {isTrading
                 ? direction === "buy"
-                  ? "Bought ✓"
-                  : "Sold ✓"
-                : direction === "buy"
-                  ? "Buy"
-                  : "Sell"}
-          </button>
+                  ? "Buying…"
+                  : "Selling…"
+                : status === "success"
+                  ? direction === "buy"
+                    ? "Bought ✓"
+                    : "Sold ✓"
+                  : direction === "buy"
+                    ? "Buy"
+                    : "Sell"}
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
@@ -424,26 +445,10 @@ export function TradePanel({
           <button
             type="button"
             onClick={() => setShowExercise(s => !s)}
-            className="text-xs text-gray-400 hover:text-blue-300 underline-offset-4 hover:underline"
+            className="text-xs text-gray-400 hover:text-blue-300 underline-offset-4 hover:underline ml-auto"
           >
             {showExercise ? "hide exercise" : "exercise"}
           </button>
-          <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs ml-auto">
-            <button
-              type="button"
-              onClick={() => setDirection("sell")}
-              className={`px-2 py-1 ${direction === "sell" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
-            >
-              Sell
-            </button>
-            <button
-              type="button"
-              onClick={() => setDirection("buy")}
-              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
-            >
-              Buy
-            </button>
-          </div>
         </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}

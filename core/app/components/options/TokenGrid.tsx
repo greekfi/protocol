@@ -158,9 +158,12 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
         key={token.symbol}
         type="button"
         onClick={handleClick}
-        style={{ flex: "0 0 7.5rem" }}
+        // Compact (selected + collapsed) → size to content. Otherwise reserve
+        // a uniform 7.5rem so the picker grid lines up neatly.
+        style={opts.collapsedExtras ? undefined : { flex: "0 0 7.5rem" }}
         className={clsx(
-          "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
+          "flex flex-col items-start gap-1 rounded-lg border text-left transition-colors",
+          opts.collapsedExtras ? "px-2 py-1" : "px-3 py-2",
           active
             ? "bg-black/60 border-gray-600"
             : "bg-black/40 border-gray-800 hover:border-gray-700 hover:bg-black/60",
