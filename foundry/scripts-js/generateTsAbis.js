@@ -417,7 +417,9 @@ async function main() {
     });
   });
 
-  const NEXTJS_TARGET_DIR = "../abi/";
+  // abi/ moved under core/ so the Vercel build doesn't need
+  // "Include source files outside of the Root Directory" turned on.
+  const NEXTJS_TARGET_DIR = "../core/abi/";
   const CHAINS_DIR = join(NEXTJS_TARGET_DIR, "chains");
 
   if (!existsSync(NEXTJS_TARGET_DIR)) {
