@@ -347,19 +347,13 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[18rem]">
-        <div className="mb-3 flex items-center gap-3 flex-wrap">
-          <div className="text-base font-semibold text-white tabular-nums">
-            {strikeLabel} · {expiryLabel} ·{" "}
-            {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
-            {selectedOption.isPut ? "Put" : "Call"}
-          </div>
-          {spotPrice !== undefined && (
-            <span className="text-sm text-gray-400">
-              spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
-            </span>
-          )}
-          <div className="ml-auto">{tokenSelector}</div>
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[30rem] flex gap-4">
+        {/* Left side: descriptor + inputs + price + warnings */}
+        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="mb-3 text-base font-semibold text-white tabular-nums">
+          {strikeLabel} · {expiryLabel} ·{" "}
+          {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+          {selectedOption.isPut ? "Put" : "Call"}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -496,37 +490,46 @@ export function TradePanel({
           </span>
         </div>
 
-        {balances.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-700/40">
-            <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-              Balances
-            </div>
-            <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm tabular-nums">
-              {balances.map(b => (
-                <li key={b.label} className="flex items-center justify-between gap-2 min-w-0">
-                  <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
-                  <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
+        </div>
+
+        {/* Right side: token selector + spot, balances, holdings */}
+        <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
+          <div className="flex flex-col items-start gap-1">
+            {tokenSelector}
+            {spotPrice !== undefined && (
+              <span className="text-xs text-gray-400">
+                spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
+              </span>
+            )}
+          </div>
+          {balances.length > 0 && (
+            <div className="pt-2 border-t border-gray-700/40">
+              <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                Balances
+              </div>
+              <ul className="flex flex-col gap-1 text-sm tabular-nums">
+                {balances.map(b => (
+                  <li key={b.label} className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
+                    <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="pt-2 border-t border-gray-700/40">{holdings}</div>
+        </div>
       </div>
 
-      {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
-          Holdings on the left, the Approvals list on the right, on one
-          row. Drops the second card entirely so the panel reads
-          left-to-right (action → balances + holdings/approvals). */}
+      {/* Trading Approvals column */}
       <div className="w-[16rem] max-w-full">
         <ApprovalsCard
           steps={[]}
           footer={
             <div className="space-y-3">
-              <div>{holdings}</div>
-              <div className="pt-3 border-t border-gray-700/40">
+              <div>
                 <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
                   <Hint
                     width="w-72"
