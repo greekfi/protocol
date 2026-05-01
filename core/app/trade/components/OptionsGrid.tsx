@@ -321,7 +321,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   })}
 
                 {/* Strike */}
-                <td className="p-2 text-center text-white font-medium bg-gray-900/50">${strikeFormatted}</td>
+                <td className="p-2 text-right text-white font-medium bg-gray-900/50 tabular-nums">${strikeFormatted}</td>
 
                 {/* Put columns for each expiration */}
                 {showPuts &&
@@ -409,7 +409,7 @@ function PriceCell({
       <button
         onClick={() => onSelect({ option: opt, isBuy })}
         title={title}
-        className={`w-full px-1 py-1 rounded border border-transparent transition-colors text-xs tabular-nums ${colour} ${
+        className={`w-full px-2 py-1 rounded border border-transparent transition-colors text-xs tabular-nums text-right ${colour} ${
           active ? activeBox : hoverBox
         }`}
       >
