@@ -8,6 +8,7 @@ import {
   useReadFactoryApprovedOperator,
   useReadFactoryAutoMintBurn,
   useWriteFactoryApprove,
+  useWriteFactoryApproveOperator,
   useWriteFactoryEnableAutoMintBurn,
 } from "~~/generated";
 import deployedContracts from "~~/abi/deployedContracts";
@@ -173,7 +174,7 @@ export function useTradeApprovals({
     query: { enabled: !!userAddress && !!bebopRouter && !!optionToken },
   });
 
-  const { data: factoryOperatorApproved } = useReadFactoryApprovedOperator({
+  const { data: factoryOperatorApproved, refetch: refetchFactoryOperator } = useReadFactoryApprovedOperator({
     address: factoryAddress,
     args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
     query: { enabled: !!userAddress && !!bebopRouter && !!factoryAddress },
@@ -250,6 +251,18 @@ export function useTradeApprovals({
     if (factoryApproveConfirmed) refetchCollateralFactory();
   }, [factoryApproveConfirmed, refetchCollateralFactory]);
 
+  const {
+    writeContract: factoryApproveOperator,
+    data: factoryApproveOperatorHash,
+    isPending: isApprovingOperator,
+  } = useWriteFactoryApproveOperator();
+  const { isSuccess: factoryApproveOperatorConfirmed } = useWaitForTransactionReceipt({
+    hash: factoryApproveOperatorHash,
+  });
+  useEffect(() => {
+    if (factoryApproveOperatorConfirmed) refetchFactoryOperator();
+  }, [factoryApproveOperatorConfirmed, refetchFactoryOperator]);
+
   useEffect(() => {
     if (approvalConfirmed) {
       refetchUsdcAllowance();
@@ -268,13 +281,8 @@ export function useTradeApprovals({
     });
   };
   const handleApproveOption = () => {
-    if (!bebopRouter || !optionToken) return;
-    approve({
-      address: optionToken,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [bebopRouter as `0x${string}`, MAX_UINT],
-    });
+    if (!bebopRouter || !factoryAddress) return;
+    factoryApproveOperator({ address: factoryAddress, args: [bebopRouter as `0x${string}`, true] });
   };
 
   const handleEnableAutoMint = () => {
@@ -335,7 +343,7 @@ export function useTradeApprovals({
     collateralFactoryAllowance: collateralFactoryAllowance as bigint | undefined,
     needsCollateralApproval,
     handleApproveCollateral,
-    isApproving: isApproving || isEnablingAutoMint || isFactoryApproving,
+    isApproving: isApproving || isEnablingAutoMint || isFactoryApproving || isApprovingOperator,
     allSatisfied:
       direction === "buy"
         ? !needsUsdcApproval

@@ -4,6 +4,7 @@ import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, 
 import {
   useReadFactoryApprovedOperator,
   useReadFactoryAutoMintBurn,
+  useWriteFactoryApproveOperator,
   useWriteFactoryEnableAutoMintBurn,
 } from "~~/generated";
 import deployedContracts from "~~/abi/deployedContracts";
@@ -106,7 +107,7 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
   });
 
   // Option → Bebop allowance (bypassed if factory operator is set).
-  const { data: factoryOperatorApproved } = useReadFactoryApprovedOperator({
+  const { data: factoryOperatorApproved, refetch: refetchFactoryOperator } = useReadFactoryApprovedOperator({
     address: factoryAddress,
     args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
     query: { enabled: !!userAddress && !!bebopRouter && !!factoryAddress },
@@ -165,6 +166,18 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     }
   }, [approvalConfirmed, refetchCollateral, refetchOption, refetchUsdc]);
 
+  const {
+    writeContract: factoryApproveOperator,
+    data: factoryApproveOperatorHash,
+    isPending: isApprovingOperator,
+  } = useWriteFactoryApproveOperator();
+  const { isSuccess: factoryApproveOperatorConfirmed } = useWaitForTransactionReceipt({
+    hash: factoryApproveOperatorHash,
+  });
+  useEffect(() => {
+    if (factoryApproveOperatorConfirmed) refetchFactoryOperator();
+  }, [factoryApproveOperatorConfirmed, refetchFactoryOperator]);
+
   const handleEnableAutoMint = () => {
     if (!factoryAddress) return;
     enableAutoMint({ address: factoryAddress, args: [true] });
@@ -179,13 +192,8 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     });
   };
   const handleApproveOption = () => {
-    if (!bebopRouter || !optionToken) return;
-    approve({
-      address: optionToken,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [bebopRouter as `0x${string}`, MAX_UINT],
-    });
+    if (!bebopRouter || !factoryAddress) return;
+    factoryApproveOperator({ address: factoryAddress, args: [bebopRouter as `0x${string}`, true] });
   };
   const handleApproveUsdc = () => {
     if (!bebopRouter) return;
@@ -211,7 +219,7 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     handleApproveOption,
     needsUsdcApproval,
     handleApproveUsdc,
-    isApproving,
+    isApproving: isApproving || isApprovingOperator,
     // USDC approval is optional (only needed to close positions later); don't block Deposit on it.
     allSatisfied: !needsAutoMint && !needsCollateralApproval && !needsOptionApproval,
   };
