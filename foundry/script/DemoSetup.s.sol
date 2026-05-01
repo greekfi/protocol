@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import { Script, console } from "forge-std/Script.sol";
-import { Factory } from "../contracts/Factory.sol";
-import { CreateParams } from "../contracts/interfaces/IFactory.sol";
-import { YieldVault } from "../contracts/YieldVault.sol";
-import { ShakyToken } from "../contracts/mocks/ShakyToken.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {Factory} from "../contracts/Factory.sol";
+import {CreateParams} from "../contracts/interfaces/IFactory.sol";
+import {YieldVault} from "../contracts/YieldVault.sol";
+import {ShakyToken} from "../contracts/mocks/ShakyToken.sol";
 
 /// @notice Post-deploy setup: create option, configure vault, fund accounts
 /// @dev Run after `yarn deploy` on a forked chain with BebopSettlement
@@ -28,8 +28,28 @@ contract DemoSetup is Script {
         vm.startBroadcast();
 
         // 1. Create options: shaky collateral, stable consideration, different expiries
-        address option1 = factory.createOption(CreateParams({collateral: shakyAddr, consideration: stableAddr, expirationDate: uint40(block.timestamp + 7 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
-        address option2 = factory.createOption(CreateParams({collateral: shakyAddr, consideration: stableAddr, expirationDate: uint40(block.timestamp + 30 days), strike: 1e18, isPut: true, isEuro: false, windowSeconds: 0}));
+        address option1 = factory.createOption(
+            CreateParams({
+                collateral: shakyAddr,
+                consideration: stableAddr,
+                expirationDate: uint40(block.timestamp + 7 days),
+                strike: 1e18,
+                isPut: true,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
+        address option2 = factory.createOption(
+            CreateParams({
+                collateral: shakyAddr,
+                consideration: stableAddr,
+                expirationDate: uint40(block.timestamp + 30 days),
+                strike: 1e18,
+                isPut: true,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
         console.log("Option 7d:", option1);
         console.log("Option 30d:", option2);
 

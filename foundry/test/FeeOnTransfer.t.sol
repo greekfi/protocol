@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Test } from "forge-std/Test.sol";
-import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Factory } from "../contracts/Factory.sol";
-import { Receipt as Rct } from "../contracts/Receipt.sol";
-import { Option } from "../contracts/Option.sol";
-import { CreateParams } from "../contracts/interfaces/IFactory.sol";
-import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
-import { IPermit2 } from "../contracts/interfaces/IPermit2.sol";
+import {Test} from "forge-std/Test.sol";
+import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Factory} from "../contracts/Factory.sol";
+import {Receipt as Rct} from "../contracts/Receipt.sol";
+import {Option} from "../contracts/Option.sol";
+import {CreateParams} from "../contracts/interfaces/IFactory.sol";
+import {ShakyToken, StableToken} from "../contracts/mocks/ShakyToken.sol";
+import {IPermit2} from "../contracts/interfaces/IPermit2.sol";
 
 /// @notice Mock fee-on-transfer token for testing
 contract FeeOnTransferToken is ERC20 {
     uint256 public constant FEE_PERCENT = 1; // 1% fee on transfer
 
-    constructor() ERC20("FeeOnTransfer", "FOT") { }
+    constructor() ERC20("FeeOnTransfer", "FOT") {}
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
@@ -98,15 +98,17 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted collateral - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted consideration
@@ -116,15 +118,17 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted consideration - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(CreateParams({
-            collateral: address(stableToken),
-            consideration: address(fotToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        factory.createOption(
+            CreateParams({
+                collateral: address(stableToken),
+                consideration: address(fotToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
     }
 
     /// @notice Test that owner can remove token from blocklist
@@ -138,15 +142,17 @@ contract FeeOnTransferTest is Test {
         assertFalse(factory.isBlocked(address(fotToken)));
 
         // Should now be able to create option (will fail at mint time though)
-        address optionAddress = factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address optionAddress = factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
 
         assertTrue(optionAddress != address(0));
     }
@@ -163,15 +169,17 @@ contract FeeOnTransferTest is Test {
     /// @notice Test that FOT token fails at mint time due to balance check
     function test_FeeOnTransferFailsAtMint() public {
         // Create option with FOT token as collateral (not blocklisted)
-        address optionAddress = factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address optionAddress = factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
 
         option = Option(optionAddress);
         redemption = Rct(option.receipt());

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
-import { Option } from "./Option.sol";
-import { Receipt } from "./Receipt.sol";
-import { CreateParams } from "./interfaces/IFactory.sol";
+import {Option} from "./Option.sol";
+import {Receipt} from "./Receipt.sol";
+import {CreateParams} from "./interfaces/IFactory.sol";
 
 using SafeERC20 for ERC20;
 
@@ -147,17 +147,18 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         address receipt_ = Clones.clone(RECEIPT_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
 
-        Receipt(receipt_).init(
-            p.collateral,
-            p.consideration,
-            p.expirationDate,
-            p.strike,
-            p.isPut,
-            p.isEuro,
-            windowSeconds,
-            option_,
-            address(this)
-        );
+        Receipt(receipt_)
+            .init(
+                p.collateral,
+                p.consideration,
+                p.expirationDate,
+                p.strike,
+                p.isPut,
+                p.isEuro,
+                windowSeconds,
+                option_,
+                address(this)
+            );
         Option(option_).init(receipt_, msg.sender);
 
         receipts[receipt_] = true;
