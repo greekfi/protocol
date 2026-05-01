@@ -6,12 +6,16 @@ Options protocol implementing a dual-token system where both long (Option) and s
 
 Smart contracts, frontend, and docs all live in this repo as a Yarn workspace (managed by Corepack — run `corepack enable` once per machine).
 
-Adjacent services that read or trade against the protocol live in their own repos and deploy independently:
+The market-maker lives in its own repo and deploys independently:
 
-- **[`greekfi/market-maker`](https://github.com/greekfi/market-maker)** — Black-Scholes quote server / Bebop RFQ maker. Deployed to Fly.io at `api.greek.finance`. The frontend reads quotes over `https://` / `wss://`.
-- **[`greekfi/event-sync`](https://github.com/greekfi/event-sync)** — chain log indexer for `Factory.OptionCreated`. Deployed to Fly.io at `greek-events.fly.dev`. Persists per-chain JSON caches; serves `/events`.
+- **[`greekfi/market-maker`](https://github.com/greekfi/market-maker)** — Black-Scholes quote server / Bebop RFQ maker **and** the `OptionCreated` indexer. Deployed to Fly.io at `api.greek.finance`. Serves `/options`, `/quote`, `/price/:addr`, and `/events`. The frontend reads HTTP at `https://` and WebSocket at `wss://`.
 
-Neither shares types with this repo — they couple only on contract addresses (hard-coded per chain in their respective `config.ts`).
+It doesn't share types with this repo — coupling is contract addresses, sourced from `factories.json` (a copy of the generated chain index in `abi/chains/*.ts`).
+
+> Historical note: events used to live in a separate `greekfi/event-sync`
+> repo deployed at `greek-events.fly.dev`. Phase 2 of the events collapse
+> folded the sync loop into the market-maker (in-process, 30s tick), and
+> the standalone Fly app was retired. The repo is preserved for history.
 
 ## Repo Structure
 
@@ -38,7 +42,7 @@ Neither shares types with this repo — they couple only on contract addresses (
 └── .yarnrc.yml             # Corepack-managed, no vendored yarn binary
 ```
 
-External repos: [`greekfi/market-maker`](https://github.com/greekfi/market-maker) (Fly: `api.greek.finance`), [`greekfi/event-sync`](https://github.com/greekfi/event-sync) (Fly: `greek-events.fly.dev`).
+External repo: [`greekfi/market-maker`](https://github.com/greekfi/market-maker) (Fly: `api.greek.finance`) — also serves `/events` since the events-collapse PR.
 
 ## Commands
 
