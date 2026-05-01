@@ -218,11 +218,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
 
   return (
     <div className="overflow-x-auto">
-      {/* Filter row — Calls / Puts and expiration dates as a single group of
-          checkbox-style toggles so it's obvious they multi-select. */}
+      {/* Filter row — expiration dates only (calls + puts always render). */}
       <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 mb-4">
-        <CheckboxToggle checked={showCalls} onChange={() => setShowCalls(!showCalls)} label="Calls" accent="blue" />
-        <CheckboxToggle checked={showPuts} onChange={() => setShowPuts(!showPuts)} label="Puts" accent="purple" />
         {expirations.map(exp => {
           const date = new Date(Number(exp) * 1000);
           const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -247,7 +244,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
             {showCalls && (
               <th
                 colSpan={filteredExpirations.length * 2}
-                className="p-2 text-center text-blue-400 bg-blue-900/20 border-r border-gray-700"
+                className="p-2 text-center text-gray-400 border-r border-gray-700"
               >
                 CALLS
               </th>
@@ -258,7 +255,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
             {showPuts && (
               <th
                 colSpan={filteredExpirations.length * 2}
-                className="p-2 text-center text-purple-400 bg-purple-900/20 border-l border-gray-700"
+                className="p-2 text-center text-gray-400 border-l border-gray-700"
               >
                 PUTS
               </th>
@@ -274,8 +271,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   <th key={`call-${exp}`} colSpan={2} className="p-1 text-center border-r border-gray-800">
                     <div className="text-gray-400 text-xs">{dateStr}</div>
                     <div className="flex text-[10px] mt-1">
-                      <span className="flex-1 text-orange-400">Bid</span>
-                      <span className="flex-1 text-blue-400">Ask</span>
+                      <span className="flex-1 text-gray-500">Bid</span>
+                      <span className="flex-1 text-gray-500">Ask</span>
                     </div>
                   </th>
                 );
@@ -288,8 +285,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                   <th key={`put-${exp}`} colSpan={2} className="p-1 text-center border-l border-gray-800">
                     <div className="text-gray-400 text-xs">{dateStr}</div>
                     <div className="flex text-[10px] mt-1">
-                      <span className="flex-1 text-orange-400">Bid</span>
-                      <span className="flex-1 text-blue-400">Ask</span>
+                      <span className="flex-1 text-gray-500">Bid</span>
+                      <span className="flex-1 text-gray-500">Ask</span>
                     </div>
                   </th>
                 );
