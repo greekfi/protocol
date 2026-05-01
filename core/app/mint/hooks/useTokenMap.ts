@@ -15,8 +15,10 @@ export const useTokenMap = () => {
   const chainId = useBrowseChainId();
   const contract = useContracts();
 
-  const stableTokenAddress = contract?.StableToken?.address;
-  const shakyTokenAddress = contract?.ShakyToken?.address;
+  // StableToken / ShakyToken are only deployed on test chains (foundry, base, arbitrum) —
+  // not Ink or mainnet. Use `in` checks so the union narrows correctly.
+  const stableTokenAddress = contract && "StableToken" in contract ? contract.StableToken.address : undefined;
+  const shakyTokenAddress = contract && "ShakyToken" in contract ? contract.ShakyToken.address : undefined;
 
   const chainKey = String(chainId) as keyof typeof tokenList;
   const baseTokensMap = (tokenList[chainKey] ?? []).reduce(

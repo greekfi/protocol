@@ -11,10 +11,10 @@ import { Address, isAddress } from "viem";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import {
   useReadFactoryApprovedOperator,
-  useReadFactoryAutoMintRedeem,
+  useReadFactoryAutoMintBurn,
   useWriteFactoryApprove,
   useWriteFactoryApproveOperator,
-  useWriteFactoryEnableAutoMintRedeem,
+  useWriteFactoryEnableAutoMintBurn,
 } from "~~/generated";
 
 interface ApprovalsProps {
@@ -52,7 +52,7 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
     }
   }, [option?.collateral.address_, option?.consideration.address_, token1, token2]);
 
-  const { data: autoMintRedeem, refetch: refetchAutoMint } = useReadFactoryAutoMintRedeem({
+  const { data: autoMintBurn, refetch: refetchAutoMint } = useReadFactoryAutoMintBurn({
     address: factoryAddress,
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: Boolean(factoryAddress && userAddress) },
@@ -68,7 +68,7 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
 
   const erc20 = useApproveERC20();
   const { writeContractAsync: factoryApprove } = useWriteFactoryApprove();
-  const { writeContractAsync: setAutoMint } = useWriteFactoryEnableAutoMintRedeem();
+  const { writeContractAsync: setAutoMint } = useWriteFactoryEnableAutoMintBurn();
   const { writeContractAsync: approveOperator } = useWriteFactoryApproveOperator();
 
   const [working, setWorking] = useState<string | null>(null);
@@ -125,12 +125,12 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
   const g1Status = statusOf("t1", token1, allow1);
   const g2Status = statusOf("t2", token2, allow2);
 
-  const g3Status: RowStatus = working === "auto" ? "working" : autoMintRedeem ? "approved" : "pending";
+  const g3Status: RowStatus = working === "auto" ? "working" : autoMintBurn ? "approved" : "pending";
 
   const toggleAutoMint = () =>
     runWith("auto", async () => {
       if (!factoryAddress) return;
-      const h = await setAutoMint({ address: factoryAddress, args: [!autoMintRedeem] });
+      const h = await setAutoMint({ address: factoryAddress, args: [!autoMintBurn] });
       setPendingHash(h);
     });
 
@@ -174,7 +174,7 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
         status={g3Status}
         onClick={toggleAutoMint}
         disabled={!factoryAddress || !userAddress}
-        on={Boolean(autoMintRedeem)}
+        on={Boolean(autoMintBurn)}
       />
 
       {/* Operator — free-form input with datalist of known contracts */}

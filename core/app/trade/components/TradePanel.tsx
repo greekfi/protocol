@@ -209,8 +209,8 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         },
         {
           label: "Short",
-          value: formatBalance(optionBalances.coll, approvals.optionDecimals),
-          dim: optionBalances.coll === 0n,
+          value: formatBalance(optionBalances.receipt, approvals.optionDecimals),
+          dim: optionBalances.receipt === 0n,
         },
       ]
     : [];

@@ -4,7 +4,7 @@ import foundryContracts from "../abi/chains/foundry";
 
 // Contracts we want typed hooks for. Pulled from the generated foundry chain file
 // because it has every deployed protocol contract (same ABIs across chains).
-const WANTED = ["Factory", "Option", "Collateral", "YieldVault"] as const;
+const WANTED = ["Factory", "Option", "Receipt", "YieldVault"] as const;
 
 // Our filtered ABI strips empty `inputs`/`outputs` arrays, but abitype (used by
 // @wagmi/cli) requires them to be present. Normalize before handing off.

@@ -5,12 +5,12 @@ import { useAccount, useReadContracts } from "wagmi";
 
 export interface OptionWithBalances extends OptionListItem {
   optionBalance: bigint;
-  collBalance: bigint;
+  receiptBalance: bigint;
 }
 
 /**
  * Batch-reads the connected user's balanceOf for each option's long (option)
- * and short (coll) token. Returns only those where at least one is nonzero.
+ * and short (receipt) token. Returns only those where at least one is nonzero.
  */
 export function useMyOptionBalances(options: OptionListItem[]) {
   const { address } = useAccount();
@@ -25,7 +25,7 @@ export function useMyOptionBalances(options: OptionListItem[]) {
         args: [address] as const,
       },
       {
-        address: opt.coll,
+        address: opt.receipt,
         abi: erc20Abi,
         functionName: "balanceOf" as const,
         args: [address] as const,
@@ -43,9 +43,9 @@ export function useMyOptionBalances(options: OptionListItem[]) {
     const results: OptionWithBalances[] = [];
     options.forEach((opt, i) => {
       const optionBal = (data[i * 2]?.result as bigint | undefined) ?? 0n;
-      const collBal = (data[i * 2 + 1]?.result as bigint | undefined) ?? 0n;
-      if (optionBal > 0n || collBal > 0n) {
-        results.push({ ...opt, optionBalance: optionBal, collBalance: collBal });
+      const receiptBal = (data[i * 2 + 1]?.result as bigint | undefined) ?? 0n;
+      if (optionBal > 0n || receiptBal > 0n) {
+        results.push({ ...opt, optionBalance: optionBal, receiptBalance: receiptBal });
       }
     });
     return results;

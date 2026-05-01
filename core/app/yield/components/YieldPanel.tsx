@@ -141,12 +141,12 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
       },
       {
         label: "Short",
-        value: fmt(optionBalances.coll, approvals.optionDecimals),
-        dim: optionBalances.coll === 0n,
+        value: fmt(optionBalances.receipt, approvals.optionDecimals),
+        dim: optionBalances.receipt === 0n,
         bottomRow: (
           <BuyBackRow
             optionAddress={selected.optionAddress as `0x${string}`}
-            shortAmount={optionBalances.coll}
+            shortAmount={optionBalances.receipt}
           />
         ),
       },

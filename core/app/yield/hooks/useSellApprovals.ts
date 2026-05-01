@@ -3,8 +3,8 @@ import { parseUnits } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import {
   useReadFactoryApprovedOperator,
-  useReadFactoryAutoMintRedeem,
-  useWriteFactoryEnableAutoMintRedeem,
+  useReadFactoryAutoMintBurn,
+  useWriteFactoryEnableAutoMintBurn,
 } from "~~/generated";
 import deployedContracts from "~~/abi/deployedContracts";
 import type { TradableOption } from "../../trade/hooks/useTradableOptions";
@@ -100,7 +100,7 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     option && amount && parseFloat(amount) > 0 ? parseUnits(amount, optionDecimals) : 0n;
 
   // Auto-mint flag.
-  const { data: autoMintEnabled, refetch: refetchAutoMint } = useReadFactoryAutoMintRedeem({
+  const { data: autoMintEnabled, refetch: refetchAutoMint } = useReadFactoryAutoMintBurn({
     address: factoryAddress,
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!userAddress && !!factoryAddress },
@@ -159,7 +159,7 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     writeContract: enableAutoMint,
     data: autoMintHash,
     isPending: isEnablingAutoMint,
-  } = useWriteFactoryEnableAutoMintRedeem();
+  } = useWriteFactoryEnableAutoMintBurn();
   const { isSuccess: autoMintConfirmed } = useWaitForTransactionReceipt({ hash: autoMintHash });
   useEffect(() => {
     if (autoMintConfirmed) refetchAutoMint();

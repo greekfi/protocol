@@ -6,7 +6,7 @@ const arbitrumContracts = {
   chainId: 42161,
   deploymentBlock: 454236303,
   StableToken: {
-    address: "0xe002be6ff5cca4662f178972e092fa6b8428483f",
+    address: "0xa35670dccd2171bd2276d6f1bc214d00d15b0ae7",
     abi: [
       {
         type: "constructor",
@@ -247,7 +247,7 @@ const arbitrumContracts = {
     inheritedFunctions: {},
   },
   ShakyToken: {
-    address: "0x31c6e5ccc47fcf0886a889060147a74d896d9f5a",
+    address: "0xa50db33c9c0b2364ed61de8c5adff172caaa5700",
     abi: [
       {
         type: "constructor",
@@ -487,8 +487,8 @@ const arbitrumContracts = {
     ],
     inheritedFunctions: {},
   },
-  Collateral: {
-    address: "0xc793991cb9d3dcbbbde5033d77c2aff170c3b96a",
+  Receipt: {
+    address: "0x2753bfd34cde953385e142829cdac7295dab26eb",
     abi: [
       {
         type: "constructor",
@@ -512,52 +512,6 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "_claimForOption",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-          },
-          {
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        outputs: [
-          {
-            type: "uint256",
-            name: "payout",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "_factory",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "_redeemPair",
-        inputs: [
-          {
-            name: "account",
-            type: "address",
-          },
-          {
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -614,6 +568,21 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "burn",
+        inputs: [
+          {
+            name: "account",
+            type: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -742,6 +711,16 @@ const arbitrumContracts = {
       },
       {
         type: "function",
+        name: "exerciseDeadline",
+        outputs: [
+          {
+            type: "uint40",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
         name: "expirationDate",
         outputs: [
           {
@@ -789,8 +768,8 @@ const arbitrumContracts = {
             type: "bool",
           },
           {
-            name: "oracle_",
-            type: "address",
+            name: "windowSeconds_",
+            type: "uint40",
           },
           {
             name: "option_",
@@ -875,26 +854,6 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "optionReserveRemaining",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "oracle",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
         name: "owner",
         outputs: [
           {
@@ -949,37 +908,6 @@ const arbitrumContracts = {
         type: "function",
         name: "renounceOwnership",
         stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "reserveInitialized",
-        outputs: [
-          {
-            type: "bool",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "settle",
-        inputs: [
-          {
-            name: "hint",
-            type: "bytes",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "settlementPrice",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -1195,16 +1123,6 @@ const arbitrumContracts = {
       },
       {
         type: "event",
-        name: "Settled",
-        inputs: [
-          {
-            name: "price",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "Transfer",
         inputs: [
           {
@@ -1241,6 +1159,14 @@ const arbitrumContracts = {
       },
       {
         type: "error",
+        name: "ExerciseWindowClosed",
+      },
+      {
+        type: "error",
+        name: "ExerciseWindowOpen",
+      },
+      {
+        type: "error",
         name: "FeeOnTransferNotSupported",
       },
       {
@@ -1273,19 +1199,7 @@ const arbitrumContracts = {
       },
       {
         type: "error",
-        name: "NoOracle",
-      },
-      {
-        type: "error",
-        name: "NonSettledOnly",
-      },
-      {
-        type: "error",
         name: "NotInitializing",
-      },
-      {
-        type: "error",
-        name: "NotSettled",
       },
       {
         type: "error",
@@ -1301,15 +1215,11 @@ const arbitrumContracts = {
           },
         ],
       },
-      {
-        type: "error",
-        name: "SettledOnly",
-      },
     ],
     inheritedFunctions: {},
   },
   Option: {
-    address: "0x881b632391ba4006a5ef296264cb7564e647f1ed",
+    address: "0x469c5c935f4a404d6483940f04e16dab7b300a95",
     abi: [
       {
         type: "constructor",
@@ -1406,7 +1316,7 @@ const arbitrumContracts = {
                 type: "uint256",
               },
               {
-                name: "coll",
+                name: "receipt",
                 type: "uint256",
               },
             ],
@@ -1416,7 +1326,7 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "claim",
+        name: "burn",
         inputs: [
           {
             name: "amount",
@@ -1424,27 +1334,6 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "claimFor",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "coll",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -1488,7 +1377,7 @@ const arbitrumContracts = {
                 type: "address",
               },
               {
-                name: "coll",
+                name: "receipt",
                 type: "address",
               },
               {
@@ -1552,8 +1441,8 @@ const arbitrumContracts = {
                 type: "bool",
               },
               {
-                name: "oracle",
-                type: "address",
+                name: "exerciseDeadline",
+                type: "uint40",
               },
             ],
           },
@@ -1576,7 +1465,22 @@ const arbitrumContracts = {
         name: "exercise",
         inputs: [
           {
-            name: "account",
+            name: "holders",
+            type: "address[]",
+          },
+          {
+            name: "amounts",
+            type: "uint256[]",
+          },
+        ],
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exercise",
+        inputs: [
+          {
+            name: "holder",
             type: "address",
           },
           {
@@ -1585,6 +1489,16 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exerciseDeadline",
+        outputs: [
+          {
+            type: "uint40",
+          },
+        ],
+        stateMutability: "view",
       },
       {
         type: "function",
@@ -1611,7 +1525,7 @@ const arbitrumContracts = {
         name: "init",
         inputs: [
           {
-            name: "coll_",
+            name: "receipt_",
             type: "address",
           },
           {
@@ -1634,16 +1548,6 @@ const arbitrumContracts = {
       {
         type: "function",
         name: "isPut",
-        outputs: [
-          {
-            type: "bool",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "isSettled",
         outputs: [
           {
             type: "bool",
@@ -1694,16 +1598,6 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "oracle",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
         name: "owner",
         outputs: [
           {
@@ -1714,40 +1608,18 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "redeem",
-        inputs: [
+        name: "receipt",
+        outputs: [
           {
-            name: "amount",
-            type: "uint256",
+            type: "address",
           },
         ],
-        stateMutability: "nonpayable",
+        stateMutability: "view",
       },
       {
         type: "function",
         name: "renounceOwnership",
         stateMutability: "pure",
-      },
-      {
-        type: "function",
-        name: "settle",
-        inputs: [
-          {
-            name: "hint",
-            type: "bytes",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "settlementPrice",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -1861,25 +1733,6 @@ const arbitrumContracts = {
       },
       {
         type: "event",
-        name: "Claimed",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-            indexed: true,
-          },
-          {
-            name: "optionBurned",
-            type: "uint256",
-          },
-          {
-            name: "collateralOut",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "ContractLocked",
       },
       {
@@ -1892,6 +1745,10 @@ const arbitrumContracts = {
         inputs: [
           {
             name: "longOption",
+            type: "address",
+          },
+          {
+            name: "caller",
             type: "address",
           },
           {
@@ -1934,16 +1791,6 @@ const arbitrumContracts = {
       },
       {
         type: "event",
-        name: "Settled",
-        inputs: [
-          {
-            name: "price",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "Transfer",
         inputs: [
           {
@@ -1968,11 +1815,15 @@ const arbitrumContracts = {
       },
       {
         type: "error",
-        name: "ContractNotExpired",
+        name: "EuropeanExerciseDisabled",
       },
       {
         type: "error",
-        name: "EuropeanExerciseDisabled",
+        name: "ExerciseNotAllowed",
+      },
+      {
+        type: "error",
+        name: "ExerciseWindowClosed",
       },
       {
         type: "error",
@@ -1996,10 +1847,6 @@ const arbitrumContracts = {
       },
       {
         type: "error",
-        name: "NoOracle",
-      },
-      {
-        type: "error",
         name: "NotInitializing",
       },
       {
@@ -2010,13 +1857,13 @@ const arbitrumContracts = {
     inheritedFunctions: {},
   },
   Factory: {
-    address: "0x20e84883896c36b52f4cdefecca5f10140abf23d",
+    address: "0xd1cb90426042f837a636131c98aca2321b7a4a15",
     abi: [
       {
         type: "constructor",
         inputs: [
           {
-            name: "collClone_",
+            name: "receiptClone_",
             type: "address",
           },
           {
@@ -2027,10 +1874,10 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "COLL_CLONE",
+        name: "DEFAULT_EXERCISE_WINDOW",
         outputs: [
           {
-            type: "address",
+            type: "uint40",
           },
         ],
         stateMutability: "view",
@@ -2044,6 +1891,31 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "RECEIPT_CLONE",
+        outputs: [
+          {
+            type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "allowExercise",
+        inputs: [
+          {
+            name: "exercisor",
+            type: "address",
+          },
+          {
+            name: "allowed",
+            type: "bool",
+          },
+        ],
+        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -2117,7 +1989,7 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "autoMintRedeem",
+        name: "autoMintBurn",
         inputs: [
           {
             name: "",
@@ -2163,38 +2035,6 @@ const arbitrumContracts = {
         name: "createOption",
         inputs: [
           {
-            name: "collateral_",
-            type: "address",
-          },
-          {
-            name: "consideration_",
-            type: "address",
-          },
-          {
-            name: "expirationDate_",
-            type: "uint40",
-          },
-          {
-            name: "strike_",
-            type: "uint96",
-          },
-          {
-            name: "isPut_",
-            type: "bool",
-          },
-        ],
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "createOption",
-        inputs: [
-          {
             name: "p",
             type: "tuple",
             components: [
@@ -2223,12 +2063,8 @@ const arbitrumContracts = {
                 type: "bool",
               },
               {
-                name: "oracleSource",
-                type: "address",
-              },
-              {
-                name: "twapWindow",
-                type: "uint32",
+                name: "windowSeconds",
+                type: "uint40",
               },
             ],
           },
@@ -2273,12 +2109,8 @@ const arbitrumContracts = {
                 type: "bool",
               },
               {
-                name: "oracleSource",
-                type: "address",
-              },
-              {
-                name: "twapWindow",
-                type: "uint32",
+                name: "windowSeconds",
+                type: "uint40",
               },
             ],
           },
@@ -2293,7 +2125,7 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "enableAutoMintRedeem",
+        name: "enableAutoMintBurn",
         inputs: [
           {
             name: "enabled",
@@ -2301,6 +2133,26 @@ const arbitrumContracts = {
           },
         ],
         stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exerciseAllowed",
+        inputs: [
+          {
+            name: "holder",
+            type: "address",
+          },
+          {
+            name: "exercisor",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
+          },
+        ],
+        stateMutability: "view",
       },
       {
         type: "function",
@@ -2340,6 +2192,22 @@ const arbitrumContracts = {
         outputs: [
           {
             type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "receipts",
+        inputs: [
+          {
+            name: "",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
           },
         ],
         stateMutability: "view",
@@ -2421,7 +2289,7 @@ const arbitrumContracts = {
       },
       {
         type: "event",
-        name: "AutoMintRedeemUpdated",
+        name: "AutoMintBurnUpdated",
         inputs: [
           {
             name: "account",
@@ -2430,6 +2298,26 @@ const arbitrumContracts = {
           },
           {
             name: "enabled",
+            type: "bool",
+          },
+        ],
+      },
+      {
+        type: "event",
+        name: "ExerciseApproval",
+        inputs: [
+          {
+            name: "holder",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "exercisor",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "allowed",
             type: "bool",
           },
         ],
@@ -2485,8 +2373,8 @@ const arbitrumContracts = {
             type: "bool",
           },
           {
-            name: "oracle",
-            type: "address",
+            name: "windowSeconds",
+            type: "uint40",
           },
           {
             name: "option",
@@ -2494,7 +2382,7 @@ const arbitrumContracts = {
             indexed: true,
           },
           {
-            name: "coll",
+            name: "receipt",
             type: "address",
           },
         ],
@@ -2516,10 +2404,6 @@ const arbitrumContracts = {
       {
         type: "error",
         name: "BlocklistedToken",
-      },
-      {
-        type: "error",
-        name: "EuropeanRequiresOracle",
       },
       {
         type: "error",
@@ -2565,18 +2449,14 @@ const arbitrumContracts = {
           },
         ],
       },
-      {
-        type: "error",
-        name: "UnsupportedOracleSource",
-      },
     ],
     inheritedFunctions: {},
   },
   YieldVault: {
-    address: "0x88bc389f6218bf135168fc86ac818bd51a911b44",
+    address: "0xadbb76ea7bff0d255286ec307c3183584c9333af",
     addresses: [
-      "0x88bc389f6218bf135168fc86ac818bd51a911b44",
-      "0xc989a1010f74afa4480056041ff8e0b9f2ccc75f",
+      "0xadbb76ea7bff0d255286ec307c3183584c9333af",
+      "0x4f6630e3ba5bed23f88aca02d99c665254aef4a3",
     ],
     abi: [
       {
@@ -2836,7 +2716,7 @@ const arbitrumContracts = {
       },
       {
         type: "function",
-        name: "enableAutoMintRedeem",
+        name: "enableAutoMintBurn",
         inputs: [
           {
             name: "enabled",

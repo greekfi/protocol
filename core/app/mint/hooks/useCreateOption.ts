@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { TransactionStep } from "./types";
 import { useContracts } from "./useContracts";
 import { useQueryClient } from "@tanstack/react-query";
-import { Address, zeroAddress } from "viem";
+import { Address } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
-import { useWriteFactoryCreateOption, useWriteFactoryCreateOptions } from "~~/generated";
+import { useWriteFactoryCreateOptions } from "~~/generated";
 
 type CreateOptionStep = Extract<TransactionStep, "idle" | "executing" | "waiting-execution" | "success" | "error">;
 
@@ -16,15 +16,16 @@ export interface CreateOptionParams {
   strike: bigint; // 18 decimal encoding
   isPut: boolean;
   isEuro?: boolean;
-  oracleSource?: Address;
-  twapWindow?: number;
+  windowSeconds?: number;
 }
 
 interface UseCreateOptionReturn {
-  createOption: (params: CreateOptionParams) => Promise<void>;
   createOptions: (params: CreateOptionParams[]) => Promise<void>;
   step: CreateOptionStep;
-  isLoading: boolean;
+  /** True only while the wallet is being prompted (pre-broadcast). */
+  isPending: boolean;
+  /** True after broadcast, while waiting for the receipt. */
+  isConfirming: boolean;
   isSuccess: boolean;
   error: Error | null;
   txHash: `0x${string}` | null;
@@ -43,7 +44,6 @@ export function useCreateOption(): UseCreateOptionReturn {
   const factoryAddress = useContracts()?.Factory?.address as Address | undefined;
   const queryClient = useQueryClient();
 
-  const singleWrite = useWriteFactoryCreateOption();
   const batchWrite = useWriteFactoryCreateOptions();
 
   const {
@@ -60,31 +60,6 @@ export function useCreateOption(): UseCreateOptionReturn {
       queryClient.invalidateQueries({ queryKey: ["optionCreatedEvents"] });
     }
   }, [txConfirmed, step, queryClient]);
-
-  const createOption = useCallback(
-    async (params: CreateOptionParams) => {
-      if (!factoryAddress) {
-        setError(new Error("Factory contract not available"));
-        setStep("error");
-        return;
-      }
-      try {
-        setError(null);
-        setStep("executing");
-        // Uses the 5-arg overload (short form) — the struct overload is used by createOptions.
-        const hash = await singleWrite.writeContractAsync({
-          address: factoryAddress,
-          args: [params.collateral, params.consideration, Number(params.expiration), params.strike, params.isPut],
-        });
-        setTxHash(hash);
-        setStep("waiting-execution");
-      } catch (err) {
-        setError(err as Error);
-        setStep("error");
-      }
-    },
-    [factoryAddress, singleWrite],
-  );
 
   const createOptions = useCallback(
     async (params: CreateOptionParams[]) => {
@@ -115,8 +90,7 @@ export function useCreateOption(): UseCreateOptionReturn {
             strike: p.strike,
             isPut: p.isPut,
             isEuro: p.isEuro ?? false,
-            oracleSource: p.oracleSource ?? zeroAddress,
-            twapWindow: p.twapWindow ?? 0,
+            windowSeconds: p.windowSeconds ?? 0,
           };
         });
 
@@ -152,10 +126,13 @@ export function useCreateOption(): UseCreateOptionReturn {
   const actualError = actualStep === "error" && txError ? txError : error;
 
   return {
-    createOption,
     createOptions,
     step: actualStep,
-    isLoading: actualStep === "executing" || actualStep === "waiting-execution",
+    // Pending = wallet is being asked to sign. Once broadcast lands and we move to
+    // waiting-execution, the UI shouldn't keep blocking — the user is free to
+    // navigate away while the receipt confirms.
+    isPending: actualStep === "executing",
+    isConfirming: actualStep === "waiting-execution",
     isSuccess: actualStep === "success",
     error: actualError,
     txHash,

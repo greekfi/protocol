@@ -53,8 +53,8 @@ export function HoldingsCard() {
           {h.optionBalance > 0n && (
             <span className="text-blue-300">L {formatAmount(h.optionBalance, decimals)}</span>
           )}
-          {h.collBalance > 0n && (
-            <span className="text-orange-300">S {formatAmount(h.collBalance, decimals)}</span>
+          {h.receiptBalance > 0n && (
+            <span className="text-orange-300">S {formatAmount(h.receiptBalance, decimals)}</span>
           )}
         </span>
       </li>

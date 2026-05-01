@@ -43,7 +43,7 @@ export function useTradableOptions(underlyingToken: string | null) {
         expiration: BigInt(e.args.expirationDate),
         strike: BigInt(e.args.strike),
         isPut: e.args.isPut,
-        redemptionAddress: e.args.coll,
+        redemptionAddress: e.args.receipt,
       }))
       .filter(opt => opt.expiration > now);
   }, [events, underlyingToken]);

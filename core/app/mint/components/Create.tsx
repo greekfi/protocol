@@ -1,44 +1,10 @@
-import { useCallback, useId, useMemo, useState } from "react";
-import { useChainId } from "wagmi";
-import { ORACLE_CATALOG, pairMatches } from "../data/oracleCatalog";
+import { useCallback, useState } from "react";
 import { toStrikePrice } from "../hooks/constants";
 import { CreateOptionParams, useCreateOption } from "../hooks/useCreateOption";
 import { Token, useTokenMap } from "../hooks/useTokenMap";
 import ActionHeader from "./ActionHeader";
 import { Address } from "viem";
 import { useAccount } from "wagmi";
-
-// import { getStepLabel } from "../hooks/useTransactionFlow";
-
-/**
- * Helper to get a human-readable label for a transaction step
- */
-export function getStepLabel(step: any): string {
-  switch (step) {
-    case "idle":
-      return "Ready";
-    case "checking-allowance":
-      return "Checking allowances...";
-    case "approving-erc20":
-      return "Approving token...";
-    case "waiting-erc20":
-      return "Confirming token approval...";
-    case "approving-factory":
-      return "Approving factory...";
-    case "waiting-factory":
-      return "Confirming factory approval...";
-    case "executing":
-      return "Executing...";
-    case "waiting-execution":
-      return "Confirming transaction...";
-    case "success":
-      return "Success!";
-    case "error":
-      return "Error";
-    default:
-      return step;
-  }
-}
 
 interface TokenSelectProps {
   label: string;
@@ -70,7 +36,7 @@ const Create = () => {
   const { allTokensMap } = useTokenMap();
 
   // Use the new create option hook
-  const { createOptions, step, isLoading, isSuccess, error, txHash, reset } = useCreateOption();
+  const { createOptions, isPending, isSuccess, error, txHash, reset } = useCreateOption();
 
   // Form state
   const [collateralToken, setCollateralToken] = useState<Token | undefined>(undefined);
@@ -78,17 +44,8 @@ const Create = () => {
   const [strikePrices, setStrikePrices] = useState<number[]>([]);
   const [isPut, setIsPut] = useState(false);
   const [expirationDates, setExpirationDates] = useState<Date[]>([new Date()]);
-  // Form-only fields (not yet passed to createOptions): European-style flag and an
-  // oracle source. The oracle is a typeable text input with a chain-aware
-  // suggestion list; users can pick a known pool or paste any address.
   const [isEuro, setIsEuro] = useState(false);
-  const [oracleAddress, setOracleAddress] = useState("");
-  const chainId = useChainId();
-  const oracleListId = useId();
-  const oracleSuggestions = useMemo(() => {
-    const all = ORACLE_CATALOG[chainId] ?? [];
-    return all.filter(o => pairMatches(o, collateralToken?.symbol, considerationToken?.symbol));
-  }, [chainId, collateralToken?.symbol, considerationToken?.symbol]);
+  const [windowHours, setWindowHours] = useState<number>(8);
 
   const addExpirationDate = useCallback(() => {
     setExpirationDates(prev => [...prev, new Date()]);
@@ -128,69 +85,51 @@ const Create = () => {
   );
 
   const handleCreateOption = useCallback(async () => {
-    console.log("=== handleCreateOption START ===");
-    console.log("collateralToken:", collateralToken);
-    console.log("considerationToken:", considerationToken);
-    console.log("strikePrices:", strikePrices);
-    console.log("expirationDates:", expirationDates);
-    console.log("isPut:", isPut);
-    // The European flag and oracle address are visual-only for now — captured
-    // here so it's visible the form has them, but not threaded into createOptions.
-    console.log("isEuro (visual only):", isEuro);
-    console.log("oracleAddress (visual only):", oracleAddress);
-
     if (!collateralToken || !considerationToken || strikePrices.length === 0 || expirationDates.length === 0) {
-      console.error("Missing required fields");
       return;
     }
 
-    // Build all option params
     const allParams: CreateOptionParams[] = [];
-
     for (const expirationDate of expirationDates) {
       const expTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
-
       for (const price of strikePrices) {
-        const strikeValue = calculateStrike(price);
-        console.log(`Building option param for price ${price}:`, {
-          collateral: collateralToken.address,
-          consideration: considerationToken.address,
-          expiration: expTimestamp,
-          expirationDate: new Date(expTimestamp * 1000).toISOString(),
-          strike: strikeValue.toString(),
-          strikeHex: "0x" + strikeValue.toString(16),
-          isPut,
-        });
-
         allParams.push({
           collateral: collateralToken.address as Address,
           consideration: considerationToken.address as Address,
           expiration: expTimestamp,
-          strike: strikeValue,
+          strike: calculateStrike(price),
           isPut,
+          isEuro,
+          windowSeconds: isEuro ? Math.max(0, Math.round(windowHours * 3600)) : 0,
         });
       }
     }
 
-    console.log("Final allParams:", allParams);
-    console.log("Calling createOptions with", allParams.length, "options");
-
     try {
       await createOptions(allParams);
-      console.log("createOptions completed successfully");
-    } catch (err) {
-      console.error("createOptions failed:", err);
+    } catch {
+      // hook surfaces the error
     }
-  }, [collateralToken, considerationToken, strikePrices, expirationDates, isPut, calculateStrike, createOptions]);
+  }, [
+    collateralToken,
+    considerationToken,
+    strikePrices,
+    expirationDates,
+    isPut,
+    isEuro,
+    windowHours,
+    calculateStrike,
+    createOptions,
+  ]);
 
+  const windowHoursValid = !isEuro || (Number.isFinite(windowHours) && windowHours > 0);
   const isFormValid =
-    isConnected && collateralToken && considerationToken && strikePrices.length > 0 && expirationDates.length > 0;
-
-  const getButtonText = () => {
-    if (isLoading) return getStepLabel(step);
-    if (isSuccess) return "Created!";
-    return "Create Option";
-  };
+    isConnected &&
+    !!collateralToken &&
+    !!considerationToken &&
+    strikePrices.length > 0 &&
+    expirationDates.length > 0 &&
+    windowHoursValid;
 
   return (
     <div className="max-w-2xl mx-auto bg-black/80 border border-gray-800 rounded-lg shadow-lg p-6 text-lg">
@@ -233,56 +172,46 @@ const Create = () => {
                 <button
                   type="button"
                   onClick={() => setIsEuro(false)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                     !isEuro ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                   }`}
                 >
+                  <span aria-hidden>🇺🇸</span>
                   AMERICAN
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsEuro(true)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                     isEuro ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                   }`}
                 >
+                  <span aria-hidden>🇪🇺</span>
                   EUROPEAN
                 </button>
               </div>
-              {isEuro && (
-                <span className="text-xs text-gray-400">
-                  Settles once at expiry against the chosen oracle. No pre-expiry exercise.
-                </span>
-              )}
             </div>
 
-            {/* Oracle source */}
-            <div className="flex flex-col space-y-2">
-              <label className="text-blue-100">
-                Oracle{!isEuro && <span className="text-gray-500 text-sm font-normal"> (optional)</span>}
-              </label>
-              <input
-                type="text"
-                list={oracleListId}
-                value={oracleAddress}
-                onChange={e => setOracleAddress(e.target.value)}
-                placeholder={isEuro ? "Pick or paste a Uniswap v3 pool address (0x…)" : "Optional — required for European"}
-                className="rounded-lg border border-gray-800 bg-black/60 text-blue-300 p-2 font-mono text-sm focus:outline-none focus:border-blue-500"
-              />
-              <datalist id={oracleListId}>
-                {oracleSuggestions.map(o => (
-                  <option key={o.address} value={o.address}>
-                    {o.label}
-                  </option>
-                ))}
-              </datalist>
-              {oracleSuggestions.length === 0 && collateralToken && considerationToken && (
-                <span className="text-xs text-gray-500">
-                  No known oracle for {collateralToken.symbol}/{considerationToken.symbol} on this chain — paste a pool
-                  address.
+            {/* Exercise window — European only */}
+            {isEuro && (
+              <div className="flex flex-col space-y-2">
+                <label className="text-blue-100">Exercise window (hours after expiry):</label>
+                <select
+                  value={windowHours}
+                  onChange={e => setWindowHours(Number(e.target.value))}
+                  className="rounded-lg border border-gray-800 bg-black/60 text-blue-300 p-2"
+                >
+                  {[1, 2, 4, 8, 12, 24, 48, 72].map(h => (
+                    <option key={h} value={h}>
+                      {h} {h === 1 ? "hour" : "hours"}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">
+                  Holders can exercise during this window after expiry; afterwards short-side redemption opens.
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Expiration Dates */}
             <div className="flex flex-col space-y-2">
@@ -411,12 +340,12 @@ const Create = () => {
             <button
               type="button"
               className={`px-4 py-2 rounded-lg text-black transition-transform hover:scale-105 ${
-                !isFormValid || isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                !isFormValid || isPending ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
               }`}
               onClick={isSuccess ? reset : handleCreateOption}
-              disabled={!isFormValid || isLoading}
+              disabled={!isFormValid || isPending}
             >
-              {getButtonText()}
+              {isSuccess ? "Created!" : "Create Option"}
             </button>
           </div>
         </div>

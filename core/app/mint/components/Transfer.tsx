@@ -2,17 +2,16 @@ import { useState } from "react";
 import { useOption } from "../hooks/useOption";
 import { Address, formatUnits, isAddress, parseUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
-import { useWriteCollateralTransfer, useWriteOptionTransfer } from "~~/generated";
+import { useWriteOptionTransfer, useWriteReceiptTransfer } from "~~/generated";
 
 interface TransferProps {
   optionAddress: Address | undefined;
 }
 
-type Side = "option" | "clt";
+type Side = "option" | "receipt";
 
 /**
- * Unified transfer UI for both the long (Option) and short (CLT — Collateral Token) positions.
- * CLT is the ERC20 "Collateral" clone the factory deploys for the short side.
+ * Unified transfer UI for both the long (Option) and short (Receipt) positions.
  */
 export function Transfer({ optionAddress }: TransferProps) {
   const [side, setSide] = useState<Side>("option");
@@ -25,7 +24,7 @@ export function Transfer({ optionAddress }: TransferProps) {
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
 
   const { writeContractAsync: transferOption } = useWriteOptionTransfer();
-  const { writeContractAsync: transferClt } = useWriteCollateralTransfer();
+  const { writeContractAsync: transferReceipt } = useWriteReceiptTransfer();
 
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
     hash: txHash ?? undefined,
@@ -54,8 +53,8 @@ export function Transfer({ optionAddress }: TransferProps) {
     );
   }
 
-  const balance = side === "option" ? option.balances?.option : option.balances?.coll;
-  const sideLabel = side === "option" ? "Option" : "CLT";
+  const balance = side === "option" ? option.balances?.option : option.balances?.receipt;
+  const sideLabel = side === "option" ? "Option" : "Receipt";
 
   const handleTransfer = async () => {
     if (!optionAddress || !option) return;
@@ -80,7 +79,7 @@ export function Transfer({ optionAddress }: TransferProps) {
       const hash =
         side === "option"
           ? await transferOption({ address: optionAddress, args: [recipient as Address, wei] })
-          : await transferClt({ address: option.coll, args: [recipient as Address, wei] });
+          : await transferReceipt({ address: option.receipt, args: [recipient as Address, wei] });
       setTxHash(hash);
     } catch (err: any) {
       setStatus("error");
@@ -123,12 +122,12 @@ export function Transfer({ optionAddress }: TransferProps) {
         </button>
         <button
           type="button"
-          onClick={() => setSide("clt")}
+          onClick={() => setSide("receipt")}
           className={`flex-1 py-2 px-3 rounded text-sm transition-colors ${
-            side === "clt" ? "bg-purple-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            side === "receipt" ? "bg-purple-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
-          CLT (Short)
+          Receipt (Short)
         </button>
       </div>
 

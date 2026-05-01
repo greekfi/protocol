@@ -26,12 +26,12 @@ export interface OptionCreatedEvent {
     strike: string;
     isPut: boolean;
     isEuro: boolean;
-    /** Per-option oracle wrapper, or `0x0…0` for non-settled. */
-    oracle: string;
+    /** Length in seconds of the post-expiry exercise window. */
+    windowSeconds: number;
     /** The Option (long-side) ERC20 address. */
     option: string;
-    /** The paired Collateral (short-side) ERC20 address. Same as redemption(). */
-    coll: string;
+    /** The paired Receipt (short-side) ERC20 address. */
+    receipt: string;
   };
 }
 

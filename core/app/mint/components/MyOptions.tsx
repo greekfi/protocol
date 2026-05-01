@@ -56,7 +56,7 @@ const MyOptions = ({ options, selected, onSelect }: MyOptionsProps) => {
                   <div className="truncate">{shortLabel(opt)}</div>
                   <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
                     {opt.optionBalance > 0n && <span>long: {formatUnits(opt.optionBalance, 18)}</span>}
-                    {opt.collBalance > 0n && <span>short: {formatUnits(opt.collBalance, 18)}</span>}
+                    {opt.receiptBalance > 0n && <span>short: {formatUnits(opt.receiptBalance, 18)}</span>}
                   </div>
                 </button>
               </li>

@@ -383,6 +383,7 @@ const CHAIN_NAMES = {
   8453: "base",
   42161: "arbitrum",
   31337: "foundry",
+  57073: "ink",
   11155111: "sepolia",
   84532: "baseSepolia",
 };
