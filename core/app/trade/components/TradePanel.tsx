@@ -389,8 +389,11 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             <div className="space-y-3">
               <div>{holdings}</div>
               <div className="pt-3 border-t border-gray-700/40">
-                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                  Trading Approvals
+                <div
+                  className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2 cursor-help inline-flex items-center gap-1"
+                  title={`USDC — needed to buy options.\nOption — needed to sell options you already hold.\nAuto-mint + ${collSymbol} — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).`}
+                >
+                  Trading Approvals <span className="text-gray-500">ⓘ</span>
                 </div>
                 <ApprovalsList steps={steps} />
               </div>
