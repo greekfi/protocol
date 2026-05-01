@@ -6,6 +6,7 @@ import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
 import { Hint } from "../../components/Hint";
+import { useTokenSpot } from "../../lib/useTokenSpot";
 import { ExercisePanel } from "./ExercisePanel";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
@@ -189,6 +190,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     Object.values(allTokensMap).find(
       t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
     )?.decimals ?? 18;
+  // Underlying = collateral on calls, consideration on puts.
+  const underlyingSymbol = selectedOption.isPut ? consSymbol : collSymbol;
+  const spotPrice = useTokenSpot(underlyingSymbol);
+
   const consDecimals =
     Object.values(allTokensMap).find(
       t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
@@ -288,6 +293,11 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 min-w-[18rem] max-w-[22rem] flex-1">
         <div className="mb-3 flex items-center gap-3 flex-wrap">
           {tokenSelector}
+          {spotPrice !== undefined && (
+            <span className="text-sm text-gray-400">
+              spot <span className="text-emerald-300 tabular-nums">${formatMoney(spotPrice)}</span>
+            </span>
+          )}
           <div className="text-base font-semibold text-white tabular-nums">
             {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
           </div>
