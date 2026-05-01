@@ -192,7 +192,7 @@ export function ExercisePanel({
 
   const expiryGmt =
     expirationDate !== undefined
-      ? new Date(Number(expirationDate) * 1000).toUTCString().replace(" GMT", "")
+      ? new Date((Number(expirationDate) - 1) * 1000).toUTCString().replace(" GMT", "")
       : undefined;
 
   return (
