@@ -433,7 +433,10 @@ function ApprovalsList({
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
           {step.done ? (
-            <span className={`${PILL_BASE} bg-emerald-500/80 text-black`} aria-hidden>
+            <span
+              className="inline-flex items-center justify-center min-w-[4.25rem] text-emerald-400 text-base shrink-0"
+              aria-hidden
+            >
               ✓
             </span>
           ) : (
