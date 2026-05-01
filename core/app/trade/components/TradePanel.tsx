@@ -396,31 +396,28 @@ function ApprovalsList({
     title?: string;
   }>;
 }) {
-  // 2-column grid keeps every Approve button at a predictable x-position
-  // — each cell is the same width, label-on-the-left and button-on-the-right
-  // via justify-between. When a row is "done" the button slot stays
-  // reserved (invisible placeholder) so adjacent rows don't reflow.
+  // 2-column grid: each row's dot+label+button sit close together, separated
+  // by `gap-2`. The grid alignment keeps the two columns at fixed x-starts
+  // so the rows feel tabular without flinging the button to the far edge.
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
       {steps.map(step => (
-        <li key={step.label} className="flex items-center justify-between gap-2 min-w-0">
-          <span className="flex items-center gap-2 min-w-0">
-            <span
-              className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
-              }`}
-              aria-hidden
-            >
-              {step.done ? "✓" : ""}
-            </span>
-            <span
-              className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
-              title={step.title}
-            >
-              {step.label}
-            </span>
+        <li key={step.label} className="flex items-center gap-2 min-w-0">
+          <span
+            className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
+              step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
+            }`}
+            aria-hidden
+          >
+            {step.done ? "✓" : ""}
           </span>
-          {!step.done && step.onAction ? (
+          <span
+            className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
+            title={step.title}
+          >
+            {step.label}
+          </span>
+          {!step.done && step.onAction && (
             <button
               type="button"
               onClick={step.onAction}
@@ -429,9 +426,6 @@ function ApprovalsList({
             >
               {step.pending ? "…" : "Approve"}
             </button>
-          ) : (
-            // Reserve the same width so done rows align with pending rows.
-            <span className="px-2 py-0.5 text-xs invisible shrink-0">Approve</span>
           )}
         </li>
       ))}
