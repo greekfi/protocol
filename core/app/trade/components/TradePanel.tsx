@@ -5,6 +5,9 @@ import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { Hint } from "../../components/Hint";
+import { useTokenSpot } from "../../lib/useTokenSpot";
+import { ExercisePanel } from "./ExercisePanel";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
@@ -154,6 +157,13 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       ? pricePerOption * amountFloat
       : undefined;
 
+  const usdcCostWei = quote?.sellAmount ? BigInt(quote.sellAmount) : undefined;
+  const hasEnoughUsdc =
+    direction === "buy" &&
+    usdcCostWei !== undefined &&
+    approvals.usdcBalance !== undefined &&
+    approvals.usdcBalance >= usdcCostWei;
+
   const disabledReason = !approvals.allSatisfied
     ? "Finish the approvals in the card on the right"
     : !quote
@@ -180,6 +190,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     Object.values(allTokensMap).find(
       t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
     )?.decimals ?? 18;
+  // Underlying = collateral on calls, consideration on puts.
+  const underlyingSymbol = selectedOption.isPut ? consSymbol : collSymbol;
+  const spotPrice = useTokenSpot(underlyingSymbol);
+
   const consDecimals =
     Object.values(allTokensMap).find(
       t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
@@ -217,8 +231,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
   const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
   const autoMintApproved = approvals.autoMintEnabled === true;
-  const collateralApproved =
-    (approvals.collateralErc20Allowance ?? 0n) > 0n && (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+  const collateralErc20Done = (approvals.collateralErc20Allowance ?? 0n) > 0n;
+  const collateralFactoryDone = (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+  const collateralApproved = collateralErc20Done && collateralFactoryDone;
+  const collateralHalfApproved = !collateralApproved && (collateralErc20Done || collateralFactoryDone);
 
   // Labels are token-only — the Approve button next to each row already
   // says "Approve". Tooltips carry the longer "for Bebop / via operator"
@@ -254,9 +270,17 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     {
       label: collSymbol,
       done: collateralApproved,
+      partial: collateralHalfApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveCollateral,
       title: `Approve ${collSymbol} for the factory (two layers: ERC20 + factory-internal). Required for auto-mint to pull collateral on sell.`,
+    },
+    {
+      label: "Keeper Settlement",
+      done: approvals.keeperApproved === true,
+      pending: approvals.isApproving,
+      onAction: approvals.handleAllowKeeper,
+      title: "Allow Keeper to settle on your behalf during exercise/settlement window.",
     },
   ];
 
@@ -269,6 +293,11 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 min-w-[18rem] max-w-[22rem] flex-1">
         <div className="mb-3 flex items-center gap-3 flex-wrap">
           {tokenSelector}
+          {spotPrice !== undefined && (
+            <span className="text-sm text-gray-400">
+              spot <span className="text-emerald-300 tabular-nums">${formatMoney(spotPrice)}</span>
+            </span>
+          )}
           <div className="text-base font-semibold text-white tabular-nums">
             {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
           </div>
@@ -322,6 +351,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             <span className="font-medium tabular-nums">
               {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
             </span>
+            {direction === "buy" && usdcCostWei !== undefined && (
+              <span
+                className={`ml-1 ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
+                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+              >
+                {hasEnoughUsdc ? "✓" : "✗"}
+              </span>
+            )}
           </span>
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
@@ -363,7 +400,25 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
               <div>{holdings}</div>
               <div className="pt-3 border-t border-gray-700/40">
                 <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                  Approvals
+                  <Hint
+                    width="w-72"
+                    tip={[
+                      <span key="usdc">
+                        <b className="text-gray-100">USDC</b> — needed to buy options.
+                      </span>,
+                      <span key="opt">
+                        <b className="text-gray-100">Option</b> — needed to sell options you already hold.
+                      </span>,
+                      <span key="auto">
+                        <b className="text-gray-100">Auto-mint + {collSymbol}</b> — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).
+                      </span>,
+                      <span key="keeper">
+                        <b className="text-gray-100">Keeper Settlement</b> — allow Keeper to settle on your behalf during the exercise/settlement window.
+                      </span>,
+                    ]}
+                  >
+                    Trading Approvals
+                  </Hint>
                 </div>
                 <ApprovalsList steps={steps} />
               </div>
@@ -371,6 +426,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           }
         />
       </div>
+
+      <ExercisePanel
+        optionAddress={selectedOption.optionAddress}
+        considerationAddress={selectedOption.considerationAddress}
+        optionDecimals={optionDecimals}
+        consDecimals={consDecimals}
+        consSymbol={consSymbol}
+      />
     </div>
   );
 }
@@ -386,6 +449,7 @@ function ApprovalsList({
   steps: Array<{
     label: string;
     done: boolean;
+    partial?: boolean;
     pending: boolean;
     onAction?: () => void;
     title?: string;
@@ -402,7 +466,10 @@ function ApprovalsList({
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
           {step.done ? (
-            <span className={`${PILL_BASE} bg-emerald-500/80 text-black`} aria-hidden>
+            <span
+              className="inline-flex items-center justify-center min-w-[4.25rem] text-emerald-400 text-base shrink-0"
+              aria-hidden
+            >
               ✓
             </span>
           ) : (
@@ -410,16 +477,17 @@ function ApprovalsList({
               type="button"
               onClick={step.onAction}
               disabled={step.pending || !step.onAction}
-              className={`${PILL_BASE} bg-[#FF8300] hover:bg-[#e07400] text-black disabled:opacity-50`}
+              className={`${PILL_BASE} ${
+                step.partial
+                  ? "bg-pink-500 hover:bg-pink-400"
+                  : "bg-[#FF8300] hover:bg-[#e07400]"
+              } text-black disabled:opacity-50`}
             >
               {step.pending ? "…" : "Approve"}
             </button>
           )}
-          <span
-            className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
-            title={step.title}
-          >
-            {step.label}
+          <span className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}>
+            {step.title ? <Hint tip={step.title} above>{step.label}</Hint> : step.label}
           </span>
         </li>
       ))}
