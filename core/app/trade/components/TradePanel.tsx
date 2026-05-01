@@ -199,6 +199,21 @@ export function TradePanel({
     approvals.usdcBalance !== undefined &&
     approvals.usdcBalance >= usdcCostWei;
 
+  const sellAmountWei = approvals.optionAmountWei;
+  const hasEnoughOption =
+    direction === "sell" &&
+    optionBalances !== undefined &&
+    sellAmountWei > 0n &&
+    optionBalances.option >= sellAmountWei;
+  const insufficientMessage =
+    direction === "buy"
+      ? !hasEnoughUsdc && usdcCostWei !== undefined && usdcCostWei > 0n
+        ? "Not enough USDC"
+        : null
+      : !hasEnoughOption && sellAmountWei > 0n
+        ? "Not enough OPT"
+        : null;
+
   const disabledReason = !approvals.allSatisfied
     ? "Finish the approvals in the card on the right"
     : !quote
@@ -325,19 +340,19 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 min-w-[18rem] max-w-[22rem] flex-1">
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[20rem]">
         <div className="mb-3 flex items-center gap-3 flex-wrap">
-          {tokenSelector}
-          {spotPrice !== undefined && (
-            <span className="text-sm text-gray-400">
-              spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
-            </span>
-          )}
           <div className="text-base font-semibold text-white tabular-nums">
             {strikeLabel} · {expiryLabel} ·{" "}
             {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
             {selectedOption.isPut ? "Put" : "Call"}
           </div>
+          {spotPrice !== undefined && (
+            <span className="text-sm text-gray-400">
+              spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
+            </span>
+          )}
+          <div className="ml-auto">{tokenSelector}</div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -442,6 +457,9 @@ export function TradePanel({
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
+          {insufficientMessage && (
+            <span className="text-xs text-amber-300/90 ml-auto">{insufficientMessage}</span>
+          )}
         </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
@@ -452,7 +470,7 @@ export function TradePanel({
           Holdings on the left, the Approvals list on the right, on one
           row. Drops the second card entirely so the panel reads
           left-to-right (action → balances + holdings/approvals). */}
-      <div className="min-w-[20rem] flex-1 max-w-[28rem]">
+      <div className="w-[22rem] max-w-full">
         <ApprovalsCard
           steps={[]}
           balances={balances}
@@ -496,6 +514,7 @@ export function TradePanel({
           optionDecimals={optionDecimals}
           consDecimals={consDecimals}
           consSymbol={consSymbol}
+          onClose={() => setShowExercise(false)}
         />
       )}
     </div>
