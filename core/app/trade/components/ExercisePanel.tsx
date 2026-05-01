@@ -21,6 +21,7 @@ import {
   useWriteOptionExercise,
 } from "~~/generated";
 import deployedContracts from "~~/abi/deployedContracts";
+import { Hint } from "../../components/Hint";
 
 const ERC20_ABI = [
   {
@@ -251,21 +252,30 @@ export function ExercisePanel({
           </button>
           <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">OPT</span>
         </div>
-        <button
-          type="button"
-          onClick={handleExercise}
-          disabled={isPending || amountWei === 0n || !approvalsDone || euroBlocked}
-          title={
-            euroBlocked
-              ? "European option — only exercisable after expiration"
-              : !approvalsDone
-                ? `Approve ${consSymbol} first`
-                : undefined
-          }
-          className="w-full px-3 py-1.5 rounded-lg text-white text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
-        >
-          {isPending ? "…" : isSuccess ? "Exercised ✓" : "Exercise"}
-        </button>
+        {(() => {
+          const reason = euroBlocked
+            ? "European option — only exercisable after expiration."
+            : !approvalsDone
+              ? `Approve ${consSymbol} first.`
+              : undefined;
+          const btn = (
+            <button
+              type="button"
+              onClick={handleExercise}
+              disabled={isPending || amountWei === 0n || !approvalsDone || euroBlocked}
+              className="w-full px-3 py-1.5 rounded-lg text-white text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {isPending ? "…" : isSuccess ? "Exercised ✓" : "Exercise"}
+            </button>
+          );
+          return reason ? (
+            <Hint tip={reason} above underline={false} width="w-56">
+              {btn}
+            </Hint>
+          ) : (
+            btn
+          );
+        })()}
       </div>
       {euroBlocked && (
         <div className="mt-2 text-[11px] text-amber-300/80">

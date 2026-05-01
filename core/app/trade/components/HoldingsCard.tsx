@@ -1,6 +1,7 @@
 "use client";
 
 import { formatUnits } from "viem";
+import { Hint } from "../../components/Hint";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { type HeldOption, useAllHeldOptions } from "../hooks/useAllHeldOptions";
 
@@ -108,14 +109,15 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
           {inner}
         </button>
         {onExercise && h.optionBalance > 0n && (
-          <button
-            type="button"
-            onClick={() => onExercise(h)}
-            className="block mt-0.5 text-[11px] text-gray-400 underline underline-offset-2 hover:text-blue-200"
-            title="Open exercise panel"
-          >
-            exercise
-          </button>
+          <Hint tip="Open the exercise panel for this option." underline={false}>
+            <button
+              type="button"
+              onClick={() => onExercise(h)}
+              className="block mt-0.5 text-[11px] text-gray-400 underline underline-offset-2 hover:text-blue-200"
+            >
+              exercise
+            </button>
+          </Hint>
         )}
       </li>
     );

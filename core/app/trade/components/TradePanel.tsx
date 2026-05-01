@@ -462,30 +462,40 @@ export function TradePanel({
               />
               <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
             </div>
-            <button
-              type="button"
-              onClick={handleTrade}
-              disabled={
-                !quote ||
-                isTrading ||
-                !approvals.allSatisfied ||
-                !!insufficientMessage
-              }
-              className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
-              title={disabledReason}
-            >
-              {isTrading
-                ? direction === "buy"
-                  ? "Buying…"
-                  : "Selling…"
-                : status === "success"
-                  ? direction === "buy"
-                    ? "Bought ✓"
-                    : "Sold ✓"
-                  : direction === "buy"
-                    ? "Buy"
-                    : "Sell"}
-            </button>
+            {(() => {
+              const tradeBtn = (
+                <button
+                  type="button"
+                  onClick={handleTrade}
+                  disabled={
+                    !quote ||
+                    isTrading ||
+                    !approvals.allSatisfied ||
+                    !!insufficientMessage
+                  }
+                  className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
+                >
+                  {isTrading
+                    ? direction === "buy"
+                      ? "Buying…"
+                      : "Selling…"
+                    : status === "success"
+                      ? direction === "buy"
+                        ? "Bought ✓"
+                        : "Sold ✓"
+                      : direction === "buy"
+                        ? "Buy"
+                        : "Sell"}
+                </button>
+              );
+              return disabledReason ? (
+                <Hint tip={disabledReason} above underline={false}>
+                  {tradeBtn}
+                </Hint>
+              ) : (
+                tradeBtn
+              );
+            })()}
           </div>
         </div>
 
