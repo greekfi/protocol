@@ -177,10 +177,10 @@ export function ExercisePanel({
       : "—";
 
   return (
-    <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-black/60 px-4 py-3 min-w-[16rem] max-w-[20rem] flex-1">
+    <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-black/60 px-4 py-3 w-[14rem]">
       <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Exercise</div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-emerald-400 flex-1 min-w-0">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-emerald-400 min-w-0">
           <input
             type="text"
             inputMode="decimal"
@@ -221,7 +221,7 @@ export function ExercisePanel({
           onClick={handleExercise}
           disabled={isPending || amountWei === 0n || !approvalsDone}
           title={!approvalsDone ? `Approve ${consSymbol} first` : undefined}
-          className="px-3 py-1.5 rounded-lg text-white text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
+          className="w-full px-3 py-1.5 rounded-lg text-white text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
         >
           {isPending ? "…" : isSuccess ? "Exercised ✓" : "Exercise"}
         </button>
