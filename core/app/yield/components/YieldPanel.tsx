@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
+import { useTokenSpot } from "../../lib/useTokenSpot";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useDirectPrices } from "../../trade/hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../../trade/hooks/useTradableOptions";
@@ -49,9 +50,11 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
       ? `Write covered calls against your ${token.symbol}`
       : `Write covered puts — deposit ${stable?.symbol ?? stablecoin}, strike-buy ${token.symbol}`;
 
-  // Spot price is reported per option by the MM; for a given underlying they're all equal,
-  // so just pick the first priced option to display it in the header.
+  // Spot from DeFiLlama (frontend, chain-agnostic). Falls back to the MM's
+  // per-option spot echo only if DeFiLlama is unavailable.
+  const llamaSpot = useTokenSpot(token.symbol);
   const spot = (() => {
+    if (llamaSpot !== undefined) return llamaSpot;
     if (!prices) return undefined;
     for (const o of options) {
       const p = prices.get(o.optionAddress.toLowerCase())?.spotPrice;

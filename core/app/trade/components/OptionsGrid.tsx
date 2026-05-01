@@ -2,6 +2,8 @@ import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
 import { formatStrikeValue } from "../../lib/strike";
+import { useTokenSpot } from "../../lib/useTokenSpot";
+import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useDirectPrices } from "../hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../hooks/useTradableOptions";
 import { formatUnits } from "viem";
@@ -81,22 +83,34 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   // the WebSocket stream has no quote (typical when the relay isn't reachable).
   const { data: directPrices } = useDirectPrices();
 
+  // Spot for the strike-window filter. Resolve the picked token address to a
+  // symbol via the chain's token map, then ask DeFiLlama. Independent of the
+  // market-maker so the filter works on any chain whether or not the MM has
+  // discovered options yet.
+  const { allTokensMap } = useTokenMap();
+  const selectedSymbol = useMemo(() => {
+    const lower = selectedToken.toLowerCase();
+    return Object.values(allTokensMap).find(t => t.address.toLowerCase() === lower)?.symbol;
+  }, [allTokensMap, selectedToken]);
+  const spotFromLlama = useTokenSpot(selectedSymbol);
+
   // Group options by strike and expiration
   const { strikes, expirations, grid } = useMemo(() => {
     if (!options || options.length === 0) {
       return { strikes: [], expirations: [], grid: new Map<string, GridCell>() };
     }
 
-    // Strike window: ±100% of spot (i.e. |strike − spot| ≤ spot, so strike ∈
-    // [0, 2·spot]). Picks any priced option's spotPrice as the reference; for
-    // a given underlying every option reports the same spot. If no spot is
-    // available yet (MM not reachable), show everything.
-    let spot: number | undefined;
-    for (const o of options) {
-      const p = directPrices?.get(o.optionAddress.toLowerCase())?.spotPrice;
-      if (p !== undefined && Number.isFinite(p) && p > 0) {
-        spot = p;
-        break;
+    // Strike window: ±100% of spot, i.e. |strike − spot| ≤ spot ⇒ strike ∈
+    // [0, 2·spot]. Spot comes from DeFiLlama by underlying symbol; the MM's
+    // per-option spot echo is used as a backup if DeFiLlama is rate-limited.
+    let spot = spotFromLlama;
+    if (spot === undefined) {
+      for (const o of options) {
+        const p = directPrices?.get(o.optionAddress.toLowerCase())?.spotPrice;
+        if (p !== undefined && Number.isFinite(p) && p > 0) {
+          spot = p;
+          break;
+        }
       }
     }
 
@@ -156,7 +170,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
       expirations: sortedExpirations,
       grid: gridMap,
     };
-  }, [options, directPrices]);
+  }, [options, directPrices, spotFromLlama]);
 
   // Initialize visible expirations when expirations change
   useEffect(() => {
