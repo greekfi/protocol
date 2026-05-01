@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { usePricing } from "../../contexts/PricingContext";
 import { formatStrikeValue } from "../../lib/strike";
 import { useTokenSpot } from "../../lib/useTokenSpot";
@@ -95,9 +95,9 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   const spotFromLlama = useTokenSpot(selectedSymbol);
 
   // Group options by strike and expiration
-  const { strikes, expirations, grid } = useMemo(() => {
+  const { strikes, expirations, grid, spot } = useMemo(() => {
     if (!options || options.length === 0) {
-      return { strikes: [], expirations: [], grid: new Map<string, GridCell>() };
+      return { strikes: [], expirations: [], grid: new Map<string, GridCell>(), spot: undefined };
     }
 
     // Strike window: ±100% of spot, i.e. |strike − spot| ≤ spot ⇒ strike ∈
@@ -169,6 +169,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
       strikes: sortedStrikes,
       expirations: sortedExpirations,
       grid: gridMap,
+      spot,
     };
   }, [options, directPrices, spotFromLlama]);
 
@@ -193,6 +194,19 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
 
   // Filter expirations to only show visible ones
   const filteredExpirations = expirations.filter(exp => visibleExpirations.has(exp));
+
+  // Find the strike row index where the spot price line should sit. We
+  // insert it *before* the first strike >= spot, so a spot of 2350 between
+  // strikes 2300 and 2400 paints the line between those two rows. If spot
+  // is below or above every strike (or unknown) we don't render the line.
+  const spotWei = spot !== undefined ? BigInt(Math.round(spot * 1e18)) : undefined;
+  const spotInsertIndex =
+    spotWei !== undefined ? strikes.findIndex(s => BigInt(s) >= spotWei) : -1;
+  const showSpotLine = spotInsertIndex > 0 && spotInsertIndex < strikes.length;
+  const totalCols =
+    (showCalls ? filteredExpirations.length * 2 : 0) +
+    1 +
+    (showPuts ? filteredExpirations.length * 2 : 0);
 
   if (isLoading) {
     return <div className="text-blue-300">Loading options...</div>;
@@ -283,11 +297,24 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
           </tr>
         </thead>
         <tbody>
-          {strikes.map(strike => {
+          {strikes.map((strike, idx) => {
             const strikeFormatted = formatStrikeValue(BigInt(strike));
+            const renderSpotLine = showSpotLine && idx === spotInsertIndex;
 
             return (
-              <tr key={strike} className="border-b border-gray-800">
+              <Fragment key={strike}>
+                {renderSpotLine && (
+                  <tr aria-label={`spot price ${spot}`}>
+                    <td colSpan={totalCols} className="p-0">
+                      <div className="relative h-0 border-t border-emerald-400/70">
+                        <span className="absolute -top-[9px] left-1/2 -translate-x-1/2 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 bg-black">
+                          spot ${spot !== undefined ? spot.toLocaleString(undefined, { maximumFractionDigits: 2 }) : ""}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                <tr className="border-b border-gray-800">
                 {/* Call columns for each expiration */}
                 {showCalls &&
                   filteredExpirations.map(exp => {
@@ -354,7 +381,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
                       </td>
                     );
                   })}
-              </tr>
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>
