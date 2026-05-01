@@ -81,16 +81,12 @@ export default function TradePage() {
         {/* Single unified card. Once an option is picked, the TokenGrid pill
             moves *inside* the buy action card. */}
         <div className="w-full mt-6 p-6 bg-black/80 border border-gray-800 rounded-lg shadow-lg space-y-6 text-center">
-          {!selectedOption && (
+          {!selectedTokenAddress && (
             <TokenGrid tokens={CALL_UNDERLYINGS} selected={selectedSymbol} onSelect={handleSelectSymbol} />
           )}
 
           {selectedTokenAddress && (
             <>
-              {/* Top row: when an option is selected the TradePanel hosts
-                  all 4 columns (action, balances, approvals, holdings)
-                  inline. Otherwise the placeholder + Holdings sit
-                  side-by-side. */}
               {selectedOption ? (
                 <TradePanel
                   selectedOption={selectedOption}
@@ -112,10 +108,18 @@ export default function TradePage() {
                   }
                 />
               ) : (
-                <div className="min-h-[6rem] flex flex-wrap justify-center items-start gap-4">
-                  <div className="flex-1 flex justify-center min-w-0">
-                    <div className="text-sm text-gray-500 italic self-center">
-                      Pick a strike and expiry below to load the trade panel.
+                // Token picked, no strike yet: selected pill on the left with
+                // the "pick a strike" hint boxed underneath at the same width;
+                // holdings sit to the right.
+                <div className="flex flex-wrap justify-center items-start gap-4 text-left">
+                  <div className="flex flex-col items-start gap-2">
+                    <TokenGrid
+                      tokens={CALL_UNDERLYINGS}
+                      selected={selectedSymbol}
+                      onSelect={handleSelectSymbol}
+                    />
+                    <div className="w-full max-w-[7.5rem] text-xs text-gray-500 italic rounded-lg border border-gray-800 bg-black/40 px-2 py-2">
+                      Pick a strike and expiry below.
                     </div>
                   </div>
                   <HoldingsCard onSelect={handleSelectHolding} onExercise={handleExerciseHolding} />
