@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 
 /**
- * Frontend client for greek-events (https://greek-events.fly.dev), which
- * indexes Factory.OptionCreated across configured chains and serves them
- * over HTTP. Replaces per-page-load `getLogs` scans against public RPCs.
+ * Frontend client for the Factory.OptionCreated event index. The market-maker
+ * (`api.greek.finance`) now serves /events directly — Phase 2 of the events
+ * collapse merged the standalone `greek-events.fly.dev` indexer into the MM,
+ * so a single backend serves both events and option pricing.
  *
- * Set `NEXT_PUBLIC_EVENTS_API_URL` to override (default: greek-events.fly.dev).
- *
- * Schema mirrors the one defined in greekfi/event-sync's `src/storage.ts`:
- * StoredEvent with bigint fields encoded as decimal strings, dates as numbers.
+ * Set `NEXT_PUBLIC_EVENTS_API_URL` to override (e.g. point at a sibling
+ * dev MM instance). Default: api.greek.finance.
  */
 
 const EVENTS_API_URL =
-  process.env.NEXT_PUBLIC_EVENTS_API_URL || "https://greek-events.fly.dev";
+  process.env.NEXT_PUBLIC_EVENTS_API_URL || "https://api.greek.finance";
 
 export interface OptionCreatedEvent {
   blockNumber: string;
