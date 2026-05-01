@@ -74,6 +74,12 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
 
   const [direction, setDirection] = useState<TradeDirection>(selectedOption.isBuy ? "buy" : "sell");
   const [amount, setAmount] = useState<string>("1");
+  // The two inputs are linked; activeInput tracks which side the user typed
+  // last so we don't overwrite their cursor. The option amount is the source
+  // of truth for the quote — USDC is just a derived view (or the inverse,
+  // depending on which side is active).
+  const [usdcInput, setUsdcInput] = useState<string>("");
+  const [activeInput, setActiveInput] = useState<"option" | "usdc">("option");
 
   // Sync direction with the selection coming from OptionsGrid (Buy/Sell button).
   useEffect(() => {
@@ -156,6 +162,15 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     pricePerOption !== undefined && Number.isFinite(amountFloat) && amountFloat > 0
       ? pricePerOption * amountFloat
       : undefined;
+
+  // Keep the USDC input mirrored to the quote when the user is driving the
+  // option side. When the user is typing in the USDC input, leave their
+  // text alone — we already updated `amount` to keep the quote in sync.
+  useEffect(() => {
+    if (activeInput === "option" && usdcDisplay !== undefined) {
+      setUsdcInput(usdcDisplay.toFixed(2));
+    }
+  }, [activeInput, usdcDisplay]);
 
   const usdcCostWei = quote?.sellAmount ? BigInt(quote.sellAmount) : undefined;
   const hasEnoughUsdc =
@@ -303,28 +318,61 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 items-stretch">
-          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-44">
+        <div className="flex flex-wrap gap-2 items-stretch">
+          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
             <input
               type="text"
               inputMode="decimal"
               maxLength={8}
               value={amount}
+              onFocus={() => setActiveInput("option")}
               onChange={e => {
                 const v = e.target.value;
-                if (/^\d*\.?\d*$/.test(v) && v.length <= 8) setAmount(v);
+                if (!/^\d*\.?\d*$/.test(v) || v.length > 8) return;
+                setActiveInput("option");
+                setAmount(v);
               }}
               placeholder="0"
-              className="w-full px-3 py-2 bg-transparent text-blue-100 text-base outline-none tabular-nums"
+              className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
             />
-            <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">option</span>
+            <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">OPT</span>
+          </div>
+
+          <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
+            <input
+              type="text"
+              inputMode="decimal"
+              maxLength={12}
+              value={usdcInput}
+              onFocus={() => setActiveInput("usdc")}
+              onChange={e => {
+                const v = e.target.value;
+                if (!/^\d*\.?\d*$/.test(v) || v.length > 12) return;
+                setActiveInput("usdc");
+                setUsdcInput(v);
+                // Drive option amount from USDC input via the latest quote price.
+                const usdcN = parseFloat(v);
+                if (pricePerOption !== undefined && pricePerOption > 0 && Number.isFinite(usdcN)) {
+                  if (usdcN > 0) {
+                    const opts = usdcN / pricePerOption;
+                    // Keep enough precision that small option amounts don't get rounded to 0.
+                    setAmount(opts >= 1 ? opts.toFixed(4) : opts.toPrecision(4));
+                  } else {
+                    setAmount("");
+                  }
+                }
+              }}
+              placeholder="0"
+              className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
+            />
+            <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
           </div>
 
           <button
             type="button"
             onClick={handleTrade}
             disabled={!quote || isTrading || !approvals.allSatisfied}
-            className={`px-3 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors ${
+            className={`px-3 py-1 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors ${
               direction === "buy"
                 ? "bg-blue-500 hover:bg-blue-400"
                 : "bg-orange-500 hover:bg-orange-400"
