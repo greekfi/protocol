@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Test } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Factory} from "../contracts/Factory.sol";
-import {Receipt as Rct} from "../contracts/Receipt.sol";
-import {Option} from "../contracts/Option.sol";
-import {CreateParams} from "../contracts/interfaces/IFactory.sol";
-import {MockERC20} from "../contracts/mocks/MockERC20.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
+import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
 
 /// @notice Coverage for the post-expiry exercise window: pre-expiry, in-window, and post-window
 ///         transitions on `exercise` (long side) and `redeem` (short side).

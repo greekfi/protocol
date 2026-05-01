@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import {Factory} from "../contracts/Factory.sol";
-import {Receipt as Rct} from "../contracts/Receipt.sol";
-import {Option} from "../contracts/Option.sol";
-import {CreateParams} from "../contracts/interfaces/IFactory.sol";
-import {MockERC20} from "../contracts/mocks/MockERC20.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
+import { MockERC20 } from "../contracts/mocks/MockERC20.sol";
 
 /// @notice Factory creation validation (window defaulting, standard rules, blocklist).
 contract FactoryTest is Test {

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
-import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {Receipt} from "./Receipt.sol";
-import {TokenData, Balances, OptionInfo} from "./interfaces/IOption.sol";
-import {OptionUtils} from "./OptionUtils.sol";
+import { Receipt } from "./Receipt.sol";
+import { TokenData, Balances, OptionInfo } from "./interfaces/IOption.sol";
+import { OptionUtils } from "./OptionUtils.sol";
 
 /// @dev Narrow view of {Factory} used by {Option} for auto-mint/auto-burn lookups
 ///      and operator (ERC1155-style blanket allowance) checks on transfers.
@@ -409,7 +409,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         return OptionInfo({
             option: address(this),
             receipt: address(receipt),
-            collateral: TokenData({address_: colTok, name: cm.name(), symbol: cm.symbol(), decimals: cm.decimals()}),
+            collateral: TokenData({ address_: colTok, name: cm.name(), symbol: cm.symbol(), decimals: cm.decimals() }),
             consideration: TokenData({
                 address_: consTok, name: cnm.name(), symbol: cnm.symbol(), decimals: cnm.decimals()
             }),

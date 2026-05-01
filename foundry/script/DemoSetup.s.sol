@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import {Script, console} from "forge-std/Script.sol";
-import {Factory} from "../contracts/Factory.sol";
-import {CreateParams} from "../contracts/interfaces/IFactory.sol";
-import {YieldVault} from "../contracts/YieldVault.sol";
-import {ShakyToken} from "../contracts/mocks/ShakyToken.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
+import { YieldVault } from "../contracts/YieldVault.sol";
+import { ShakyToken } from "../contracts/mocks/ShakyToken.sol";
 
 /// @notice Post-deploy setup: create option, configure vault, fund accounts
 /// @dev Run after `yarn deploy` on a forked chain with BebopSettlement

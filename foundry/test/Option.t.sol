@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Factory} from "../contracts/Factory.sol";
-import {Receipt as Rct} from "../contracts/Receipt.sol";
-import {Option} from "../contracts/Option.sol";
-import {CreateParams} from "../contracts/interfaces/IFactory.sol";
-import {Balances, OptionInfo, TokenData} from "../contracts/interfaces/IOption.sol";
-import {ShakyToken, StableToken} from "../contracts/mocks/ShakyToken.sol";
+import { Test } from "forge-std/Test.sol";
+import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
+import { Balances, OptionInfo, TokenData } from "../contracts/interfaces/IOption.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
 
 contract OptionTest is Test {
     using SafeERC20 for IERC20;
@@ -1292,7 +1292,7 @@ contract OptionTest is Test {
 
 /// @notice 6-decimal test token for mixed decimal tests
 contract Token6 is ERC20 {
-    constructor() ERC20("Token6", "T6") {}
+    constructor() ERC20("Token6", "T6") { }
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);

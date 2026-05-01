@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import {Test} from "forge-std/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Factory} from "../contracts/Factory.sol";
-import {Receipt as Rct} from "../contracts/Receipt.sol";
-import {Option} from "../contracts/Option.sol";
-import {YieldVault} from "../contracts/YieldVault.sol";
-import {ShakyToken, StableToken} from "../contracts/mocks/ShakyToken.sol";
-import {CreateParams} from "../contracts/interfaces/IFactory.sol";
+import { Test } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Factory } from "../contracts/Factory.sol";
+import { Receipt as Rct } from "../contracts/Receipt.sol";
+import { Option } from "../contracts/Option.sol";
+import { YieldVault } from "../contracts/YieldVault.sol";
+import { ShakyToken, StableToken } from "../contracts/mocks/ShakyToken.sol";
+import { CreateParams } from "../contracts/interfaces/IFactory.sol";
 
 // ============ Bebop addresses on Base ============
 address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
@@ -598,7 +598,7 @@ contract YieldVaultTest is Test {
         // MM signs the order — only signature needed
         bytes32 makerDigest = IBebopSettlement(BEBOP_BLEND).hashSingleOrder(order, 0, 0, 0);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(makerPk, makerDigest);
-        MakerSignature memory makerSig = MakerSignature({signatureBytes: abi.encodePacked(r, s, v), flags: 0});
+        MakerSignature memory makerSig = MakerSignature({ signatureBytes: abi.encodePacked(r, s, v), flags: 0 });
 
         // Operator submits via vault.execute — vault is msg.sender so swapSingle accepts it
         vm.prank(operator);
