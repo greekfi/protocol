@@ -27,7 +27,7 @@ export function useOptions() {
         expiration: BigInt(e.args.expirationDate),
         strike: BigInt(e.args.strike),
         isPut: e.args.isPut,
-        coll: e.args.coll as Address,
+        receipt: e.args.receipt as Address,
       })),
     [events],
   );

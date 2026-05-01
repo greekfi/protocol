@@ -6,7 +6,7 @@ import { useChainEvents } from "../../hooks/useChainEvents";
 
 export interface HeldOption {
   option: Address;
-  coll: Address;
+  receipt: Address;
   collateral: Address;
   consideration: Address;
   expiration: bigint;
@@ -14,8 +14,8 @@ export interface HeldOption {
   isPut: boolean;
   /** Long-side balance (the Option ERC20). */
   optionBalance: bigint;
-  /** Short-side balance (the Receipt/coll ERC20). */
-  collBalance: bigint;
+  /** Short-side balance (the Receipt ERC20). */
+  receiptBalance: bigint;
 }
 
 /**
@@ -34,7 +34,7 @@ export function useAllHeldOptions() {
     () =>
       events.map(e => ({
         option: e.args.option as Address,
-        coll: e.args.coll as Address,
+        receipt: e.args.receipt as Address,
         collateral: e.args.collateral as Address,
         consideration: e.args.consideration as Address,
         expiration: BigInt(e.args.expirationDate),
@@ -48,7 +48,7 @@ export function useAllHeldOptions() {
     if (!address) return [];
     return allOptions.flatMap(opt => [
       { address: opt.option, abi: erc20Abi, functionName: "balanceOf" as const, args: [address] as const },
-      { address: opt.coll, abi: erc20Abi, functionName: "balanceOf" as const, args: [address] as const },
+      { address: opt.receipt, abi: erc20Abi, functionName: "balanceOf" as const, args: [address] as const },
     ]);
   }, [address, allOptions]);
 
@@ -62,9 +62,9 @@ export function useAllHeldOptions() {
     const results: HeldOption[] = [];
     allOptions.forEach((opt, i) => {
       const optionBalance = (data[i * 2]?.result as bigint | undefined) ?? 0n;
-      const collBalance = (data[i * 2 + 1]?.result as bigint | undefined) ?? 0n;
-      if (optionBalance > 0n || collBalance > 0n) {
-        results.push({ ...opt, optionBalance, collBalance });
+      const receiptBalance = (data[i * 2 + 1]?.result as bigint | undefined) ?? 0n;
+      if (optionBalance > 0n || receiptBalance > 0n) {
+        results.push({ ...opt, optionBalance, receiptBalance });
       }
     });
     return results;

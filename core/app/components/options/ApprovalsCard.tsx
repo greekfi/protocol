@@ -22,9 +22,17 @@ export interface BalanceRow {
 interface ApprovalsCardProps {
   steps: Step[];
   balances?: BalanceRow[];
+  /** Layout for the balances list. "list" (default) is one row per balance;
+   *  "grid" packs them into a 2-column grid — used by /trade where the four
+   *  token rows fit better as 2×2 with Holdings rendered below. */
+  balancesLayout?: "list" | "grid";
+  /** Arbitrary content rendered at the bottom of the card, below the
+   *  Balances and Approvals sections. Currently used by /trade to keep
+   *  Holdings inside the balances column instead of as a separate column. */
+  footer?: ReactNode;
 }
 
-export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
+export function ApprovalsCard({ steps, balances, balancesLayout = "list", footer }: ApprovalsCardProps) {
   const { isConnected } = useAccount();
   // Balances and approvals only make sense for a connected wallet — both are
   // wallet-scoped (your token balance, your allowance to the protocol). Hide
@@ -45,12 +53,22 @@ export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
           <div className="mb-1 text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
             Balances
           </div>
-          <ul className="mb-3 flex flex-col gap-1.5 text-sm tabular-nums">
+          <ul
+            className={clsx(
+              "mb-3 text-sm tabular-nums",
+              balancesLayout === "grid"
+                ? "grid grid-cols-2 gap-x-3 gap-y-1.5"
+                : "flex flex-col gap-1.5",
+            )}
+          >
             {balances.map(b =>
               b.bottomRow ? (
                 <li
                   key={b.label}
-                  className="rounded-md border border-gray-700/60 bg-black/30 overflow-hidden"
+                  className={clsx(
+                    "rounded-md border border-gray-700/60 bg-black/30 overflow-hidden",
+                    balancesLayout === "grid" && "col-span-2",
+                  )}
                 >
                   <div className="flex items-center justify-between gap-3 px-2 py-1.5">
                     <span className="text-gray-500 text-xs uppercase tracking-wider">{b.label}</span>
@@ -59,8 +77,8 @@ export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
                   <div className="border-t border-gray-700/40 px-2 py-1.5">{b.bottomRow}</div>
                 </li>
               ) : (
-                <li key={b.label} className="flex items-center justify-between gap-3">
-                  <span className="text-gray-500 text-xs uppercase tracking-wider">{b.label}</span>
+                <li key={b.label} className="flex items-center justify-between gap-3 min-w-0">
+                  <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
                   <span className={clsx("text-blue-100", b.dim && "text-gray-500")}>{b.value}</span>
                 </li>
               ),
@@ -115,6 +133,8 @@ export function ApprovalsCard({ steps, balances }: ApprovalsCardProps) {
         ))}
       </ul>
       )}
+
+      {footer && <div className="mt-3 pt-3 border-t border-gray-700/40">{footer}</div>}
     </div>
   );
 }

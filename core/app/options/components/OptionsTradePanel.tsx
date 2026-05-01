@@ -23,14 +23,14 @@ const OPTION_ABI = [
     outputs: [],
   },
   {
-    name: "redeem",
+    name: "burn",
     type: "function",
     stateMutability: "nonpayable",
     inputs: [{ name: "amount", type: "uint256" }],
     outputs: [],
   },
   {
-    name: "redemption",
+    name: "receipt",
     type: "function",
     stateMutability: "view",
     inputs: [],
@@ -95,7 +95,7 @@ interface OptionsTradePanelProps {
   onClose: () => void;
 }
 
-type TradeAction = "mint" | "exercise" | "redeem";
+type TradeAction = "mint" | "exercise" | "burn";
 
 export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanelProps) {
   const [action, setAction] = useState<TradeAction>("mint");
@@ -112,7 +112,7 @@ export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanel
   const { data: redemptionAddress } = useReadContract({
     address: selectedOption.optionAddress as `0x${string}`,
     abi: OPTION_ABI,
-    functionName: "redemption",
+    functionName: "receipt",
   });
 
   // Get RFQ pricing stream for live prices
@@ -371,9 +371,9 @@ export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanel
             Exercise
           </button>
           <button
-            onClick={() => setAction("redeem")}
+            onClick={() => setAction("burn")}
             className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-              action === "redeem"
+              action === "burn"
                 ? "bg-purple-500 text-white"
                 : "bg-gray-900 text-gray-400 border border-gray-700 hover:border-purple-500"
             }`}
@@ -396,7 +396,7 @@ export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanel
             collateral.
           </>
         )}
-        {action === "redeem" && (
+        {action === "burn" && (
           <>
             <strong>Redeem:</strong> Burn matched Option + Redemption pairs to get back {collateralSymbol} collateral.
           </>
@@ -516,7 +516,7 @@ export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanel
           isActionPending ||
           (action === "mint" && needsCollateralApproval) ||
           (action === "exercise" && needsConsiderationApproval) ||
-          (action !== "redeem" && isExpired)
+          (action !== "burn" && isExpired)
         }
         className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
           !amount ||
@@ -525,7 +525,7 @@ export function OptionsTradePanel({ selectedOption, onClose }: OptionsTradePanel
           isActionPending ||
           (action === "mint" && needsCollateralApproval) ||
           (action === "exercise" && needsConsiderationApproval) ||
-          (action !== "redeem" && isExpired)
+          (action !== "burn" && isExpired)
             ? "bg-gray-800 text-gray-500 cursor-not-allowed"
             : action === "mint"
               ? "bg-green-500 hover:bg-green-600 text-white"

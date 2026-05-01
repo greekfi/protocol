@@ -231,7 +231,7 @@ const foundryContracts = {
     inheritedFunctions: {},
   },
   StableToken: {
-    address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
+    address: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
     abi: [
       {
         type: "constructor",
@@ -472,7 +472,7 @@ const foundryContracts = {
     inheritedFunctions: {},
   },
   ShakyToken: {
-    address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
+    address: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
     abi: [
       {
         type: "constructor",
@@ -712,8 +712,8 @@ const foundryContracts = {
     ],
     inheritedFunctions: {},
   },
-  Collateral: {
-    address: "0xb19b36b1456e65e3a6d514d3f715f204bd59f431",
+  Receipt: {
+    address: "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
     abi: [
       {
         type: "constructor",
@@ -737,52 +737,6 @@ const foundryContracts = {
           },
         ],
         stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "_claimForOption",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-          },
-          {
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        outputs: [
-          {
-            type: "uint256",
-            name: "payout",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "_factory",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "_redeemPair",
-        inputs: [
-          {
-            name: "account",
-            type: "address",
-          },
-          {
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -839,6 +793,21 @@ const foundryContracts = {
           },
         ],
         stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "burn",
+        inputs: [
+          {
+            name: "account",
+            type: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -967,6 +936,16 @@ const foundryContracts = {
       },
       {
         type: "function",
+        name: "exerciseDeadline",
+        outputs: [
+          {
+            type: "uint40",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
         name: "expirationDate",
         outputs: [
           {
@@ -1014,8 +993,8 @@ const foundryContracts = {
             type: "bool",
           },
           {
-            name: "oracle_",
-            type: "address",
+            name: "windowSeconds_",
+            type: "uint40",
           },
           {
             name: "option_",
@@ -1100,26 +1079,6 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "optionReserveRemaining",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "oracle",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
         name: "owner",
         outputs: [
           {
@@ -1174,37 +1133,6 @@ const foundryContracts = {
         type: "function",
         name: "renounceOwnership",
         stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "reserveInitialized",
-        outputs: [
-          {
-            type: "bool",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "settle",
-        inputs: [
-          {
-            name: "hint",
-            type: "bytes",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "settlementPrice",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -1420,16 +1348,6 @@ const foundryContracts = {
       },
       {
         type: "event",
-        name: "Settled",
-        inputs: [
-          {
-            name: "price",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "Transfer",
         inputs: [
           {
@@ -1466,6 +1384,14 @@ const foundryContracts = {
       },
       {
         type: "error",
+        name: "ExerciseWindowClosed",
+      },
+      {
+        type: "error",
+        name: "ExerciseWindowOpen",
+      },
+      {
+        type: "error",
         name: "FeeOnTransferNotSupported",
       },
       {
@@ -1498,19 +1424,7 @@ const foundryContracts = {
       },
       {
         type: "error",
-        name: "NoOracle",
-      },
-      {
-        type: "error",
-        name: "NonSettledOnly",
-      },
-      {
-        type: "error",
         name: "NotInitializing",
-      },
-      {
-        type: "error",
-        name: "NotSettled",
       },
       {
         type: "error",
@@ -1526,15 +1440,11 @@ const foundryContracts = {
           },
         ],
       },
-      {
-        type: "error",
-        name: "SettledOnly",
-      },
     ],
     inheritedFunctions: {},
   },
   Option: {
-    address: "0x8ce361602b935680e8dec218b820ff5056beb7af",
+    address: "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9",
     abi: [
       {
         type: "constructor",
@@ -1631,7 +1541,7 @@ const foundryContracts = {
                 type: "uint256",
               },
               {
-                name: "coll",
+                name: "receipt",
                 type: "uint256",
               },
             ],
@@ -1641,7 +1551,7 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "claim",
+        name: "burn",
         inputs: [
           {
             name: "amount",
@@ -1649,27 +1559,6 @@ const foundryContracts = {
           },
         ],
         stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "claimFor",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "coll",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -1713,7 +1602,7 @@ const foundryContracts = {
                 type: "address",
               },
               {
-                name: "coll",
+                name: "receipt",
                 type: "address",
               },
               {
@@ -1777,8 +1666,8 @@ const foundryContracts = {
                 type: "bool",
               },
               {
-                name: "oracle",
-                type: "address",
+                name: "exerciseDeadline",
+                type: "uint40",
               },
             ],
           },
@@ -1801,7 +1690,22 @@ const foundryContracts = {
         name: "exercise",
         inputs: [
           {
-            name: "account",
+            name: "holders",
+            type: "address[]",
+          },
+          {
+            name: "amounts",
+            type: "uint256[]",
+          },
+        ],
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exercise",
+        inputs: [
+          {
+            name: "holder",
             type: "address",
           },
           {
@@ -1810,6 +1714,16 @@ const foundryContracts = {
           },
         ],
         stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exerciseDeadline",
+        outputs: [
+          {
+            type: "uint40",
+          },
+        ],
+        stateMutability: "view",
       },
       {
         type: "function",
@@ -1836,7 +1750,7 @@ const foundryContracts = {
         name: "init",
         inputs: [
           {
-            name: "coll_",
+            name: "receipt_",
             type: "address",
           },
           {
@@ -1859,16 +1773,6 @@ const foundryContracts = {
       {
         type: "function",
         name: "isPut",
-        outputs: [
-          {
-            type: "bool",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
-        name: "isSettled",
         outputs: [
           {
             type: "bool",
@@ -1919,16 +1823,6 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "oracle",
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "view",
-      },
-      {
-        type: "function",
         name: "owner",
         outputs: [
           {
@@ -1939,40 +1833,18 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "redeem",
-        inputs: [
+        name: "receipt",
+        outputs: [
           {
-            name: "amount",
-            type: "uint256",
+            type: "address",
           },
         ],
-        stateMutability: "nonpayable",
+        stateMutability: "view",
       },
       {
         type: "function",
         name: "renounceOwnership",
         stateMutability: "pure",
-      },
-      {
-        type: "function",
-        name: "settle",
-        inputs: [
-          {
-            name: "hint",
-            type: "bytes",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "settlementPrice",
-        outputs: [
-          {
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
       },
       {
         type: "function",
@@ -2086,25 +1958,6 @@ const foundryContracts = {
       },
       {
         type: "event",
-        name: "Claimed",
-        inputs: [
-          {
-            name: "holder",
-            type: "address",
-            indexed: true,
-          },
-          {
-            name: "optionBurned",
-            type: "uint256",
-          },
-          {
-            name: "collateralOut",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "ContractLocked",
       },
       {
@@ -2117,6 +1970,10 @@ const foundryContracts = {
         inputs: [
           {
             name: "longOption",
+            type: "address",
+          },
+          {
+            name: "caller",
             type: "address",
           },
           {
@@ -2159,16 +2016,6 @@ const foundryContracts = {
       },
       {
         type: "event",
-        name: "Settled",
-        inputs: [
-          {
-            name: "price",
-            type: "uint256",
-          },
-        ],
-      },
-      {
-        type: "event",
         name: "Transfer",
         inputs: [
           {
@@ -2193,11 +2040,15 @@ const foundryContracts = {
       },
       {
         type: "error",
-        name: "ContractNotExpired",
+        name: "EuropeanExerciseDisabled",
       },
       {
         type: "error",
-        name: "EuropeanExerciseDisabled",
+        name: "ExerciseNotAllowed",
+      },
+      {
+        type: "error",
+        name: "ExerciseWindowClosed",
       },
       {
         type: "error",
@@ -2221,10 +2072,6 @@ const foundryContracts = {
       },
       {
         type: "error",
-        name: "NoOracle",
-      },
-      {
-        type: "error",
         name: "NotInitializing",
       },
       {
@@ -2235,13 +2082,13 @@ const foundryContracts = {
     inheritedFunctions: {},
   },
   Factory: {
-    address: "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
+    address: "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
     abi: [
       {
         type: "constructor",
         inputs: [
           {
-            name: "collClone_",
+            name: "receiptClone_",
             type: "address",
           },
           {
@@ -2252,10 +2099,10 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "COLL_CLONE",
+        name: "DEFAULT_EXERCISE_WINDOW",
         outputs: [
           {
-            type: "address",
+            type: "uint40",
           },
         ],
         stateMutability: "view",
@@ -2269,6 +2116,31 @@ const foundryContracts = {
           },
         ],
         stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "RECEIPT_CLONE",
+        outputs: [
+          {
+            type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "allowExercise",
+        inputs: [
+          {
+            name: "exercisor",
+            type: "address",
+          },
+          {
+            name: "allowed",
+            type: "bool",
+          },
+        ],
+        stateMutability: "nonpayable",
       },
       {
         type: "function",
@@ -2342,7 +2214,7 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "autoMintRedeem",
+        name: "autoMintBurn",
         inputs: [
           {
             name: "",
@@ -2388,38 +2260,6 @@ const foundryContracts = {
         name: "createOption",
         inputs: [
           {
-            name: "collateral_",
-            type: "address",
-          },
-          {
-            name: "consideration_",
-            type: "address",
-          },
-          {
-            name: "expirationDate_",
-            type: "uint40",
-          },
-          {
-            name: "strike_",
-            type: "uint96",
-          },
-          {
-            name: "isPut_",
-            type: "bool",
-          },
-        ],
-        outputs: [
-          {
-            type: "address",
-          },
-        ],
-        stateMutability: "nonpayable",
-      },
-      {
-        type: "function",
-        name: "createOption",
-        inputs: [
-          {
             name: "p",
             type: "tuple",
             components: [
@@ -2448,12 +2288,8 @@ const foundryContracts = {
                 type: "bool",
               },
               {
-                name: "oracleSource",
-                type: "address",
-              },
-              {
-                name: "twapWindow",
-                type: "uint32",
+                name: "windowSeconds",
+                type: "uint40",
               },
             ],
           },
@@ -2498,12 +2334,8 @@ const foundryContracts = {
                 type: "bool",
               },
               {
-                name: "oracleSource",
-                type: "address",
-              },
-              {
-                name: "twapWindow",
-                type: "uint32",
+                name: "windowSeconds",
+                type: "uint40",
               },
             ],
           },
@@ -2518,7 +2350,7 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "enableAutoMintRedeem",
+        name: "enableAutoMintBurn",
         inputs: [
           {
             name: "enabled",
@@ -2526,6 +2358,26 @@ const foundryContracts = {
           },
         ],
         stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "exerciseAllowed",
+        inputs: [
+          {
+            name: "holder",
+            type: "address",
+          },
+          {
+            name: "exercisor",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
+          },
+        ],
+        stateMutability: "view",
       },
       {
         type: "function",
@@ -2565,6 +2417,22 @@ const foundryContracts = {
         outputs: [
           {
             type: "address",
+          },
+        ],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "receipts",
+        inputs: [
+          {
+            name: "",
+            type: "address",
+          },
+        ],
+        outputs: [
+          {
+            type: "bool",
           },
         ],
         stateMutability: "view",
@@ -2646,7 +2514,7 @@ const foundryContracts = {
       },
       {
         type: "event",
-        name: "AutoMintRedeemUpdated",
+        name: "AutoMintBurnUpdated",
         inputs: [
           {
             name: "account",
@@ -2655,6 +2523,26 @@ const foundryContracts = {
           },
           {
             name: "enabled",
+            type: "bool",
+          },
+        ],
+      },
+      {
+        type: "event",
+        name: "ExerciseApproval",
+        inputs: [
+          {
+            name: "holder",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "exercisor",
+            type: "address",
+            indexed: true,
+          },
+          {
+            name: "allowed",
             type: "bool",
           },
         ],
@@ -2710,8 +2598,8 @@ const foundryContracts = {
             type: "bool",
           },
           {
-            name: "oracle",
-            type: "address",
+            name: "windowSeconds",
+            type: "uint40",
           },
           {
             name: "option",
@@ -2719,7 +2607,7 @@ const foundryContracts = {
             indexed: true,
           },
           {
-            name: "coll",
+            name: "receipt",
             type: "address",
           },
         ],
@@ -2741,10 +2629,6 @@ const foundryContracts = {
       {
         type: "error",
         name: "BlocklistedToken",
-      },
-      {
-        type: "error",
-        name: "EuropeanRequiresOracle",
       },
       {
         type: "error",
@@ -2789,10 +2673,6 @@ const foundryContracts = {
             type: "address",
           },
         ],
-      },
-      {
-        type: "error",
-        name: "UnsupportedOracleSource",
       },
     ],
     inheritedFunctions: {},
@@ -3061,7 +2941,7 @@ const foundryContracts = {
       },
       {
         type: "function",
-        name: "enableAutoMintRedeem",
+        name: "enableAutoMintBurn",
         inputs: [
           {
             name: "enabled",

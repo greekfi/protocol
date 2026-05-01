@@ -6,10 +6,676 @@ import {
 } from 'wagmi/codegen'
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Collateral
+// Factory
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const collateralAbi = [
+export const factoryAbi = [
+  {
+    type: 'constructor',
+    inputs: [
+      { name: 'receiptClone_', type: 'address' },
+      { name: 'optionClone_', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'DEFAULT_EXERCISE_WINDOW',
+    outputs: [{ type: 'uint40' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'OPTION_CLONE',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'RECEIPT_CLONE',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'exercisor', type: 'address' },
+      { name: 'allowed', type: 'bool' },
+    ],
+    name: 'allowExercise',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'token', type: 'address' },
+      { name: 'owner_', type: 'address' },
+    ],
+    name: 'allowance',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'token', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'approve',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'approved', type: 'bool' },
+    ],
+    name: 'approveOperator',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'owner_', type: 'address' },
+      { name: 'operator', type: 'address' },
+    ],
+    name: 'approvedOperator',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', type: 'address' }],
+    name: 'autoMintBurn',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'token', type: 'address' }],
+    name: 'blockToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', type: 'address' }],
+    name: 'blocklist',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'p',
+        type: 'tuple',
+        components: [
+          { name: 'collateral', type: 'address' },
+          { name: 'consideration', type: 'address' },
+          { name: 'expirationDate', type: 'uint40' },
+          { name: 'strike', type: 'uint96' },
+          { name: 'isPut', type: 'bool' },
+          { name: 'isEuro', type: 'bool' },
+          { name: 'windowSeconds', type: 'uint40' },
+        ],
+      },
+    ],
+    name: 'createOption',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple[]',
+        components: [
+          { name: 'collateral', type: 'address' },
+          { name: 'consideration', type: 'address' },
+          { name: 'expirationDate', type: 'uint40' },
+          { name: 'strike', type: 'uint96' },
+          { name: 'isPut', type: 'bool' },
+          { name: 'isEuro', type: 'bool' },
+          { name: 'windowSeconds', type: 'uint40' },
+        ],
+      },
+    ],
+    name: 'createOptions',
+    outputs: [{ name: 'result', type: 'address[]' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'enabled', type: 'bool' }],
+    name: 'enableAutoMintBurn',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'holder', type: 'address' },
+      { name: 'exercisor', type: 'address' },
+    ],
+    name: 'exerciseAllowed',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'token', type: 'address' }],
+    name: 'isBlocked',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', type: 'address' }],
+    name: 'options',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', type: 'address' }],
+    name: 'receipts',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint160' },
+      { name: 'token', type: 'address' },
+    ],
+    name: 'transferFrom',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'token', type: 'address' }],
+    name: 'unblockToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'token', type: 'address', indexed: true },
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'Approval',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'account', type: 'address', indexed: true },
+      { name: 'enabled', type: 'bool' },
+    ],
+    name: 'AutoMintBurnUpdated',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'holder', type: 'address', indexed: true },
+      { name: 'exercisor', type: 'address', indexed: true },
+      { name: 'allowed', type: 'bool' },
+    ],
+    name: 'ExerciseApproval',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'operator', type: 'address', indexed: true },
+      { name: 'approved', type: 'bool' },
+    ],
+    name: 'OperatorApproval',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'collateral', type: 'address', indexed: true },
+      { name: 'consideration', type: 'address', indexed: true },
+      { name: 'expirationDate', type: 'uint40' },
+      { name: 'strike', type: 'uint96' },
+      { name: 'isPut', type: 'bool' },
+      { name: 'isEuro', type: 'bool' },
+      { name: 'windowSeconds', type: 'uint40' },
+      { name: 'option', type: 'address', indexed: true },
+      { name: 'receipt', type: 'address' },
+    ],
+    name: 'OptionCreated',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'token', type: 'address' },
+      { name: 'blocked', type: 'bool' },
+    ],
+    name: 'TokenBlocked',
+  },
+  { type: 'error', inputs: [], name: 'BlocklistedToken' },
+  { type: 'error', inputs: [], name: 'FailedDeployment' },
+  { type: 'error', inputs: [], name: 'InsufficientAllowance' },
+  {
+    type: 'error',
+    inputs: [
+      { name: 'balance', type: 'uint256' },
+      { name: 'needed', type: 'uint256' },
+    ],
+    name: 'InsufficientBalance',
+  },
+  { type: 'error', inputs: [], name: 'InvalidAddress' },
+  { type: 'error', inputs: [], name: 'InvalidTokens' },
+  { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
+  {
+    type: 'error',
+    inputs: [{ name: 'token', type: 'address' }],
+    name: 'SafeERC20FailedOperation',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Option
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const optionAbi = [
+  {
+    type: 'constructor',
+    inputs: [
+      { name: 'name_', type: 'string' },
+      { name: 'symbol_', type: 'string' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    name: 'allowance',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' },
+    ],
+    name: 'approve',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'account', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'account', type: 'address' }],
+    name: 'balancesOf',
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'collateral', type: 'uint256' },
+          { name: 'consideration', type: 'uint256' },
+          { name: 'option', type: 'uint256' },
+          { name: 'receipt', type: 'uint256' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    name: 'burn',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'collateral',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'consideration',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'decimals',
+    outputs: [{ type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'details',
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'option', type: 'address' },
+          { name: 'receipt', type: 'address' },
+          {
+            name: 'collateral',
+            type: 'tuple',
+            components: [
+              { name: 'address_', type: 'address' },
+              { name: 'name', type: 'string' },
+              { name: 'symbol', type: 'string' },
+              { name: 'decimals', type: 'uint8' },
+            ],
+          },
+          {
+            name: 'consideration',
+            type: 'tuple',
+            components: [
+              { name: 'address_', type: 'address' },
+              { name: 'name', type: 'string' },
+              { name: 'symbol', type: 'string' },
+              { name: 'decimals', type: 'uint8' },
+            ],
+          },
+          { name: 'expiration', type: 'uint256' },
+          { name: 'strike', type: 'uint256' },
+          { name: 'isPut', type: 'bool' },
+          { name: 'isEuro', type: 'bool' },
+          { name: 'exerciseDeadline', type: 'uint40' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    name: 'exercise',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'holders', type: 'address[]' },
+      { name: 'amounts', type: 'uint256[]' },
+    ],
+    name: 'exercise',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'holder', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'exercise',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'exerciseDeadline',
+    outputs: [{ type: 'uint40' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'expirationDate',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'factory',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'receipt_', type: 'address' },
+      { name: 'owner_', type: 'address' },
+    ],
+    name: 'init',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'isEuro',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'isPut',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'lock',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'mint',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    name: 'mint',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'name',
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'receipt',
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'pure',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'strike',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'symbol',
+    outputs: [{ type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'totalSupply',
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'transfer',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'transferFrom',
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'unlock',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'spender', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256' },
+    ],
+    name: 'Approval',
+  },
+  { type: 'event', inputs: [], name: 'ContractLocked' },
+  { type: 'event', inputs: [], name: 'ContractUnlocked' },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'longOption', type: 'address' },
+      { name: 'caller', type: 'address' },
+      { name: 'holder', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'Exercise',
+  },
+  {
+    type: 'event',
+    inputs: [{ name: 'version', type: 'uint64' }],
+    name: 'Initialized',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'longOption', type: 'address' },
+      { name: 'holder', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'Mint',
+  },
+  {
+    type: 'event',
+    inputs: [
+      { name: 'from', type: 'address', indexed: true },
+      { name: 'to', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256' },
+    ],
+    name: 'Transfer',
+  },
+  { type: 'error', inputs: [], name: 'ContractExpired' },
+  { type: 'error', inputs: [], name: 'EuropeanExerciseDisabled' },
+  { type: 'error', inputs: [], name: 'ExerciseNotAllowed' },
+  { type: 'error', inputs: [], name: 'ExerciseWindowClosed' },
+  { type: 'error', inputs: [], name: 'InsufficientBalance' },
+  { type: 'error', inputs: [], name: 'InvalidAddress' },
+  { type: 'error', inputs: [], name: 'InvalidInitialization' },
+  { type: 'error', inputs: [], name: 'InvalidValue' },
+  { type: 'error', inputs: [], name: 'LockedContract' },
+  { type: 'error', inputs: [], name: 'NotInitializing' },
+  { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Receipt
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const receiptAbi = [
   {
     type: 'constructor',
     inputs: [
@@ -51,6 +717,16 @@ export const collateralAbi = [
     name: 'balanceOf',
     outputs: [{ type: 'uint256' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    name: 'burn',
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -135,6 +811,13 @@ export const collateralAbi = [
   {
     type: 'function',
     inputs: [],
+    name: 'exerciseDeadline',
+    outputs: [{ type: 'uint40' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'expirationDate',
     outputs: [{ type: 'uint40' }],
     stateMutability: 'view',
@@ -155,7 +838,7 @@ export const collateralAbi = [
       { name: 'strike_', type: 'uint256' },
       { name: 'isPut_', type: 'bool' },
       { name: 'isEuro_', type: 'bool' },
-      { name: 'oracle_', type: 'address' },
+      { name: 'windowSeconds_', type: 'uint40' },
       { name: 'option_', type: 'address' },
       { name: 'factory_', type: 'address' },
     ],
@@ -218,20 +901,6 @@ export const collateralAbi = [
   {
     type: 'function',
     inputs: [],
-    name: 'optionReserveRemaining',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'oracle',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
     name: 'owner',
     outputs: [{ type: 'address' }],
     stateMutability: 'view',
@@ -273,27 +942,6 @@ export const collateralAbi = [
     name: 'renounceOwnership',
     outputs: [],
     stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'reserveInitialized',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'hint', type: 'bytes' }],
-    name: 'settle',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'settlementPrice',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -412,11 +1060,6 @@ export const collateralAbi = [
   },
   {
     type: 'event',
-    inputs: [{ name: 'price', type: 'uint256' }],
-    name: 'Settled',
-  },
-  {
-    type: 'event',
     inputs: [
       { name: 'from', type: 'address', indexed: true },
       { name: 'to', type: 'address', indexed: true },
@@ -428,6 +1071,8 @@ export const collateralAbi = [
   { type: 'error', inputs: [], name: 'ContractExpired' },
   { type: 'error', inputs: [], name: 'ContractNotExpired' },
   { type: 'error', inputs: [], name: 'EuropeanExerciseDisabled' },
+  { type: 'error', inputs: [], name: 'ExerciseWindowClosed' },
+  { type: 'error', inputs: [], name: 'ExerciseWindowOpen' },
   { type: 'error', inputs: [], name: 'FeeOnTransferNotSupported' },
   { type: 'error', inputs: [], name: 'InsufficientBalance' },
   { type: 'error', inputs: [], name: 'InsufficientCollateral' },
@@ -436,695 +1081,13 @@ export const collateralAbi = [
   { type: 'error', inputs: [], name: 'InvalidInitialization' },
   { type: 'error', inputs: [], name: 'InvalidValue' },
   { type: 'error', inputs: [], name: 'LockedContract' },
-  { type: 'error', inputs: [], name: 'NoOracle' },
-  { type: 'error', inputs: [], name: 'NonSettledOnly' },
   { type: 'error', inputs: [], name: 'NotInitializing' },
-  { type: 'error', inputs: [], name: 'NotSettled' },
   { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
   {
     type: 'error',
     inputs: [{ name: 'token', type: 'address' }],
     name: 'SafeERC20FailedOperation',
   },
-  { type: 'error', inputs: [], name: 'SettledOnly' },
-] as const
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const factoryAbi = [
-  {
-    type: 'constructor',
-    inputs: [
-      { name: 'collClone_', type: 'address' },
-      { name: 'optionClone_', type: 'address' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'COLL_CLONE',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'OPTION_CLONE',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'token', type: 'address' },
-      { name: 'owner_', type: 'address' },
-    ],
-    name: 'allowance',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'token', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'operator', type: 'address' },
-      { name: 'approved', type: 'bool' },
-    ],
-    name: 'approveOperator',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'owner_', type: 'address' },
-      { name: 'operator', type: 'address' },
-    ],
-    name: 'approvedOperator',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: '', type: 'address' }],
-    name: 'autoMintRedeem',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'token', type: 'address' }],
-    name: 'blockToken',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: '', type: 'address' }],
-    name: 'blocklist',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'collateral_', type: 'address' },
-      { name: 'consideration_', type: 'address' },
-      { name: 'expirationDate_', type: 'uint40' },
-      { name: 'strike_', type: 'uint96' },
-      { name: 'isPut_', type: 'bool' },
-    ],
-    name: 'createOption',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      {
-        name: 'p',
-        type: 'tuple',
-        components: [
-          { name: 'collateral', type: 'address' },
-          { name: 'consideration', type: 'address' },
-          { name: 'expirationDate', type: 'uint40' },
-          { name: 'strike', type: 'uint96' },
-          { name: 'isPut', type: 'bool' },
-          { name: 'isEuro', type: 'bool' },
-          { name: 'oracleSource', type: 'address' },
-          { name: 'twapWindow', type: 'uint32' },
-        ],
-      },
-    ],
-    name: 'createOption',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      {
-        name: 'params',
-        type: 'tuple[]',
-        components: [
-          { name: 'collateral', type: 'address' },
-          { name: 'consideration', type: 'address' },
-          { name: 'expirationDate', type: 'uint40' },
-          { name: 'strike', type: 'uint96' },
-          { name: 'isPut', type: 'bool' },
-          { name: 'isEuro', type: 'bool' },
-          { name: 'oracleSource', type: 'address' },
-          { name: 'twapWindow', type: 'uint32' },
-        ],
-      },
-    ],
-    name: 'createOptions',
-    outputs: [{ name: 'result', type: 'address[]' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'enabled', type: 'bool' }],
-    name: 'enableAutoMintRedeem',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'token', type: 'address' }],
-    name: 'isBlocked',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: '', type: 'address' }],
-    name: 'options',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'owner',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'renounceOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'from', type: 'address' },
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint160' },
-      { name: 'token', type: 'address' },
-    ],
-    name: 'transferFrom',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'newOwner', type: 'address' }],
-    name: 'transferOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'token', type: 'address' }],
-    name: 'unblockToken',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'token', type: 'address', indexed: true },
-      { name: 'owner', type: 'address', indexed: true },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'Approval',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'account', type: 'address', indexed: true },
-      { name: 'enabled', type: 'bool' },
-    ],
-    name: 'AutoMintRedeemUpdated',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'owner', type: 'address', indexed: true },
-      { name: 'operator', type: 'address', indexed: true },
-      { name: 'approved', type: 'bool' },
-    ],
-    name: 'OperatorApproval',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'collateral', type: 'address', indexed: true },
-      { name: 'consideration', type: 'address', indexed: true },
-      { name: 'expirationDate', type: 'uint40' },
-      { name: 'strike', type: 'uint96' },
-      { name: 'isPut', type: 'bool' },
-      { name: 'isEuro', type: 'bool' },
-      { name: 'oracle', type: 'address' },
-      { name: 'option', type: 'address', indexed: true },
-      { name: 'coll', type: 'address' },
-    ],
-    name: 'OptionCreated',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'token', type: 'address' },
-      { name: 'blocked', type: 'bool' },
-    ],
-    name: 'TokenBlocked',
-  },
-  { type: 'error', inputs: [], name: 'BlocklistedToken' },
-  { type: 'error', inputs: [], name: 'EuropeanRequiresOracle' },
-  { type: 'error', inputs: [], name: 'FailedDeployment' },
-  { type: 'error', inputs: [], name: 'InsufficientAllowance' },
-  {
-    type: 'error',
-    inputs: [
-      { name: 'balance', type: 'uint256' },
-      { name: 'needed', type: 'uint256' },
-    ],
-    name: 'InsufficientBalance',
-  },
-  { type: 'error', inputs: [], name: 'InvalidAddress' },
-  { type: 'error', inputs: [], name: 'InvalidTokens' },
-  { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
-  {
-    type: 'error',
-    inputs: [{ name: 'token', type: 'address' }],
-    name: 'SafeERC20FailedOperation',
-  },
-  { type: 'error', inputs: [], name: 'UnsupportedOracleSource' },
-] as const
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Option
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const optionAbi = [
-  {
-    type: 'constructor',
-    inputs: [
-      { name: 'name_', type: 'string' },
-      { name: 'symbol_', type: 'string' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    name: 'allowance',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'value', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'account', type: 'address' }],
-    name: 'balanceOf',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'account', type: 'address' }],
-    name: 'balancesOf',
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'collateral', type: 'uint256' },
-          { name: 'consideration', type: 'uint256' },
-          { name: 'option', type: 'uint256' },
-          { name: 'coll', type: 'uint256' },
-        ],
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    name: 'claim',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'holder', type: 'address' }],
-    name: 'claimFor',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'coll',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'collateral',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'consideration',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'decimals',
-    outputs: [{ type: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'details',
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'option', type: 'address' },
-          { name: 'coll', type: 'address' },
-          {
-            name: 'collateral',
-            type: 'tuple',
-            components: [
-              { name: 'address_', type: 'address' },
-              { name: 'name', type: 'string' },
-              { name: 'symbol', type: 'string' },
-              { name: 'decimals', type: 'uint8' },
-            ],
-          },
-          {
-            name: 'consideration',
-            type: 'tuple',
-            components: [
-              { name: 'address_', type: 'address' },
-              { name: 'name', type: 'string' },
-              { name: 'symbol', type: 'string' },
-              { name: 'decimals', type: 'uint8' },
-            ],
-          },
-          { name: 'expiration', type: 'uint256' },
-          { name: 'strike', type: 'uint256' },
-          { name: 'isPut', type: 'bool' },
-          { name: 'isEuro', type: 'bool' },
-          { name: 'oracle', type: 'address' },
-        ],
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    name: 'exercise',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'account', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'exercise',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'expirationDate',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'factory',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'coll_', type: 'address' },
-      { name: 'owner_', type: 'address' },
-    ],
-    name: 'init',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'isEuro',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'isPut',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'isSettled',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'lock',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'account', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'mint',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    name: 'mint',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'name',
-    outputs: [{ type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'oracle',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'owner',
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    name: 'redeem',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'renounceOwnership',
-    outputs: [],
-    stateMutability: 'pure',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'hint', type: 'bytes' }],
-    name: 'settle',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'settlementPrice',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'strike',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'symbol',
-    outputs: [{ type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'totalSupply',
-    outputs: [{ type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'transfer',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: 'from', type: 'address' },
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'transferFrom',
-    outputs: [{ type: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [{ name: 'newOwner', type: 'address' }],
-    name: 'transferOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'unlock',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'owner', type: 'address', indexed: true },
-      { name: 'spender', type: 'address', indexed: true },
-      { name: 'value', type: 'uint256' },
-    ],
-    name: 'Approval',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'holder', type: 'address', indexed: true },
-      { name: 'optionBurned', type: 'uint256' },
-      { name: 'collateralOut', type: 'uint256' },
-    ],
-    name: 'Claimed',
-  },
-  { type: 'event', inputs: [], name: 'ContractLocked' },
-  { type: 'event', inputs: [], name: 'ContractUnlocked' },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'longOption', type: 'address' },
-      { name: 'holder', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'Exercise',
-  },
-  {
-    type: 'event',
-    inputs: [{ name: 'version', type: 'uint64' }],
-    name: 'Initialized',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'longOption', type: 'address' },
-      { name: 'holder', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'Mint',
-  },
-  {
-    type: 'event',
-    inputs: [{ name: 'price', type: 'uint256' }],
-    name: 'Settled',
-  },
-  {
-    type: 'event',
-    inputs: [
-      { name: 'from', type: 'address', indexed: true },
-      { name: 'to', type: 'address', indexed: true },
-      { name: 'value', type: 'uint256' },
-    ],
-    name: 'Transfer',
-  },
-  { type: 'error', inputs: [], name: 'ContractExpired' },
-  { type: 'error', inputs: [], name: 'ContractNotExpired' },
-  { type: 'error', inputs: [], name: 'EuropeanExerciseDisabled' },
-  { type: 'error', inputs: [], name: 'InsufficientBalance' },
-  { type: 'error', inputs: [], name: 'InvalidAddress' },
-  { type: 'error', inputs: [], name: 'InvalidInitialization' },
-  { type: 'error', inputs: [], name: 'InvalidValue' },
-  { type: 'error', inputs: [], name: 'LockedContract' },
-  { type: 'error', inputs: [], name: 'NoOracle' },
-  { type: 'error', inputs: [], name: 'NotInitializing' },
-  { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1272,7 +1235,7 @@ export const yieldVaultAbi = [
   {
     type: 'function',
     inputs: [{ name: 'enabled', type: 'bool' }],
-    name: 'enableAutoMintRedeem',
+    name: 'enableAutoMintBurn',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -1748,556 +1711,6 @@ export const yieldVaultAbi = [
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__
- */
-export const useReadCollateral = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"STRIKE_DECIMALS"`
- */
-export const useReadCollateralStrikeDecimals =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'STRIKE_DECIMALS',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"allowance"`
- */
-export const useReadCollateralAllowance = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'allowance',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"balanceOf"`
- */
-export const useReadCollateralBalanceOf = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'balanceOf',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"collDecimals"`
- */
-export const useReadCollateralCollDecimals =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'collDecimals',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"collateral"`
- */
-export const useReadCollateralCollateral = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'collateral',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"collateralData"`
- */
-export const useReadCollateralCollateralData =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'collateralData',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"consDecimals"`
- */
-export const useReadCollateralConsDecimals =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'consDecimals',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"consideration"`
- */
-export const useReadCollateralConsideration =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'consideration',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"considerationData"`
- */
-export const useReadCollateralConsiderationData =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'considerationData',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"decimals"`
- */
-export const useReadCollateralDecimals = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'decimals',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"expirationDate"`
- */
-export const useReadCollateralExpirationDate =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'expirationDate',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"factory"`
- */
-export const useReadCollateralFactory = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'factory',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"isEuro"`
- */
-export const useReadCollateralIsEuro = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'isEuro',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"isPut"`
- */
-export const useReadCollateralIsPut = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'isPut',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"locked"`
- */
-export const useReadCollateralLocked = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'locked',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"name"`
- */
-export const useReadCollateralName = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'name',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"option"`
- */
-export const useReadCollateralOption = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'option',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"optionReserveRemaining"`
- */
-export const useReadCollateralOptionReserveRemaining =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'optionReserveRemaining',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"oracle"`
- */
-export const useReadCollateralOracle = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'oracle',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"owner"`
- */
-export const useReadCollateralOwner = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'owner',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"reserveInitialized"`
- */
-export const useReadCollateralReserveInitialized =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'reserveInitialized',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"settlementPrice"`
- */
-export const useReadCollateralSettlementPrice =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'settlementPrice',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"strike"`
- */
-export const useReadCollateralStrike = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'strike',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"symbol"`
- */
-export const useReadCollateralSymbol = /*#__PURE__*/ createUseReadContract({
-  abi: collateralAbi,
-  functionName: 'symbol',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"toCollateral"`
- */
-export const useReadCollateralToCollateral =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'toCollateral',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"toConsideration"`
- */
-export const useReadCollateralToConsideration =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'toConsideration',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"toNeededConsideration"`
- */
-export const useReadCollateralToNeededConsideration =
-  /*#__PURE__*/ createUseReadContract({
-    abi: collateralAbi,
-    functionName: 'toNeededConsideration',
-  })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"totalSupply"`
- */
-export const useReadCollateralTotalSupply = /*#__PURE__*/ createUseReadContract(
-  { abi: collateralAbi, functionName: 'totalSupply' },
-)
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__
- */
-export const useWriteCollateral = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"approve"`
- */
-export const useWriteCollateralApprove = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'approve',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"exercise"`
- */
-export const useWriteCollateralExercise = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'exercise',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"init"`
- */
-export const useWriteCollateralInit = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'init',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"lock"`
- */
-export const useWriteCollateralLock = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'lock',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"mint"`
- */
-export const useWriteCollateralMint = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'mint',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"redeem"`
- */
-export const useWriteCollateralRedeem = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'redeem',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"redeemConsideration"`
- */
-export const useWriteCollateralRedeemConsideration =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: collateralAbi,
-    functionName: 'redeemConsideration',
-  })
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"renounceOwnership"`
- */
-export const useWriteCollateralRenounceOwnership =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: collateralAbi,
-    functionName: 'renounceOwnership',
-  })
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"settle"`
- */
-export const useWriteCollateralSettle = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'settle',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"sweep"`
- */
-export const useWriteCollateralSweep = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'sweep',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transfer"`
- */
-export const useWriteCollateralTransfer = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'transfer',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transferFrom"`
- */
-export const useWriteCollateralTransferFrom =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: collateralAbi,
-    functionName: 'transferFrom',
-  })
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transferOwnership"`
- */
-export const useWriteCollateralTransferOwnership =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: collateralAbi,
-    functionName: 'transferOwnership',
-  })
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"unlock"`
- */
-export const useWriteCollateralUnlock = /*#__PURE__*/ createUseWriteContract({
-  abi: collateralAbi,
-  functionName: 'unlock',
-})
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__
- */
-export const useSimulateCollateral = /*#__PURE__*/ createUseSimulateContract({
-  abi: collateralAbi,
-})
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"approve"`
- */
-export const useSimulateCollateralApprove =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'approve',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"exercise"`
- */
-export const useSimulateCollateralExercise =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'exercise',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"init"`
- */
-export const useSimulateCollateralInit =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'init',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"lock"`
- */
-export const useSimulateCollateralLock =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'lock',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"mint"`
- */
-export const useSimulateCollateralMint =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'mint',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"redeem"`
- */
-export const useSimulateCollateralRedeem =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'redeem',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"redeemConsideration"`
- */
-export const useSimulateCollateralRedeemConsideration =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'redeemConsideration',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"renounceOwnership"`
- */
-export const useSimulateCollateralRenounceOwnership =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'renounceOwnership',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"settle"`
- */
-export const useSimulateCollateralSettle =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'settle',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"sweep"`
- */
-export const useSimulateCollateralSweep =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'sweep',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transfer"`
- */
-export const useSimulateCollateralTransfer =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'transfer',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transferFrom"`
- */
-export const useSimulateCollateralTransferFrom =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'transferFrom',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"transferOwnership"`
- */
-export const useSimulateCollateralTransferOwnership =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'transferOwnership',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link collateralAbi}__ and `functionName` set to `"unlock"`
- */
-export const useSimulateCollateralUnlock =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: collateralAbi,
-    functionName: 'unlock',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__
- */
-export const useWatchCollateralEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({ abi: collateralAbi })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__ and `eventName` set to `"Approval"`
- */
-export const useWatchCollateralApprovalEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: collateralAbi,
-    eventName: 'Approval',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__ and `eventName` set to `"Initialized"`
- */
-export const useWatchCollateralInitializedEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: collateralAbi,
-    eventName: 'Initialized',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__ and `eventName` set to `"Redeemed"`
- */
-export const useWatchCollateralRedeemedEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: collateralAbi,
-    eventName: 'Redeemed',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__ and `eventName` set to `"Settled"`
- */
-export const useWatchCollateralSettledEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: collateralAbi,
-    eventName: 'Settled',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link collateralAbi}__ and `eventName` set to `"Transfer"`
- */
-export const useWatchCollateralTransferEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: collateralAbi,
-    eventName: 'Transfer',
-  })
-
-/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__
  */
 export const useReadFactory = /*#__PURE__*/ createUseReadContract({
@@ -2305,12 +1718,13 @@ export const useReadFactory = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"COLL_CLONE"`
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"DEFAULT_EXERCISE_WINDOW"`
  */
-export const useReadFactoryCollClone = /*#__PURE__*/ createUseReadContract({
-  abi: factoryAbi,
-  functionName: 'COLL_CLONE',
-})
+export const useReadFactoryDefaultExerciseWindow =
+  /*#__PURE__*/ createUseReadContract({
+    abi: factoryAbi,
+    functionName: 'DEFAULT_EXERCISE_WINDOW',
+  })
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"OPTION_CLONE"`
@@ -2318,6 +1732,14 @@ export const useReadFactoryCollClone = /*#__PURE__*/ createUseReadContract({
 export const useReadFactoryOptionClone = /*#__PURE__*/ createUseReadContract({
   abi: factoryAbi,
   functionName: 'OPTION_CLONE',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"RECEIPT_CLONE"`
+ */
+export const useReadFactoryReceiptClone = /*#__PURE__*/ createUseReadContract({
+  abi: factoryAbi,
+  functionName: 'RECEIPT_CLONE',
 })
 
 /**
@@ -2338,11 +1760,12 @@ export const useReadFactoryApprovedOperator =
   })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"autoMintRedeem"`
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"autoMintBurn"`
  */
-export const useReadFactoryAutoMintRedeem = /*#__PURE__*/ createUseReadContract(
-  { abi: factoryAbi, functionName: 'autoMintRedeem' },
-)
+export const useReadFactoryAutoMintBurn = /*#__PURE__*/ createUseReadContract({
+  abi: factoryAbi,
+  functionName: 'autoMintBurn',
+})
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"blocklist"`
@@ -2351,6 +1774,15 @@ export const useReadFactoryBlocklist = /*#__PURE__*/ createUseReadContract({
   abi: factoryAbi,
   functionName: 'blocklist',
 })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"exerciseAllowed"`
+ */
+export const useReadFactoryExerciseAllowed =
+  /*#__PURE__*/ createUseReadContract({
+    abi: factoryAbi,
+    functionName: 'exerciseAllowed',
+  })
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"isBlocked"`
@@ -2377,11 +1809,28 @@ export const useReadFactoryOwner = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"receipts"`
+ */
+export const useReadFactoryReceipts = /*#__PURE__*/ createUseReadContract({
+  abi: factoryAbi,
+  functionName: 'receipts',
+})
+
+/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryAbi}__
  */
 export const useWriteFactory = /*#__PURE__*/ createUseWriteContract({
   abi: factoryAbi,
 })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"allowExercise"`
+ */
+export const useWriteFactoryAllowExercise =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: factoryAbi,
+    functionName: 'allowExercise',
+  })
 
 /**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"approve"`
@@ -2425,12 +1874,12 @@ export const useWriteFactoryCreateOptions =
   })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"enableAutoMintRedeem"`
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"enableAutoMintBurn"`
  */
-export const useWriteFactoryEnableAutoMintRedeem =
+export const useWriteFactoryEnableAutoMintBurn =
   /*#__PURE__*/ createUseWriteContract({
     abi: factoryAbi,
-    functionName: 'enableAutoMintRedeem',
+    functionName: 'enableAutoMintBurn',
   })
 
 /**
@@ -2471,6 +1920,15 @@ export const useWriteFactoryUnblockToken = /*#__PURE__*/ createUseWriteContract(
 export const useSimulateFactory = /*#__PURE__*/ createUseSimulateContract({
   abi: factoryAbi,
 })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"allowExercise"`
+ */
+export const useSimulateFactoryAllowExercise =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: factoryAbi,
+    functionName: 'allowExercise',
+  })
 
 /**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"approve"`
@@ -2518,12 +1976,12 @@ export const useSimulateFactoryCreateOptions =
   })
 
 /**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"enableAutoMintRedeem"`
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryAbi}__ and `functionName` set to `"enableAutoMintBurn"`
  */
-export const useSimulateFactoryEnableAutoMintRedeem =
+export const useSimulateFactoryEnableAutoMintBurn =
   /*#__PURE__*/ createUseSimulateContract({
     abi: factoryAbi,
-    functionName: 'enableAutoMintRedeem',
+    functionName: 'enableAutoMintBurn',
   })
 
 /**
@@ -2579,12 +2037,21 @@ export const useWatchFactoryApprovalEvent =
   })
 
 /**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryAbi}__ and `eventName` set to `"AutoMintRedeemUpdated"`
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryAbi}__ and `eventName` set to `"AutoMintBurnUpdated"`
  */
-export const useWatchFactoryAutoMintRedeemUpdatedEvent =
+export const useWatchFactoryAutoMintBurnUpdatedEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: factoryAbi,
-    eventName: 'AutoMintRedeemUpdated',
+    eventName: 'AutoMintBurnUpdated',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryAbi}__ and `eventName` set to `"ExerciseApproval"`
+ */
+export const useWatchFactoryExerciseApprovalEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: factoryAbi,
+    eventName: 'ExerciseApproval',
   })
 
 /**
@@ -2646,14 +2113,6 @@ export const useReadOptionBalancesOf = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"coll"`
- */
-export const useReadOptionColl = /*#__PURE__*/ createUseReadContract({
-  abi: optionAbi,
-  functionName: 'coll',
-})
-
-/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"collateral"`
  */
 export const useReadOptionCollateral = /*#__PURE__*/ createUseReadContract({
@@ -2684,6 +2143,15 @@ export const useReadOptionDetails = /*#__PURE__*/ createUseReadContract({
   abi: optionAbi,
   functionName: 'details',
 })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"exerciseDeadline"`
+ */
+export const useReadOptionExerciseDeadline =
+  /*#__PURE__*/ createUseReadContract({
+    abi: optionAbi,
+    functionName: 'exerciseDeadline',
+  })
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"expirationDate"`
@@ -2718,27 +2186,11 @@ export const useReadOptionIsPut = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"isSettled"`
- */
-export const useReadOptionIsSettled = /*#__PURE__*/ createUseReadContract({
-  abi: optionAbi,
-  functionName: 'isSettled',
-})
-
-/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"name"`
  */
 export const useReadOptionName = /*#__PURE__*/ createUseReadContract({
   abi: optionAbi,
   functionName: 'name',
-})
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"oracle"`
- */
-export const useReadOptionOracle = /*#__PURE__*/ createUseReadContract({
-  abi: optionAbi,
-  functionName: 'oracle',
 })
 
 /**
@@ -2750,6 +2202,14 @@ export const useReadOptionOwner = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"receipt"`
+ */
+export const useReadOptionReceipt = /*#__PURE__*/ createUseReadContract({
+  abi: optionAbi,
+  functionName: 'receipt',
+})
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"renounceOwnership"`
  */
 export const useReadOptionRenounceOwnership =
@@ -2757,13 +2217,6 @@ export const useReadOptionRenounceOwnership =
     abi: optionAbi,
     functionName: 'renounceOwnership',
   })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"settlementPrice"`
- */
-export const useReadOptionSettlementPrice = /*#__PURE__*/ createUseReadContract(
-  { abi: optionAbi, functionName: 'settlementPrice' },
-)
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"strike"`
@@ -2805,19 +2258,11 @@ export const useWriteOptionApprove = /*#__PURE__*/ createUseWriteContract({
 })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"claim"`
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"burn"`
  */
-export const useWriteOptionClaim = /*#__PURE__*/ createUseWriteContract({
+export const useWriteOptionBurn = /*#__PURE__*/ createUseWriteContract({
   abi: optionAbi,
-  functionName: 'claim',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"claimFor"`
- */
-export const useWriteOptionClaimFor = /*#__PURE__*/ createUseWriteContract({
-  abi: optionAbi,
-  functionName: 'claimFor',
+  functionName: 'burn',
 })
 
 /**
@@ -2850,22 +2295,6 @@ export const useWriteOptionLock = /*#__PURE__*/ createUseWriteContract({
 export const useWriteOptionMint = /*#__PURE__*/ createUseWriteContract({
   abi: optionAbi,
   functionName: 'mint',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"redeem"`
- */
-export const useWriteOptionRedeem = /*#__PURE__*/ createUseWriteContract({
-  abi: optionAbi,
-  functionName: 'redeem',
-})
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"settle"`
- */
-export const useWriteOptionSettle = /*#__PURE__*/ createUseWriteContract({
-  abi: optionAbi,
-  functionName: 'settle',
 })
 
 /**
@@ -2916,21 +2345,12 @@ export const useSimulateOptionApprove = /*#__PURE__*/ createUseSimulateContract(
 )
 
 /**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"claim"`
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"burn"`
  */
-export const useSimulateOptionClaim = /*#__PURE__*/ createUseSimulateContract({
+export const useSimulateOptionBurn = /*#__PURE__*/ createUseSimulateContract({
   abi: optionAbi,
-  functionName: 'claim',
+  functionName: 'burn',
 })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"claimFor"`
- */
-export const useSimulateOptionClaimFor =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: optionAbi,
-    functionName: 'claimFor',
-  })
 
 /**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"exercise"`
@@ -2963,22 +2383,6 @@ export const useSimulateOptionLock = /*#__PURE__*/ createUseSimulateContract({
 export const useSimulateOptionMint = /*#__PURE__*/ createUseSimulateContract({
   abi: optionAbi,
   functionName: 'mint',
-})
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"redeem"`
- */
-export const useSimulateOptionRedeem = /*#__PURE__*/ createUseSimulateContract({
-  abi: optionAbi,
-  functionName: 'redeem',
-})
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link optionAbi}__ and `functionName` set to `"settle"`
- */
-export const useSimulateOptionSettle = /*#__PURE__*/ createUseSimulateContract({
-  abi: optionAbi,
-  functionName: 'settle',
 })
 
 /**
@@ -3033,15 +2437,6 @@ export const useWatchOptionApprovalEvent =
   })
 
 /**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link optionAbi}__ and `eventName` set to `"Claimed"`
- */
-export const useWatchOptionClaimedEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: optionAbi,
-    eventName: 'Claimed',
-  })
-
-/**
  * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link optionAbi}__ and `eventName` set to `"ContractLocked"`
  */
 export const useWatchOptionContractLockedEvent =
@@ -3087,20 +2482,507 @@ export const useWatchOptionMintEvent =
   })
 
 /**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link optionAbi}__ and `eventName` set to `"Settled"`
- */
-export const useWatchOptionSettledEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: optionAbi,
-    eventName: 'Settled',
-  })
-
-/**
  * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link optionAbi}__ and `eventName` set to `"Transfer"`
  */
 export const useWatchOptionTransferEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: optionAbi,
+    eventName: 'Transfer',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__
+ */
+export const useReadReceipt = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"STRIKE_DECIMALS"`
+ */
+export const useReadReceiptStrikeDecimals = /*#__PURE__*/ createUseReadContract(
+  { abi: receiptAbi, functionName: 'STRIKE_DECIMALS' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"allowance"`
+ */
+export const useReadReceiptAllowance = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'allowance',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"balanceOf"`
+ */
+export const useReadReceiptBalanceOf = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'balanceOf',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"collDecimals"`
+ */
+export const useReadReceiptCollDecimals = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'collDecimals',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"collateral"`
+ */
+export const useReadReceiptCollateral = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'collateral',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"collateralData"`
+ */
+export const useReadReceiptCollateralData = /*#__PURE__*/ createUseReadContract(
+  { abi: receiptAbi, functionName: 'collateralData' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"consDecimals"`
+ */
+export const useReadReceiptConsDecimals = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'consDecimals',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"consideration"`
+ */
+export const useReadReceiptConsideration = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'consideration',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"considerationData"`
+ */
+export const useReadReceiptConsiderationData =
+  /*#__PURE__*/ createUseReadContract({
+    abi: receiptAbi,
+    functionName: 'considerationData',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"decimals"`
+ */
+export const useReadReceiptDecimals = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'decimals',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"exerciseDeadline"`
+ */
+export const useReadReceiptExerciseDeadline =
+  /*#__PURE__*/ createUseReadContract({
+    abi: receiptAbi,
+    functionName: 'exerciseDeadline',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"expirationDate"`
+ */
+export const useReadReceiptExpirationDate = /*#__PURE__*/ createUseReadContract(
+  { abi: receiptAbi, functionName: 'expirationDate' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"factory"`
+ */
+export const useReadReceiptFactory = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'factory',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"isEuro"`
+ */
+export const useReadReceiptIsEuro = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'isEuro',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"isPut"`
+ */
+export const useReadReceiptIsPut = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'isPut',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"locked"`
+ */
+export const useReadReceiptLocked = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'locked',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"name"`
+ */
+export const useReadReceiptName = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'name',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"option"`
+ */
+export const useReadReceiptOption = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'option',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"owner"`
+ */
+export const useReadReceiptOwner = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'owner',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"strike"`
+ */
+export const useReadReceiptStrike = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'strike',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"symbol"`
+ */
+export const useReadReceiptSymbol = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'symbol',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"toCollateral"`
+ */
+export const useReadReceiptToCollateral = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'toCollateral',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"toConsideration"`
+ */
+export const useReadReceiptToConsideration =
+  /*#__PURE__*/ createUseReadContract({
+    abi: receiptAbi,
+    functionName: 'toConsideration',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"toNeededConsideration"`
+ */
+export const useReadReceiptToNeededConsideration =
+  /*#__PURE__*/ createUseReadContract({
+    abi: receiptAbi,
+    functionName: 'toNeededConsideration',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"totalSupply"`
+ */
+export const useReadReceiptTotalSupply = /*#__PURE__*/ createUseReadContract({
+  abi: receiptAbi,
+  functionName: 'totalSupply',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__
+ */
+export const useWriteReceipt = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"approve"`
+ */
+export const useWriteReceiptApprove = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'approve',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"burn"`
+ */
+export const useWriteReceiptBurn = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'burn',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"exercise"`
+ */
+export const useWriteReceiptExercise = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'exercise',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"init"`
+ */
+export const useWriteReceiptInit = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'init',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"lock"`
+ */
+export const useWriteReceiptLock = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'lock',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"mint"`
+ */
+export const useWriteReceiptMint = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'mint',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"redeem"`
+ */
+export const useWriteReceiptRedeem = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'redeem',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"redeemConsideration"`
+ */
+export const useWriteReceiptRedeemConsideration =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: receiptAbi,
+    functionName: 'redeemConsideration',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useWriteReceiptRenounceOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: receiptAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"sweep"`
+ */
+export const useWriteReceiptSweep = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'sweep',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transfer"`
+ */
+export const useWriteReceiptTransfer = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'transfer',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transferFrom"`
+ */
+export const useWriteReceiptTransferFrom = /*#__PURE__*/ createUseWriteContract(
+  { abi: receiptAbi, functionName: 'transferFrom' },
+)
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useWriteReceiptTransferOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: receiptAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"unlock"`
+ */
+export const useWriteReceiptUnlock = /*#__PURE__*/ createUseWriteContract({
+  abi: receiptAbi,
+  functionName: 'unlock',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__
+ */
+export const useSimulateReceipt = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"approve"`
+ */
+export const useSimulateReceiptApprove =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'approve',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"burn"`
+ */
+export const useSimulateReceiptBurn = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+  functionName: 'burn',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"exercise"`
+ */
+export const useSimulateReceiptExercise =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'exercise',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"init"`
+ */
+export const useSimulateReceiptInit = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+  functionName: 'init',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"lock"`
+ */
+export const useSimulateReceiptLock = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+  functionName: 'lock',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"mint"`
+ */
+export const useSimulateReceiptMint = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+  functionName: 'mint',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"redeem"`
+ */
+export const useSimulateReceiptRedeem = /*#__PURE__*/ createUseSimulateContract(
+  { abi: receiptAbi, functionName: 'redeem' },
+)
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"redeemConsideration"`
+ */
+export const useSimulateReceiptRedeemConsideration =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'redeemConsideration',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useSimulateReceiptRenounceOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"sweep"`
+ */
+export const useSimulateReceiptSweep = /*#__PURE__*/ createUseSimulateContract({
+  abi: receiptAbi,
+  functionName: 'sweep',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transfer"`
+ */
+export const useSimulateReceiptTransfer =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'transfer',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transferFrom"`
+ */
+export const useSimulateReceiptTransferFrom =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'transferFrom',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useSimulateReceiptTransferOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: receiptAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link receiptAbi}__ and `functionName` set to `"unlock"`
+ */
+export const useSimulateReceiptUnlock = /*#__PURE__*/ createUseSimulateContract(
+  { abi: receiptAbi, functionName: 'unlock' },
+)
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link receiptAbi}__
+ */
+export const useWatchReceiptEvent = /*#__PURE__*/ createUseWatchContractEvent({
+  abi: receiptAbi,
+})
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link receiptAbi}__ and `eventName` set to `"Approval"`
+ */
+export const useWatchReceiptApprovalEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: receiptAbi,
+    eventName: 'Approval',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link receiptAbi}__ and `eventName` set to `"Initialized"`
+ */
+export const useWatchReceiptInitializedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: receiptAbi,
+    eventName: 'Initialized',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link receiptAbi}__ and `eventName` set to `"Redeemed"`
+ */
+export const useWatchReceiptRedeemedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: receiptAbi,
+    eventName: 'Redeemed',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link receiptAbi}__ and `eventName` set to `"Transfer"`
+ */
+export const useWatchReceiptTransferEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: receiptAbi,
     eventName: 'Transfer',
   })
 
@@ -3433,12 +3315,12 @@ export const useWriteYieldVaultDeposit = /*#__PURE__*/ createUseWriteContract({
 })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link yieldVaultAbi}__ and `functionName` set to `"enableAutoMintRedeem"`
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link yieldVaultAbi}__ and `functionName` set to `"enableAutoMintBurn"`
  */
-export const useWriteYieldVaultEnableAutoMintRedeem =
+export const useWriteYieldVaultEnableAutoMintBurn =
   /*#__PURE__*/ createUseWriteContract({
     abi: yieldVaultAbi,
-    functionName: 'enableAutoMintRedeem',
+    functionName: 'enableAutoMintBurn',
   })
 
 /**
@@ -3641,12 +3523,12 @@ export const useSimulateYieldVaultDeposit =
   })
 
 /**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link yieldVaultAbi}__ and `functionName` set to `"enableAutoMintRedeem"`
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link yieldVaultAbi}__ and `functionName` set to `"enableAutoMintBurn"`
  */
-export const useSimulateYieldVaultEnableAutoMintRedeem =
+export const useSimulateYieldVaultEnableAutoMintBurn =
   /*#__PURE__*/ createUseSimulateContract({
     abi: yieldVaultAbi,
-    functionName: 'enableAutoMintRedeem',
+    functionName: 'enableAutoMintBurn',
   })
 
 /**

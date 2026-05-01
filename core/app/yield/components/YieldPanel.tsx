@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
+import { useTokenSpot } from "../../lib/useTokenSpot";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useDirectPrices } from "../../trade/hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../../trade/hooks/useTradableOptions";
@@ -49,9 +50,11 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
       ? `Write covered calls against your ${token.symbol}`
       : `Write covered puts — deposit ${stable?.symbol ?? stablecoin}, strike-buy ${token.symbol}`;
 
-  // Spot price is reported per option by the MM; for a given underlying they're all equal,
-  // so just pick the first priced option to display it in the header.
+  // Spot from DeFiLlama (frontend, chain-agnostic). Falls back to the MM's
+  // per-option spot echo only if DeFiLlama is unavailable.
+  const llamaSpot = useTokenSpot(token.symbol);
   const spot = (() => {
+    if (llamaSpot !== undefined) return llamaSpot;
     if (!prices) return undefined;
     for (const o of options) {
       const p = prices.get(o.optionAddress.toLowerCase())?.spotPrice;
@@ -69,18 +72,18 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
   const displayStrikeOf = (o: TradableOption) =>
     o.isPut && o.strike > 0n ? Number(formatUnits(10n ** 36n / o.strike, 18)) : Number(formatUnits(o.strike, 18));
 
-  // Strike window: OTM side of spot, within 25%. Calls = (spot, spot*1.25]; Puts = [spot*0.75, spot).
+  // Strike window: OTM side of spot, within ±100% (i.e. strike differs from
+  // spot by no more than 100% of spot). Calls = (spot, 2·spot]; puts = [0, spot).
   // Expirations must be at least 5 days out.
   const gridOptions = useMemo(() => {
     if (spot === undefined) return options;
-    const upper = spot * 1.25;
-    const lower = spot * 0.75;
+    const upper = spot * 2;
     const minExpiry = BigInt(Math.floor(Date.now() / 1000) + 5 * 24 * 3600);
     return options.filter(o => {
       if (o.expiration < minExpiry) return false;
       const s = displayStrikeOf(o);
       if (!Number.isFinite(s)) return false;
-      return mode === "calls" ? s > spot && s <= upper : s < spot && s >= lower;
+      return mode === "calls" ? s > spot && s <= upper : s < spot && s >= 0;
     });
   }, [options, spot, mode]);
 
@@ -141,12 +144,12 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
       },
       {
         label: "Short",
-        value: fmt(optionBalances.coll, approvals.optionDecimals),
-        dim: optionBalances.coll === 0n,
+        value: fmt(optionBalances.receipt, approvals.optionDecimals),
+        dim: optionBalances.receipt === 0n,
         bottomRow: (
           <BuyBackRow
             optionAddress={selected.optionAddress as `0x${string}`}
-            shortAmount={optionBalances.coll}
+            shortAmount={optionBalances.receipt}
           />
         ),
       },

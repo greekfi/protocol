@@ -28,7 +28,14 @@ function formatAmount(raw: bigint, decimals: number): string {
   return n.toPrecision(2);
 }
 
-export function HoldingsCard() {
+interface HoldingsCardProps {
+  /** Render without the outer rounded-card chrome — used when HoldingsCard
+   *  is nested inside another card (e.g. as the footer of the balances
+   *  ApprovalsCard on /trade). Default: standalone with chrome. */
+  bare?: boolean;
+}
+
+export function HoldingsCard({ bare = false }: HoldingsCardProps = {}) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
   const { allTokensMap } = useTokenMap();
 
@@ -53,17 +60,17 @@ export function HoldingsCard() {
           {h.optionBalance > 0n && (
             <span className="text-blue-300">L {formatAmount(h.optionBalance, decimals)}</span>
           )}
-          {h.collBalance > 0n && (
-            <span className="text-orange-300">S {formatAmount(h.collBalance, decimals)}</span>
+          {h.receiptBalance > 0n && (
+            <span className="text-orange-300">S {formatAmount(h.receiptBalance, decimals)}</span>
           )}
         </span>
       </li>
     );
   };
 
-  return (
-    <div className="rounded-xl border border-gray-800 bg-black/60 px-4 py-3 min-w-[14rem] max-w-xs flex-1 text-left">
-      <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Holdings</div>
+  const body = (
+    <>
+      <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Holdings</div>
       {!hasWallet ? (
         <div className="text-xs text-gray-500 italic">Connect wallet to see your option positions.</div>
       ) : isLoading ? (
@@ -73,6 +80,14 @@ export function HoldingsCard() {
       ) : (
         <ul className="space-y-1.5 text-xs">{held.map(renderRow)}</ul>
       )}
+    </>
+  );
+
+  if (bare) return body;
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-black/60 px-4 py-3 min-w-[14rem] max-w-xs flex-1 text-left">
+      {body}
     </div>
   );
 }

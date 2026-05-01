@@ -13,7 +13,7 @@ export interface TokenData {
 
 export interface OptionInfo {
   option: Address;
-  coll: Address;
+  receipt: Address;
   collateral: TokenData;
   consideration: TokenData;
   expiration: bigint;
@@ -25,7 +25,7 @@ export interface Balances {
   collateral: bigint;
   consideration: bigint;
   option: bigint;
-  coll: bigint;
+  receipt: bigint;
 }
 
 export interface OptionDetails extends OptionInfo {
@@ -42,7 +42,7 @@ export interface OptionListItem {
   expiration: bigint;
   strike: bigint;
   isPut: boolean;
-  coll: Address;
+  receipt: Address;
 }
 
 // ============ Allowance Types ============

@@ -7,10 +7,12 @@ import mainnetContracts from "./chains/mainnet";
 import baseContracts from "./chains/base";
 import foundryContracts from "./chains/foundry";
 import arbitrumContracts from "./chains/arbitrum";
+import inkContracts from "./chains/ink";
 const deployedContracts = {
   1: mainnetContracts,
   8453: baseContracts,
   31337: foundryContracts,
   42161: arbitrumContracts,
+  57073: inkContracts,
 } as const;
 export default deployedContracts satisfies GenericContractsDeclaration;

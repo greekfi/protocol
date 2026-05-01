@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useOption } from "../hooks/useOption";
 import { Address, formatUnits, parseUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
-import { useWriteOptionRedeem } from "~~/generated";
+import { useWriteOptionBurn } from "~~/generated";
 
 interface RedeemActionProps {
   optionAddress: Address | undefined;
@@ -23,7 +23,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
 
   // Transaction executors (pure writes)
-  const { writeContractAsync: burnPair } = useWriteOptionRedeem();
+  const { writeContractAsync: burnPair } = useWriteOptionBurn();
 
   // Wait for transaction
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
@@ -56,28 +56,14 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
 
       const wei = parseUnits(amount, 18); // Options are 18 decimals
 
-      console.log("=== Redeem Debug ===");
-      console.log("Amount entered:", amount);
-      console.log("Amount in wei:", wei.toString());
-      console.log("Option balance:", option.balances?.option?.toString());
-      console.log("Redemption balance:", option.balances?.coll?.toString());
-      console.log("Option balance check:", option.balances?.option ? option.balances.option < wei : "no balance");
-      console.log(
-        "Redemption balance check:",
-        option.balances?.coll ? option.balances.coll < wei : "no balance",
-      );
-
-      // Check if user has enough of both tokens
       if (option.balances?.option && option.balances.option < wei) {
-        console.error("Failed: Insufficient Option balance");
         setError("Insufficient Option token balance");
         setStatus("error");
         return;
       }
 
-      if (option.balances?.coll && option.balances.coll < wei) {
-        console.error("Failed: Insufficient Redemption balance");
-        setError("Insufficient Redemption token balance");
+      if (option.balances?.receipt && option.balances.receipt < wei) {
+        setError("Insufficient Receipt token balance");
         setStatus("error");
         return;
       }
@@ -121,10 +107,10 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
 
   // Calculate max redeemable (minimum of both balances)
   const maxRedeemable =
-    option.balances?.option && option.balances?.coll
-      ? option.balances.option < option.balances.coll
+    option.balances?.option && option.balances?.receipt
+      ? option.balances.option < option.balances.receipt
         ? option.balances.option
-        : option.balances.coll
+        : option.balances.receipt
       : 0n;
 
   return (
@@ -140,7 +126,7 @@ export function Redeem({ optionAddress }: RedeemActionProps) {
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Short Balance</span>
           <span className="text-purple-300">
-            {formatBalance(option.balances?.coll, option.collateral.decimals)}
+            {formatBalance(option.balances?.receipt, option.collateral.decimals)}
           </span>
         </div>
         <div className="flex justify-between text-sm font-semibold">

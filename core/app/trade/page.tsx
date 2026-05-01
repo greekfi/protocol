@@ -72,7 +72,7 @@ export default function TradePage() {
                       onSelect={handleSelectSymbol}
                     />
                   }
-                  holdings={<HoldingsCard />}
+                  holdings={<HoldingsCard bare />}
                 />
               ) : (
                 <div className="min-h-[6rem] flex flex-wrap justify-center items-start gap-4">

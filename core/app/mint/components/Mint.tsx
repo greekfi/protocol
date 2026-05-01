@@ -160,7 +160,7 @@ export function Mint({ optionAddress }: MintActionCleanProps) {
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Short Balance</span>
           <span className="text-blue-300">
-            {formatBalance(option.balances?.coll, option.collateral.decimals)}
+            {formatBalance(option.balances?.receipt, option.collateral.decimals)}
           </span>
         </div>
       </div>

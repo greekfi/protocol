@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useOption } from "../hooks/useOption";
 import { Address, erc20Abi, formatUnits, parseUnits } from "viem";
 import { useReadContract, useWaitForTransactionReceipt } from "wagmi";
-import { useWriteCollateralRedeem, useWriteCollateralRedeemConsideration } from "~~/generated";
+import { useWriteReceiptRedeem, useWriteReceiptRedeemConsideration } from "~~/generated";
 
 interface RedeemRedemptionProps {
   optionAddress: Address | undefined;
@@ -22,26 +22,18 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
   // Data fetching
   const { data: option, refetch: refetchOption } = useOption(optionAddress);
 
-  // Get consideration balance of the Redemption contract
+  // Get consideration balance of the Receipt contract
   const { data: redemptionConsiderationBalance } = useReadContract({
     address: option?.consideration.address_,
     abi: erc20Abi,
     functionName: "balanceOf",
-    args: option?.coll ? [option.coll] : undefined,
-    query: { enabled: Boolean(option?.consideration.address_ && option?.coll) },
+    args: option?.receipt ? [option.receipt] : undefined,
+    query: { enabled: Boolean(option?.consideration.address_ && option?.receipt) },
   });
 
   // Transaction executors
-  const { writeContractAsync: redeemColl } = useWriteCollateralRedeem();
-  const { writeContractAsync: redeemCollForConsideration } = useWriteCollateralRedeemConsideration();
-
-  // Debug render
-  console.log("=== RedeemRedemption Render ===");
-  console.log("optionAddress:", optionAddress);
-  console.log("option:", option);
-  console.log("redemptionConsiderationBalance:", redemptionConsiderationBalance?.toString());
-  console.log("status:", status);
-  console.log("txHash:", txHash);
+  const { writeContractAsync: redeemReceipt } = useWriteReceiptRedeem();
+  const { writeContractAsync: redeemReceiptForConsideration } = useWriteReceiptRedeemConsideration();
 
   // Wait for transaction
   const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
@@ -65,57 +57,29 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
   }
 
   const handleRedeem = async () => {
-    if (!optionAddress || !option) {
-      console.log("=== RedeemRedemption: Missing data ===");
-      console.log("optionAddress:", optionAddress);
-      console.log("option:", option);
-      return;
-    }
-    if (!amount || parseFloat(amount) <= 0) {
-      console.log("=== RedeemRedemption: Invalid amount ===");
-      console.log("amount:", amount);
-      return;
-    }
+    if (!optionAddress || !option) return;
+    if (!amount || parseFloat(amount) <= 0) return;
 
     try {
       setStatus("working");
       setError(null);
 
-      const wei = parseUnits(amount, 18); // Redemption tokens are 18 decimals
+      const wei = parseUnits(amount, 18); // Receipt tokens are 18 decimals
 
-      console.log("=== RedeemRedemption Debug ===");
-      console.log("Amount entered:", amount);
-      console.log("Amount in wei:", wei.toString());
-      console.log("Redemption balance:", option.balances?.coll?.toString());
-      console.log("Redemption address:", option.coll);
-      console.log("Redeem for consideration:", redeemForConsideration);
-      console.log("Is expired:", option.isExpired);
-      console.log("Consideration balance:", redemptionConsiderationBalance?.toString());
-
-      // Check balance
-      if (option.balances?.coll && option.balances.coll < wei) {
-        console.error("Failed: Insufficient Redemption balance");
-        setError("Insufficient Redemption token balance");
+      if (option.balances?.receipt && option.balances.receipt < wei) {
+        setError("Insufficient Receipt token balance");
         setStatus("error");
         return;
       }
 
-      // Call appropriate redeem function
-      // If not expired, MUST use redeemConsideration (redeem() requires expiration)
+      // Pre-window: must use redeemConsideration (post-window redeem() reverts)
       const shouldUseConsideration = redeemForConsideration || !option.isExpired;
 
-      console.log("Calling redeem function...");
-      console.log("shouldUseConsideration:", shouldUseConsideration);
       const hash = shouldUseConsideration
-        ? await redeemCollForConsideration({ address: option.coll, args: [wei] })
-        : await redeemColl({ address: option.coll, args: [wei] });
-      console.log("Transaction hash:", hash);
+        ? await redeemReceiptForConsideration({ address: option.receipt, args: [wei] })
+        : await redeemReceipt({ address: option.receipt, args: [wei] });
       setTxHash(hash);
     } catch (err: any) {
-      console.error("=== RedeemRedemption Error ===");
-      console.error("Error:", err);
-      console.error("Error message:", err.message);
-      console.error("Error stack:", err.stack);
       setStatus("error");
       setError(err.message || "Transaction failed");
     }
@@ -162,7 +126,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Your Redemption Balance</span>
           <span className="text-orange-300">
-            {formatBalance(option.balances?.coll, option.collateral.decimals)}
+            {formatBalance(option.balances?.receipt, option.collateral.decimals)}
           </span>
         </div>
         <div className="flex justify-between text-sm">
@@ -215,7 +179,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
         <div className="flex justify-between items-center mb-1">
           <label className="block text-sm text-gray-400">Amount</label>
           <button
-            onClick={() => setAmount(formatUnits(option.balances?.coll ?? 0n, 18))}
+            onClick={() => setAmount(formatUnits(option.balances?.receipt ?? 0n, 18))}
             className="text-xs text-orange-400 hover:text-orange-300 underline"
             disabled={status === "working" || !canRedeem}
           >
@@ -254,14 +218,14 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
           !amount ||
           parseFloat(amount) <= 0 ||
           !canRedeem ||
-          (option.balances?.coll ?? 0n) === 0n
+          (option.balances?.receipt ?? 0n) === 0n
         }
         className={`w-full py-2 px-4 rounded-lg transition-colors font-medium ${
           status === "working" ||
           !amount ||
           parseFloat(amount) <= 0 ||
           !canRedeem ||
-          (option.balances?.coll ?? 0n) === 0n
+          (option.balances?.receipt ?? 0n) === 0n
             ? "bg-gray-600 cursor-not-allowed text-gray-400"
             : status === "success"
               ? "bg-green-600 hover:bg-green-700 text-white"
@@ -279,7 +243,7 @@ export function RedeemRedemption({ optionAddress }: RedeemRedemptionProps) {
           Option has not expired yet and has no consideration balance. Use Burn Pair component.
         </div>
       )}
-      {canRedeem && (option.balances?.coll ?? 0n) === 0n && (
+      {canRedeem && (option.balances?.receipt ?? 0n) === 0n && (
         <div className="mt-2 text-yellow-500 text-sm text-center p-2 bg-yellow-900/20 rounded border border-yellow-800">
           You have no Redemption tokens to redeem
         </div>

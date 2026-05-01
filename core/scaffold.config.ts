@@ -23,6 +23,8 @@ const baseRpc = userAlchemyKey
 const arbitrumRpc = userAlchemyKey
   ? `https://arb-mainnet.g.alchemy.com/v2/${userAlchemyKey}`
   : "https://arbitrum-one-rpc.publicnode.com";
+// Ink doesn't have an Alchemy endpoint — Kraken's public gel RPC is the canonical one.
+const inkRpc = "https://rpc-gel.inkonchain.com";
 
 const scaffoldConfig = {
   // The networks on which the protocol is deployed. Order matters: wagmi
@@ -33,7 +35,7 @@ const scaffoldConfig = {
   // strips it elsewhere), so localhost dev still has it available in the
   // chain switcher without ever being the default.
   // Mainnet is intentionally absent — no Greek factory on Ethereum yet.
-  targetNetworks: [chains.arbitrum, chains.base, chains.foundry],
+  targetNetworks: [chains.arbitrum, chains.base, chains.ink, chains.foundry],
   // The interval at which your front-end polls the RPC servers for new data (it has no effect if you only target the local network (default is 4000))
   pollingInterval: 30000,
   // This is ours Alchemy's default API key.
@@ -46,6 +48,7 @@ const scaffoldConfig = {
   rpcOverrides: {
     [chains.base.id]: baseRpc,
     [chains.arbitrum.id]: arbitrumRpc,
+    [chains.ink.id]: inkRpc,
   },
   // This is ours WalletConnect's default project ID.
   // You can get your own at https://cloud.walletconnect.com

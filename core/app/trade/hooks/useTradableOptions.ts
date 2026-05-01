@@ -16,9 +16,10 @@ export interface TradableOption {
  * Returns all not-yet-expired options where `underlyingToken` matches either
  * the collateral side (calls) or the consideration side (puts).
  *
- * Uses the greek-events HTTP API (https://greek-events.fly.dev) — no per-page
- * `getLogs` scan against public RPCs. If the indexer hasn't synced this chain
- * yet, returns [] cleanly.
+ * Sourced via {@link useChainEvents}, which now hits the market-maker's
+ * /events endpoint (api.greek.finance) — same backend that prices /options,
+ * single round-trip per page load. Returns [] cleanly while a chain's first
+ * cold-sync is still running.
  */
 export function useTradableOptions(underlyingToken: string | null) {
   const chainId = useBrowseChainId();
@@ -43,7 +44,7 @@ export function useTradableOptions(underlyingToken: string | null) {
         expiration: BigInt(e.args.expirationDate),
         strike: BigInt(e.args.strike),
         isPut: e.args.isPut,
-        redemptionAddress: e.args.coll,
+        redemptionAddress: e.args.receipt,
       }))
       .filter(opt => opt.expiration > now);
   }, [events, underlyingToken]);

@@ -209,8 +209,8 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         },
         {
           label: "Short",
-          value: formatBalance(optionBalances.coll, approvals.optionDecimals),
-          dim: optionBalances.coll === 0n,
+          value: formatBalance(optionBalances.receipt, approvals.optionDecimals),
+          dim: optionBalances.receipt === 0n,
         },
       ]
     : [];
@@ -221,22 +221,47 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   // direction-aware `needs*Approval` flags (via approvals.allSatisfied).
   const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
   const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
+  const autoMintApproved = approvals.autoMintEnabled === true;
+  const collateralApproved =
+    (approvals.collateralErc20Allowance ?? 0n) > 0n && (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+
+  // Labels are token-only — the Approve button next to each row already
+  // says "Approve". Tooltips carry the longer "for Bebop / via operator"
+  // explanation for users who hover.
   const steps = [
     {
-      label: `Approve ${usdcSymbol} → Bebop`,
+      label: usdcSymbol,
       done: usdcApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveUsdc,
       title: "Lets Bebop pull USDC when buying or buying-back option tokens.",
     },
     {
-      label: `Approve option → Bebop`,
+      label: "Option",
       done: optionApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveOption,
       title: approvals.factoryOperatorApproved
         ? "Covered by your factory-operator approval."
         : "Lets Bebop pull the option token when selling.",
+    },
+    {
+      label: "Auto-mint",
+      done: autoMintApproved,
+      pending: approvals.isApproving,
+      // Use a distinct on-action so the user can flip auto-mint without
+      // the row also triggering an ERC20 approve. The Approve button on
+      // this row is just a labelled toggle.
+      onAction: approvals.handleEnableAutoMint,
+      title:
+        "Lets the Option contract auto-mint from your collateral when you transfer options you don't yet hold (required for selling without manually minting first).",
+    },
+    {
+      label: collSymbol,
+      done: collateralApproved,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveCollateral,
+      title: `Approve ${collSymbol} for the factory (two layers: ERC20 + factory-internal). Required for auto-mint to pull collateral on sell.`,
     },
   ];
 
@@ -329,19 +354,80 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
       </div>
 
-      {/* Balances column */}
-      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
-        <ApprovalsCard steps={[]} balances={balances} />
+      {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
+          Holdings on the left, the Approvals list on the right, on one
+          row. Drops the second card entirely so the panel reads
+          left-to-right (action → balances + holdings/approvals). */}
+      <div className="min-w-[20rem] flex-1 max-w-[28rem]">
+        <ApprovalsCard
+          steps={[]}
+          balances={balances}
+          balancesLayout="grid"
+          footer={
+            <div className="space-y-3">
+              <div>{holdings}</div>
+              <div className="pt-3 border-t border-gray-700/40">
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                  Approvals
+                </div>
+                <ApprovalsList steps={steps} />
+              </div>
+            </div>
+          }
+        />
       </div>
-
-      {/* Approvals column */}
-      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
-        <ApprovalsCard steps={steps} />
-      </div>
-
-      {/* Holdings column — populated by the page so it's visible alongside
-          the trade-flow columns when an option is selected. */}
-      {holdings && <div className="min-w-[11rem] flex-1 max-w-[14rem]">{holdings}</div>}
     </div>
+  );
+}
+
+/**
+ * Inline approvals list extracted so the trade panel can render it inside
+ * the combined balances+holdings+approvals card without nesting another
+ * full ApprovalsCard (which would re-print the section headers and chrome).
+ */
+function ApprovalsList({
+  steps,
+}: {
+  steps: Array<{
+    label: string;
+    done: boolean;
+    pending: boolean;
+    onAction?: () => void;
+    title?: string;
+  }>;
+}) {
+  // [Approve] token   →   [✓] token
+  // The leading pill is the action: orange "Approve" while pending, green
+  // checkmark once done. Same shape/size in both states so the labels stay
+  // at the same x-position across rows. Done pills are non-interactive.
+  const PILL_BASE =
+    "inline-flex items-center justify-center min-w-[4.25rem] px-2 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
+  return (
+    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      {steps.map(step => (
+        <li key={step.label} className="flex items-center gap-2 min-w-0">
+          {step.done ? (
+            <span className={`${PILL_BASE} bg-emerald-500/80 text-black`} aria-hidden>
+              ✓
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={step.onAction}
+              disabled={step.pending || !step.onAction}
+              className={`${PILL_BASE} bg-[#FF8300] hover:bg-[#e07400] text-black disabled:opacity-50`}
+            >
+              {step.pending ? "…" : "Approve"}
+            </button>
+          )}
+          <span
+            className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
+            title={step.title}
+          >
+            {step.label}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
