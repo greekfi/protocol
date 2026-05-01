@@ -374,6 +374,35 @@ export function TradePanel({
                 placeholder="0"
                 className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
               />
+              {(() => {
+                // sell → user's long balance; buy → most options affordable
+                // with current USDC at the current per-option price.
+                let maxN: number | undefined;
+                if (direction === "sell" && optionBalances?.option !== undefined) {
+                  maxN = Number(formatUnits(optionBalances.option, optionDecimals));
+                } else if (
+                  direction === "buy" &&
+                  approvals.usdcBalance !== undefined &&
+                  pricePerOption !== undefined &&
+                  pricePerOption > 0
+                ) {
+                  maxN = Number(formatUnits(approvals.usdcBalance, approvals.usdcDecimals)) / pricePerOption;
+                }
+                if (!maxN || !Number.isFinite(maxN) || maxN <= 0) return null;
+                const maxStr = maxN >= 1 ? maxN.toFixed(4) : maxN.toPrecision(4);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveInput("option");
+                      setAmount(maxStr);
+                    }}
+                    className="px-1 text-[10px] uppercase tracking-wider text-blue-300 hover:text-blue-200"
+                  >
+                    max
+                  </button>
+                );
+              })()}
               <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">OPT</span>
             </div>
             <div className="flex rounded-md border border-gray-700 overflow-hidden text-[11px] shrink-0">
