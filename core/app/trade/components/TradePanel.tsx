@@ -221,6 +221,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   // direction-aware `needs*Approval` flags (via approvals.allSatisfied).
   const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
   const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
+  const autoMintApproved = approvals.autoMintEnabled === true;
+  const collateralApproved =
+    (approvals.collateralErc20Allowance ?? 0n) > 0n && (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+
   // Labels are token-only — the Approve button next to each row already
   // says "Approve". Tooltips carry the longer "for Bebop / via operator"
   // explanation for users who hover.
@@ -240,6 +244,24 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       title: approvals.factoryOperatorApproved
         ? "Covered by your factory-operator approval."
         : "Lets Bebop pull the option token when selling.",
+    },
+    {
+      label: "Auto-mint",
+      done: autoMintApproved,
+      pending: approvals.isApproving,
+      // Use a distinct on-action so the user can flip auto-mint without
+      // the row also triggering an ERC20 approve. The Approve button on
+      // this row is just a labelled toggle.
+      onAction: approvals.handleEnableAutoMint,
+      title:
+        "Lets the Option contract auto-mint from your collateral when you transfer options you don't yet hold (required for selling without manually minting first).",
+    },
+    {
+      label: collSymbol,
+      done: collateralApproved,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveCollateral,
+      title: `Approve ${collSymbol} for the factory (two layers: ERC20 + factory-internal). Required for auto-mint to pull collateral on sell.`,
     },
   ];
 
