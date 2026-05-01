@@ -390,7 +390,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
               <div>{holdings}</div>
               <div className="pt-3 border-t border-gray-700/40">
                 <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                  Approvals
+                  Trading Approvals
                 </div>
                 <ApprovalsList steps={steps} />
               </div>
