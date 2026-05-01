@@ -6,7 +6,7 @@ import { useApproveERC20 } from "../hooks/transactions/useApproveERC20";
 import { useAllowances } from "../hooks/useAllowances";
 import { useContracts } from "../hooks/useContracts";
 import { useOption } from "../hooks/useOption";
-import { useTokenMap } from "../hooks/useTokenMap";
+import { Token, useTokenMap } from "../hooks/useTokenMap";
 import { Address, isAddress } from "viem";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import {
@@ -34,23 +34,35 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
   const factoryAddress = useContracts()?.Factory?.address as Address | undefined;
   const { data: option } = useOption(optionAddress);
   const { allTokensMap } = useTokenMap();
-  const tokenOptions = Object.values(allTokensMap);
 
   // Two independent token slots for the two Factory Allowance rows.
-  // Default to the selected option's collateral/consideration once available.
-  const [token1, setToken1] = useState<Address | undefined>(undefined);
-  const [token2, setToken2] = useState<Address | undefined>(undefined);
+  // State remembers the *symbol*; the resolved {address, symbol, decimals}
+  // object always reflects the current chain's tokenMap so a chain switch
+  // re-points addresses without any extra plumbing.
+  const [token1Symbol, setToken1Symbol] = useState<string>("");
+  const [token2Symbol, setToken2Symbol] = useState<string>("");
+  const token1 = token1Symbol ? allTokensMap[token1Symbol] : undefined;
+  const token2 = token2Symbol ? allTokensMap[token2Symbol] : undefined;
+  const setToken1 = (t: Token | undefined) => setToken1Symbol(t?.symbol ?? "");
+  const setToken2 = (t: Token | undefined) => setToken2Symbol(t?.symbol ?? "");
 
   useEffect(() => {
-    // Normalize to lowercase so the <select>'s string-equality value match works
-    // regardless of the checksum casing used by the token list vs. the contract.
-    if (option?.collateral.address_ && !token1) {
-      setToken1(option.collateral.address_.toLowerCase() as Address);
+    // Default to the selected option's collateral / consideration. Look the
+    // address up in the tokenMap to record its symbol — that way the default
+    // also survives a chain switch.
+    if (option?.collateral.address_ && !token1Symbol) {
+      const match = Object.values(allTokensMap).find(
+        t => t.address.toLowerCase() === option.collateral.address_.toLowerCase(),
+      );
+      if (match) setToken1Symbol(match.symbol);
     }
-    if (option?.consideration.address_ && !token2) {
-      setToken2(option.consideration.address_.toLowerCase() as Address);
+    if (option?.consideration.address_ && !token2Symbol) {
+      const match = Object.values(allTokensMap).find(
+        t => t.address.toLowerCase() === option.consideration.address_.toLowerCase(),
+      );
+      if (match) setToken2Symbol(match.symbol);
     }
-  }, [option?.collateral.address_, option?.consideration.address_, token1, token2]);
+  }, [option?.collateral.address_, option?.consideration.address_, token1Symbol, token2Symbol, allTokensMap]);
 
   const { data: autoMintBurn, refetch: refetchAutoMint } = useReadFactoryAutoMintBurn({
     address: factoryAddress,
@@ -78,8 +90,8 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
     query: { enabled: Boolean(pendingHash) },
   });
 
-  const allow1 = useAllowances(token1, MAX_UINT256);
-  const allow2 = useAllowances(token2, MAX_UINT256);
+  const allow1 = useAllowances(token1?.address as Address | undefined, MAX_UINT256);
+  const allow2 = useAllowances(token2?.address as Address | undefined, MAX_UINT256);
 
   if (pendingHash && txConfirmed) {
     setPendingHash(null);
@@ -100,9 +112,10 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
   };
 
 
-  const approveToken = (slot: "t1" | "t2", tokenAddr: Address | undefined, allow: typeof allow1) =>
+  const approveToken = (slot: "t1" | "t2", token: Token | undefined, allow: typeof allow1) =>
     runWith(slot, async () => {
-      if (!tokenAddr || !factoryAddress) return;
+      if (!token || !factoryAddress) return;
+      const tokenAddr = token.address as Address;
       // First missing layer fires, then the user clicks again for the next.
       if (allow.needsErc20Approval) {
         const h = await erc20.approve(tokenAddr, factoryAddress);
@@ -115,8 +128,8 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
       }
     });
 
-  const statusOf = (slot: "t1" | "t2", tokenAddr: Address | undefined, allow: typeof allow1): RowStatus => {
-    if (!tokenAddr) return "unavailable";
+  const statusOf = (slot: "t1" | "t2", token: Token | undefined, allow: typeof allow1): RowStatus => {
+    if (!token) return "unavailable";
     if (working === slot) return "working";
     if (!allow.needsErc20Approval && !allow.needsFactoryApproval) return "approved";
     return "pending";
@@ -154,7 +167,7 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
         status={g1Status}
         token={token1}
         setToken={setToken1}
-        tokenOptions={tokenOptions}
+        tokensMap={allTokensMap}
         onClick={() => approveToken("t1", token1, allow1)}
         disabled={!userAddress || !factoryAddress}
         needsErc20={allow1.needsErc20Approval}
@@ -163,7 +176,7 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
         status={g2Status}
         token={token2}
         setToken={setToken2}
-        tokenOptions={tokenOptions}
+        tokensMap={allTokensMap}
         onClick={() => approveToken("t2", token2, allow2)}
         disabled={!userAddress || !factoryAddress}
         needsErc20={allow2.needsErc20Approval}
@@ -220,9 +233,9 @@ export function Approvals({ optionAddress }: ApprovalsProps) {
 
 interface TokenApprovalRowProps {
   status: RowStatus;
-  token: Address | undefined;
-  setToken: (addr: Address) => void;
-  tokenOptions: { address: string; symbol: string; decimals: number }[];
+  token: Token | undefined;
+  setToken: (token: Token | undefined) => void;
+  tokensMap: Record<string, Token>;
   onClick: () => void;
   disabled: boolean;
   needsErc20: boolean;
@@ -233,7 +246,7 @@ const TokenApprovalRow = ({
   status,
   token,
   setToken,
-  tokenOptions,
+  tokensMap,
   onClick,
   disabled,
   needsErc20,
@@ -255,14 +268,14 @@ const TokenApprovalRow = ({
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <Dot status={status} />
         <select
-          value={(token ?? "").toLowerCase()}
-          onChange={e => setToken(e.target.value.toLowerCase() as Address)}
+          value={token?.symbol ?? ""}
+          onChange={e => setToken(e.target.value ? tokensMap[e.target.value] : undefined)}
           className="p-1 rounded border border-gray-700 bg-black/60 text-blue-300 text-xs min-w-[4.5rem]"
         >
           <option value="">Token…</option>
-          {tokenOptions.map(t => (
-            <option key={t.address} value={t.address.toLowerCase()}>
-              {t.symbol}
+          {Object.keys(tokensMap).map(symbol => (
+            <option key={symbol} value={symbol}>
+              {symbol}
             </option>
           ))}
         </select>

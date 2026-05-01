@@ -38,9 +38,16 @@ const Create = () => {
   // Use the new create option hook
   const { createOptions, isPending, isSuccess, error, txHash, reset } = useCreateOption();
 
-  // Form state
-  const [collateralToken, setCollateralToken] = useState<Token | undefined>(undefined);
-  const [considerationToken, setConsiderationToken] = useState<Token | undefined>(undefined);
+  // State remembers the token *symbol*, but every consumer just sees the
+  // resolved {address, symbol, decimals} object pulled from the current
+  // chain's token map. Chain switch → same setter, new chain's address.
+  const [collateralSymbol, setCollateralSymbol] = useState<string>("");
+  const [considerationSymbol, setConsiderationSymbol] = useState<string>("");
+  const collateralToken: Token | undefined = collateralSymbol ? allTokensMap[collateralSymbol] : undefined;
+  const considerationToken: Token | undefined = considerationSymbol ? allTokensMap[considerationSymbol] : undefined;
+  const setCollateralToken = (t: Token | undefined) => setCollateralSymbol(t?.symbol ?? "");
+  const setConsiderationToken = (t: Token | undefined) => setConsiderationSymbol(t?.symbol ?? "");
+
   const [strikePrices, setStrikePrices] = useState<number[]>([]);
   const [isPut, setIsPut] = useState(false);
   const [expirationDates, setExpirationDates] = useState<Date[]>([new Date()]);
