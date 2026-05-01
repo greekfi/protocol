@@ -60,7 +60,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
     const decimals = tokenFor(h.collateral)?.decimals ?? 18;
     const inner = (
       <>
-        <span className="truncate text-gray-300">
+        <span className="truncate text-gray-100">
           {symbol} {formatStrike(h.strike, h.isPut)} {h.isPut ? "P" : "C"} ·{" "}
           <span className="text-gray-500">{formatExpiry(h.expiration)}</span>
         </span>
@@ -96,7 +96,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
           <button
             type="button"
             onClick={() => onExercise(h)}
-            className="ml-3 px-1.5 text-xs text-white underline underline-offset-2 hover:text-blue-200"
+            className="block ml-4 -mt-0.5 text-[11px] text-gray-400 underline underline-offset-2 hover:text-blue-200"
             title="Open exercise panel"
           >
             exercise
