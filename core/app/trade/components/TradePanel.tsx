@@ -217,8 +217,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   const usdcApproved = (approvals.usdcAllowance ?? 0n) > 0n;
   const optionApproved = (approvals.optionAllowance ?? 0n) > 0n || approvals.factoryOperatorApproved === true;
   const autoMintApproved = approvals.autoMintEnabled === true;
-  const collateralApproved =
-    (approvals.collateralErc20Allowance ?? 0n) > 0n && (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+  const collateralErc20Done = (approvals.collateralErc20Allowance ?? 0n) > 0n;
+  const collateralFactoryDone = (approvals.collateralFactoryAllowance ?? 0n) > 0n;
+  const collateralApproved = collateralErc20Done && collateralFactoryDone;
+  const collateralHalfApproved = !collateralApproved && (collateralErc20Done || collateralFactoryDone);
 
   // Labels are token-only — the Approve button next to each row already
   // says "Approve". Tooltips carry the longer "for Bebop / via operator"
@@ -254,6 +256,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     {
       label: collSymbol,
       done: collateralApproved,
+      partial: collateralHalfApproved,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveCollateral,
       title: `Approve ${collSymbol} for the factory (two layers: ERC20 + factory-internal). Required for auto-mint to pull collateral on sell.`,
@@ -386,6 +389,7 @@ function ApprovalsList({
   steps: Array<{
     label: string;
     done: boolean;
+    partial?: boolean;
     pending: boolean;
     onAction?: () => void;
     title?: string;
@@ -410,7 +414,11 @@ function ApprovalsList({
               type="button"
               onClick={step.onAction}
               disabled={step.pending || !step.onAction}
-              className={`${PILL_BASE} bg-[#FF8300] hover:bg-[#e07400] text-black disabled:opacity-50`}
+              className={`${PILL_BASE} ${
+                step.partial
+                  ? "bg-pink-500 hover:bg-pink-400"
+                  : "bg-[#FF8300] hover:bg-[#e07400]"
+              } text-black disabled:opacity-50`}
             >
               {step.pending ? "…" : "Approve"}
             </button>
