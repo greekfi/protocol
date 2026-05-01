@@ -347,13 +347,22 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[30rem] flex gap-4">
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
         {/* Left side: descriptor + inputs + price + warnings */}
         <div className="flex-1 min-w-0 flex flex-col">
-        <div className="mb-3 text-base font-semibold text-white tabular-nums">
-          {strikeLabel} · {expiryLabel} ·{" "}
-          {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
-          {selectedOption.isPut ? "Put" : "Call"}
+        <div className="mb-3 text-base font-semibold text-white tabular-nums leading-tight">
+          <div>
+            {strikeLabel} · {expiryLabel}
+          </div>
+          <div>
+            {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+            {selectedOption.isPut ? "Put" : "Call"}
+          </div>
+        </div>
+
+        <div className="mb-2 text-sm text-gray-500">
+          <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>{" "}
+          per option
         </div>
 
         <div className="flex flex-col gap-2">
@@ -483,12 +492,6 @@ export function TradePanel({
         {insufficientMessage && (
           <div className="mt-2 text-xs text-amber-300/90">{insufficientMessage}</div>
         )}
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className="text-gray-500">
-            Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
-          </span>
-        </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}

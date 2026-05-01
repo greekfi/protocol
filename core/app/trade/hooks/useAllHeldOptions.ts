@@ -12,6 +12,7 @@ export interface HeldOption {
   expiration: bigint;
   strike: bigint;
   isPut: boolean;
+  isEuro: boolean;
   /** Long-side balance (the Option ERC20). */
   optionBalance: bigint;
   /** Short-side balance (the Receipt ERC20). */
@@ -40,6 +41,7 @@ export function useAllHeldOptions() {
         expiration: BigInt(e.args.expirationDate),
         strike: BigInt(e.args.strike),
         isPut: e.args.isPut,
+        isEuro: e.args.isEuro,
       })),
     [events],
   );
