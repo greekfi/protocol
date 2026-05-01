@@ -222,7 +222,7 @@ export function TradePanel({
         : "No quote available — is the market maker running?"
       : isTrading
         ? "Waiting for on-chain confirmation"
-        : undefined;
+        : insufficientMessage ?? undefined;
 
   // ApprovalsCard inputs.
   const usdcSymbol =
@@ -457,20 +457,17 @@ export function TradePanel({
                 placeholder="0"
                 className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
               />
-              {direction === "buy" && usdcCostWei !== undefined && (
-                <span
-                  className={`pr-1 text-xs ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
-                  title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
-                >
-                  {hasEnoughUsdc ? "✓" : "✗"}
-                </span>
-              )}
               <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
             </div>
             <button
               type="button"
               onClick={handleTrade}
-              disabled={!quote || isTrading || !approvals.allSatisfied}
+              disabled={
+                !quote ||
+                isTrading ||
+                !approvals.allSatisfied ||
+                !!insufficientMessage
+              }
               className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
               title={disabledReason}
             >
