@@ -174,8 +174,8 @@ contract ExerciseWindowTest is Test {
 
         address[] memory holders = new address[](4);
         holders[0] = address(this);
-        holders[1] = address(0xDEAD);    // no balance — skipped
-        holders[2] = address(0xC0FFEE);  // no allowance from this address — skipped
+        holders[1] = address(0xDEAD); // no balance — skipped
+        holders[2] = address(0xC0FFEE); // no allowance from this address — skipped
         holders[3] = address(this);
 
         uint256[] memory amounts = new uint256[](4);

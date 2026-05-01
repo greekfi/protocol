@@ -499,5 +499,4 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     function option() public view returns (address) {
         return owner();
     }
-
 }

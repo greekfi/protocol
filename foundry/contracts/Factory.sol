@@ -147,17 +147,18 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         address receipt_ = Clones.clone(RECEIPT_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
 
-        Receipt(receipt_).init(
-            p.collateral,
-            p.consideration,
-            p.expirationDate,
-            p.strike,
-            p.isPut,
-            p.isEuro,
-            windowSeconds,
-            option_,
-            address(this)
-        );
+        Receipt(receipt_)
+            .init(
+                p.collateral,
+                p.consideration,
+                p.expirationDate,
+                p.strike,
+                p.isPut,
+                p.isEuro,
+                windowSeconds,
+                option_,
+                address(this)
+            );
         Option(option_).init(receipt_, msg.sender);
 
         receipts[receipt_] = true;

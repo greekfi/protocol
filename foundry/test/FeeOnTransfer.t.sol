@@ -98,15 +98,17 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted collateral - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
     }
 
     /// @notice Test that blocklist prevents option creation with blocklisted consideration
@@ -116,15 +118,17 @@ contract FeeOnTransferTest is Test {
 
         // Try to create option with blocklisted consideration - should revert
         vm.expectRevert(Factory.BlocklistedToken.selector);
-        factory.createOption(CreateParams({
-            collateral: address(stableToken),
-            consideration: address(fotToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        factory.createOption(
+            CreateParams({
+                collateral: address(stableToken),
+                consideration: address(fotToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
     }
 
     /// @notice Test that owner can remove token from blocklist
@@ -138,15 +142,17 @@ contract FeeOnTransferTest is Test {
         assertFalse(factory.isBlocked(address(fotToken)));
 
         // Should now be able to create option (will fail at mint time though)
-        address optionAddress = factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address optionAddress = factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
 
         assertTrue(optionAddress != address(0));
     }
@@ -163,15 +169,17 @@ contract FeeOnTransferTest is Test {
     /// @notice Test that FOT token fails at mint time due to balance check
     function test_FeeOnTransferFailsAtMint() public {
         // Create option with FOT token as collateral (not blocklisted)
-        address optionAddress = factory.createOption(CreateParams({
-            collateral: address(fotToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address optionAddress = factory.createOption(
+            CreateParams({
+                collateral: address(fotToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
 
         option = Option(optionAddress);
         redemption = Rct(option.receipt());

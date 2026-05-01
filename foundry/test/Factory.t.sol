@@ -88,7 +88,17 @@ contract FactoryTest is Test {
     // ======== Backward-compat overload ========
 
     function test_LegacyCreateOption_DefaultsWindow() public {
-        address opt = factory.createOption(CreateParams({collateral: address(coll), consideration: address(cons), expirationDate: EXP, strike: 1000e18, isPut: false, isEuro: false, windowSeconds: 0}));
+        address opt = factory.createOption(
+            CreateParams({
+                collateral: address(coll),
+                consideration: address(cons),
+                expirationDate: EXP,
+                strike: 1000e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
         assertTrue(factory.options(opt));
         Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);

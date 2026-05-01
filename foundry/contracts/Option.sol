@@ -274,7 +274,14 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @inheritdoc ERC20
     /// @dev Overridden to run the auto-mint / auto-burn hook. Reverts post-expiry —
     ///      the long token stops circulating once expiration passes.
-    function transfer(address to, uint256 amount) public override notPastDeadline notLocked nonReentrant returns (bool) {
+    function transfer(address to, uint256 amount)
+        public
+        override
+        notPastDeadline
+        notLocked
+        nonReentrant
+        returns (bool)
+    {
         _settledTransfer(msg.sender, to, amount);
         return true;
     }

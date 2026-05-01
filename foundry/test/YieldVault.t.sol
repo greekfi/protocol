@@ -173,15 +173,17 @@ contract YieldVaultTest is Test {
         vault.setupFactoryApproval();
         vault.enableAutoMintBurn(true);
 
-        address optionAddr = factory.createOption(CreateParams({
-            collateral: address(shakyToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 1 days),
-            strike: 1e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address optionAddr = factory.createOption(
+            CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 1 days),
+                strike: 1e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
         option = Option(optionAddr);
         redemption = option.receipt();
         vault.addOption(address(option), address(0));
@@ -516,9 +518,8 @@ contract YieldVaultTest is Test {
                 BLEND_PERMIT2_ORDER_TYPE
             )
         );
-        bytes32 tokenPermHash = keccak256(
-            abi.encode(TOKEN_PERMISSIONS_TYPEHASH, address(blendOrder.taker_token), blendOrder.taker_amount)
-        );
+        bytes32 tokenPermHash =
+            keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, address(blendOrder.taker_token), blendOrder.taker_amount));
         address balMgr = IJamSettlement(JAM_SETTLEMENT).balanceManager();
         bytes32 permit2Struct = keccak256(
             abi.encode(
@@ -629,15 +630,17 @@ contract YieldVaultTest is Test {
     // ============ ADMIN ============
 
     function test_AddOption() public {
-        address opt2 = factory.createOption(CreateParams({
-            collateral: address(shakyToken),
-            consideration: address(stableToken),
-            expirationDate: uint40(block.timestamp + 2 days),
-            strike: 2e18,
-            isPut: false,
-            isEuro: false,
-            windowSeconds: 0
-        }));
+        address opt2 = factory.createOption(
+            CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 2 days),
+                strike: 2e18,
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            })
+        );
         vault.addOption(opt2, address(0));
         assertEq(vault.activeOptions(1), opt2);
     }

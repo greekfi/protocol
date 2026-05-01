@@ -16,11 +16,12 @@ const buildFoundryFormatCommand = (filenames) => {
   const existingFiles = filenames.filter((f) => fs.existsSync(f));
   if (existingFiles.length === 0) return "true"; // No-op if no files exist
 
-  // Use absolute paths so lint-staged's post-task re-stage picks up the
-  // rewritten content. With `cd foundry && forge fmt <relpath>` the file
-  // is rewritten on disk but lint-staged's diff check misses it, so the
-  // pre-format content ends up in the commit.
-  return `forge fmt ${existingFiles.join(" ")}`;
+  // `--root foundry` so forge picks up foundry/foundry.toml (bracket_spacing
+  // etc.). Without it, forge defaults to the git-repo root and falls back to
+  // its own defaults — producing output that disagrees with CI (which runs
+  // `forge fmt` from `working-directory: foundry`). Absolute paths still
+  // required so lint-staged's post-task diff sees the rewritten files.
+  return `forge fmt --root foundry ${existingFiles.join(" ")}`;
 };
 
 module.exports = {
