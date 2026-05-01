@@ -342,9 +342,9 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           balances={balances}
           balancesLayout="grid"
           footer={
-            <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="space-y-3">
               <div>{holdings}</div>
-              <div>
+              <div className="pt-3 border-t border-gray-700/40">
                 <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
                   Approvals
                 </div>
@@ -374,25 +374,25 @@ function ApprovalsList({
     title?: string;
   }>;
 }) {
+  // Render every approval on a single horizontal row. Each item is a
+  // status dot + token label + (when not yet approved) Approve button.
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       {steps.map(step => (
-        <li key={step.label} className="flex items-center justify-between gap-2 text-sm">
-          <span className="flex items-center gap-2 min-w-0">
-            <span
-              className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
-              }`}
-              aria-hidden
-            >
-              {step.done ? "✓" : ""}
-            </span>
-            <span
-              className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
-              title={step.title}
-            >
-              {step.label}
-            </span>
+        <li key={step.label} className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
+              step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
+            }`}
+            aria-hidden
+          >
+            {step.done ? "✓" : ""}
+          </span>
+          <span
+            className={step.done ? "text-gray-500" : "text-gray-300"}
+            title={step.title}
+          >
+            {step.label}
           </span>
           {!step.done && step.onAction && (
             <button
