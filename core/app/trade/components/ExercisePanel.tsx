@@ -65,8 +65,25 @@ export function ExercisePanel({
     | `0x${string}`
     | undefined;
 
-  const [amount, setAmount] = useState("1");
-  const amountWei = amount && parseFloat(amount) > 0 ? parseUnits(amount, optionDecimals) : 0n;
+  const { data: optionBalance } = useBalance({
+    address: userAddress,
+    token: optionAddress as `0x${string}`,
+    query: { enabled: !!userAddress },
+  });
+
+  const maxStr = optionBalance ? formatUnits(optionBalance.value, optionDecimals) : "0";
+  const [amount, setAmount] = useState<string>("");
+
+  // Default the input to the user's full option balance once it's loaded.
+  // Keep tracking the max as long as the user hasn't typed something else.
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    if (!touched) setAmount(maxStr);
+  }, [maxStr, touched]);
+
+  const parsedWei = amount && parseFloat(amount) > 0 ? parseUnits(amount, optionDecimals) : 0n;
+  const maxWei = optionBalance?.value ?? 0n;
+  const amountWei = parsedWei > maxWei ? maxWei : parsedWei;
 
   const { data: receiptAddress } = useReadOptionReceipt({
     address: optionAddress as `0x${string}`,
@@ -167,15 +184,36 @@ export function ExercisePanel({
           <input
             type="text"
             inputMode="decimal"
-            maxLength={8}
+            maxLength={20}
             value={amount}
             onChange={e => {
               const v = e.target.value;
-              if (/^\d*\.?\d*$/.test(v) && v.length <= 8) setAmount(v);
+              if (!/^\d*\.?\d*$/.test(v)) return;
+              setTouched(true);
+              // Clamp typed input to the user's option balance.
+              if (v && parseFloat(v) > 0 && maxWei > 0n) {
+                const wei = parseUnits(v, optionDecimals);
+                if (wei > maxWei) {
+                  setAmount(maxStr);
+                  return;
+                }
+              }
+              setAmount(v);
             }}
             placeholder="0"
             className="w-full px-3 py-2 bg-transparent text-emerald-100 text-base outline-none tabular-nums"
           />
+          <button
+            type="button"
+            onClick={() => {
+              setTouched(true);
+              setAmount(maxStr);
+            }}
+            disabled={maxWei === 0n}
+            className="px-1.5 text-[10px] uppercase tracking-wider text-emerald-400 hover:text-emerald-300 disabled:opacity-30"
+          >
+            max
+          </button>
           <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">option</span>
         </div>
         <button
@@ -189,6 +227,12 @@ export function ExercisePanel({
         </button>
       </div>
       <div className="mt-2 text-sm flex items-center gap-2">
+        <span className="text-gray-400">Balance</span>
+        <span className="tabular-nums text-white">
+          {Number(maxStr).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+        </span>
+      </div>
+      <div className="mt-1 text-sm flex items-center gap-2">
         <span className="text-gray-400">Need</span>
         <span className="tabular-nums text-white">
           {neededDisplay} {consSymbol}
