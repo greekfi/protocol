@@ -1,0 +1,47 @@
+name: Deploy market-maker to Fly
+
+# Triggers ONLY when paths the MM cares about change. Frontend-only or
+# foundry-only PRs won't redeploy the MM. The path list mirrors the source
+# layout once `market-maker/` is folded in:
+#   - market-maker/**          → MM source, package.json, Dockerfile, fly.toml
+#   - abi/factories.json       → canonical chain → factory map (Docker COPY at build)
+#   - abi/chains/**            → if the MM ever consumes ABIs directly
+#   - .github/workflows/deploy-mm.yml  → the workflow itself
+#
+# main   → greek-protocol  (production)   uses FLY_API_TOKEN
+# staging→ greek-mm-test   (preview)      uses FLY_API_TOKEN_STAGING
+# Per-branch token so a leaked staging token can't deploy live.
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - "market-maker/**"
+      - "abi/factories.json"
+      - "abi/chains/**"
+      - ".github/workflows/deploy-mm.yml"
+  workflow_dispatch:
+
+concurrency:
+  # Per-branch concurrency so a staging push doesn't queue behind a main deploy.
+  group: deploy-mm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: market-maker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        env:
+          FLY_API_TOKEN: ${{ github.ref == 'refs/heads/staging' && secrets.FLY_API_TOKEN_STAGING || secrets.FLY_API_TOKEN }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+            flyctl deploy --remote-only --wait-timeout 300 \
+              --config fly.test.toml --app greek-mm-test
+          else
+            flyctl deploy --remote-only --wait-timeout 300
+          fi

@@ -27,10 +27,18 @@ const enabledNetworks = filteredNetworks.length > 0 ? filteredNetworks : targetN
 
 export const enabledChains = enabledNetworks;
 
-export const wagmiConfig = createConfig({
+// wagmi's `createConfig` is `<const chains extends readonly [Chain, ...Chain[]]>`
+// — the `const` modifier re-narrows transaction-type literals from the call
+// site. Mixing chains with different defaults (Arbitrum 'eip7702' + Ink
+// 'legacy', etc.) produces a tuple wagmi can't unify. Locally tsc passes
+// (chain types unify via dedup'd viem); under Next's stricter build-time
+// checker the inference fires. Cast the *argument* through `any` so const
+// inference latches onto the default `readonly [Chain, ...Chain[]]` rather
+// than the literal-narrow tuple.
+const wagmiArgs = {
   chains: enabledChains as unknown as readonly [chains.Chain, ...chains.Chain[]],
   ssr: true,
-  client: ({ chain }) => {
+  client: ({ chain }: { chain: chains.Chain }) => {
     const rpcUrl = rpcOverrides?.[chain.id as keyof typeof rpcOverrides];
 
     return createClient({
@@ -39,4 +47,7 @@ export const wagmiConfig = createConfig({
       pollingInterval: scaffoldConfig.pollingInterval,
     });
   },
-});
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const wagmiConfig = createConfig(wagmiArgs as any);

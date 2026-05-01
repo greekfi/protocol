@@ -1,6 +1,6 @@
 import { defineConfig } from "@wagmi/cli";
 import { react } from "@wagmi/cli/plugins";
-import foundryContracts from "../abi/chains/foundry";
+import foundryContracts from "./abi/chains/foundry";
 
 // Contracts we want typed hooks for. Pulled from the generated foundry chain file
 // because it has every deployed protocol contract (same ABIs across chains).

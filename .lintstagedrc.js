@@ -1,15 +1,15 @@
-const path = require("path");
 const fs = require("fs");
 
 const buildNextEslintCommand = (filenames) => {
-  const cwd = path.join(process.cwd(), "core");
-  const relativeFiles = filenames
-    .map((f) => path.relative(cwd, f))
-    .join(" ");
-  return `cd core && eslint --fix ${relativeFiles}`;
+  // Hook runs lint-staged from git root with core/node_modules/.bin on
+  // PATH (so eslint binary resolves). cd into core/ so eslint finds
+  // core/eslint.config.mjs — eslint v9 uses flat config by default and
+  // looks in cwd. Files come in as absolute paths from lint-staged.
+  return `cd core && eslint --fix ${filenames.join(" ")}`;
 };
 
-const checkTypesNextCommand = () => "yarn next:check-types";
+// tsc needs a tsconfig.json in cwd, so run via core/'s `check-types` script.
+const checkTypesNextCommand = () => "yarn --cwd core check-types";
 
 const buildFoundryFormatCommand = (filenames) => {
   // Filter out files that don't exist (might be deleted)

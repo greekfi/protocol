@@ -1,9 +1,14 @@
 #!/bin/sh
 set -e
 
-# Lint/format only files that are actually staged (forge fmt for .sol, eslint for .ts/.tsx, etc).
-# Config lives in .lintstagedrc.js.
-yarn lint-staged
+# lint-staged + eslint live in core/'s node_modules (root yarn
+# workspace was removed). Run lint-staged from the repo root so its
+# globs (`core/**`, `foundry/**`) match staged-file paths correctly —
+# but inject core/'s .bin so eslint and friends are spawnable.
+# `forge` comes from the system PATH (foundry CLI), `tsc` is invoked
+# via `yarn --cwd core check-types` from .lintstagedrc.js.
+export PATH="$PWD/core/node_modules/.bin:$PATH"
+./core/node_modules/.bin/lint-staged
 
 # If docs/ files are staged, verify Docusaurus still builds.
 if git diff --cached --name-only | grep -q '^docs/'; then

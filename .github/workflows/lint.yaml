@@ -1,12 +1,22 @@
 name: Lint
 
+# Foundry-only job. Runs the forge fmt / build / test pass — the things that
+# only depend on `foundry/`. MM-only or frontend-only PRs don't pay for it.
+# Other surfaces have their own workflows (deploy-mm.yml, docs.yml; Vercel
+# handles core/ on its own).
 on:
   push:
     branches:
       - main
+    paths:
+      - "foundry/**"
+      - ".github/workflows/lint.yaml"
   pull_request:
     branches:
       - main
+    paths:
+      - "foundry/**"
+      - ".github/workflows/lint.yaml"
 
 jobs:
   ci:
