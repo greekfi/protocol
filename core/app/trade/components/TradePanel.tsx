@@ -249,12 +249,24 @@ export function TradePanel({
       t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
     )?.decimals ?? approvals.usdcDecimals;
 
+  // OPT row collapses long + short into one number. Long-only renders as a
+  // positive amount, short-only as negative. If the user holds both sides the
+  // row shows them side-by-side with explicit signs, e.g. "+1, -0.3".
+  const optValue = optionBalances
+    ? optionBalances.option > 0n && optionBalances.receipt > 0n
+      ? `+${formatBalance(optionBalances.option, approvals.optionDecimals)}, -${formatBalance(optionBalances.receipt, approvals.optionDecimals)}`
+      : optionBalances.option > 0n
+        ? formatBalance(optionBalances.option, approvals.optionDecimals)
+        : optionBalances.receipt > 0n
+          ? `-${formatBalance(optionBalances.receipt, approvals.optionDecimals)}`
+          : "0"
+    : "—";
   const balances: BalanceRow[] = optionBalances
     ? [
         {
-          label: collSymbol,
-          value: formatBalance(optionBalances.collateral, collDecimals),
-          dim: optionBalances.collateral === 0n,
+          label: "OPT",
+          value: optValue,
+          dim: optionBalances.option === 0n && optionBalances.receipt === 0n,
         },
         {
           label: consSymbol,
@@ -262,14 +274,9 @@ export function TradePanel({
           dim: optionBalances.consideration === 0n,
         },
         {
-          label: "Option",
-          value: formatBalance(optionBalances.option, approvals.optionDecimals),
-          dim: optionBalances.option === 0n,
-        },
-        {
-          label: "Short",
-          value: formatBalance(optionBalances.receipt, approvals.optionDecimals),
-          dim: optionBalances.receipt === 0n,
+          label: collSymbol,
+          value: formatBalance(optionBalances.collateral, collDecimals),
+          dim: optionBalances.collateral === 0n,
         },
       ]
     : [];
@@ -516,7 +523,7 @@ export function TradePanel({
           Holdings on the left, the Approvals list on the right, on one
           row. Drops the second card entirely so the panel reads
           left-to-right (action → balances + holdings/approvals). */}
-      <div className="w-[22rem] max-w-full">
+      <div className="w-[16rem] max-w-full">
         <ApprovalsCard
           steps={[]}
           footer={
@@ -589,7 +596,7 @@ function ApprovalsList({
   const PILL_BASE =
     "inline-flex items-center justify-center min-w-[3rem] px-1 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+    <ul className="flex flex-col gap-1.5 text-sm">
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
           {step.done ? (

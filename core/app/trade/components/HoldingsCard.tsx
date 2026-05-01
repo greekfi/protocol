@@ -84,11 +84,11 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
     }
 
     return (
-      <li key={h.option} className="flex items-stretch gap-1">
+      <li key={h.option}>
         <button
           type="button"
           onClick={() => onSelect(h)}
-          className="flex-1 min-w-0 flex items-baseline justify-between gap-3 tabular-nums px-1.5 py-1 -ml-1.5 rounded hover:bg-blue-500/10 hover:text-white transition-colors text-left"
+          className="w-full flex items-baseline justify-between gap-2 tabular-nums px-1.5 py-1 -ml-1.5 rounded hover:bg-blue-500/10 hover:text-white transition-colors text-left"
         >
           {inner}
         </button>
@@ -96,7 +96,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
           <button
             type="button"
             onClick={() => onExercise(h)}
-            className="shrink-0 px-1.5 py-1 text-xs text-blue-300 underline underline-offset-2 hover:text-blue-200"
+            className="ml-3 px-1.5 text-xs text-white underline underline-offset-2 hover:text-blue-200"
             title="Open exercise panel"
           >
             exercise
