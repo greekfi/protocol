@@ -37,9 +37,13 @@ interface HoldingsCardProps {
    *  to the parent — same selection flow as clicking Sell/Buy on the
    *  options grid. */
   onSelect?: (h: HeldOption) => void;
+  /** Optional separate handler for the per-row "Exercise" link. When present,
+   *  rows that hold a long balance render a small Exercise affordance that
+   *  jumps into the trade panel with the exercise box opened. */
+  onExercise?: (h: HeldOption) => void;
 }
 
-export function HoldingsCard({ bare = false, onSelect }: HoldingsCardProps = {}) {
+export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCardProps = {}) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
   const { allTokensMap } = useTokenMap();
 
@@ -80,14 +84,24 @@ export function HoldingsCard({ bare = false, onSelect }: HoldingsCardProps = {})
     }
 
     return (
-      <li key={h.option}>
+      <li key={h.option} className="flex items-stretch gap-1">
         <button
           type="button"
           onClick={() => onSelect(h)}
-          className="w-full flex items-baseline justify-between gap-3 tabular-nums px-1.5 py-1 -mx-1.5 rounded hover:bg-blue-500/10 hover:text-white transition-colors text-left"
+          className="flex-1 min-w-0 flex items-baseline justify-between gap-3 tabular-nums px-1.5 py-1 -ml-1.5 rounded hover:bg-blue-500/10 hover:text-white transition-colors text-left"
         >
           {inner}
         </button>
+        {onExercise && h.optionBalance > 0n && (
+          <button
+            type="button"
+            onClick={() => onExercise(h)}
+            className="shrink-0 px-1.5 py-1 text-[10px] uppercase tracking-wider text-emerald-400 hover:text-emerald-300 hover:underline"
+            title="Open exercise panel"
+          >
+            exercise
+          </button>
+        )}
       </li>
     );
   };

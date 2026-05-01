@@ -32,6 +32,9 @@ interface TradePanelProps {
   /** Optional 4th-column slot — rendered alongside Balances + Approvals so
    *  every panel shares the same flex-wrap row. */
   holdings?: React.ReactNode;
+  /** Counter bumped by callers (e.g. HoldingsCard's Exercise link) to
+   *  request the exercise box be opened. */
+  openExerciseSignal?: number;
 }
 
 function displayStrike(strike: bigint, isPut: boolean): number {
@@ -60,7 +63,13 @@ function formatBalance(raw: bigint | undefined, decimals: number): string {
   return n.toPrecision(2);
 }
 
-export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }: TradePanelProps) {
+export function TradePanel({
+  selectedOption,
+  onClose,
+  tokenSelector,
+  holdings,
+  openExerciseSignal,
+}: TradePanelProps) {
   const chainId = useChainId();
   const { allTokensMap } = useTokenMap();
   const { address: userAddress } = useAccount();
@@ -88,6 +97,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
   useEffect(() => {
     setDirection(selectedOption.isBuy ? "buy" : "sell");
   }, [selectedOption.isBuy, selectedOption.optionAddress]);
+
+  const [showExercise, setShowExercise] = useState(false);
+  // Collapse exercise when the user picks a different option.
+  useEffect(() => setShowExercise(false), [selectedOption.optionAddress]);
+  // Open exercise when the parent bumps the signal (e.g. HoldingsCard click).
+  useEffect(() => {
+    if (openExerciseSignal !== undefined && openExerciseSignal > 0) setShowExercise(true);
+  }, [openExerciseSignal]);
 
   const optionToken = selectedOption.optionAddress;
   const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
@@ -313,7 +330,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           {tokenSelector}
           {spotPrice !== undefined && (
             <span className="text-sm text-gray-400">
-              spot <span className="text-emerald-300 tabular-nums">${formatMoney(spotPrice)}</span>
+              spot <span className="text-white tabular-nums">${formatMoney(spotPrice)}</span>
             </span>
           )}
           <div className="text-base font-semibold text-white tabular-nums">
@@ -355,12 +372,10 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
                 if (!/^\d*\.?\d*$/.test(v) || v.length > 12) return;
                 setActiveInput("usdc");
                 setUsdcInput(v);
-                // Drive option amount from USDC input via the latest quote price.
                 const usdcN = parseFloat(v);
                 if (pricePerOption !== undefined && pricePerOption > 0 && Number.isFinite(usdcN)) {
                   if (usdcN > 0) {
                     const opts = usdcN / pricePerOption;
-                    // Keep enough precision that small option amounts don't get rounded to 0.
                     setAmount(opts >= 1 ? opts.toFixed(4) : opts.toPrecision(4));
                   } else {
                     setAmount("");
@@ -370,6 +385,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
               placeholder="0"
               className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
             />
+            {direction === "buy" && usdcCostWei !== undefined && (
+              <span
+                className={`pr-1 text-xs ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
+                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+              >
+                {hasEnoughUsdc ? "✓" : "✗"}
+              </span>
+            )}
             <span className="pr-2 text-[10px] text-gray-500 uppercase tracking-wider">USDC</span>
           </div>
 
@@ -377,11 +400,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             type="button"
             onClick={handleTrade}
             disabled={!quote || isTrading || !approvals.allSatisfied}
-            className={`px-3 py-1 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors ${
-              direction === "buy"
-                ? "bg-blue-500 hover:bg-blue-400"
-                : "bg-orange-500 hover:bg-orange-400"
-            }`}
+            className="px-3 py-1 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
             title={disabledReason}
           >
             {isTrading
@@ -399,38 +418,30 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className={direction === "buy" ? "text-blue-300" : "text-orange-300"}>
-            {direction === "buy" ? "Cost" : "Receive"}{" "}
-            <span className="font-medium tabular-nums">
-              {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
-            </span>
-            {direction === "buy" && usdcCostWei !== undefined && (
-              <span
-                className={`ml-1 ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
-                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
-              >
-                {hasEnoughUsdc ? "✓" : "✗"}
-              </span>
-            )}
-          </span>
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
-          {/* Buy/Sell toggle sits flush right next to the per-option price. */}
+          <button
+            type="button"
+            onClick={() => setShowExercise(s => !s)}
+            className="text-xs text-gray-400 hover:text-blue-300 underline-offset-4 hover:underline"
+          >
+            {showExercise ? "hide exercise" : "exercise"}
+          </button>
           <div className="flex rounded-md border border-gray-700 overflow-hidden text-xs ml-auto">
             <button
               type="button"
-              onClick={() => setDirection("buy")}
-              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-blue-300 hover:bg-black/60"}`}
+              onClick={() => setDirection("sell")}
+              className={`px-2 py-1 ${direction === "sell" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
             >
-              Buy
+              Sell
             </button>
             <button
               type="button"
-              onClick={() => setDirection("sell")}
-              className={`px-2 py-1 ${direction === "sell" ? "bg-orange-500 text-white" : "bg-black/40 text-orange-300 hover:bg-black/60"}`}
+              onClick={() => setDirection("buy")}
+              className={`px-2 py-1 ${direction === "buy" ? "bg-blue-500 text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
             >
-              Sell
+              Buy
             </button>
           </div>
         </div>
@@ -480,13 +491,15 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         />
       </div>
 
-      <ExercisePanel
-        optionAddress={selectedOption.optionAddress}
-        considerationAddress={selectedOption.considerationAddress}
-        optionDecimals={optionDecimals}
-        consDecimals={consDecimals}
-        consSymbol={consSymbol}
-      />
+      {showExercise && (
+        <ExercisePanel
+          optionAddress={selectedOption.optionAddress}
+          considerationAddress={selectedOption.considerationAddress}
+          optionDecimals={optionDecimals}
+          consDecimals={consDecimals}
+          consSymbol={consSymbol}
+        />
+      )}
     </div>
   );
 }

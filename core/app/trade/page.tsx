@@ -27,6 +27,10 @@ export default function TradePage() {
     isBuy: boolean;
   } | null>(null);
 
+  // Counter bumped to ask the TradePanel to open its exercise box (e.g. when
+  // the user clicks "exercise" in the holdings list).
+  const [openExerciseSignal, setOpenExerciseSignal] = useState(0);
+
   const handleSelectSymbol = (symbol: string) => {
     // Switching the underlying invalidates any in-flight buy/sell — drop it.
     if (symbol !== selectedSymbol) setSelectedOption(null);
@@ -65,6 +69,11 @@ export default function TradePage() {
     });
   };
 
+  const handleExerciseHolding = (h: HeldOption) => {
+    handleSelectHolding(h);
+    setOpenExerciseSignal(s => s + 1);
+  };
+
   return (
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
@@ -86,6 +95,7 @@ export default function TradePage() {
                 <TradePanel
                   selectedOption={selectedOption}
                   onClose={() => setSelectedOption(null)}
+                  openExerciseSignal={openExerciseSignal}
                   tokenSelector={
                     <TokenGrid
                       tokens={CALL_UNDERLYINGS}
@@ -93,7 +103,13 @@ export default function TradePage() {
                       onSelect={handleSelectSymbol}
                     />
                   }
-                  holdings={<HoldingsCard bare onSelect={handleSelectHolding} />}
+                  holdings={
+                    <HoldingsCard
+                      bare
+                      onSelect={handleSelectHolding}
+                      onExercise={handleExerciseHolding}
+                    />
+                  }
                 />
               ) : (
                 <div className="min-h-[6rem] flex flex-wrap justify-center items-start gap-4">
@@ -102,7 +118,7 @@ export default function TradePage() {
                       Pick a strike and expiry below to load the trade panel.
                     </div>
                   </div>
-                  <HoldingsCard onSelect={handleSelectHolding} />
+                  <HoldingsCard onSelect={handleSelectHolding} onExercise={handleExerciseHolding} />
                 </div>
               )}
 

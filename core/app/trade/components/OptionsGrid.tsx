@@ -418,10 +418,9 @@ function PriceCell({
   }
   const active =
     selected?.optionAddress.toLowerCase() === opt.optionAddress.toLowerCase() && selected.isBuy === isBuy;
-  // Bid = orange, Ask = blue. Both calls and puts use the same colour scheme.
-  const colour = isBuy
-    ? "text-blue-300 hover:text-blue-200"
-    : "text-orange-300 hover:text-orange-200";
+  // Bid + Ask both render white for a quieter grid; the active/hover box still
+  // distinguishes the two via colour.
+  const colour = "text-white/90 hover:text-white";
   // Same fill+border on hover as on active, so the hovered cell previews
   // exactly what selecting it will look like. Transparent default border
   // reserves the 1px so hovering doesn't nudge the layout.

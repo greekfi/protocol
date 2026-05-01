@@ -162,7 +162,7 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
         className={clsx(
           "flex flex-col items-start gap-1 px-3 py-2 rounded-lg border text-left transition-colors",
           active
-            ? "bg-[#2F50FF]/15 border-[#2F50FF]"
+            ? "bg-black/60 border-gray-600"
             : "bg-black/40 border-gray-800 hover:border-gray-700 hover:bg-black/60",
         )}
       >
