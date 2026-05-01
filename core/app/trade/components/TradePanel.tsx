@@ -396,37 +396,36 @@ function ApprovalsList({
     title?: string;
   }>;
 }) {
-  // 2-column grid: each row's dot+label+button sit close together, separated
-  // by `gap-2`. The grid alignment keeps the two columns at fixed x-starts
-  // so the rows feel tabular without flinging the button to the far edge.
+  // [Approve] token   →   [✓] token
+  // The leading pill is the action: orange "Approve" while pending, green
+  // checkmark once done. Same shape/size in both states so the labels stay
+  // at the same x-position across rows. Done pills are non-interactive.
+  const PILL_BASE =
+    "inline-flex items-center justify-center min-w-[4.25rem] px-2 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
-          <span
-            className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-              step.done ? "bg-emerald-500/80 text-black" : "bg-gray-700 text-gray-400 border border-gray-600"
-            }`}
-            aria-hidden
-          >
-            {step.done ? "✓" : ""}
-          </span>
+          {step.done ? (
+            <span className={`${PILL_BASE} bg-emerald-500/80 text-black`} aria-hidden>
+              ✓
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={step.onAction}
+              disabled={step.pending || !step.onAction}
+              className={`${PILL_BASE} bg-[#FF8300] hover:bg-[#e07400] text-black disabled:opacity-50`}
+            >
+              {step.pending ? "…" : "Approve"}
+            </button>
+          )}
           <span
             className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
             title={step.title}
           >
             {step.label}
           </span>
-          {!step.done && step.onAction && (
-            <button
-              type="button"
-              onClick={step.onAction}
-              disabled={step.pending}
-              className="px-2 py-0.5 rounded-md bg-[#FF8300] hover:bg-[#e07400] text-black text-xs font-semibold disabled:opacity-50 transition-colors shrink-0"
-            >
-              {step.pending ? "…" : "Approve"}
-            </button>
-          )}
         </li>
       ))}
     </ul>
