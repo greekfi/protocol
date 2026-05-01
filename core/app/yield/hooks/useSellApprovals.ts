@@ -177,9 +177,11 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
   useEffect(() => {
     if (!factoryApproveOperatorConfirmed) return;
     refetchFactoryOperator();
-    const t = setTimeout(refetchFactoryOperator, 10_000);
+    // L2s settle fast; mainnet's RPCs can lag a beat behind the receipt.
+    const delay = chainId === 1 ? 10_000 : 1_000;
+    const t = setTimeout(refetchFactoryOperator, delay);
     return () => clearTimeout(t);
-  }, [factoryApproveOperatorConfirmed, refetchFactoryOperator]);
+  }, [factoryApproveOperatorConfirmed, refetchFactoryOperator, chainId]);
 
   const handleEnableAutoMint = () => {
     if (!factoryAddress) return;
