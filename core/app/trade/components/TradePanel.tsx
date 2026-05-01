@@ -329,19 +329,22 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
       </div>
 
-      {/* Balances column */}
-      <div className="min-w-[11rem] flex-1 max-w-[14rem]">
-        <ApprovalsCard steps={[]} balances={balances} />
+      {/* Balances column. Four token rows pack as a 2×2 grid; Holdings
+          renders in the card's footer slot so it shares the column width
+          and isn't its own flex item. */}
+      <div className="min-w-[16rem] flex-1 max-w-[20rem]">
+        <ApprovalsCard
+          steps={[]}
+          balances={balances}
+          balancesLayout="grid"
+          footer={holdings}
+        />
       </div>
 
       {/* Approvals column */}
       <div className="min-w-[11rem] flex-1 max-w-[14rem]">
         <ApprovalsCard steps={steps} />
       </div>
-
-      {/* Holdings column — populated by the page so it's visible alongside
-          the trade-flow columns when an option is selected. */}
-      {holdings && <div className="min-w-[11rem] flex-1 max-w-[14rem]">{holdings}</div>}
     </div>
   );
 }
