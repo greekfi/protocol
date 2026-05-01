@@ -340,7 +340,7 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[20rem]">
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[18rem]">
         <div className="mb-3 flex items-center gap-3 flex-wrap">
           <div className="text-base font-semibold text-white tabular-nums">
             {strikeLabel} · {expiryLabel} ·{" "}
@@ -482,14 +482,31 @@ export function TradePanel({
           </div>
         </div>
 
+        {insufficientMessage && (
+          <div className="mt-2 text-xs text-amber-300/90">{insufficientMessage}</div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
-          {insufficientMessage && (
-            <span className="text-xs text-amber-300/90 ml-auto">{insufficientMessage}</span>
-          )}
         </div>
+
+        {balances.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-700/40">
+            <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+              Balances
+            </div>
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm tabular-nums">
+              {balances.map(b => (
+                <li key={b.label} className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
+                  <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
@@ -502,8 +519,6 @@ export function TradePanel({
       <div className="w-[22rem] max-w-full">
         <ApprovalsCard
           steps={[]}
-          balances={balances}
-          balancesLayout="grid"
           footer={
             <div className="space-y-3">
               <div>{holdings}</div>
@@ -572,14 +587,14 @@ function ApprovalsList({
   // checkmark once done. Same shape/size in both states so the labels stay
   // at the same x-position across rows. Done pills are non-interactive.
   const PILL_BASE =
-    "inline-flex items-center justify-center min-w-[4.25rem] px-2 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
+    "inline-flex items-center justify-center min-w-[3rem] px-1 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
       {steps.map(step => (
         <li key={step.label} className="flex items-center gap-2 min-w-0">
           {step.done ? (
             <span
-              className="inline-flex items-center justify-center min-w-[4.25rem] text-emerald-400 text-base shrink-0"
+              className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base shrink-0"
               aria-hidden
             >
               ✓
