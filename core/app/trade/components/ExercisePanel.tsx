@@ -12,6 +12,9 @@ import {
 } from "wagmi";
 import {
   factoryAbi,
+  useReadOptionExerciseDeadline,
+  useReadOptionExpirationDate,
+  useReadOptionIsEuro,
   useReadOptionReceipt,
   useReadReceiptToNeededConsideration,
   useWriteFactoryApprove,
@@ -88,6 +91,17 @@ export function ExercisePanel({
   const { data: receiptAddress } = useReadOptionReceipt({
     address: optionAddress as `0x${string}`,
   });
+  const { data: isEuro } = useReadOptionIsEuro({ address: optionAddress as `0x${string}` });
+  const { data: expirationDate } = useReadOptionExpirationDate({ address: optionAddress as `0x${string}` });
+  const { data: exerciseDeadline } = useReadOptionExerciseDeadline({ address: optionAddress as `0x${string}` });
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const preExpiry = expirationDate !== undefined && now < BigInt(expirationDate);
+  const euroBlocked = isEuro === true && preExpiry;
+  const windowHours =
+    expirationDate !== undefined && exerciseDeadline !== undefined
+      ? Number((BigInt(exerciseDeadline) - BigInt(expirationDate)) / 3600n)
+      : undefined;
 
   const { data: needed } = useReadReceiptToNeededConsideration({
     address: receiptAddress,
@@ -214,18 +228,29 @@ export function ExercisePanel({
           >
             max
           </button>
-          <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">option</span>
+          <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">OPT</span>
         </div>
         <button
           type="button"
           onClick={handleExercise}
-          disabled={isPending || amountWei === 0n || !approvalsDone}
-          title={!approvalsDone ? `Approve ${consSymbol} first` : undefined}
+          disabled={isPending || amountWei === 0n || !approvalsDone || euroBlocked}
+          title={
+            euroBlocked
+              ? "European option — only exercisable after expiration"
+              : !approvalsDone
+                ? `Approve ${consSymbol} first`
+                : undefined
+          }
           className="w-full px-3 py-1.5 rounded-lg text-white text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
         >
           {isPending ? "…" : isSuccess ? "Exercised ✓" : "Exercise"}
         </button>
       </div>
+      {euroBlocked && (
+        <div className="mt-2 text-[11px] text-amber-300/80">
+          Euro options exercisable only after expiration{windowHours ? ` for ${windowHours}h` : ""}.
+        </div>
+      )}
       <div className="mt-2 text-sm flex items-center gap-2">
         <span className="text-gray-400">Balance</span>
         <span className="tabular-nums text-white">
