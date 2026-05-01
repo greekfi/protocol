@@ -66,7 +66,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
         </span>
         <span className="flex items-baseline gap-2 shrink-0">
           {h.optionBalance > 0n && (
-            <span className="text-blue-300">L {formatAmount(h.optionBalance, decimals)}</span>
+            <span className="text-gray-300">{formatAmount(h.optionBalance, decimals)}</span>
           )}
           {h.receiptBalance > 0n && (
             <span className="text-orange-300">S {formatAmount(h.receiptBalance, decimals)}</span>
@@ -96,7 +96,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
           <button
             type="button"
             onClick={() => onExercise(h)}
-            className="shrink-0 px-1.5 py-1 text-[10px] uppercase tracking-wider text-emerald-400 hover:text-emerald-300 hover:underline"
+            className="shrink-0 px-1.5 py-1 text-xs text-blue-300 underline underline-offset-2 hover:text-blue-200"
             title="Open exercise panel"
           >
             exercise

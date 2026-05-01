@@ -442,13 +442,6 @@ export function TradePanel({
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
           </span>
-          <button
-            type="button"
-            onClick={() => setShowExercise(s => !s)}
-            className="text-xs text-gray-400 hover:text-blue-300 underline-offset-4 hover:underline ml-auto"
-          >
-            {showExercise ? "hide exercise" : "exercise"}
-          </button>
         </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
