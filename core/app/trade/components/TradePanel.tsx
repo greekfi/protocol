@@ -343,7 +343,7 @@ export function TradePanel({
         <div className="flex flex-col gap-2">
           {/* Row 1: OPT input + Sell|Buy direction toggle */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] flex-1">
+            <div className="flex items-center border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
               <input
                 type="text"
                 inputMode="decimal"
@@ -381,7 +381,7 @@ export function TradePanel({
 
           {/* Row 2: USDC input + primary action button */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] flex-1">
+            <div className="flex items-center border border-gray-800 bg-black/50 focus-within:border-[#2F50FF] w-32">
               <input
                 type="text"
                 inputMode="decimal"
@@ -420,7 +420,7 @@ export function TradePanel({
               type="button"
               onClick={handleTrade}
               disabled={!quote || isTrading || !approvals.allSatisfied}
-              className="shrink-0 px-3 py-1 rounded-lg text-white text-base font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
+              className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
               title={disabledReason}
             >
               {isTrading
