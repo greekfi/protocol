@@ -317,21 +317,9 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             </span>
           )}
           <div className="text-base font-semibold text-white tabular-nums">
-            {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
-            {isEuro !== undefined && (
-              <span
-                className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
-                  isEuro ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300"
-                }`}
-                title={
-                  isEuro
-                    ? "European — exercisable only after expiration, within the exercise window"
-                    : "American — exercisable any time pre-expiry and within the exercise window"
-                }
-              >
-                {isEuro ? "Euro" : "American"}
-              </span>
-            )}
+            {strikeLabel} · {expiryLabel} ·{" "}
+            {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+            {selectedOption.isPut ? "Put" : "Call"}
           </div>
         </div>
 
