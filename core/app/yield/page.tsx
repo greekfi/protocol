@@ -43,18 +43,19 @@ export default function YieldPage() {
           </div>
         )}
 
-        <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
+        {!selected && (
+          <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
+        )}
 
         {selected && (
-          // text-center on the wrapper makes the inline-block strike grid
-          // (and any other content inside YieldPanel that uses intrinsic
-          // width) sit at the page center instead of pinned to the left.
           <div className="mt-6 w-full text-center">
             <YieldPanel
               mode={mode}
               token={selected}
               stablecoin={mode === "puts" ? selectedStable : undefined}
-              onClose={() => setSelectedToken(null)}
+              tokenSelector={
+                <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
+              }
             />
           </div>
         )}

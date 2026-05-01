@@ -44,6 +44,8 @@ interface SellPanelProps {
   amount: string;
   onAmountChange: (v: string) => void;
   approvals: SellApprovals;
+  /** Hide the strike·expiry header (when the parent already renders one). */
+  hideDescriptor?: boolean;
 }
 
 export function SellPanel({
@@ -55,6 +57,7 @@ export function SellPanel({
   amount,
   onAmountChange,
   approvals,
+  hideDescriptor = false,
 }: SellPanelProps) {
   const chainId = useChainId();
   const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
@@ -120,10 +123,12 @@ export function SellPanel({
   const expiryLabel = option ? formatExpiry(option.expiration) : "—";
 
   return (
-    <div className="mt-3 pt-3 border-t border-[#2F50FF]/25">
-      <div className="mb-2 text-base font-semibold text-blue-200 tabular-nums">
-        {strikeLabel} · {expiryLabel}
-      </div>
+    <div className={hideDescriptor ? "" : "mt-3 pt-3 border-t border-[#2F50FF]/25"}>
+      {!hideDescriptor && (
+        <div className="mb-2 text-base font-semibold text-blue-200 tabular-nums">
+          {strikeLabel} · {expiryLabel}
+        </div>
+      )}
 
       <div className="mb-3">
         <PayoffSummary

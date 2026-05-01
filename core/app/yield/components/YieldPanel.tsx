@@ -10,6 +10,8 @@ import { STABLECOINS, type UnderlyingToken } from "../data";
 import { useSellApprovals } from "../hooks/useSellApprovals";
 import { ApprovalsCard } from "../../components/options/ApprovalsCard";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
+import { Hint } from "../../components/Hint";
+import { useReadOptionIsEuro } from "~~/generated";
 import { SellPanel } from "./SellPanel";
 import { StrikeExpirationGrid } from "./StrikeExpirationGrid";
 
@@ -17,10 +19,12 @@ interface YieldPanelProps {
   mode: "calls" | "puts";
   token: UnderlyingToken;
   stablecoin?: string;
-  onClose: () => void;
+  /** Optional element rendered as the right-side token pill (the underlying
+   *  TokenGrid in compact mode, mirroring /trade's pattern). */
+  tokenSelector?: React.ReactNode;
 }
 
-export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps) {
+export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPanelProps) {
   const { allTokensMap } = useTokenMap();
   const stable = STABLECOINS.find(s => s.symbol === stablecoin);
   const tokenAddress = allTokensMap[token.symbol]?.address ?? null;
@@ -114,6 +118,10 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!userAddress && !!selected },
   });
+  const { data: isEuro } = useReadOptionIsEuro({
+    address: (selected?.optionAddress as `0x${string}` | undefined) ?? undefined,
+    query: { enabled: !!selected },
+  });
 
   const balanceRows = useMemo(() => {
     if (!selected || !optionBalances) return undefined;
@@ -156,9 +164,137 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
     ];
   }, [selected, optionBalances, allTokensMap, approvals.optionDecimals]);
 
+  const optionDescriptor = selected ? (
+    <div className="text-base font-semibold text-white tabular-nums leading-tight">
+      <div>
+        {(() => {
+          const strike = displayStrikeOf(selected);
+          return strike >= 1
+            ? `$${strike.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+            : `$${strike.toPrecision(2)}`;
+        })()}{" "}
+        ·{" "}
+        {new Date(Number(selected.expiration) * 1000).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })}
+      </div>
+      <div>
+        {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+        {selected.isPut ? "Put" : "Call"}
+      </div>
+    </div>
+  ) : (
+    <div className="text-base font-semibold text-gray-500">Pick a strike below…</div>
+  );
+
   return (
-    <div className="inline-block max-w-full">
-      <div className="mb-4">
+    <div className="inline-block max-w-full text-left">
+      <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
+        {/* Action card: 28rem with left/right split, mirroring /trade's TradePanel */}
+        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
+          {/* LEFT */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="mb-1">
+              <Hint tip={subtitle} width="w-72">
+                <span className="text-[11px] uppercase tracking-wider text-[#35F3FF]">
+                  {mode === "calls" ? "Covered Call" : "Covered Put"}
+                </span>
+              </Hint>
+            </div>
+            <div className="mb-3">{optionDescriptor}</div>
+
+            <SellPanel
+              option={selected}
+              depositSymbol={mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}
+              underlyingSymbol={token.symbol}
+              stableSymbol={mode === "puts" ? stable?.symbol ?? "USDC" : "USDC"}
+              mode={mode}
+              amount={amount}
+              onAmountChange={setAmount}
+              approvals={approvals}
+              hideDescriptor
+            />
+          </div>
+
+          {/* RIGHT: token + spot, balances, buy-back */}
+          <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
+            <div className="flex flex-col items-start gap-1">
+              {tokenSelector}
+              {spotDisplay && (
+                <span className="text-xs text-gray-400">
+                  spot <span className="text-white tabular-nums">${spotDisplay}</span>
+                </span>
+              )}
+            </div>
+
+            {balanceRows && (
+              <div className="pt-2 border-t border-gray-700/40">
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                  Balances
+                </div>
+                <ul className="flex flex-col gap-1.5 text-sm tabular-nums">
+                  {balanceRows.map(b => (
+                    <li key={b.label} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-gray-500 text-xs uppercase tracking-wider truncate">
+                          {b.label}
+                        </span>
+                        <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
+                      </div>
+                      {b.bottomRow && <div className="pl-2">{b.bottomRow}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Trading Approvals column */}
+        <div className="w-[16rem]">
+          <ApprovalsCard
+            steps={[
+              {
+                label: "Auto-mint",
+                done: approvals.autoMintEnabled === true,
+                pending: approvals.isEnablingAutoMint,
+                onAction: approvals.handleEnableAutoMint,
+                title:
+                  "Lets the factory mint option/receipt pairs from your collateral atomically when Bebop fills your write.",
+              },
+              {
+                label: mode === "calls" ? token.symbol : stable?.symbol ?? "USDC",
+                done: !approvals.needsCollateralApproval,
+                pending: approvals.isApproving,
+                onAction: approvals.handleApproveCollateral,
+                title: `Approve ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} so the factory can pull collateral on write.`,
+              },
+              {
+                label: "Option",
+                done: !approvals.needsOptionApproval,
+                pending: approvals.isApproving,
+                onAction: approvals.handleApproveOption,
+                title: approvals.factoryOperatorApproved
+                  ? "Covered by your factory-operator approval — Bebop can pull option tokens for any option."
+                  : "Approve the option ERC20 to Bebop so it can pull the freshly-minted long when settling your write.",
+              },
+              {
+                label: "USDC",
+                done: !approvals.needsUsdcApproval,
+                pending: approvals.isApproving,
+                onAction: approvals.handleApproveUsdc,
+                title: "Lets you buy back / close the short later via Bebop without another approval.",
+              },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Strike grid sits below the panel — same vertical order as /trade. */}
+      <div className="mt-4">
         <StrikeExpirationGrid
           options={gridOptions}
           loading={isLoading}
@@ -166,94 +302,6 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
           onSelect={setSelected}
           prices={prices}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-4 items-stretch">
-        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <span
-                tabIndex={0}
-                className="group relative inline-block text-xs uppercase tracking-wider text-[#35F3FF] mb-1 cursor-help focus:outline-none"
-                aria-label={subtitle}
-              >
-                {mode === "calls" ? "Covered Call" : "Covered Put"}
-                <span
-                  role="tooltip"
-                  className="pointer-events-none absolute left-0 top-full mt-1 w-64 p-2 rounded-lg border border-gray-700 bg-black/95 text-[11px] normal-case tracking-normal text-gray-300 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus:opacity-100 group-focus:visible transition-opacity z-10"
-                >
-                  {subtitle}
-                </span>
-              </span>
-              <h3 className="text-xl font-semibold text-blue-200">
-                {token.symbol}
-                {spotDisplay && (
-                  <span className="ml-3 text-sm font-normal text-gray-400">
-                    spot <span className="text-emerald-300 tabular-nums">${spotDisplay}</span>
-                  </span>
-                )}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-300 text-sm"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-
-          <SellPanel
-            option={selected}
-            depositSymbol={mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}
-            underlyingSymbol={token.symbol}
-            stableSymbol={mode === "puts" ? stable?.symbol ?? "USDC" : "USDC"}
-            mode={mode}
-            amount={amount}
-            onAmountChange={setAmount}
-            approvals={approvals}
-          />
-        </div>
-
-        <div className="w-72">
-          <ApprovalsCard
-            balances={balanceRows}
-            steps={[
-              {
-                label: "Enable auto-mint on Factory",
-                done: approvals.autoMintEnabled === true,
-                pending: approvals.isEnablingAutoMint,
-                onAction: approvals.handleEnableAutoMint,
-                title:
-                  "One-time per address — lets the Factory mint option tokens for you during Bebop settlement.",
-              },
-              {
-                label: `Approve ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} to Factory`,
-                done: !approvals.needsCollateralApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveCollateral,
-                title: "Factory pulls the collateral from your wallet to mint the option tokens Bebop buys.",
-              },
-              {
-                label: "Approve option to Bebop",
-                done: !approvals.needsOptionApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveOption,
-                title: approvals.factoryOperatorApproved
-                  ? "Covered by your factory-operator approval."
-                  : "Bebop pulls the option tokens from your wallet on settlement.",
-              },
-              {
-                label: "Approve USDC to Bebop",
-                done: !approvals.needsUsdcApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveUsdc,
-                title: "Lets you buy back / close the position via Bebop later without another approval.",
-              },
-            ]}
-          />
-        </div>
       </div>
     </div>
   );
