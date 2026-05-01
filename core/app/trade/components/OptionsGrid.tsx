@@ -158,7 +158,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
     });
 
     const sortedStrikes = Array.from(strikesSet).sort((a, b) => {
-      return Number(BigInt(a) - BigInt(b));
+      return Number(BigInt(b) - BigInt(a));
     });
 
     const sortedExpirations = Array.from(expirationsSet).sort((a, b) => {
@@ -195,13 +195,14 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   // Filter expirations to only show visible ones
   const filteredExpirations = expirations.filter(exp => visibleExpirations.has(exp));
 
-  // Find the strike row index where the spot price line should sit. We
-  // insert it *before* the first strike >= spot, so a spot of 2350 between
-  // strikes 2300 and 2400 paints the line between those two rows. If spot
-  // is below or above every strike (or unknown) we don't render the line.
+  // Find the strike row index where the spot price line should sit. Strikes
+  // are sorted descending, so we insert *before* the first strike <= spot —
+  // a spot of 2350 between strikes 2400 and 2300 paints the line between
+  // those two rows. If spot is below or above every strike (or unknown) we
+  // don't render the line.
   const spotWei = spot !== undefined ? BigInt(Math.round(spot * 1e18)) : undefined;
   const spotInsertIndex =
-    spotWei !== undefined ? strikes.findIndex(s => BigInt(s) >= spotWei) : -1;
+    spotWei !== undefined ? strikes.findIndex(s => BigInt(s) <= spotWei) : -1;
   const showSpotLine = spotInsertIndex > 0 && spotInsertIndex < strikes.length;
   const totalCols =
     (showCalls ? filteredExpirations.length * 2 : 0) +
