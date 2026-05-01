@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
-import { useReadOptionBalancesOf } from "~~/generated";
+import { useReadOptionBalancesOf, useReadOptionIsEuro } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
 import { Hint } from "../../components/Hint";
 import { useTokenSpot } from "../../lib/useTokenSpot";
@@ -70,6 +70,9 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
     address: selectedOption.optionAddress as `0x${string}`,
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!userAddress },
+  });
+  const { data: isEuro } = useReadOptionIsEuro({
+    address: selectedOption.optionAddress as `0x${string}`,
   });
 
   const [direction, setDirection] = useState<TradeDirection>(selectedOption.isBuy ? "buy" : "sell");
@@ -315,6 +318,20 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
           )}
           <div className="text-base font-semibold text-white tabular-nums">
             {strikeLabel} · {expiryLabel} · {selectedOption.isPut ? "Put" : "Call"}
+            {isEuro !== undefined && (
+              <span
+                className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                  isEuro ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300"
+                }`}
+                title={
+                  isEuro
+                    ? "European — exercisable only after expiration, within the exercise window"
+                    : "American — exercisable any time pre-expiry and within the exercise window"
+                }
+              >
+                {isEuro ? "Euro" : "American"}
+              </span>
+            )}
           </div>
         </div>
 
