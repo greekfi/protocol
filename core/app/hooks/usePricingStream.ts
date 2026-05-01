@@ -34,15 +34,23 @@ export interface UsePricingStreamReturn {
 
 const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_PRICING_WS_URL || "wss://api.greek.finance/pricing";
 
-// USDC address (Ethereum mainnet)
-const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+// Set of every USDC address across the chains we support — pair strings
+// from the pricing stream don't carry chain info, so the pair parser has
+// to recognize all of them. Sourced from the canonical token table so a
+// new USDC on a new chain shows up automatically.
+import { TOKENS } from "../data/tokens";
+const USDC_ADDRESSES = new Set(
+  (TOKENS.find(t => t.symbol === "USDC")?.addresses
+    ? Object.values(TOKENS.find(t => t.symbol === "USDC")!.addresses)
+    : []
+  ).map(a => a!.toLowerCase()),
+);
 
 // Extract non-USDC token from pair string "0xAAA.../0xBBB..."
 const getTokenFromPair = (pair: string): string => {
   const [token1, token2] = pair.toLowerCase().split("/");
-  // Return whichever is NOT USDC
-  if (token2 === USDC.toLowerCase()) return token1;
-  if (token1 === USDC.toLowerCase()) return token2;
+  if (USDC_ADDRESSES.has(token2)) return token1;
+  if (USDC_ADDRESSES.has(token1)) return token2;
   return token1; // fallback to first token
 };
 

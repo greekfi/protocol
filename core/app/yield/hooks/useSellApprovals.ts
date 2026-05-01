@@ -39,17 +39,7 @@ const ERC20_ABI = [
   },
 ] as const;
 
-const BEBOP_ROUTER: Record<number, string> = {
-  1: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F",
-  8453: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F",
-  42161: "0xbbbbbBB520d69a9775E85b458C58c648259FAD5F",
-};
-
-const USDC: Record<number, string> = {
-  1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  42161: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-};
+import { bebopRouterFor, usdcFor } from "../../data/chains";
 
 const MAX_UINT = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
@@ -81,10 +71,10 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
   const { address: userAddress } = useAccount();
   const chainId = useChainId();
 
-  const bebopRouter = BEBOP_ROUTER[chainId];
+  const bebopRouter = bebopRouterFor(chainId);
   const optionToken = option?.optionAddress as `0x${string}` | undefined;
   const collateralAddress = option?.collateralAddress as `0x${string}` | undefined;
-  const usdcAddress = (USDC[chainId] ?? USDC[1]) as `0x${string}`;
+  const usdcAddress = (usdcFor(chainId) ?? usdcFor(1)) as `0x${string}`;
   const factoryAddress = deployedContracts[chainId as keyof typeof deployedContracts]?.Factory?.address as
     | `0x${string}`
     | undefined;
