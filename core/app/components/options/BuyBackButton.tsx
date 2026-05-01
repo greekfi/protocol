@@ -71,7 +71,7 @@ export function BuyBackRow({ optionAddress, shortAmount }: BuyBackRowProps) {
     <div className="flex items-center justify-between gap-3 text-xs">
       <span className="text-gray-500">
         cost{" "}
-        <span className="text-emerald-300 tabular-nums">
+        <span className="text-white tabular-nums">
           {isLoading ? "…" : fmtUsd(cost)}
         </span>
       </span>
@@ -79,7 +79,7 @@ export function BuyBackRow({ optionAddress, shortAmount }: BuyBackRowProps) {
         type="button"
         onClick={handleBuyBack}
         disabled={!quote || isBuying || shortAmount === 0n}
-        className="px-2 py-1 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-[#0a0a0a] text-white text-[11px] font-semibold disabled:opacity-50 transition-colors"
+        className="px-2 py-1 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-[11px] font-semibold disabled:opacity-50 transition-colors"
         title={shortAmount === 0n ? "No short position to close" : "Buy back option tokens to close the short"}
       >
         {isBuying ? "Buying…" : status === "success" ? "Closed ✓" : "Buy Back"}

@@ -199,7 +199,7 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="mb-1">
               <Hint tip={subtitle} width="w-72">
-                <span className="text-[11px] uppercase tracking-wider text-[#35F3FF]">
+                <span className="text-[11px] uppercase tracking-wider text-gray-300">
                   {mode === "calls" ? "Covered Call" : "Covered Put"}
                 </span>
               </Hint>
@@ -242,7 +242,7 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
                         <span className="text-gray-500 text-xs uppercase tracking-wider truncate">
                           {b.label}
                         </span>
-                        <span className={b.dim ? "text-gray-500" : "text-blue-100"}>{b.value}</span>
+                        <span className={b.dim ? "text-gray-500" : "text-white"}>{b.value}</span>
                       </div>
                       {b.bottomRow && <div className="pl-2">{b.bottomRow}</div>}
                     </li>

@@ -125,7 +125,7 @@ export function SellPanel({
   return (
     <div className={hideDescriptor ? "" : "mt-3 pt-3 border-t border-[#2F50FF]/25"}>
       {!hideDescriptor && (
-        <div className="mb-2 text-base font-semibold text-blue-200 tabular-nums">
+        <div className="mb-2 text-base font-semibold text-white tabular-nums">
           {strikeLabel} · {expiryLabel}
         </div>
       )}
@@ -153,7 +153,7 @@ export function SellPanel({
             }}
             disabled={!option}
             placeholder="0"
-            className="w-full px-3 py-2 bg-transparent text-blue-100 text-base outline-none disabled:opacity-50 tabular-nums"
+            className="w-full px-3 py-2 bg-transparent text-white text-base outline-none disabled:opacity-50 tabular-nums"
           />
           <span className="pr-3 text-xs text-gray-500 uppercase tracking-wider">{depositSymbol}</span>
         </div>
@@ -162,7 +162,7 @@ export function SellPanel({
           type="button"
           onClick={handleSell}
           disabled={!option || !quote || isSelling || !approvals.allSatisfied}
-          className="px-3 py-1.5 rounded-lg bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-[#0a0a0a] text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 rounded-lg bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold disabled:opacity-50 transition-colors"
           title={disabledReason}
         >
           {isSelling ? "Depositing…" : status === "success" ? "Deposited ✓" : "Deposit"}
@@ -172,17 +172,17 @@ export function SellPanel({
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
         <span className="text-gray-500">
           Receive{" "}
-          <span className="text-emerald-300 font-medium tabular-nums">
+          <span className="text-white font-medium tabular-nums">
             {quoteLoading ? "…" : `$${formatMoney(proceeds)}`}
           </span>
         </span>
         <span className="text-gray-500">
           Per option{" "}
-          <span className="text-blue-200 tabular-nums">${formatMoney(pricePerOption)}</span>
+          <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
         </span>
       </div>
 
-      {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
+      {tradeError && <div className="mt-2 text-xs text-gray-400">{tradeError}</div>}
       {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
     </div>
   );

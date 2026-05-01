@@ -79,7 +79,7 @@ function CopyAddressButton({ address }: { address: string }) {
     <button
       type="button"
       onClick={handle}
-      className="inline-flex items-center gap-1 text-[10px] font-mono text-gray-500 hover:text-[#35F3FF] transition-colors"
+      className="inline-flex items-center gap-1 text-[10px] font-mono text-gray-500 hover:text-white transition-colors"
       title={address}
     >
       <span>{shorten(address)}</span>
@@ -171,7 +171,7 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
       >
         <div className="flex items-center gap-2 w-full">
           <Logo token={token} size={22} />
-          <span className="text-sm font-semibold text-blue-200 truncate">{token.symbol}</span>
+          <span className="text-sm font-semibold text-gray-100 truncate">{token.symbol}</span>
           {opts.isAnchor && active && compact && (
             <svg
               className="ml-auto text-gray-400"
@@ -194,7 +194,7 @@ export function TokenGrid({ tokens, selected, onSelect }: TokenGridProps) {
         >
           <div className="overflow-hidden flex flex-col items-start gap-1">
             {token.apr && (
-              <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+              <span className="text-xs font-semibold text-gray-200 tabular-nums">
                 {formatAprRange(token.apr)}
               </span>
             )}
