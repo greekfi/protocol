@@ -269,6 +269,13 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       onAction: approvals.handleApproveCollateral,
       title: `Approve ${collSymbol} for the factory (two layers: ERC20 + factory-internal). Required for auto-mint to pull collateral on sell.`,
     },
+    {
+      label: "Keeper Settlement",
+      done: approvals.keeperApproved === true,
+      pending: approvals.isApproving,
+      onAction: approvals.handleAllowKeeper,
+      title: "Allow Keeper to settle on your behalf during exercise/settlement window.",
+    },
   ];
 
   const strikeLabel = `$${formatMoney(displayStrike(selectedOption.strike, selectedOption.isPut))}`;
@@ -383,7 +390,7 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
               <div className="pt-3 border-t border-gray-700/40">
                 <div
                   className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2 cursor-help inline-flex items-center gap-1"
-                  title={`USDC — needed to buy options.\nOption — needed to sell options you already hold.\nAuto-mint + ${collSymbol} — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).`}
+                  title={`USDC — needed to buy options.\nOption — needed to sell options you already hold.\nAuto-mint + ${collSymbol} — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).\nKeeper Settlement — allow Keeper to settle on your behalf during exercise/settlement window.`}
                 >
                   Trading Approvals <span className="text-gray-500">ⓘ</span>
                 </div>

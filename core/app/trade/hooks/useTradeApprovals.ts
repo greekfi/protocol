@@ -7,6 +7,8 @@ import {
   factoryAbi,
   useReadFactoryApprovedOperator,
   useReadFactoryAutoMintBurn,
+  useReadFactoryExerciseAllowed,
+  useWriteFactoryAllowExercise,
   useWriteFactoryApprove,
   useWriteFactoryApproveOperator,
   useWriteFactoryEnableAutoMintBurn,
@@ -91,6 +93,11 @@ export interface TradeApprovals {
   collateralFactoryAllowance: bigint | undefined;
   needsCollateralApproval: boolean;
   handleApproveCollateral: () => void;
+
+  /** factory.allowExercise(keeper) — lets the keeper burn the user's options
+   *  on their behalf via Option.exerciseFor during the exercise window. */
+  keeperApproved: boolean | undefined;
+  handleAllowKeeper: () => void;
 
   isApproving: boolean;
   /** True iff the approvals required for `direction` are satisfied. */
@@ -178,6 +185,15 @@ export function useTradeApprovals({
     address: factoryAddress,
     args: userAddress && bebopRouter ? [userAddress, bebopRouter as `0x${string}`] : undefined,
     query: { enabled: !!userAddress && !!bebopRouter && !!factoryAddress },
+  });
+
+  // Keeper-settlement authorization. The keeper address re-uses bebopRouter
+  // for now — the MM is the natural keeper actor in this stack.
+  const keeperAddress = bebopRouter as `0x${string}` | undefined;
+  const { data: keeperApproved, refetch: refetchKeeper } = useReadFactoryExerciseAllowed({
+    address: factoryAddress,
+    args: userAddress && keeperAddress ? [userAddress, keeperAddress] : undefined,
+    query: { enabled: !!userAddress && !!keeperAddress && !!factoryAddress },
   });
 
   // Auto-mint flag — required for selling options the user doesn't yet hold:
@@ -268,6 +284,20 @@ export function useTradeApprovals({
     return () => clearTimeout(t);
   }, [factoryApproveOperatorConfirmed, refetchFactoryOperator, chainId]);
 
+  const {
+    writeContract: factoryAllowExercise,
+    data: keeperHash,
+    isPending: isAllowingKeeper,
+  } = useWriteFactoryAllowExercise();
+  const { isSuccess: keeperConfirmed } = useWaitForTransactionReceipt({ hash: keeperHash });
+  useEffect(() => {
+    if (!keeperConfirmed) return;
+    refetchKeeper();
+    const delay = chainId === 1 ? 10_000 : 1_000;
+    const t = setTimeout(refetchKeeper, delay);
+    return () => clearTimeout(t);
+  }, [keeperConfirmed, refetchKeeper, chainId]);
+
   useEffect(() => {
     if (approvalConfirmed) {
       refetchUsdcAllowance();
@@ -293,6 +323,11 @@ export function useTradeApprovals({
   const handleEnableAutoMint = () => {
     if (!factoryAddress) return;
     enableAutoMint({ address: factoryAddress, args: [true] });
+  };
+
+  const handleAllowKeeper = () => {
+    if (!factoryAddress || !keeperAddress) return;
+    factoryAllowExercise({ address: factoryAddress, args: [keeperAddress, true] });
   };
 
   // Two-layer collateral approval: mirror /mint's pattern. Fire whichever
@@ -348,7 +383,10 @@ export function useTradeApprovals({
     collateralFactoryAllowance: collateralFactoryAllowance as bigint | undefined,
     needsCollateralApproval,
     handleApproveCollateral,
-    isApproving: isApproving || isEnablingAutoMint || isFactoryApproving || isApprovingOperator,
+    keeperApproved,
+    handleAllowKeeper,
+    isApproving:
+      isApproving || isEnablingAutoMint || isFactoryApproving || isApprovingOperator || isAllowingKeeper,
     allSatisfied:
       direction === "buy"
         ? !needsUsdcApproval
