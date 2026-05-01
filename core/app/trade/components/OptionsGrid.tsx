@@ -87,11 +87,33 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
       return { strikes: [], expirations: [], grid: new Map<string, GridCell>() };
     }
 
+    // Strike window: ±100% of spot (i.e. |strike − spot| ≤ spot, so strike ∈
+    // [0, 2·spot]). Picks any priced option's spotPrice as the reference; for
+    // a given underlying every option reports the same spot. If no spot is
+    // available yet (MM not reachable), show everything.
+    let spot: number | undefined;
+    for (const o of options) {
+      const p = directPrices?.get(o.optionAddress.toLowerCase())?.spotPrice;
+      if (p !== undefined && Number.isFinite(p) && p > 0) {
+        spot = p;
+        break;
+      }
+    }
+
+    const filteredOptions =
+      spot === undefined
+        ? options
+        : options.filter(o => {
+            const dispStrike = o.isPut && o.strike > 0n ? 10n ** 36n / o.strike : o.strike;
+            const s = parseFloat(formatUnits(dispStrike, 18));
+            return Number.isFinite(s) && Math.abs(s - spot!) <= spot!;
+          });
+
     const strikesSet = new Set<string>();
     const expirationsSet = new Set<string>();
     const gridMap = new Map<string, GridCell>();
 
-    options.forEach(option => {
+    filteredOptions.forEach(option => {
       // For puts, invert the strike price to align with calls
       let normalizedStrike = option.strike;
       if (option.isPut && option.strike > 0n) {
@@ -134,7 +156,7 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
       expirations: sortedExpirations,
       grid: gridMap,
     };
-  }, [options]);
+  }, [options, directPrices]);
 
   // Initialize visible expirations when expirations change
   useEffect(() => {

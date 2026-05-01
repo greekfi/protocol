@@ -69,18 +69,18 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
   const displayStrikeOf = (o: TradableOption) =>
     o.isPut && o.strike > 0n ? Number(formatUnits(10n ** 36n / o.strike, 18)) : Number(formatUnits(o.strike, 18));
 
-  // Strike window: OTM side of spot, within 25%. Calls = (spot, spot*1.25]; Puts = [spot*0.75, spot).
+  // Strike window: OTM side of spot, within ±100% (i.e. strike differs from
+  // spot by no more than 100% of spot). Calls = (spot, 2·spot]; puts = [0, spot).
   // Expirations must be at least 5 days out.
   const gridOptions = useMemo(() => {
     if (spot === undefined) return options;
-    const upper = spot * 1.25;
-    const lower = spot * 0.75;
+    const upper = spot * 2;
     const minExpiry = BigInt(Math.floor(Date.now() / 1000) + 5 * 24 * 3600);
     return options.filter(o => {
       if (o.expiration < minExpiry) return false;
       const s = displayStrikeOf(o);
       if (!Number.isFinite(s)) return false;
-      return mode === "calls" ? s > spot && s <= upper : s < spot && s >= lower;
+      return mode === "calls" ? s > spot && s <= upper : s < spot && s >= 0;
     });
   }, [options, spot, mode]);
 
