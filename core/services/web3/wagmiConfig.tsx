@@ -27,17 +27,16 @@ const enabledNetworks = filteredNetworks.length > 0 ? filteredNetworks : targetN
 
 export const enabledChains = enabledNetworks;
 
-// Each viem chain object carries discriminated literals (transaction type,
-// formatters, contract refs) that don't unify across an array — adding Ink
-// alongside Arbitrum/Base produces a heterogeneous tuple. `createConfig`'s
-// generic inference picks up those literal types and chokes on the tuple
-// even when the array element type is plainly `Chain`. Cast through `any`
-// to short-circuit the inference; runtime is unchanged.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const chainsForConfig = enabledChains as any as readonly [chains.Chain, ...chains.Chain[]];
-
+// wagmi's `createConfig` is `<const chains extends readonly [Chain, ...Chain[]]>`,
+// so even when the argument is pre-typed `readonly Chain[]` it re-infers
+// literal types (transaction.type discriminants like "legacy"/"eip7702",
+// formatters, contract refs) and chokes on the heterogeneous tuple our
+// targetNetworks produces (Arbitrum + Base + Ink + Foundry don't agree).
+// No runtime issue — wagmi accepts any Chain-shaped object — purely a
+// TS narrowing bug. Suppress the call-site error.
+// @ts-ignore wagmi createConfig generic infers literal types that don't unify across mixed-EVM-version chains
 export const wagmiConfig = createConfig({
-  chains: chainsForConfig,
+  chains: enabledChains as unknown as readonly [chains.Chain, ...chains.Chain[]],
   ssr: true,
   client: ({ chain }) => {
     const rpcUrl = rpcOverrides?.[chain.id as keyof typeof rpcOverrides];
