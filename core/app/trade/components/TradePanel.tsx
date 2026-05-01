@@ -155,6 +155,13 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
       ? pricePerOption * amountFloat
       : undefined;
 
+  const usdcCostWei = quote?.sellAmount ? BigInt(quote.sellAmount) : undefined;
+  const hasEnoughUsdc =
+    direction === "buy" &&
+    usdcCostWei !== undefined &&
+    approvals.usdcBalance !== undefined &&
+    approvals.usdcBalance >= usdcCostWei;
+
   const disabledReason = !approvals.allSatisfied
     ? "Finish the approvals in the card on the right"
     : !quote
@@ -326,6 +333,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             <span className="font-medium tabular-nums">
               {quoteLoading ? "…" : `$${formatMoney(usdcDisplay)}`}
             </span>
+            {direction === "buy" && usdcCostWei !== undefined && (
+              <span
+                className={`ml-1 ${hasEnoughUsdc ? "text-emerald-400" : "text-red-400"}`}
+                title={hasEnoughUsdc ? "USDC balance covers cost" : "Insufficient USDC balance"}
+              >
+                {hasEnoughUsdc ? "✓" : "✗"}
+              </span>
+            )}
           </span>
           <span className="text-gray-500">
             Per option <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span>
