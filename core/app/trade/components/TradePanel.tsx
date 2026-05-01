@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { ExercisePanel } from "./ExercisePanel";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
 import { useBebopTrade } from "../hooks/useBebopTrade";
@@ -351,6 +352,14 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
       </div>
+
+      <ExercisePanel
+        optionAddress={selectedOption.optionAddress}
+        considerationAddress={selectedOption.considerationAddress}
+        optionDecimals={optionDecimals}
+        consDecimals={consDecimals}
+        consSymbol={consSymbol}
+      />
 
       {/* Single combined column. Top: balances as a 2×2 grid. Bottom:
           Holdings on the left, the Approvals list on the right, on one
