@@ -260,7 +260,10 @@ export function useTradeApprovals({
     hash: factoryApproveOperatorHash,
   });
   useEffect(() => {
-    if (factoryApproveOperatorConfirmed) refetchFactoryOperator();
+    if (!factoryApproveOperatorConfirmed) return;
+    refetchFactoryOperator();
+    const t = setTimeout(refetchFactoryOperator, 10_000);
+    return () => clearTimeout(t);
   }, [factoryApproveOperatorConfirmed, refetchFactoryOperator]);
 
   useEffect(() => {

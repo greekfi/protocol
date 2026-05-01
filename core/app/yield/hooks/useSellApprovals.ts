@@ -175,7 +175,10 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     hash: factoryApproveOperatorHash,
   });
   useEffect(() => {
-    if (factoryApproveOperatorConfirmed) refetchFactoryOperator();
+    if (!factoryApproveOperatorConfirmed) return;
+    refetchFactoryOperator();
+    const t = setTimeout(refetchFactoryOperator, 10_000);
+    return () => clearTimeout(t);
   }, [factoryApproveOperatorConfirmed, refetchFactoryOperator]);
 
   const handleEnableAutoMint = () => {
