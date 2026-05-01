@@ -190,9 +190,17 @@ export function ExercisePanel({
       ? Number(formatUnits(needed, consDecimals)).toLocaleString(undefined, { maximumFractionDigits: 4 })
       : "—";
 
+  const expiryGmt =
+    expirationDate !== undefined
+      ? new Date(Number(expirationDate) * 1000).toUTCString().replace(" GMT", "")
+      : undefined;
+
   return (
     <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-black/60 px-4 py-3 w-[14rem]">
-      <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Exercise</div>
+      <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Exercise</div>
+      {expiryGmt && (
+        <div className="text-[10px] text-gray-500 tabular-nums mb-2">Exp {expiryGmt} GMT</div>
+      )}
       <div className="flex flex-col gap-2">
         <div className="flex items-center rounded-lg border border-gray-800 bg-black/50 focus-within:border-emerald-400 min-w-0">
           <input
