@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -57,9 +56,9 @@ interface IFactory {
  * @dev    Deployed once as a template; the factory produces per-option instances via
  *         EIP-1167 minimal proxy clones. `init()` is used instead of a constructor.
  */
-contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
+contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Paired short-side ERC20 (collateral receipt) that holds the collateral and handles
-    ///         settlement math.
+    ///         settlement math. Doubles as the {init} guard — non-zero means initialised.
     Receipt public receipt;
 
     /// @notice Emitted when new options are minted against fresh collateral.
@@ -96,6 +95,9 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error EuropeanExerciseDisabled();
     /// @notice Thrown when the caller has not been authorised to exercise on the holder's behalf.
     error ExerciseNotAllowed();
+    /// @notice Thrown when {init} is called on a clone that has already been initialised, or on
+    ///         the template (whose `receipt` is set to a sentinel by the constructor).
+    error AlreadyInitialized();
 
     /// @dev Blocks mutations while the paired receipt is locked by the owner.
     modifier notLocked() {
@@ -137,18 +139,20 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /// @notice Template constructor. Never called for user-facing instances; each clone goes
-    ///         through {init} instead. Disables initializers on the template to prevent takeover.
+    ///         through {init} instead. Sets `receipt` to a non-zero sentinel so the template
+    ///         itself fails the {init} guard.
     /// @param name_   Placeholder name (overridden by the computed `name()` view).
     /// @param symbol_ Placeholder symbol (overridden by the computed `symbol()` view).
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        _disableInitializers();
+        receipt = Receipt(address(0xdead));
     }
 
     /// @notice Initialises a freshly-cloned Option. Called exactly once by the factory.
     /// @param receipt_ Address of the paired {Receipt} contract — immutable for this option.
     /// @param owner_   Admin of this option (receives `Ownable` rights; typically the user who
     ///                 called `factory.createOption`).
-    function init(address receipt_, address owner_) public initializer {
+    function init(address receipt_, address owner_) public {
+        if (address(receipt) != address(0)) revert AlreadyInitialized();
         if (receipt_ == address(0) || owner_ == address(0)) revert InvalidAddress();
         receipt = Receipt(receipt_);
         _transferOwnership(owner_);

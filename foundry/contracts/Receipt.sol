@@ -2,7 +2,6 @@
 pragma solidity ^0.8.30;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -54,19 +53,30 @@ interface IFactoryTransfer {
  *         `init()` is used instead of a constructor. Owner of each clone is its paired
  *         {Option} contract — only Option can drive mint / exercise / pair-redeem.
  */
-contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
+contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
+    /// @dev Storage layout — packed into 4 slots (was 5 + OZ Initializable's flag):
+    ///      slot 0: strike (32)
+    ///      slot 1: collateral (20) + locked (1) + consDecimals (1) + collDecimals (1)
+    ///      slot 2: consideration (20)
+    ///      slot 3: factory (20) + expirationDate (5) + exerciseDeadline (5) + isPut (1) + isEuro (1)
     /// @notice Strike price, 18-decimal fixed point, "consideration per collateral".
     /// @dev For puts this is the *inverted* human strike (see {Option} `name()` for display).
     uint256 public strike;
 
     /// @notice Underlying collateral token (e.g. WETH). All collateral sits here.
     IERC20 public collateral;
+    /// @notice Owner-controlled emergency pause flag.
+    bool public locked;
+    /// @notice Cached `consideration.decimals()` used in conversion math.
+    uint8 public consDecimals;
+    /// @notice Cached `collateral.decimals()` used in conversion math.
+    uint8 public collDecimals;
 
     /// @notice Consideration / quote token (e.g. USDC). Accrues here from exercise payments.
     IERC20 public consideration;
 
     /// @notice Factory that created this option, used to pull tokens through its Permit2-style
-    ///         allowance registry.
+    ///         allowance registry. Doubles as the init guard — non-zero means initialised.
     IFactoryTransfer public factory;
 
     /// @notice Unix timestamp at which the option expires.
@@ -79,12 +89,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     /// @notice `true` if European-style: exercise is barred pre-expiry and only allowed within the
     ///         post-expiry window. `false` for American-style: exercise allowed pre-expiry too.
     bool public isEuro;
-    /// @notice Owner-controlled emergency pause flag.
-    bool public locked;
-    /// @notice Cached `consideration.decimals()` used in conversion math.
-    uint8 public consDecimals;
-    /// @notice Cached `collateral.decimals()` used in conversion math.
-    uint8 public collDecimals;
 
     /// @notice Decimal basis of the strike — fixed at 18 and independent of token decimals.
     uint8 public constant STRIKE_DECIMALS = 18;
@@ -115,6 +119,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     error ExerciseWindowOpen();
     /// @notice Thrown when pre-expiry exercise is attempted on a European option.
     error EuropeanExerciseDisabled();
+    /// @notice Thrown when {init} is called on a clone that has already been initialised, or on
+    ///         the template (whose `factory` is set to a sentinel by the constructor).
+    error AlreadyInitialized();
 
     /// @notice Emitted on every path that returns collateral or consideration to a user.
     /// @param option The paired Option contract (also this contract's owner).
@@ -182,9 +189,10 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
     }
 
     /// @notice Template constructor. Never called for user-facing instances; each clone goes
-    ///         through {init} instead. Disables initializers on the template.
+    ///         through {init} instead. Sets `factory` to a non-zero sentinel so the template
+    ///         itself fails the {init} guard.
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        _disableInitializers();
+        factory = IFactoryTransfer(address(0xdead));
     }
 
     /// @notice Initialises a freshly-cloned Receipt. Called exactly once by the factory.
@@ -208,7 +216,8 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient, Initializable {
         uint40 windowSeconds_,
         address option_,
         address factory_
-    ) public initializer {
+    ) public {
+        if (address(factory) != address(0)) revert AlreadyInitialized();
         if (collateral_ == address(0)) revert InvalidAddress();
         if (consideration_ == address(0)) revert InvalidAddress();
         if (factory_ == address(0)) revert InvalidAddress();
