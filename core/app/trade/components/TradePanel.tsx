@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { Hint } from "../../components/Hint";
 import { ExercisePanel } from "./ExercisePanel";
 import { useTokenMap } from "../../mint/hooks/useTokenMap";
 import { useBebopQuote } from "../hooks/useBebopQuote";
@@ -388,11 +389,26 @@ export function TradePanel({ selectedOption, onClose, tokenSelector, holdings }:
             <div className="space-y-3">
               <div>{holdings}</div>
               <div className="pt-3 border-t border-gray-700/40">
-                <div
-                  className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2 cursor-help inline-flex items-center gap-1"
-                  title={`USDC — needed to buy options.\nOption — needed to sell options you already hold.\nAuto-mint + ${collSymbol} — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).\nKeeper Settlement — allow Keeper to settle on your behalf during exercise/settlement window.`}
-                >
-                  Trading Approvals <span className="text-gray-500">ⓘ</span>
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                  <Hint
+                    width="w-72"
+                    tip={[
+                      <span key="usdc">
+                        <b className="text-gray-100">USDC</b> — needed to buy options.
+                      </span>,
+                      <span key="opt">
+                        <b className="text-gray-100">Option</b> — needed to sell options you already hold.
+                      </span>,
+                      <span key="auto">
+                        <b className="text-gray-100">Auto-mint + {collSymbol}</b> — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).
+                      </span>,
+                      <span key="keeper">
+                        <b className="text-gray-100">Keeper Settlement</b> — allow Keeper to settle on your behalf during the exercise/settlement window.
+                      </span>,
+                    ]}
+                  >
+                    Trading Approvals
+                  </Hint>
                 </div>
                 <ApprovalsList steps={steps} />
               </div>
@@ -460,11 +476,8 @@ function ApprovalsList({
               {step.pending ? "…" : "Approve"}
             </button>
           )}
-          <span
-            className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}
-            title={step.title}
-          >
-            {step.label}
+          <span className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}>
+            {step.title ? <Hint tip={step.title} above>{step.label}</Hint> : step.label}
           </span>
         </li>
       ))}
