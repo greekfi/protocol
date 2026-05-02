@@ -26,35 +26,41 @@ export default function YieldPage() {
     <div className="min-h-screen bg-black text-gray-200">
       <SiteHeader />
       <div className="max-w-7xl mx-auto p-6 flex flex-col items-center text-center">
-        {/* Mode toggle (with per-mode tooltips); the page title is in the
-            navbar (SiteHeader) — explicit "Earn Yield From" header dropped. */}
-        <div className="mt-6 mb-8 w-full flex justify-center">
-          <ModeToggle mode={mode} onChange={handleModeChange} />
-        </div>
+        {/* Until the user picks a token, surface the big mode toggle (and
+            stablecoin picker for puts) at the top of the page. Once a token
+            is picked, both controls collapse into the YieldPanel header. */}
+        {!selected && (
+          <>
+            <div className="mt-6 mb-8 w-full flex justify-center">
+              <ModeToggle mode={mode} onChange={handleModeChange} />
+            </div>
 
-        {mode === "puts" && (
-          <div className="mb-6 w-full p-4 rounded-xl border border-gray-800 bg-black/40">
-            <div className="text-xs uppercase tracking-wider text-gray-500 mb-3 text-center">
-              Collateral stablecoin
-            </div>
-            <div className="flex justify-center">
-              <StablecoinTabs selected={selectedStable} onSelect={setSelectedStable} />
-            </div>
-          </div>
+            {mode === "puts" && (
+              <div className="mb-6 w-full p-4 rounded-xl border border-gray-800 bg-black/40">
+                <div className="text-xs uppercase tracking-wider text-gray-500 mb-3 text-center">
+                  Collateral stablecoin
+                </div>
+                <div className="flex justify-center">
+                  <StablecoinTabs selected={selectedStable} onSelect={setSelectedStable} />
+                </div>
+              </div>
+            )}
+
+            <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
+          </>
         )}
 
-        <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
-
         {selected && (
-          // text-center on the wrapper makes the inline-block strike grid
-          // (and any other content inside YieldPanel that uses intrinsic
-          // width) sit at the page center instead of pinned to the left.
           <div className="mt-6 w-full text-center">
             <YieldPanel
               mode={mode}
+              onModeChange={handleModeChange}
               token={selected}
               stablecoin={mode === "puts" ? selectedStable : undefined}
-              onClose={() => setSelectedToken(null)}
+              onStablecoinChange={setSelectedStable}
+              tokenSelector={
+                <TokenGrid tokens={tokens} selected={selectedToken} onSelect={setSelectedToken} />
+              }
             />
           </div>
         )}

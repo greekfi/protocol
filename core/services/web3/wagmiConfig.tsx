@@ -16,7 +16,7 @@ const isLocalhost =
 // Foundry must come *last*. wagmi treats `chains[0]` as the default chain that
 // contract reads / writes use when no chainId hint is passed. Anything else
 // would route default reads to http://127.0.0.1:8545 (anvil) on localhost dev,
-// even when the wallet is on Arbitrum — `ERR_CONNECTION_REFUSED` everywhere.
+// even when the wallet is on Base — `ERR_CONNECTION_REFUSED` everywhere.
 const realChains = targetNetworks.filter(c => c.id !== chains.foundry.id);
 const filteredNetworks = isLocalhost ? [...realChains, chains.foundry] : realChains;
 

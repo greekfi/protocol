@@ -1,5 +1,6 @@
 import { formatUnits } from "viem";
 import { useAccount, useChainId, useReadContract } from "wagmi";
+import { Hint } from "../Hint";
 import { useBebopQuote } from "../../trade/hooks/useBebopQuote";
 import { useBebopTrade } from "../../trade/hooks/useBebopTrade";
 import { usdcFor } from "../../data/chains";
@@ -71,19 +72,24 @@ export function BuyBackRow({ optionAddress, shortAmount }: BuyBackRowProps) {
     <div className="flex items-center justify-between gap-3 text-xs">
       <span className="text-gray-500">
         cost{" "}
-        <span className="text-emerald-300 tabular-nums">
+        <span className="text-white tabular-nums">
           {isLoading ? "…" : fmtUsd(cost)}
         </span>
       </span>
-      <button
-        type="button"
-        onClick={handleBuyBack}
-        disabled={!quote || isBuying || shortAmount === 0n}
-        className="px-2 py-1 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-[#0a0a0a] text-white text-[11px] font-semibold disabled:opacity-50 transition-colors"
-        title={shortAmount === 0n ? "No short position to close" : "Buy back option tokens to close the short"}
+      <Hint
+        tip={shortAmount === 0n ? "No short position to close." : "Buy back option tokens to close the short."}
+        above
+        underline={false}
       >
-        {isBuying ? "Buying…" : status === "success" ? "Closed ✓" : "Buy Back"}
-      </button>
+        <button
+          type="button"
+          onClick={handleBuyBack}
+          disabled={!quote || isBuying || shortAmount === 0n}
+          className="px-2 py-1 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-[11px] font-semibold disabled:opacity-50 transition-colors"
+        >
+          {isBuying ? "Buying…" : status === "success" ? "Closed ✓" : "Buy Back"}
+        </button>
+      </Hint>
     </div>
   );
 }

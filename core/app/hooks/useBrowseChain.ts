@@ -13,7 +13,7 @@ import deployedContracts from "~~/abi/deployedContracts";
  *   updates so they can browse without transacting.)
  * - When no wallet is connected, the browse chain is held in local state and
  *   persisted to localStorage. First-render default: previously picked chain
- *   → first chain with a Greek deployment (Arbitrum today).
+ *   → first chain with a Greek deployment (Base today).
  *
  * Net effect: there's only one chain UI to look at — the {@link ChainSelector}
  * in the header. RainbowKit's separate chain pill is hidden in the
@@ -67,7 +67,7 @@ export function BrowseChainProvider({ children }: { children: ReactNode }) {
     const stored = readStoredChain();
     if (stored && SUPPORTED_CHAIN_IDS.includes(stored)) return stored;
     if (walletChainId && SUPPORTED_CHAIN_IDS.includes(walletChainId)) return walletChainId;
-    return SUPPORTED_CHAIN_IDS[0] ?? 42161;
+    return SUPPORTED_CHAIN_IDS[0] ?? 8453;
   });
 
   // When connected, the browse chain mirrors the wallet chain. When not, it's

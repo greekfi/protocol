@@ -86,9 +86,9 @@ export function PayoffSummary({
   const stableLine = (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-gray-500">
-        if <span className="text-blue-200">{underlyingSymbol}</span> &gt; {strikeLabel}, receive
+        if <span className="text-gray-200">{underlyingSymbol}</span> &gt; {strikeLabel}, receive
       </span>
-      <span className="text-emerald-300 tabular-nums font-medium">
+      <span className="text-white tabular-nums font-medium">
         ${stableQtyLabel} {stableSymbol}
       </span>
       <TokenLogo symbol={stableSymbol} />
@@ -98,9 +98,9 @@ export function PayoffSummary({
   const underlyingLine = (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-gray-500">
-        if <span className="text-blue-200">{underlyingSymbol}</span> &lt; {strikeLabel}, receive
+        if <span className="text-gray-200">{underlyingSymbol}</span> &lt; {strikeLabel}, receive
       </span>
-      <span className="text-emerald-300 tabular-nums font-medium">
+      <span className="text-white tabular-nums font-medium">
         {underlyingQtyLabel} {underlyingSymbol}
       </span>
       <TokenLogo symbol={underlyingSymbol} />
@@ -109,7 +109,7 @@ export function PayoffSummary({
 
   return (
     <div className="text-sm leading-relaxed flex flex-col gap-2">
-      <div className="text-sm font-semibold text-blue-200 tabular-nums">{daysLabel}</div>
+      <div className="text-sm font-semibold text-gray-200 tabular-nums">{daysLabel}</div>
       <div className="flex flex-col gap-3 pl-4">
         {mode === "calls" ? (
           <>

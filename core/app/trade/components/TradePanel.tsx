@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf, useReadOptionIsEuro } from "~~/generated";
-import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { type BalanceRow } from "../../components/options/ApprovalsCard";
 import { Hint } from "../../components/Hint";
 import { useTokenSpot } from "../../lib/useTokenSpot";
 import { ExercisePanel } from "./ExercisePanel";
@@ -29,10 +29,10 @@ interface TradePanelProps {
   /** Optional element rendered at the top of the swap card — used to "house"
    *  the underlying token selector pill once an option is picked. */
   tokenSelector?: React.ReactNode;
-  /** Optional 4th-column slot — rendered alongside Balances + Approvals so
-   *  every panel shares the same flex-wrap row. */
-  holdings?: React.ReactNode;
-  /** Counter bumped by callers (e.g. HoldingsCard's Exercise link) to
+  /** Optional third-column slot inside the action card — used to render the
+   *  Positions list alongside the inputs and the balances column. */
+  positions?: React.ReactNode;
+  /** Counter bumped by callers (e.g. PositionsCard's Exercise link) to
    *  request the exercise box be opened. */
   openExerciseSignal?: number;
 }
@@ -67,11 +67,11 @@ export function TradePanel({
   selectedOption,
   onClose,
   tokenSelector,
-  holdings,
+  positions,
   openExerciseSignal,
 }: TradePanelProps) {
   const chainId = useChainId();
-  const { allTokensMap } = useTokenMap();
+  const { tokensByAddress } = useTokenMap();
   const { address: userAddress } = useAccount();
 
   // Pull all four balances Option exposes in one call: collateral / consideration / long / short.
@@ -99,9 +99,10 @@ export function TradePanel({
   }, [selectedOption.isBuy, selectedOption.optionAddress]);
 
   const [showExercise, setShowExercise] = useState(false);
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
   // Collapse exercise when the user picks a different option.
   useEffect(() => setShowExercise(false), [selectedOption.optionAddress]);
-  // Open exercise when the parent bumps the signal (e.g. HoldingsCard click).
+  // Open exercise when the parent bumps the signal (e.g. PositionsCard click).
   useEffect(() => {
     if (openExerciseSignal !== undefined && openExerciseSignal > 0) setShowExercise(true);
   }, [openExerciseSignal]);
@@ -113,10 +114,10 @@ export function TradePanel({
   // Bebop quote needs the *raw* token amount, so we must use this — not the
   // hard-coded 18 — or puts on USDC-collateralised collateral come back with
   // a price ~10^12× off.
-  const optionDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.decimals ?? 18;
+  const collateralToken = tokensByAddress[selectedOption.collateralAddress.toLowerCase()];
+  const considerationToken = tokensByAddress[selectedOption.considerationAddress.toLowerCase()];
+  const paymentTokenInfo = tokensByAddress[(usdcFor(chainId) ?? usdcFor(1)!).toLowerCase()];
+  const optionDecimals = collateralToken?.decimals ?? 18;
 
   // Build the "TradableOption" shape useTradeApprovals needs from the selection.
   const optionForApprovals: TradableOption = {
@@ -161,6 +162,11 @@ export function TradePanel({
   }, [optionToken, direction, reset]);
 
   const handleTrade = async () => {
+    // Approvals not done? Route to the walkthrough modal instead of blocking.
+    if (!approvals.allSatisfied) {
+      setShowApprovalsModal(true);
+      return;
+    }
     if (!quote) return;
     try {
       await executeTrade(quote);
@@ -214,40 +220,27 @@ export function TradePanel({
         ? "Not enough OPT"
         : null;
 
-  const disabledReason = !approvals.allSatisfied
-    ? "Finish the approvals in the card on the right"
-    : !quote
-      ? quoteLoading
-        ? "Fetching quote…"
-        : "No quote available — is the market maker running?"
-      : isTrading
-        ? "Waiting for on-chain confirmation"
+  const disabledReason = !quote
+    ? quoteLoading
+      ? "Fetching quote…"
+      : "No quote available — is the market maker running?"
+    : isTrading
+      ? "Waiting for on-chain confirmation"
+      : !approvals.allSatisfied
+        ? `Approvals needed — click ${direction === "buy" ? "Buy" : "Sell"} to walk through them`
         : insufficientMessage ?? undefined;
 
   // ApprovalsCard inputs.
-  const usdcSymbol =
-    Object.values(allTokensMap).find(t => t.address.toLowerCase() === paymentToken.toLowerCase())?.symbol ?? "USDC";
-  const collSymbol =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.symbol ?? "Collateral";
-  const consSymbol =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
-    )?.symbol ?? "Consideration";
+  const usdcSymbol = paymentTokenInfo?.symbol ?? "USDC";
+  const collSymbol = collateralToken?.symbol ?? "Collateral";
+  const consSymbol = considerationToken?.symbol ?? "Consideration";
 
-  const collDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.decimals ?? 18;
+  const collDecimals = collateralToken?.decimals ?? 18;
   // Underlying = collateral on calls, consideration on puts.
   const underlyingSymbol = selectedOption.isPut ? consSymbol : collSymbol;
   const spotPrice = useTokenSpot(underlyingSymbol);
 
-  const consDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
-    )?.decimals ?? approvals.usdcDecimals;
+  const consDecimals = considerationToken?.decimals ?? approvals.usdcDecimals;
 
   // OPT row collapses long + short into one number. Long-only renders as a
   // positive amount, short-only as negative. If the user holds both sides the
@@ -347,7 +340,7 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-fit min-w-[28rem] flex gap-4">
         {/* Left side: descriptor + inputs + price + warnings */}
         <div className="flex-1 min-w-0 flex flex-col">
         <div className="mb-3 text-base font-semibold text-white tabular-nums leading-tight">
@@ -385,11 +378,15 @@ export function TradePanel({
                 className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
               />
               {(() => {
-                // sell → user's long balance; buy → most options affordable
-                // with current USDC at the current per-option price.
+                // sell → long balance + (auto-mintable) collateral; buy → most
+                // options affordable with current USDC at the live per-option
+                // price. OPT mirrors collateral decimals so the collateral
+                // raw → option-units conversion is a straight formatUnits.
                 let maxN: number | undefined;
-                if (direction === "sell" && optionBalances?.option !== undefined) {
-                  maxN = Number(formatUnits(optionBalances.option, optionDecimals));
+                if (direction === "sell" && optionBalances !== undefined) {
+                  const longN = Number(formatUnits(optionBalances.option, optionDecimals));
+                  const collN = Number(formatUnits(optionBalances.collateral, optionDecimals));
+                  maxN = longN + collN;
                 } else if (
                   direction === "buy" &&
                   approvals.usdcBalance !== undefined &&
@@ -470,8 +467,7 @@ export function TradePanel({
                   disabled={
                     !quote ||
                     isTrading ||
-                    !approvals.allSatisfied ||
-                    !!insufficientMessage
+                    (approvals.allSatisfied && !!insufficientMessage)
                   }
                   className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
                 >
@@ -503,11 +499,29 @@ export function TradePanel({
           <div className="mt-2 text-xs text-amber-300/90">{insufficientMessage}</div>
         )}
 
+        <div className="mt-3 flex items-center">
+          <button
+            type="button"
+            onClick={() => setShowApprovalsModal(true)}
+            className="ml-auto text-xs text-gray-400 hover:text-white underline underline-offset-2"
+          >
+            approvals
+            {approvals.allSatisfied
+              ? " ✓"
+              : ` (${[
+                  approvals.needsUsdcApproval,
+                  approvals.needsOptionApproval,
+                  approvals.needsAutoMint,
+                  approvals.needsCollateralApproval,
+                ].filter(Boolean).length} needed)`}
+          </button>
+        </div>
+
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
         </div>
 
-        {/* Right side: token selector + spot, balances, holdings */}
+        {/* Middle column: token selector + spot, balances */}
         <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
           <div className="flex flex-col items-start gap-1">
             {tokenSelector}
@@ -532,43 +546,14 @@ export function TradePanel({
               </ul>
             </div>
           )}
-          <div className="pt-2 border-t border-gray-700/40">{holdings}</div>
         </div>
-      </div>
 
-      {/* Trading Approvals column */}
-      <div className="w-[16rem] max-w-full">
-        <ApprovalsCard
-          steps={[]}
-          footer={
-            <div className="space-y-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                  <Hint
-                    width="w-72"
-                    tip={[
-                      <span key="usdc">
-                        <b className="text-gray-100">USDC</b> — needed to buy options.
-                      </span>,
-                      <span key="opt">
-                        <b className="text-gray-100">Option</b> — needed to sell options you already hold.
-                      </span>,
-                      <span key="auto">
-                        <b className="text-gray-100">Auto-mint + {collSymbol}</b> — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).
-                      </span>,
-                      <span key="keeper">
-                        <b className="text-gray-100">Keeper Settlement</b> — allow Keeper to settle on your behalf during the exercise/settlement window.
-                      </span>,
-                    ]}
-                  >
-                    Trading Approvals
-                  </Hint>
-                </div>
-                <ApprovalsList steps={steps} />
-              </div>
-            </div>
-          }
-        />
+        {/* Right column: positions */}
+        {positions && (
+          <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-4">
+            {positions}
+          </div>
+        )}
       </div>
 
       {showExercise && (
@@ -581,18 +566,20 @@ export function TradePanel({
           onClose={() => setShowExercise(false)}
         />
       )}
+
+      {showApprovalsModal && (
+        <ApprovalsModal
+          steps={steps}
+          direction={direction}
+          collLabel={collSymbol}
+          onClose={() => setShowApprovalsModal(false)}
+        />
+      )}
     </div>
   );
 }
 
-/**
- * Inline approvals list extracted so the trade panel can render it inside
- * the combined balances+holdings+approvals card without nesting another
- * full ApprovalsCard (which would re-print the section headers and chrome).
- */
-function ApprovalsList({
-  steps,
-}: {
+interface ApprovalsModalProps {
   steps: Array<{
     label: string;
     done: boolean;
@@ -601,43 +588,92 @@ function ApprovalsList({
     onAction?: () => void;
     title?: string;
   }>;
-}) {
-  // [Approve] token   →   [✓] token
-  // The leading pill is the action: orange "Approve" while pending, green
-  // checkmark once done. Same shape/size in both states so the labels stay
-  // at the same x-position across rows. Done pills are non-interactive.
-  const PILL_BASE =
-    "inline-flex items-center justify-center min-w-[3rem] px-1 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
+  direction: TradeDirection;
+  collLabel: string;
+  onClose: () => void;
+}
+
+/**
+ * Approvals walkthrough surfaced when the user clicks Buy/Sell before
+ * granting them. Mirrors /yield's ApprovalsModal — backdrop click-to-close,
+ * inline Approve buttons, longer per-row descriptions.
+ */
+function ApprovalsModal({ steps, direction, collLabel, onClose }: ApprovalsModalProps) {
+  const allDone = steps.every(s => s.done);
   return (
-    <ul className="flex flex-col gap-1.5 text-sm">
-      {steps.map(step => (
-        <li key={step.label} className="flex items-center gap-2 min-w-0">
-          {step.done ? (
-            <span
-              className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base shrink-0"
-              aria-hidden
-            >
-              ✓
-            </span>
-          ) : (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-black border border-[#FF8300]/40 rounded-xl p-5 max-w-md w-full shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-200">
+            Approvals to {direction === "buy" ? "buy" : "sell"}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-white text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+          Each row is a one-time signature so the protocol can move the right tokens on your
+          behalf. Once granted, future {direction === "buy" ? "buys" : "sells"} against the same
+          {" "}{collLabel} skip these prompts. Selling to the market maker also needs the
+          auto-mint + {collLabel} pair so the option can be minted from your collateral and sold
+          in a single transaction.
+        </p>
+        <ul className="flex flex-col gap-3">
+          {steps.map(step => (
+            <li key={step.label} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {step.done ? (
+                  <span className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base">
+                    ✓
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={step.onAction}
+                    disabled={step.pending || !step.onAction}
+                    className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md text-black text-xs font-semibold disabled:opacity-50 transition-colors ${
+                      step.partial
+                        ? "bg-pink-500 hover:bg-pink-400"
+                        : "bg-[#FF8300] hover:bg-[#e07400]"
+                    }`}
+                  >
+                    {step.pending ? "…" : "Approve"}
+                  </button>
+                )}
+                <span className={`font-semibold ${step.done ? "text-gray-500" : "text-gray-100"}`}>
+                  {step.label}
+                </span>
+              </div>
+              {step.title && (
+                <p className="ml-[3.5rem] text-xs text-gray-400 leading-relaxed">{step.title}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+        {allDone && (
+          <div className="mt-4 pt-3 border-t border-gray-800 text-center">
             <button
               type="button"
-              onClick={step.onAction}
-              disabled={step.pending || !step.onAction}
-              className={`${PILL_BASE} ${
-                step.partial
-                  ? "bg-pink-500 hover:bg-pink-400"
-                  : "bg-[#FF8300] hover:bg-[#e07400]"
-              } text-black disabled:opacity-50`}
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold transition-colors"
             >
-              {step.pending ? "…" : "Approve"}
+              All set — close
             </button>
-          )}
-          <span className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}>
-            {step.title ? <Hint tip={step.title} above>{step.label}</Hint> : step.label}
-          </span>
-        </li>
-      ))}
-    </ul>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
+

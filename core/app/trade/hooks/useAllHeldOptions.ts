@@ -54,9 +54,20 @@ export function useAllHeldOptions() {
     ]);
   }, [address, allOptions]);
 
-  const { data, isLoading: balancesLoading } = useReadContracts({
+  const {
+    data,
+    isLoading: balancesLoading,
+    refetch,
+  } = useReadContracts({
     contracts,
-    query: { enabled: contracts.length > 0, refetchOnWindowFocus: false },
+    query: {
+      enabled: contracts.length > 0,
+      // Re-pull every 8s so a fresh write/exercise reflects in the
+      // Holdings / Positions cards without waiting for a full reload.
+      // Also refetch on window-focus for snappier return-to-tab.
+      refetchInterval: 8_000,
+      refetchOnWindowFocus: true,
+    },
   });
 
   const held = useMemo<HeldOption[]>(() => {
@@ -76,5 +87,6 @@ export function useAllHeldOptions() {
     held,
     isLoading: eventsLoading || balancesLoading,
     hasWallet: Boolean(address),
+    refetch,
   };
 }

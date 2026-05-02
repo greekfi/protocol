@@ -72,14 +72,14 @@ export function ApprovalsCard({ steps, balances, balancesLayout = "list", footer
                 >
                   <div className="flex items-center justify-between gap-3 px-2 py-1.5">
                     <span className="text-gray-500 text-xs uppercase tracking-wider">{b.label}</span>
-                    <span className={clsx("text-blue-100", b.dim && "text-gray-500")}>{b.value}</span>
+                    <span className={clsx("text-white", b.dim && "text-gray-500")}>{b.value}</span>
                   </div>
                   <div className="border-t border-gray-700/40 px-2 py-1.5">{b.bottomRow}</div>
                 </li>
               ) : (
                 <li key={b.label} className="flex items-center justify-between gap-3 min-w-0">
                   <span className="text-gray-500 text-xs uppercase tracking-wider truncate">{b.label}</span>
-                  <span className={clsx("text-blue-100", b.dim && "text-gray-500")}>{b.value}</span>
+                  <span className={clsx("text-white", b.dim && "text-gray-500")}>{b.value}</span>
                 </li>
               ),
             )}
@@ -92,7 +92,7 @@ export function ApprovalsCard({ steps, balances, balancesLayout = "list", footer
         <span className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
           Approvals
         </span>
-        {allDone && <span className="text-xs text-emerald-300">All set ✓</span>}
+        {allDone && <span className="text-xs text-white">All set ✓</span>}
       </div>
       )}
 

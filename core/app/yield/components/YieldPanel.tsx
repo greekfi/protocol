@@ -8,19 +8,35 @@ import { useDirectPrices } from "../../trade/hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../../trade/hooks/useTradableOptions";
 import { STABLECOINS, type UnderlyingToken } from "../data";
 import { useSellApprovals } from "../hooks/useSellApprovals";
-import { ApprovalsCard } from "../../components/options/ApprovalsCard";
+import { ApprovalsList } from "../../components/ApprovalsList";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
+import { Hint } from "../../components/Hint";
+import { useAllHeldOptions } from "../../trade/hooks/useAllHeldOptions";
+import { PositionsCard } from "./PositionsCard";
+import { StablecoinTabs } from "./StablecoinTabs";
+import { useReadOptionIsEuro } from "~~/generated";
 import { SellPanel } from "./SellPanel";
 import { StrikeExpirationGrid } from "./StrikeExpirationGrid";
 
 interface YieldPanelProps {
   mode: "calls" | "puts";
+  onModeChange: (m: "calls" | "puts") => void;
   token: UnderlyingToken;
   stablecoin?: string;
-  onClose: () => void;
+  onStablecoinChange?: (s: string) => void;
+  /** Optional element rendered as the right-side token pill (the underlying
+   *  TokenGrid in compact mode, mirroring /trade's pattern). */
+  tokenSelector?: React.ReactNode;
 }
 
-export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps) {
+export function YieldPanel({
+  mode,
+  onModeChange,
+  token,
+  stablecoin,
+  onStablecoinChange,
+  tokenSelector,
+}: YieldPanelProps) {
   const { allTokensMap } = useTokenMap();
   const stable = STABLECOINS.find(s => s.symbol === stablecoin);
   const tokenAddress = allTokensMap[token.symbol]?.address ?? null;
@@ -106,6 +122,10 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
   }, [gridOptions, mode]);
 
   const approvals = useSellApprovals(selected, amount);
+  // Tap the same hook PositionsCard uses so we can decide whether to render
+  // the Positions column (and its dividing wrapper) at all.
+  const { held: allHeld, refetch: refetchHeld } = useAllHeldOptions();
+  const hasOpenPositions = allHeld.some(h => h.receiptBalance > 0n);
 
   // Option.balancesOf(user) returns (collateral, consideration, option, coll) in a single call.
   const { address: userAddress } = useAccount();
@@ -113,6 +133,10 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
     address: (selected?.optionAddress as `0x${string}` | undefined) ?? undefined,
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!userAddress && !!selected },
+  });
+  const { data: isEuro } = useReadOptionIsEuro({
+    address: (selected?.optionAddress as `0x${string}` | undefined) ?? undefined,
+    query: { enabled: !!selected },
   });
 
   const balanceRows = useMemo(() => {
@@ -156,9 +180,143 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
     ];
   }, [selected, optionBalances, allTokensMap, approvals.optionDecimals]);
 
+  const collLabel = mode === "calls" ? token.symbol : stable?.symbol ?? "USDC";
+  const approvalSteps = [
+    {
+      label: `Auto Covered ${mode === "calls" ? "Call" : "Put"}`,
+      done: approvals.autoMintEnabled === true,
+      pending: approvals.isEnablingAutoMint,
+      onAction: approvals.handleEnableAutoMint,
+      title: `Lets the factory mint the option/receipt pair from your ${collLabel} collateral atomically when Bebop fills your write — no manual mint step.`,
+    },
+    {
+      label: collLabel,
+      done: !approvals.needsCollateralApproval,
+      partial: approvals.collateralPartial,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveCollateral,
+      title: `Two layers: first ERC20.approve(factory) so the factory can move ${collLabel} from your wallet, then factory.approve(${collLabel}) to authorise the factory's internal pull on auto-mint. Click Approve once for each layer.`,
+    },
+    {
+      label: "Option",
+      done: !approvals.needsOptionApproval,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveOption,
+      title: approvals.factoryOperatorApproved
+        ? "Covered by your factory-operator approval — Bebop can pull option tokens for any option."
+        : "Approve the option ERC20 to Bebop so it can pull the freshly-minted long when settling your write.",
+    },
+    {
+      label: "USDC",
+      done: !approvals.needsUsdcApproval,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveUsdc,
+      title: "Lets you buy back / close the short later via Bebop without another approval round-trip.",
+    },
+  ];
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
+
+  const optionDescriptor = selected ? (
+    <div className="text-base font-semibold text-white tabular-nums leading-tight">
+      <div>
+        {(() => {
+          const strike = displayStrikeOf(selected);
+          return strike >= 1
+            ? `$${strike.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+            : `$${strike.toPrecision(2)}`;
+        })()}{" "}
+        ·{" "}
+        {new Date(Number(selected.expiration) * 1000).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })}
+      </div>
+      <div>
+        {isEuro !== undefined && `${isEuro ? "Euro" : "American"} `}
+        {selected.isPut ? "Put" : "Call"}
+      </div>
+    </div>
+  ) : (
+    <div className="text-base font-semibold text-gray-500">Pick a strike below…</div>
+  );
+
   return (
-    <div className="inline-block max-w-full">
-      <div className="mb-4">
+    <div className="inline-block max-w-full text-left">
+      <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
+        {/* Action card: 28rem with left/right split, mirroring /trade's TradePanel */}
+        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-5 py-4 w-fit min-w-[28rem] flex gap-5">
+          {/* LEFT */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <ModeHeader
+              mode={mode}
+              onModeChange={onModeChange}
+              subtitle={subtitle}
+              stablecoin={stablecoin}
+              onStablecoinChange={onStablecoinChange}
+            />
+            <div className="mb-4">{optionDescriptor}</div>
+
+            <SellPanel
+              option={selected}
+              depositSymbol={mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}
+              underlyingSymbol={token.symbol}
+              stableSymbol={mode === "puts" ? stable?.symbol ?? "USDC" : "USDC"}
+              mode={mode}
+              amount={amount}
+              onAmountChange={setAmount}
+              approvals={approvals}
+              onRequestApprovals={() => setShowApprovalsModal(true)}
+              onTradeSuccess={() => refetchHeld()}
+              hideDescriptor
+            />
+          </div>
+
+          {/* RIGHT: token + spot, balances, buy-back */}
+          <div className="w-[12rem] shrink-0 flex flex-col gap-4 border-l border-gray-700/40 pl-5">
+            <div className="flex flex-col items-start gap-1">
+              {tokenSelector}
+              {spotDisplay && (
+                <span className="text-xs text-gray-400">
+                  spot <span className="text-white tabular-nums">${spotDisplay}</span>
+                </span>
+              )}
+            </div>
+
+            {balanceRows && (
+              <div className="pt-2 border-t border-gray-700/40">
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+                  Balances
+                </div>
+                <ul className="flex flex-col gap-1.5 text-sm tabular-nums">
+                  {balanceRows.map(b => (
+                    <li key={b.label} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-gray-500 text-xs uppercase tracking-wider truncate">
+                          {b.label}
+                        </span>
+                        <span className={b.dim ? "text-gray-500" : "text-white"}>{b.value}</span>
+                      </div>
+                      {b.bottomRow && <div className="pl-2">{b.bottomRow}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* THIRD COLUMN: Open positions, only when the user has any. */}
+          {hasOpenPositions && (
+            <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-5">
+              <PositionsCard bare hideEmpty />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Strike grid sits below the panel — same vertical order as /trade. */}
+      <div className="mt-4">
         <StrikeExpirationGrid
           options={gridOptions}
           loading={isLoading}
@@ -168,93 +326,175 @@ export function YieldPanel({ mode, token, stablecoin, onClose }: YieldPanelProps
         />
       </div>
 
-      <div className="flex flex-wrap gap-4 items-stretch">
-        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 max-w-md">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <span
-                tabIndex={0}
-                className="group relative inline-block text-xs uppercase tracking-wider text-[#35F3FF] mb-1 cursor-help focus:outline-none"
-                aria-label={subtitle}
-              >
-                {mode === "calls" ? "Covered Call" : "Covered Put"}
-                <span
-                  role="tooltip"
-                  className="pointer-events-none absolute left-0 top-full mt-1 w-64 p-2 rounded-lg border border-gray-700 bg-black/95 text-[11px] normal-case tracking-normal text-gray-300 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus:opacity-100 group-focus:visible transition-opacity z-10"
-                >
-                  {subtitle}
-                </span>
-              </span>
-              <h3 className="text-xl font-semibold text-blue-200">
-                {token.symbol}
-                {spotDisplay && (
-                  <span className="ml-3 text-sm font-normal text-gray-400">
-                    spot <span className="text-emerald-300 tabular-nums">${spotDisplay}</span>
+      {showApprovalsModal && (
+        <ApprovalsModal
+          steps={approvalSteps}
+          onClose={() => setShowApprovalsModal(false)}
+          mode={mode}
+          collLabel={collLabel}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ApprovalsModalProps {
+  steps: Array<{
+    label: string;
+    done: boolean;
+    partial?: boolean;
+    pending: boolean;
+    onAction?: () => void;
+    title: string;
+  }>;
+  mode: "calls" | "puts";
+  collLabel: string;
+  onClose: () => void;
+}
+
+/**
+ * One-time approvals walkthrough surfaced when the user clicks Deposit
+ * before granting them. Mirrors the side ApprovalsList but with longer
+ * explanations and the actions inline.
+ */
+function ApprovalsModal({ steps, mode, collLabel, onClose }: ApprovalsModalProps) {
+  const allDone = steps.every(s => s.done);
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-black border border-[#FF8300]/40 rounded-xl p-5 max-w-md w-full shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-200">
+            Approvals to deposit
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-white text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+          Each row is a one-time signature so the protocol can move the right tokens on your
+          behalf. Once granted, future writes against the same {collLabel} skip these prompts.
+          Covered {mode === "calls" ? "calls" : "puts"} need all of them so the option can be
+          minted from your collateral and sold to the market maker in a single transaction.
+        </p>
+        <ul className="flex flex-col gap-3">
+          {steps.map(step => (
+            <li key={step.label} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {step.done ? (
+                  <span className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base">
+                    ✓
                   </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={step.onAction}
+                    disabled={step.pending || !step.onAction}
+                    className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md text-black text-xs font-semibold disabled:opacity-50 transition-colors ${
+                      step.partial
+                        ? "bg-pink-500 hover:bg-pink-400"
+                        : "bg-[#FF8300] hover:bg-[#e07400]"
+                    }`}
+                  >
+                    {step.pending ? "…" : "Approve"}
+                  </button>
                 )}
-              </h3>
-            </div>
+                <span className={`font-semibold ${step.done ? "text-gray-500" : "text-gray-100"}`}>
+                  {step.label}
+                </span>
+              </div>
+              <p className="ml-[3.5rem] text-xs text-gray-400 leading-relaxed">{step.title}</p>
+            </li>
+          ))}
+        </ul>
+        {allDone && (
+          <div className="mt-4 pt-3 border-t border-gray-800 text-center">
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-300 text-sm"
-              aria-label="Close"
+              className="px-4 py-1.5 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold transition-colors"
             >
-              ✕
+              All set — close
             </button>
           </div>
-
-          <SellPanel
-            option={selected}
-            depositSymbol={mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}
-            underlyingSymbol={token.symbol}
-            stableSymbol={mode === "puts" ? stable?.symbol ?? "USDC" : "USDC"}
-            mode={mode}
-            amount={amount}
-            onAmountChange={setAmount}
-            approvals={approvals}
-          />
-        </div>
-
-        <div className="w-72">
-          <ApprovalsCard
-            balances={balanceRows}
-            steps={[
-              {
-                label: "Enable auto-mint on Factory",
-                done: approvals.autoMintEnabled === true,
-                pending: approvals.isEnablingAutoMint,
-                onAction: approvals.handleEnableAutoMint,
-                title:
-                  "One-time per address — lets the Factory mint option tokens for you during Bebop settlement.",
-              },
-              {
-                label: `Approve ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} to Factory`,
-                done: !approvals.needsCollateralApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveCollateral,
-                title: "Factory pulls the collateral from your wallet to mint the option tokens Bebop buys.",
-              },
-              {
-                label: "Approve option to Bebop",
-                done: !approvals.needsOptionApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveOption,
-                title: approvals.factoryOperatorApproved
-                  ? "Covered by your factory-operator approval."
-                  : "Bebop pulls the option tokens from your wallet on settlement.",
-              },
-              {
-                label: "Approve USDC to Bebop",
-                done: !approvals.needsUsdcApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveUsdc,
-                title: "Lets you buy back / close the position via Bebop later without another approval.",
-              },
-            ]}
-          />
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+interface ModeHeaderProps {
+  mode: "calls" | "puts";
+  onModeChange: (m: "calls" | "puts") => void;
+  subtitle: string;
+  stablecoin?: string;
+  onStablecoinChange?: (s: string) => void;
+}
+
+/**
+ * Compact mode/strategy header. Reads as "Covered Call ▾" with a hover
+ * tooltip carrying the long-form subtitle, and clicks open a small inline
+ * panel to switch between Calls/Puts (and pick a stablecoin in puts mode).
+ */
+function ModeHeader({ mode, onModeChange, subtitle, stablecoin, onStablecoinChange }: ModeHeaderProps) {
+  const [open, setOpen] = useState(false);
+  const label = `Covered ${mode === "calls" ? "Call" : "Put"}`;
+
+  return (
+    <div className="relative mb-1">
+      <div className="flex items-center gap-1">
+        <Hint tip={subtitle} width="w-72" underline={false}>
+          <button
+            type="button"
+            onClick={() => setOpen(o => !o)}
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-gray-700 bg-black/40 hover:border-gray-500 hover:bg-black/60 text-[11px] uppercase tracking-wider text-gray-300 transition-colors"
+          >
+            {label}
+            <span className="text-gray-400 text-base leading-none" aria-hidden>▾</span>
+          </button>
+        </Hint>
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 z-30 mt-1 p-2 rounded-lg border border-gray-700 bg-black/95 shadow-xl flex flex-col gap-2">
+          <div className="flex rounded-md border border-gray-700 overflow-hidden text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("calls");
+                setOpen(false);
+              }}
+              className={`px-2 py-0.5 ${mode === "calls" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Calls
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("puts");
+                setOpen(false);
+              }}
+              className={`px-2 py-0.5 ${mode === "puts" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Puts
+            </button>
+          </div>
+          {mode === "puts" && stablecoin && onStablecoinChange && (
+            <div onClick={() => setOpen(false)}>
+              <StablecoinTabs selected={stablecoin} onSelect={onStablecoinChange} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

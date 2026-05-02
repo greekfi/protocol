@@ -107,7 +107,7 @@ export function StrikeExpirationGrid({
               <th
                 key={s.toString()}
                 className={clsx(
-                  "px-3 py-2 text-right text-sm font-semibold text-blue-100 border-b border-gray-800 tabular-nums",
+                  "px-3 py-2 text-right text-sm font-semibold text-white border-b border-gray-800 tabular-nums",
                   i === 0 && "pl-6",
                 )}
               >
@@ -119,7 +119,7 @@ export function StrikeExpirationGrid({
         <tbody>
           {expirations.map(exp => (
             <tr key={exp.toString()} className="hover:bg-blue-500/5">
-              <th className="sticky left-0 z-10 bg-black/80 pl-3 pr-6 py-2 text-left text-sm font-semibold text-blue-100 border-b border-gray-800 whitespace-nowrap">
+              <th className="sticky left-0 z-10 bg-black/80 pl-3 pr-6 py-2 text-left text-sm font-semibold text-white border-b border-gray-800 whitespace-nowrap">
                 {formatExpiry(exp)}
               </th>
               {strikes.map((s, i) => {
@@ -144,9 +144,9 @@ export function StrikeExpirationGrid({
                         className={clsx(
                           "w-full px-3 py-2 rounded-md transition-colors",
                           isSelected
-                            ? "bg-[#2F50FF]/25 text-[#35F3FF] font-semibold ring-2 ring-inset ring-[#2F50FF]"
+                            ? "bg-[#2F50FF]/25 text-white font-semibold ring-2 ring-inset ring-[#2F50FF]"
                             : display !== "—"
-                              ? "text-emerald-300 hover:bg-[#2F50FF]/10 hover:text-[#35F3FF]"
+                              ? "text-white hover:bg-[#2F50FF]/10"
                               : "text-gray-500 hover:bg-gray-500/10",
                         )}
                         title={
