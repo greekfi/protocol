@@ -12,20 +12,30 @@ import { ApprovalsList } from "../../components/ApprovalsList";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { Hint } from "../../components/Hint";
 import { PositionsCard } from "./PositionsCard";
+import { StablecoinTabs } from "./StablecoinTabs";
 import { useReadOptionIsEuro } from "~~/generated";
 import { SellPanel } from "./SellPanel";
 import { StrikeExpirationGrid } from "./StrikeExpirationGrid";
 
 interface YieldPanelProps {
   mode: "calls" | "puts";
+  onModeChange: (m: "calls" | "puts") => void;
   token: UnderlyingToken;
   stablecoin?: string;
+  onStablecoinChange?: (s: string) => void;
   /** Optional element rendered as the right-side token pill (the underlying
    *  TokenGrid in compact mode, mirroring /trade's pattern). */
   tokenSelector?: React.ReactNode;
 }
 
-export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPanelProps) {
+export function YieldPanel({
+  mode,
+  onModeChange,
+  token,
+  stablecoin,
+  onStablecoinChange,
+  tokenSelector,
+}: YieldPanelProps) {
   const { allTokensMap } = useTokenMap();
   const stable = STABLECOINS.find(s => s.symbol === stablecoin);
   const tokenAddress = allTokensMap[token.symbol]?.address ?? null;
@@ -198,13 +208,13 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
         <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
           {/* LEFT */}
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="mb-1">
-              <Hint tip={subtitle} width="w-72">
-                <span className="text-[11px] uppercase tracking-wider text-gray-300">
-                  {mode === "calls" ? "Covered Call" : "Covered Put"}
-                </span>
-              </Hint>
-            </div>
+            <ModeHeader
+              mode={mode}
+              onModeChange={onModeChange}
+              subtitle={subtitle}
+              stablecoin={stablecoin}
+              onStablecoinChange={onStablecoinChange}
+            />
             <div className="mb-3">{optionDescriptor}</div>
 
             <SellPanel
@@ -328,6 +338,72 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
           prices={prices}
         />
       </div>
+    </div>
+  );
+}
+
+interface ModeHeaderProps {
+  mode: "calls" | "puts";
+  onModeChange: (m: "calls" | "puts") => void;
+  subtitle: string;
+  stablecoin?: string;
+  onStablecoinChange?: (s: string) => void;
+}
+
+/**
+ * Compact mode/strategy header. Reads as "Covered Call ▾" with a hover
+ * tooltip carrying the long-form subtitle, and clicks open a small inline
+ * panel to switch between Calls/Puts (and pick a stablecoin in puts mode).
+ */
+function ModeHeader({ mode, onModeChange, subtitle, stablecoin, onStablecoinChange }: ModeHeaderProps) {
+  const [open, setOpen] = useState(false);
+  const label = `Covered ${mode === "calls" ? "Call" : "Put"}`;
+
+  return (
+    <div className="relative mb-1">
+      <div className="flex items-center gap-1">
+        <Hint tip={subtitle} width="w-72">
+          <button
+            type="button"
+            onClick={() => setOpen(o => !o)}
+            className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-gray-300 hover:text-white"
+          >
+            {label}
+            <span className="text-gray-500" aria-hidden>▾</span>
+          </button>
+        </Hint>
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 z-30 mt-1 p-2 rounded-lg border border-gray-700 bg-black/95 shadow-xl flex flex-col gap-2">
+          <div className="flex rounded-md border border-gray-700 overflow-hidden text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("calls");
+                setOpen(false);
+              }}
+              className={`px-2 py-0.5 ${mode === "calls" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Calls
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("puts");
+                setOpen(false);
+              }}
+              className={`px-2 py-0.5 ${mode === "puts" ? "bg-[#2F50FF] text-white" : "bg-black/40 text-gray-300 hover:bg-black/60"}`}
+            >
+              Puts
+            </button>
+          </div>
+          {mode === "puts" && stablecoin && onStablecoinChange && (
+            <div onClick={() => setOpen(false)}>
+              <StablecoinTabs selected={stablecoin} onSelect={onStablecoinChange} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
