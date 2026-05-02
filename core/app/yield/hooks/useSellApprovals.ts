@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { parseUnits } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import {
+  factoryAbi,
   useReadFactoryApprovedOperator,
   useReadFactoryAutoMintBurn,
+  useWriteFactoryApprove,
   useWriteFactoryApproveOperator,
   useWriteFactoryEnableAutoMintBurn,
 } from "~~/generated";
@@ -55,6 +57,9 @@ export interface SellApprovals {
   handleEnableAutoMint: () => void;
 
   needsCollateralApproval: boolean;
+  /** True iff one of the two collateral layers is granted but not both —
+   *  drives the half-done (pink) pill state. */
+  collateralPartial: boolean;
   handleApproveCollateral: () => void;
 
   factoryOperatorApproved: boolean | undefined;
@@ -97,12 +102,20 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     query: { enabled: !!userAddress && !!factoryAddress },
   });
 
-  // Collateral → Factory allowance.
-  const { data: collateralAllowance, refetch: refetchCollateral } = useReadContract({
+  // Collateral approvals — both layers (ERC20.approve(factory) + factory.approve(token))
+  // are required for the factory's two-layer pull on auto-mint.
+  const { data: collateralErc20Allowance, refetch: refetchCollateralErc20 } = useReadContract({
     address: collateralAddress,
     abi: ERC20_ABI,
     functionName: "allowance",
     args: userAddress && factoryAddress ? [userAddress, factoryAddress] : undefined,
+    query: { enabled: !!userAddress && !!factoryAddress && !!collateralAddress },
+  });
+  const { data: collateralFactoryAllowance, refetch: refetchCollateralFactory } = useReadContract({
+    address: factoryAddress,
+    abi: factoryAbi,
+    functionName: "allowance",
+    args: collateralAddress && userAddress ? [collateralAddress, userAddress] : undefined,
     query: { enabled: !!userAddress && !!factoryAddress && !!collateralAddress },
   });
 
@@ -129,12 +142,16 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     query: { enabled: !!userAddress && !!bebopRouter },
   });
 
+  // When the user has typed a deposit amount, require that allowance ≥ that
+  // amount (so finite/non-MAX approvals are correctly tracked). Before they
+  // type anything, fall back to "any allowance > 0".
+  const collateralThreshold = sellAmount > 0n ? sellAmount : 1n;
+  const collateralErc20Done = (collateralErc20Allowance ?? 0n) >= collateralThreshold;
+  const collateralFactoryDone = (collateralFactoryAllowance ?? 0n) >= collateralThreshold;
   const needsCollateralApproval =
-    !!factoryAddress &&
-    !!collateralAddress &&
-    collateralAllowance !== undefined &&
-    sellAmount > 0n &&
-    collateralAllowance < sellAmount;
+    !!factoryAddress && !!collateralAddress && (!collateralErc20Done || !collateralFactoryDone);
+  const collateralPartial =
+    needsCollateralApproval && (collateralErc20Done || collateralFactoryDone);
   const needsOptionApproval =
     !!bebopRouter &&
     !!optionToken &&
@@ -160,11 +177,28 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
   const { isSuccess: approvalConfirmed } = useWaitForTransactionReceipt({ hash: approvalHash });
   useEffect(() => {
     if (approvalConfirmed) {
-      refetchCollateral();
+      refetchCollateralErc20();
       refetchOption();
       refetchUsdc();
     }
-  }, [approvalConfirmed, refetchCollateral, refetchOption, refetchUsdc]);
+  }, [approvalConfirmed, refetchCollateralErc20, refetchOption, refetchUsdc]);
+
+  const {
+    writeContract: factoryApprove,
+    data: factoryApproveHash,
+    isPending: isFactoryApproving,
+  } = useWriteFactoryApprove();
+  const { isSuccess: factoryApproveConfirmed } = useWaitForTransactionReceipt({
+    hash: factoryApproveHash,
+  });
+  useEffect(() => {
+    if (!factoryApproveConfirmed) return;
+    refetchCollateralFactory();
+    // RPC nodes can lag a beat behind the receipt — nudge the read.
+    const delay = chainId === 1 ? 10_000 : 1_000;
+    const t = setTimeout(refetchCollateralFactory, delay);
+    return () => clearTimeout(t);
+  }, [factoryApproveConfirmed, refetchCollateralFactory, chainId]);
 
   const {
     writeContract: factoryApproveOperator,
@@ -187,14 +221,22 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     if (!factoryAddress) return;
     enableAutoMint({ address: factoryAddress, args: [true] });
   };
+  // Two-layer collateral approval: fire whichever layer is missing. The user
+  // taps the row twice (once per layer); the pill flips pink between them.
   const handleApproveCollateral = () => {
     if (!factoryAddress || !collateralAddress) return;
-    approve({
-      address: collateralAddress,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [factoryAddress, MAX_UINT],
-    });
+    if (!collateralErc20Done) {
+      approve({
+        address: collateralAddress,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [factoryAddress, MAX_UINT],
+      });
+      return;
+    }
+    if (!collateralFactoryDone) {
+      factoryApprove({ address: factoryAddress, args: [collateralAddress, MAX_UINT] });
+    }
   };
   const handleApproveOption = () => {
     if (!bebopRouter || !factoryAddress) return;
@@ -218,13 +260,14 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
     isEnablingAutoMint,
     handleEnableAutoMint,
     needsCollateralApproval,
+    collateralPartial,
     handleApproveCollateral,
     factoryOperatorApproved,
     needsOptionApproval,
     handleApproveOption,
     needsUsdcApproval,
     handleApproveUsdc,
-    isApproving: isApproving || isApprovingOperator,
+    isApproving: isApproving || isApprovingOperator || isFactoryApproving,
     // USDC approval is optional (only needed to close positions later); don't block Deposit on it.
     allSatisfied: !needsAutoMint && !needsCollateralApproval && !needsOptionApproval,
   };

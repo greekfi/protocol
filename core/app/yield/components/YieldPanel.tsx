@@ -192,9 +192,10 @@ export function YieldPanel({
     {
       label: collLabel,
       done: !approvals.needsCollateralApproval,
+      partial: approvals.collateralPartial,
       pending: approvals.isApproving,
       onAction: approvals.handleApproveCollateral,
-      title: `Approve ${collLabel} so the factory can pull collateral on write.`,
+      title: `Two layers: first ERC20.approve(factory) so the factory can move ${collLabel} from your wallet, then factory.approve(${collLabel}) to authorise the factory's internal pull on auto-mint. Click Approve once for each layer.`,
     },
     {
       label: "Option",
@@ -340,6 +341,7 @@ interface ApprovalsModalProps {
   steps: Array<{
     label: string;
     done: boolean;
+    partial?: boolean;
     pending: boolean;
     onAction?: () => void;
     title: string;
@@ -397,7 +399,11 @@ function ApprovalsModal({ steps, mode, collLabel, onClose }: ApprovalsModalProps
                     type="button"
                     onClick={step.onAction}
                     disabled={step.pending || !step.onAction}
-                    className="inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md bg-[#FF8300] hover:bg-[#e07400] text-black text-xs font-semibold disabled:opacity-50 transition-colors"
+                    className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md text-black text-xs font-semibold disabled:opacity-50 transition-colors ${
+                      step.partial
+                        ? "bg-pink-500 hover:bg-pink-400"
+                        : "bg-[#FF8300] hover:bg-[#e07400]"
+                    }`}
                   >
                     {step.pending ? "…" : "Approve"}
                   </button>
