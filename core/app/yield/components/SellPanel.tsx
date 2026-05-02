@@ -126,7 +126,7 @@ export function SellPanel({
 
   return (
     <div>
-      <div className="mb-2 text-sm text-gray-500">
+      <div className="mb-3 text-sm text-gray-500">
         <span className="text-white tabular-nums">${formatMoney(pricePerOption)}</span> per option
       </div>
 
@@ -204,7 +204,7 @@ export function SellPanel({
         })()}
       </div>
 
-      <div className="mt-2 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-3">
         <button
           type="button"
           onClick={() => setShowExplain(s => !s)}

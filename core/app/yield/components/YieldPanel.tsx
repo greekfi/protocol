@@ -245,7 +245,7 @@ export function YieldPanel({
     <div className="inline-block max-w-full text-left">
       <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
         {/* Action card: 28rem with left/right split, mirroring /trade's TradePanel */}
-        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
+        <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-5 py-4 w-fit min-w-[28rem] flex gap-5">
           {/* LEFT */}
           <div className="flex-1 min-w-0 flex flex-col">
             <ModeHeader
@@ -255,7 +255,7 @@ export function YieldPanel({
               stablecoin={stablecoin}
               onStablecoinChange={onStablecoinChange}
             />
-            <div className="mb-3">{optionDescriptor}</div>
+            <div className="mb-4">{optionDescriptor}</div>
 
             <SellPanel
               option={selected}
@@ -272,7 +272,7 @@ export function YieldPanel({
           </div>
 
           {/* RIGHT: token + spot, balances, buy-back */}
-          <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
+          <div className="w-[12rem] shrink-0 flex flex-col gap-4 border-l border-gray-700/40 pl-5">
             <div className="flex flex-col items-start gap-1">
               {tokenSelector}
               {spotDisplay && (
@@ -306,7 +306,7 @@ export function YieldPanel({
 
           {/* THIRD COLUMN: Open positions, only when the user has any. */}
           {hasOpenPositions && (
-            <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-4">
+            <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-5">
               <PositionsCard bare hideEmpty />
             </div>
           )}
