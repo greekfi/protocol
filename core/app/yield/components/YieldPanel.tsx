@@ -8,7 +8,7 @@ import { useDirectPrices } from "../../trade/hooks/useDirectPrices";
 import { type TradableOption, useTradableOptions } from "../../trade/hooks/useTradableOptions";
 import { STABLECOINS, type UnderlyingToken } from "../data";
 import { useSellApprovals } from "../hooks/useSellApprovals";
-import { ApprovalsCard } from "../../components/options/ApprovalsCard";
+import { ApprovalsList } from "../../components/ApprovalsList";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { Hint } from "../../components/Hint";
 import { useReadOptionIsEuro } from "~~/generated";
@@ -254,16 +254,38 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
         </div>
 
         {/* Trading Approvals column */}
-        <div className="w-[16rem]">
-          <ApprovalsCard
+        <div className="w-[16rem] rounded-lg border border-[#FF8300]/40 bg-[#FF8300]/5 p-3 self-start">
+          <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
+            <Hint
+              width="w-72"
+              tip={[
+                <span key="auto">
+                  <b className="text-gray-100">Auto Covered {mode === "calls" ? "Call" : "Put"}</b>
+                  {" "}— let the factory mint the option/receipt pair from your collateral atomically when Bebop fills your write.
+                </span>,
+                <span key="coll">
+                  <b className="text-gray-100">{mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}</b>
+                  {" "}— let the factory pull collateral on write.
+                </span>,
+                <span key="opt">
+                  <b className="text-gray-100">Option</b> — let Bebop pull the freshly-minted long on settlement.
+                </span>,
+                <span key="usdc">
+                  <b className="text-gray-100">USDC</b> — required only if you ever want to buy back to close.
+                </span>,
+              ]}
+            >
+              Trading Approvals
+            </Hint>
+          </div>
+          <ApprovalsList
             steps={[
               {
-                label: "Auto-mint",
+                label: `Auto Covered ${mode === "calls" ? "Call" : "Put"}`,
                 done: approvals.autoMintEnabled === true,
                 pending: approvals.isEnablingAutoMint,
                 onAction: approvals.handleEnableAutoMint,
-                title:
-                  "Lets the factory mint option/receipt pairs from your collateral atomically when Bebop fills your write.",
+                title: `Lets the factory mint the option/receipt pair from your ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} collateral atomically when Bebop fills your write — no manual mint step.`,
               },
               {
                 label: mode === "calls" ? token.symbol : stable?.symbol ?? "USDC",
@@ -286,7 +308,7 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
                 done: !approvals.needsUsdcApproval,
                 pending: approvals.isApproving,
                 onAction: approvals.handleApproveUsdc,
-                title: "Lets you buy back / close the short later via Bebop without another approval.",
+                title: "Lets you buy back / close the short later via Bebop without another approval round-trip.",
               },
             ]}
           />

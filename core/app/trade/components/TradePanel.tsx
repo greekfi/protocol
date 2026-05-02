@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf, useReadOptionIsEuro } from "~~/generated";
 import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
+import { ApprovalsList } from "../../components/ApprovalsList";
 import { Hint } from "../../components/Hint";
 import { useTokenSpot } from "../../lib/useTokenSpot";
 import { ExercisePanel } from "./ExercisePanel";
@@ -71,7 +72,7 @@ export function TradePanel({
   openExerciseSignal,
 }: TradePanelProps) {
   const chainId = useChainId();
-  const { allTokensMap } = useTokenMap();
+  const { tokensByAddress } = useTokenMap();
   const { address: userAddress } = useAccount();
 
   // Pull all four balances Option exposes in one call: collateral / consideration / long / short.
@@ -113,10 +114,10 @@ export function TradePanel({
   // Bebop quote needs the *raw* token amount, so we must use this — not the
   // hard-coded 18 — or puts on USDC-collateralised collateral come back with
   // a price ~10^12× off.
-  const optionDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.decimals ?? 18;
+  const collateralToken = tokensByAddress[selectedOption.collateralAddress.toLowerCase()];
+  const considerationToken = tokensByAddress[selectedOption.considerationAddress.toLowerCase()];
+  const paymentTokenInfo = tokensByAddress[(usdcFor(chainId) ?? usdcFor(1)!).toLowerCase()];
+  const optionDecimals = collateralToken?.decimals ?? 18;
 
   // Build the "TradableOption" shape useTradeApprovals needs from the selection.
   const optionForApprovals: TradableOption = {
@@ -225,29 +226,16 @@ export function TradePanel({
         : insufficientMessage ?? undefined;
 
   // ApprovalsCard inputs.
-  const usdcSymbol =
-    Object.values(allTokensMap).find(t => t.address.toLowerCase() === paymentToken.toLowerCase())?.symbol ?? "USDC";
-  const collSymbol =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.symbol ?? "Collateral";
-  const consSymbol =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
-    )?.symbol ?? "Consideration";
+  const usdcSymbol = paymentTokenInfo?.symbol ?? "USDC";
+  const collSymbol = collateralToken?.symbol ?? "Collateral";
+  const consSymbol = considerationToken?.symbol ?? "Consideration";
 
-  const collDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.collateralAddress.toLowerCase(),
-    )?.decimals ?? 18;
+  const collDecimals = collateralToken?.decimals ?? 18;
   // Underlying = collateral on calls, consideration on puts.
   const underlyingSymbol = selectedOption.isPut ? consSymbol : collSymbol;
   const spotPrice = useTokenSpot(underlyingSymbol);
 
-  const consDecimals =
-    Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === selectedOption.considerationAddress.toLowerCase(),
-    )?.decimals ?? approvals.usdcDecimals;
+  const consDecimals = considerationToken?.decimals ?? approvals.usdcDecimals;
 
   // OPT row collapses long + short into one number. Long-only renders as a
   // positive amount, short-only as negative. If the user holds both sides the
@@ -585,59 +573,3 @@ export function TradePanel({
   );
 }
 
-/**
- * Inline approvals list extracted so the trade panel can render it inside
- * the combined balances+holdings+approvals card without nesting another
- * full ApprovalsCard (which would re-print the section headers and chrome).
- */
-function ApprovalsList({
-  steps,
-}: {
-  steps: Array<{
-    label: string;
-    done: boolean;
-    partial?: boolean;
-    pending: boolean;
-    onAction?: () => void;
-    title?: string;
-  }>;
-}) {
-  // [Approve] token   →   [✓] token
-  // The leading pill is the action: orange "Approve" while pending, green
-  // checkmark once done. Same shape/size in both states so the labels stay
-  // at the same x-position across rows. Done pills are non-interactive.
-  const PILL_BASE =
-    "inline-flex items-center justify-center min-w-[3rem] px-1 py-0.5 rounded-md text-xs font-semibold transition-colors shrink-0";
-  return (
-    <ul className="flex flex-col gap-1.5 text-sm">
-      {steps.map(step => (
-        <li key={step.label} className="flex items-center gap-2 min-w-0">
-          {step.done ? (
-            <span
-              className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base shrink-0"
-              aria-hidden
-            >
-              ✓
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={step.onAction}
-              disabled={step.pending || !step.onAction}
-              className={`${PILL_BASE} ${
-                step.partial
-                  ? "bg-pink-500 hover:bg-pink-400"
-                  : "bg-[#FF8300] hover:bg-[#e07400]"
-              } text-black disabled:opacity-50`}
-            >
-              {step.pending ? "…" : "Approve"}
-            </button>
-          )}
-          <span className={`truncate ${step.done ? "text-gray-500" : "text-gray-300"}`}>
-            {step.title ? <Hint tip={step.title} above>{step.label}</Hint> : step.label}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
