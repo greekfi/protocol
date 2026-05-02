@@ -11,6 +11,7 @@ import { useSellApprovals } from "../hooks/useSellApprovals";
 import { ApprovalsList } from "../../components/ApprovalsList";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { Hint } from "../../components/Hint";
+import { PositionsCard } from "./PositionsCard";
 import { useReadOptionIsEuro } from "~~/generated";
 import { SellPanel } from "./SellPanel";
 import { StrikeExpirationGrid } from "./StrikeExpirationGrid";
@@ -313,6 +314,8 @@ export function YieldPanel({ mode, token, stablecoin, tokenSelector }: YieldPane
             ]}
           />
         </div>
+
+        <PositionsCard />
       </div>
 
       {/* Strike grid sits below the panel — same vertical order as /trade. */}
