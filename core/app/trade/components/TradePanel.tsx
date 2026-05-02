@@ -378,11 +378,15 @@ export function TradePanel({
                 className="w-full px-2 py-1 bg-transparent text-blue-100 text-sm outline-none tabular-nums"
               />
               {(() => {
-                // sell → user's long balance; buy → most options affordable
-                // with current USDC at the current per-option price.
+                // sell → long balance + (auto-mintable) collateral; buy → most
+                // options affordable with current USDC at the live per-option
+                // price. OPT mirrors collateral decimals so the collateral
+                // raw → option-units conversion is a straight formatUnits.
                 let maxN: number | undefined;
-                if (direction === "sell" && optionBalances?.option !== undefined) {
-                  maxN = Number(formatUnits(optionBalances.option, optionDecimals));
+                if (direction === "sell" && optionBalances !== undefined) {
+                  const longN = Number(formatUnits(optionBalances.option, optionDecimals));
+                  const collN = Number(formatUnits(optionBalances.collateral, optionDecimals));
+                  maxN = longN + collN;
                 } else if (
                   direction === "buy" &&
                   approvals.usdcBalance !== undefined &&
