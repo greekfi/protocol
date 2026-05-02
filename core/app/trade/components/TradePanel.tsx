@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount, useChainId } from "wagmi";
 import { useReadOptionBalancesOf, useReadOptionIsEuro } from "~~/generated";
-import { ApprovalsCard, type BalanceRow } from "../../components/options/ApprovalsCard";
-import { ApprovalsList } from "../../components/ApprovalsList";
+import { type BalanceRow } from "../../components/options/ApprovalsCard";
 import { Hint } from "../../components/Hint";
 import { useTokenSpot } from "../../lib/useTokenSpot";
 import { ExercisePanel } from "./ExercisePanel";
@@ -100,6 +99,7 @@ export function TradePanel({
   }, [selectedOption.isBuy, selectedOption.optionAddress]);
 
   const [showExercise, setShowExercise] = useState(false);
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
   // Collapse exercise when the user picks a different option.
   useEffect(() => setShowExercise(false), [selectedOption.optionAddress]);
   // Open exercise when the parent bumps the signal (e.g. HoldingsCard click).
@@ -162,6 +162,11 @@ export function TradePanel({
   }, [optionToken, direction, reset]);
 
   const handleTrade = async () => {
+    // Approvals not done? Route to the walkthrough modal instead of blocking.
+    if (!approvals.allSatisfied) {
+      setShowApprovalsModal(true);
+      return;
+    }
     if (!quote) return;
     try {
       await executeTrade(quote);
@@ -215,14 +220,14 @@ export function TradePanel({
         ? "Not enough OPT"
         : null;
 
-  const disabledReason = !approvals.allSatisfied
-    ? "Finish the approvals in the card on the right"
-    : !quote
-      ? quoteLoading
-        ? "Fetching quote…"
-        : "No quote available — is the market maker running?"
-      : isTrading
-        ? "Waiting for on-chain confirmation"
+  const disabledReason = !quote
+    ? quoteLoading
+      ? "Fetching quote…"
+      : "No quote available — is the market maker running?"
+    : isTrading
+      ? "Waiting for on-chain confirmation"
+      : !approvals.allSatisfied
+        ? `Approvals needed — click ${direction === "buy" ? "Buy" : "Sell"} to walk through them`
         : insufficientMessage ?? undefined;
 
   // ApprovalsCard inputs.
@@ -458,8 +463,7 @@ export function TradePanel({
                   disabled={
                     !quote ||
                     isTrading ||
-                    !approvals.allSatisfied ||
-                    !!insufficientMessage
+                    (approvals.allSatisfied && !!insufficientMessage)
                   }
                   className="shrink-0 h-7 px-3 rounded-lg text-white text-base leading-none font-semibold disabled:opacity-50 transition-colors bg-blue-500 hover:bg-blue-400"
                 >
@@ -490,6 +494,24 @@ export function TradePanel({
         {insufficientMessage && (
           <div className="mt-2 text-xs text-amber-300/90">{insufficientMessage}</div>
         )}
+
+        <div className="mt-3 flex items-center">
+          <button
+            type="button"
+            onClick={() => setShowApprovalsModal(true)}
+            className="ml-auto text-xs text-gray-400 hover:text-white underline underline-offset-2"
+          >
+            approvals
+            {approvals.allSatisfied
+              ? " ✓"
+              : ` (${[
+                  approvals.needsUsdcApproval,
+                  approvals.needsOptionApproval,
+                  approvals.needsAutoMint,
+                  approvals.needsCollateralApproval,
+                ].filter(Boolean).length} needed)`}
+          </button>
+        </div>
 
         {tradeError && <div className="mt-2 text-xs text-red-400">{tradeError}</div>}
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
@@ -524,41 +546,6 @@ export function TradePanel({
         </div>
       </div>
 
-      {/* Trading Approvals column */}
-      <div className="w-[16rem] max-w-full">
-        <ApprovalsCard
-          steps={[]}
-          footer={
-            <div className="space-y-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                  <Hint
-                    width="w-72"
-                    tip={[
-                      <span key="usdc">
-                        <b className="text-gray-100">USDC</b> — needed to buy options.
-                      </span>,
-                      <span key="opt">
-                        <b className="text-gray-100">Option</b> — needed to sell options you already hold.
-                      </span>,
-                      <span key="auto">
-                        <b className="text-gray-100">Auto-mint + {collSymbol}</b> — needed to write covered calls atomically (sell options against collateral in a single tx, no manual mint step).
-                      </span>,
-                      <span key="keeper">
-                        <b className="text-gray-100">Keeper Settlement</b> — allow Keeper to settle on your behalf during the exercise/settlement window.
-                      </span>,
-                    ]}
-                  >
-                    Trading Approvals
-                  </Hint>
-                </div>
-                <ApprovalsList steps={steps} />
-              </div>
-            </div>
-          }
-        />
-      </div>
-
       {showExercise && (
         <ExercisePanel
           optionAddress={selectedOption.optionAddress}
@@ -569,6 +556,113 @@ export function TradePanel({
           onClose={() => setShowExercise(false)}
         />
       )}
+
+      {showApprovalsModal && (
+        <ApprovalsModal
+          steps={steps}
+          direction={direction}
+          collLabel={collSymbol}
+          onClose={() => setShowApprovalsModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ApprovalsModalProps {
+  steps: Array<{
+    label: string;
+    done: boolean;
+    partial?: boolean;
+    pending: boolean;
+    onAction?: () => void;
+    title?: string;
+  }>;
+  direction: TradeDirection;
+  collLabel: string;
+  onClose: () => void;
+}
+
+/**
+ * Approvals walkthrough surfaced when the user clicks Buy/Sell before
+ * granting them. Mirrors /yield's ApprovalsModal — backdrop click-to-close,
+ * inline Approve buttons, longer per-row descriptions.
+ */
+function ApprovalsModal({ steps, direction, collLabel, onClose }: ApprovalsModalProps) {
+  const allDone = steps.every(s => s.done);
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-black border border-[#FF8300]/40 rounded-xl p-5 max-w-md w-full shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-200">
+            Approvals to {direction === "buy" ? "buy" : "sell"}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-white text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+          Each row is a one-time signature so the protocol can move the right tokens on your
+          behalf. Once granted, future {direction === "buy" ? "buys" : "sells"} against the same
+          {" "}{collLabel} skip these prompts. Selling to the market maker also needs the
+          auto-mint + {collLabel} pair so the option can be minted from your collateral and sold
+          in a single transaction.
+        </p>
+        <ul className="flex flex-col gap-3">
+          {steps.map(step => (
+            <li key={step.label} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {step.done ? (
+                  <span className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base">
+                    ✓
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={step.onAction}
+                    disabled={step.pending || !step.onAction}
+                    className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md text-black text-xs font-semibold disabled:opacity-50 transition-colors ${
+                      step.partial
+                        ? "bg-pink-500 hover:bg-pink-400"
+                        : "bg-[#FF8300] hover:bg-[#e07400]"
+                    }`}
+                  >
+                    {step.pending ? "…" : "Approve"}
+                  </button>
+                )}
+                <span className={`font-semibold ${step.done ? "text-gray-500" : "text-gray-100"}`}>
+                  {step.label}
+                </span>
+              </div>
+              {step.title && (
+                <p className="ml-[3.5rem] text-xs text-gray-400 leading-relaxed">{step.title}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+        {allDone && (
+          <div className="mt-4 pt-3 border-t border-gray-800 text-center">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold transition-colors"
+            >
+              All set — close
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
