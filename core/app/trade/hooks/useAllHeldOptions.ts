@@ -56,7 +56,14 @@ export function useAllHeldOptions() {
 
   const { data, isLoading: balancesLoading } = useReadContracts({
     contracts,
-    query: { enabled: contracts.length > 0, refetchOnWindowFocus: false },
+    query: {
+      enabled: contracts.length > 0,
+      // Re-pull every 8s so a fresh write/exercise reflects in the
+      // Holdings / Positions cards without waiting for a full reload.
+      // Also refetch on window-focus for snappier return-to-tab.
+      refetchInterval: 8_000,
+      refetchOnWindowFocus: true,
+    },
   });
 
   const held = useMemo<HeldOption[]>(() => {
