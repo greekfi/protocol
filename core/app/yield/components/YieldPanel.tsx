@@ -124,7 +124,7 @@ export function YieldPanel({
   const approvals = useSellApprovals(selected, amount);
   // Tap the same hook PositionsCard uses so we can decide whether to render
   // the Positions column (and its dividing wrapper) at all.
-  const { held: allHeld } = useAllHeldOptions();
+  const { held: allHeld, refetch: refetchHeld } = useAllHeldOptions();
   const hasOpenPositions = allHeld.some(h => h.receiptBalance > 0n);
 
   // Option.balancesOf(user) returns (collateral, consideration, option, coll) in a single call.
@@ -268,6 +268,7 @@ export function YieldPanel({
               onAmountChange={setAmount}
               approvals={approvals}
               onRequestApprovals={() => setShowApprovalsModal(true)}
+              onTradeSuccess={() => refetchHeld()}
               hideDescriptor
             />
           </div>
@@ -456,10 +457,10 @@ function ModeHeader({ mode, onModeChange, subtitle, stablecoin, onStablecoinChan
           <button
             type="button"
             onClick={() => setOpen(o => !o)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-gray-700 bg-black/40 hover:border-gray-500 hover:bg-black/60 text-[11px] uppercase tracking-wider text-gray-300 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-gray-700 bg-black/40 hover:border-gray-500 hover:bg-black/60 text-[11px] uppercase tracking-wider text-gray-300 transition-colors"
           >
             {label}
-            <span className="text-gray-500" aria-hidden>▾</span>
+            <span className="text-gray-400 text-base leading-none" aria-hidden>▾</span>
           </button>
         </Hint>
       </div>

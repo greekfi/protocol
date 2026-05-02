@@ -54,7 +54,11 @@ export function useAllHeldOptions() {
     ]);
   }, [address, allOptions]);
 
-  const { data, isLoading: balancesLoading } = useReadContracts({
+  const {
+    data,
+    isLoading: balancesLoading,
+    refetch,
+  } = useReadContracts({
     contracts,
     query: {
       enabled: contracts.length > 0,
@@ -83,5 +87,6 @@ export function useAllHeldOptions() {
     held,
     isLoading: eventsLoading || balancesLoading,
     hasWallet: Boolean(address),
+    refetch,
   };
 }

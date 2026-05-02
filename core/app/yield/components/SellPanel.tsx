@@ -40,6 +40,9 @@ interface SellPanelProps {
   /** Called when Deposit is clicked but approvals aren't satisfied. The
    *  parent typically opens an approvals walkthrough modal. */
   onRequestApprovals?: () => void;
+  /** Called shortly after a successful Deposit settles — typically used
+   *  to refetch positions / balances. */
+  onTradeSuccess?: () => void;
 }
 
 export function SellPanel({
@@ -52,6 +55,7 @@ export function SellPanel({
   onAmountChange,
   approvals,
   onRequestApprovals,
+  onTradeSuccess,
 }: SellPanelProps) {
   const chainId = useChainId();
   const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
@@ -87,6 +91,9 @@ export function SellPanel({
     if (!quote) return;
     try {
       await executeTrade(quote);
+      // Nudge the parent to refresh positions/balances ~2s later — gives
+      // the RPC a beat to surface the new short.
+      if (onTradeSuccess) setTimeout(onTradeSuccess, 2_000);
     } catch (e) {
       console.error("[yield] sell failed", e);
     }
