@@ -175,6 +175,41 @@ export function YieldPanel({
     ];
   }, [selected, optionBalances, allTokensMap, approvals.optionDecimals]);
 
+  const collLabel = mode === "calls" ? token.symbol : stable?.symbol ?? "USDC";
+  const approvalSteps = [
+    {
+      label: `Auto Covered ${mode === "calls" ? "Call" : "Put"}`,
+      done: approvals.autoMintEnabled === true,
+      pending: approvals.isEnablingAutoMint,
+      onAction: approvals.handleEnableAutoMint,
+      title: `Lets the factory mint the option/receipt pair from your ${collLabel} collateral atomically when Bebop fills your write — no manual mint step.`,
+    },
+    {
+      label: collLabel,
+      done: !approvals.needsCollateralApproval,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveCollateral,
+      title: `Approve ${collLabel} so the factory can pull collateral on write.`,
+    },
+    {
+      label: "Option",
+      done: !approvals.needsOptionApproval,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveOption,
+      title: approvals.factoryOperatorApproved
+        ? "Covered by your factory-operator approval — Bebop can pull option tokens for any option."
+        : "Approve the option ERC20 to Bebop so it can pull the freshly-minted long when settling your write.",
+    },
+    {
+      label: "USDC",
+      done: !approvals.needsUsdcApproval,
+      pending: approvals.isApproving,
+      onAction: approvals.handleApproveUsdc,
+      title: "Lets you buy back / close the short later via Bebop without another approval round-trip.",
+    },
+  ];
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
+
   const optionDescriptor = selected ? (
     <div className="text-base font-semibold text-white tabular-nums leading-tight">
       <div>
@@ -226,6 +261,7 @@ export function YieldPanel({
               amount={amount}
               onAmountChange={setAmount}
               approvals={approvals}
+              onRequestApprovals={() => setShowApprovalsModal(true)}
               hideDescriptor
             />
           </div>
@@ -289,40 +325,7 @@ export function YieldPanel({
               Trading Approvals
             </Hint>
           </div>
-          <ApprovalsList
-            steps={[
-              {
-                label: `Auto Covered ${mode === "calls" ? "Call" : "Put"}`,
-                done: approvals.autoMintEnabled === true,
-                pending: approvals.isEnablingAutoMint,
-                onAction: approvals.handleEnableAutoMint,
-                title: `Lets the factory mint the option/receipt pair from your ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} collateral atomically when Bebop fills your write — no manual mint step.`,
-              },
-              {
-                label: mode === "calls" ? token.symbol : stable?.symbol ?? "USDC",
-                done: !approvals.needsCollateralApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveCollateral,
-                title: `Approve ${mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"} so the factory can pull collateral on write.`,
-              },
-              {
-                label: "Option",
-                done: !approvals.needsOptionApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveOption,
-                title: approvals.factoryOperatorApproved
-                  ? "Covered by your factory-operator approval — Bebop can pull option tokens for any option."
-                  : "Approve the option ERC20 to Bebop so it can pull the freshly-minted long when settling your write.",
-              },
-              {
-                label: "USDC",
-                done: !approvals.needsUsdcApproval,
-                pending: approvals.isApproving,
-                onAction: approvals.handleApproveUsdc,
-                title: "Lets you buy back / close the short later via Bebop without another approval round-trip.",
-              },
-            ]}
-          />
+          <ApprovalsList steps={approvalSteps} />
         </div>
 
         <PositionsCard />
@@ -337,6 +340,105 @@ export function YieldPanel({
           onSelect={setSelected}
           prices={prices}
         />
+      </div>
+
+      {showApprovalsModal && (
+        <ApprovalsModal
+          steps={approvalSteps}
+          onClose={() => setShowApprovalsModal(false)}
+          mode={mode}
+          collLabel={collLabel}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ApprovalsModalProps {
+  steps: Array<{
+    label: string;
+    done: boolean;
+    pending: boolean;
+    onAction?: () => void;
+    title: string;
+  }>;
+  mode: "calls" | "puts";
+  collLabel: string;
+  onClose: () => void;
+}
+
+/**
+ * One-time approvals walkthrough surfaced when the user clicks Deposit
+ * before granting them. Mirrors the side ApprovalsList but with longer
+ * explanations and the actions inline.
+ */
+function ApprovalsModal({ steps, mode, collLabel, onClose }: ApprovalsModalProps) {
+  const allDone = steps.every(s => s.done);
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-black border border-[#FF8300]/40 rounded-xl p-5 max-w-md w-full shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-200">
+            Approvals to deposit
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-white text-base leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+          Each row is a one-time signature so the protocol can move the right tokens on your
+          behalf. Once granted, future writes against the same {collLabel} skip these prompts.
+          Covered {mode === "calls" ? "calls" : "puts"} need all of them so the option can be
+          minted from your collateral and sold to the market maker in a single transaction.
+        </p>
+        <ul className="flex flex-col gap-3">
+          {steps.map(step => (
+            <li key={step.label} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {step.done ? (
+                  <span className="inline-flex items-center justify-center min-w-[3rem] text-emerald-400 text-base">
+                    ✓
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={step.onAction}
+                    disabled={step.pending || !step.onAction}
+                    className="inline-flex items-center justify-center min-w-[3rem] px-2 py-0.5 rounded-md bg-[#FF8300] hover:bg-[#e07400] text-black text-xs font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {step.pending ? "…" : "Approve"}
+                  </button>
+                )}
+                <span className={`font-semibold ${step.done ? "text-gray-500" : "text-gray-100"}`}>
+                  {step.label}
+                </span>
+              </div>
+              <p className="ml-[3.5rem] text-xs text-gray-400 leading-relaxed">{step.title}</p>
+            </li>
+          ))}
+        </ul>
+        {allDone && (
+          <div className="mt-4 pt-3 border-t border-gray-800 text-center">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-md bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold transition-colors"
+            >
+              All set — close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -362,11 +464,11 @@ function ModeHeader({ mode, onModeChange, subtitle, stablecoin, onStablecoinChan
   return (
     <div className="relative mb-1">
       <div className="flex items-center gap-1">
-        <Hint tip={subtitle} width="w-72">
+        <Hint tip={subtitle} width="w-72" underline={false}>
           <button
             type="button"
             onClick={() => setOpen(o => !o)}
-            className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-gray-300 hover:text-white"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-gray-700 bg-black/40 hover:border-gray-500 hover:bg-black/60 text-[11px] uppercase tracking-wider text-gray-300 transition-colors"
           >
             {label}
             <span className="text-gray-500" aria-hidden>▾</span>

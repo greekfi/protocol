@@ -37,6 +37,9 @@ interface SellPanelProps {
   approvals: SellApprovals;
   /** Hide the strike·expiry header (when the parent already renders one). */
   hideDescriptor?: boolean;
+  /** Called when Deposit is clicked but approvals aren't satisfied. The
+   *  parent typically opens an approvals walkthrough modal. */
+  onRequestApprovals?: () => void;
 }
 
 export function SellPanel({
@@ -48,6 +51,7 @@ export function SellPanel({
   amount,
   onAmountChange,
   approvals,
+  onRequestApprovals,
 }: SellPanelProps) {
   const chainId = useChainId();
   const paymentToken = usdcFor(chainId) ?? usdcFor(1)!;
@@ -75,6 +79,11 @@ export function SellPanel({
   }, [option, reset]);
 
   const handleSell = async () => {
+    // Approvals not done? Route to the walkthrough modal instead of blocking.
+    if (!approvals.allSatisfied && onRequestApprovals) {
+      onRequestApprovals();
+      return;
+    }
     if (!quote) return;
     try {
       await executeTrade(quote);
@@ -105,14 +114,14 @@ export function SellPanel({
 
   const disabledReason = !option
     ? "Pick a strike/expiry below"
-    : !approvals.allSatisfied
-      ? "Finish the approvals on the right"
-      : !quote
-        ? quoteLoading
-          ? "Fetching quote…"
-          : "No quote available yet — is the market maker running?"
-        : isSelling
-          ? "Waiting for on-chain confirmation"
+    : !quote
+      ? quoteLoading
+        ? "Fetching quote…"
+        : "No quote available yet — is the market maker running?"
+      : isSelling
+        ? "Waiting for on-chain confirmation"
+        : !approvals.allSatisfied
+          ? "Approvals needed — click Deposit to walk through them"
           : undefined;
 
   return (
@@ -179,7 +188,7 @@ export function SellPanel({
             <button
               type="button"
               onClick={handleSell}
-              disabled={!option || !quote || isSelling || !approvals.allSatisfied}
+              disabled={!option || !quote || isSelling}
               className="self-stretch px-3 bg-[#2F50FF] hover:bg-[#35F3FF] hover:text-black text-white text-sm font-semibold leading-none disabled:opacity-50 transition-colors"
             >
               {isSelling ? "Depositing…" : status === "success" ? "Deposited ✓" : "Deposit"}
