@@ -29,10 +29,10 @@ interface TradePanelProps {
   /** Optional element rendered at the top of the swap card — used to "house"
    *  the underlying token selector pill once an option is picked. */
   tokenSelector?: React.ReactNode;
-  /** Optional 4th-column slot — rendered alongside Balances + Approvals so
-   *  every panel shares the same flex-wrap row. */
-  holdings?: React.ReactNode;
-  /** Counter bumped by callers (e.g. HoldingsCard's Exercise link) to
+  /** Optional third-column slot inside the action card — used to render the
+   *  Positions list alongside the inputs and the balances column. */
+  positions?: React.ReactNode;
+  /** Counter bumped by callers (e.g. PositionsCard's Exercise link) to
    *  request the exercise box be opened. */
   openExerciseSignal?: number;
 }
@@ -67,7 +67,7 @@ export function TradePanel({
   selectedOption,
   onClose,
   tokenSelector,
-  holdings,
+  positions,
   openExerciseSignal,
 }: TradePanelProps) {
   const chainId = useChainId();
@@ -102,7 +102,7 @@ export function TradePanel({
   const [showApprovalsModal, setShowApprovalsModal] = useState(false);
   // Collapse exercise when the user picks a different option.
   useEffect(() => setShowExercise(false), [selectedOption.optionAddress]);
-  // Open exercise when the parent bumps the signal (e.g. HoldingsCard click).
+  // Open exercise when the parent bumps the signal (e.g. PositionsCard click).
   useEffect(() => {
     if (openExerciseSignal !== undefined && openExerciseSignal > 0) setShowExercise(true);
   }, [openExerciseSignal]);
@@ -340,7 +340,7 @@ export function TradePanel({
   return (
     <div className="w-full flex flex-wrap gap-3 items-stretch justify-center">
       {/* Action card */}
-      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-[28rem] flex gap-4">
+      <div className="rounded-xl border border-[#2F50FF]/40 bg-gradient-to-b from-[#2F50FF]/10 to-black/60 shadow-lg px-4 py-3 w-fit min-w-[28rem] flex gap-4">
         {/* Left side: descriptor + inputs + price + warnings */}
         <div className="flex-1 min-w-0 flex flex-col">
         <div className="mb-3 text-base font-semibold text-white tabular-nums leading-tight">
@@ -521,7 +521,7 @@ export function TradePanel({
         {txHash && <div className="mt-2 text-xs text-gray-400 font-mono break-all">tx {txHash}</div>}
         </div>
 
-        {/* Right side: token selector + spot, balances, holdings */}
+        {/* Middle column: token selector + spot, balances */}
         <div className="w-[12rem] shrink-0 flex flex-col gap-3 border-l border-gray-700/40 pl-4">
           <div className="flex flex-col items-start gap-1">
             {tokenSelector}
@@ -546,8 +546,14 @@ export function TradePanel({
               </ul>
             </div>
           )}
-          <div className="pt-2 border-t border-gray-700/40">{holdings}</div>
         </div>
+
+        {/* Right column: positions */}
+        {positions && (
+          <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-4">
+            {positions}
+          </div>
+        )}
       </div>
 
       {showExercise && (

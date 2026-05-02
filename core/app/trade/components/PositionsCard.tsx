@@ -29,12 +29,12 @@ function formatAmount(raw: bigint, decimals: number): string {
   return n.toPrecision(2);
 }
 
-interface HoldingsCardProps {
-  /** Render without the outer rounded-card chrome — used when HoldingsCard
-   *  is nested inside another card (e.g. as the footer of the balances
-   *  ApprovalsCard on /trade). Default: standalone with chrome. */
+interface PositionsCardProps {
+  /** Render without the outer rounded-card chrome — used when PositionsCard
+   *  is nested inside another card (e.g. as a column of the trade action
+   *  card). Default: standalone with chrome. */
   bare?: boolean;
-  /** When provided, each row becomes clickable and emits the holding back
+  /** When provided, each row becomes clickable and emits the position back
    *  to the parent — same selection flow as clicking Sell/Buy on the
    *  options grid. */
   onSelect?: (h: HeldOption) => void;
@@ -44,7 +44,7 @@ interface HoldingsCardProps {
   onExercise?: (h: HeldOption) => void;
 }
 
-export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCardProps = {}) {
+export function PositionsCard({ bare = false, onSelect, onExercise }: PositionsCardProps = {}) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
   const { tokensByAddress } = useTokenMap();
 
@@ -122,7 +122,7 @@ export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCar
 
   const body = (
     <>
-      <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Holdings</div>
+      <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Positions</div>
       {!hasWallet ? (
         <div className="text-xs text-gray-500 italic">Connect wallet to see your option positions.</div>
       ) : isLoading ? (
