@@ -13,7 +13,7 @@ import { TradePanel } from "./components/TradePanel";
 
 export default function TradePage() {
   // TokenGrid emits a symbol; OptionsGrid expects an address. Resolve via the token map.
-  const { allTokensMap } = useTokenMap();
+  const { allTokensMap, tokensByAddress } = useTokenMap();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const selectedTokenAddress = selectedSymbol ? allTokensMap[selectedSymbol]?.address ?? null : null;
 
@@ -54,9 +54,7 @@ export default function TradePage() {
   // direction: sell to close a long; buy to close a naked short.
   const handleSelectHolding = (h: HeldOption) => {
     const underlyingAddr = h.isPut ? h.consideration : h.collateral;
-    const symbol = Object.values(allTokensMap).find(
-      t => t.address.toLowerCase() === underlyingAddr.toLowerCase(),
-    )?.symbol;
+    const symbol = tokensByAddress[underlyingAddr.toLowerCase()]?.symbol;
     if (symbol) setSelectedSymbol(symbol);
     setSelectedOption({
       optionAddress: h.option,

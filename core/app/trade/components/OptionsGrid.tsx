@@ -87,11 +87,8 @@ export function OptionsGrid({ selectedToken, onSelectOption, selected }: Options
   // symbol via the chain's token map, then ask DeFiLlama. Independent of the
   // market-maker so the filter works on any chain whether or not the MM has
   // discovered options yet.
-  const { allTokensMap } = useTokenMap();
-  const selectedSymbol = useMemo(() => {
-    const lower = selectedToken.toLowerCase();
-    return Object.values(allTokensMap).find(t => t.address.toLowerCase() === lower)?.symbol;
-  }, [allTokensMap, selectedToken]);
+  const { tokensByAddress } = useTokenMap();
+  const selectedSymbol = tokensByAddress[selectedToken.toLowerCase()]?.symbol;
   const spotFromLlama = useTokenSpot(selectedSymbol);
 
   // Group options by strike and expiration

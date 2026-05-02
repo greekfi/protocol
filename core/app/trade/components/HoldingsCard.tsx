@@ -46,12 +46,9 @@ interface HoldingsCardProps {
 
 export function HoldingsCard({ bare = false, onSelect, onExercise }: HoldingsCardProps = {}) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
-  const { allTokensMap } = useTokenMap();
+  const { tokensByAddress } = useTokenMap();
 
-  const tokenFor = (addr: string) => {
-    const lc = addr.toLowerCase();
-    return Object.values(allTokensMap).find(t => t.address.toLowerCase() === lc);
-  };
+  const tokenFor = (addr: string) => tokensByAddress[addr.toLowerCase()];
 
   const renderRow = (h: HeldOption) => {
     const underlyingAddr = h.isPut ? h.consideration : h.collateral;
