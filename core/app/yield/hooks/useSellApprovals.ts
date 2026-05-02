@@ -176,12 +176,21 @@ export function useSellApprovals(option: TradableOption | null, amount: string):
   const { writeContract: approve, data: approvalHash, isPending: isApproving } = useWriteContract();
   const { isSuccess: approvalConfirmed } = useWaitForTransactionReceipt({ hash: approvalHash });
   useEffect(() => {
-    if (approvalConfirmed) {
+    if (!approvalConfirmed) return;
+    // Refetch immediately, then again after a short delay — the RPC node
+    // can lag a beat behind the receipt and return the pre-approval value
+    // on the first read.
+    refetchCollateralErc20();
+    refetchOption();
+    refetchUsdc();
+    const delay = chainId === 1 ? 10_000 : 1_000;
+    const t = setTimeout(() => {
       refetchCollateralErc20();
       refetchOption();
       refetchUsdc();
-    }
-  }, [approvalConfirmed, refetchCollateralErc20, refetchOption, refetchUsdc]);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [approvalConfirmed, chainId, refetchCollateralErc20, refetchOption, refetchUsdc]);
 
   const {
     writeContract: factoryApprove,
