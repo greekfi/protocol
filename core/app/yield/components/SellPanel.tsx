@@ -204,7 +204,7 @@ export function SellPanel({
         })()}
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-3">
         <button
           type="button"
           onClick={() => setShowExplain(s => !s)}
@@ -212,6 +212,23 @@ export function SellPanel({
         >
           {showExplain ? "hide explain" : "explain"}
         </button>
+        {onRequestApprovals && (
+          <button
+            type="button"
+            onClick={onRequestApprovals}
+            className="ml-auto text-xs text-gray-400 hover:text-white underline underline-offset-2"
+          >
+            approvals
+            {approvals.allSatisfied
+              ? " ✓"
+              : ` (${[
+                  approvals.needsAutoMint,
+                  approvals.needsCollateralApproval,
+                  approvals.needsOptionApproval,
+                  approvals.needsUsdcApproval,
+                ].filter(Boolean).length} needed)`}
+          </button>
+        )}
       </div>
 
       {showExplain && (

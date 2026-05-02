@@ -33,6 +33,10 @@ interface PositionsCardProps {
   /** Click a row → emit the position back so the parent can load it
    *  into the action panel. */
   onSelect?: (h: HeldOption) => void;
+  /** Render without the outer rounded-card chrome (used inside another card). */
+  bare?: boolean;
+  /** Return null entirely when there are no open writes. */
+  hideEmpty?: boolean;
 }
 
 /**
@@ -40,11 +44,12 @@ interface PositionsCardProps {
  * (positions where the user is short) and renders each as a 3-line card
  * with an inline buy-back row.
  */
-export function PositionsCard({ onSelect }: PositionsCardProps) {
+export function PositionsCard({ onSelect, bare = false, hideEmpty = false }: PositionsCardProps) {
   const { held, isLoading, hasWallet } = useAllHeldOptions();
   const { tokensByAddress } = useTokenMap();
 
   const shorts = held.filter(h => h.receiptBalance > 0n);
+  if (hideEmpty && shorts.length === 0) return null;
 
   const renderRow = (h: HeldOption) => {
     const underlyingAddr = h.isPut ? h.consideration : h.collateral;
@@ -83,8 +88,8 @@ export function PositionsCard({ onSelect }: PositionsCardProps) {
     );
   };
 
-  return (
-    <div className="rounded-xl border border-gray-800 bg-black/60 px-4 py-3 w-[18rem] text-left">
+  const body = (
+    <>
       <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
         Open positions
       </div>
@@ -97,6 +102,14 @@ export function PositionsCard({ onSelect }: PositionsCardProps) {
       ) : (
         <ul className="flex flex-col gap-1.5">{shorts.map(renderRow)}</ul>
       )}
+    </>
+  );
+
+  if (bare) return <>{body}</>;
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-black/60 px-4 py-3 w-[18rem] text-left">
+      {body}
     </div>
   );
 }

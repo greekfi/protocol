@@ -11,6 +11,7 @@ import { useSellApprovals } from "../hooks/useSellApprovals";
 import { ApprovalsList } from "../../components/ApprovalsList";
 import { BuyBackRow } from "../../components/options/BuyBackButton";
 import { Hint } from "../../components/Hint";
+import { useAllHeldOptions } from "../../trade/hooks/useAllHeldOptions";
 import { PositionsCard } from "./PositionsCard";
 import { StablecoinTabs } from "./StablecoinTabs";
 import { useReadOptionIsEuro } from "~~/generated";
@@ -121,6 +122,10 @@ export function YieldPanel({
   }, [gridOptions, mode]);
 
   const approvals = useSellApprovals(selected, amount);
+  // Tap the same hook PositionsCard uses so we can decide whether to render
+  // the Positions column (and its dividing wrapper) at all.
+  const { held: allHeld } = useAllHeldOptions();
+  const hasOpenPositions = allHeld.some(h => h.receiptBalance > 0n);
 
   // Option.balancesOf(user) returns (collateral, consideration, option, coll) in a single call.
   const { address: userAddress } = useAccount();
@@ -298,37 +303,14 @@ export function YieldPanel({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Trading Approvals column */}
-        <div className="w-[16rem] rounded-lg border border-[#FF8300]/40 bg-[#FF8300]/5 p-3 self-start">
-          <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-            <Hint
-              width="w-72"
-              tip={[
-                <span key="auto">
-                  <b className="text-gray-100">Auto Covered {mode === "calls" ? "Call" : "Put"}</b>
-                  {" "}— let the factory mint the option/receipt pair from your collateral atomically when Bebop fills your write.
-                </span>,
-                <span key="coll">
-                  <b className="text-gray-100">{mode === "calls" ? token.symbol : stable?.symbol ?? "USDC"}</b>
-                  {" "}— let the factory pull collateral on write.
-                </span>,
-                <span key="opt">
-                  <b className="text-gray-100">Option</b> — let Bebop pull the freshly-minted long on settlement.
-                </span>,
-                <span key="usdc">
-                  <b className="text-gray-100">USDC</b> — required only if you ever want to buy back to close.
-                </span>,
-              ]}
-            >
-              Trading Approvals
-            </Hint>
-          </div>
-          <ApprovalsList steps={approvalSteps} />
+          {/* THIRD COLUMN: Open positions, only when the user has any. */}
+          {hasOpenPositions && (
+            <div className="w-[14rem] shrink-0 border-l border-gray-700/40 pl-4">
+              <PositionsCard bare hideEmpty />
+            </div>
+          )}
         </div>
-
-        <PositionsCard />
       </div>
 
       {/* Strike grid sits below the panel — same vertical order as /trade. */}
