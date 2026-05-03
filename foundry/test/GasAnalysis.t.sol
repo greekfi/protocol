@@ -255,19 +255,6 @@ contract GasAnalysis is Test {
     }
 
     // ============================================
-    // OPTION GAS TESTS - ADMIN FUNCTIONS
-    // ============================================
-
-    function test_Gas_Option_Lock() public {
-        option.lock();
-    }
-
-    function test_Gas_Option_Unlock() public {
-        option.lock();
-        option.unlock();
-    }
-
-    // ============================================
     // REDEMPTION GAS TESTS - CORE FUNCTIONS
     // ============================================
 
@@ -386,25 +373,6 @@ contract GasAnalysis is Test {
 
     function test_Gas_Collateral_ConsiderationData() public view {
         redemption.considerationData();
-    }
-
-    // ============================================
-    // REDEMPTION GAS TESTS - ADMIN FUNCTIONS
-    // ============================================
-
-    function test_Gas_Collateral_Lock() public {
-        // Only owner (Option contract) can lock
-        vm.prank(address(option));
-        redemption.lock();
-    }
-
-    function test_Gas_Collateral_Unlock() public {
-        // Only owner (Option contract) can lock/unlock
-        vm.prank(address(option));
-        redemption.lock();
-
-        vm.prank(address(option));
-        redemption.unlock();
     }
 
     // ============================================

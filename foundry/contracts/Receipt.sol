@@ -56,7 +56,7 @@ interface IFactoryTransfer {
 contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @dev Storage layout — packed into 4 slots (was 5 + OZ Initializable's flag):
     ///      slot 0: strike (32)
-    ///      slot 1: collateral (20) + locked (1) + consDecimals (1) + collDecimals (1)
+    ///      slot 1: collateral (20) + consDecimals (1) + collDecimals (1)
     ///      slot 2: consideration (20)
     ///      slot 3: factory (20) + expirationDate (5) + exerciseDeadline (5) + isPut (1) + isEuro (1)
     /// @notice Strike price, 18-decimal fixed point, "consideration per collateral".
@@ -65,8 +65,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
 
     /// @notice Underlying collateral token (e.g. WETH). All collateral sits here.
     IERC20 public collateral;
-    /// @notice Owner-controlled emergency pause flag.
-    bool public locked;
     /// @notice Cached `consideration.decimals()` used in conversion math.
     uint8 public consDecimals;
     /// @notice Cached `collateral.decimals()` used in conversion math.
@@ -103,8 +101,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     error InvalidValue();
     /// @notice Thrown when a zero address is supplied where a real token/contract is required.
     error InvalidAddress();
-    /// @notice Thrown when the option has been paused by its owner.
-    error LockedContract();
     /// @notice Thrown if the transferred amount doesn't match what arrived — fee-on-transfer tokens are rejected.
     error FeeOnTransferNotSupported();
     /// @notice Thrown when this contract does not hold enough collateral for an exercise payout.
@@ -166,12 +162,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @dev Ensures `account` holds at least `amount` of this Receipt token.
     modifier sufficientBalance(address account, uint256 amount) {
         if (balanceOf(account) < amount) revert InsufficientBalance();
-        _;
-    }
-
-    /// @dev Blocks mutations while the owner has paused the option.
-    modifier notLocked() {
-        if (locked) revert LockedContract();
         _;
     }
 
@@ -252,7 +242,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         public
         onlyOwner
         notExpired
-        notLocked
         nonReentrant
         validAmount(amount)
         validAddress(account)
@@ -280,7 +269,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param amount  Amount of Receipt tokens to burn.
     function burn(address account, uint256 amount)
         public
-        notLocked
         onlyOwner
         nonReentrant
         sufficientBalance(account, amount)
@@ -308,7 +296,6 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     function exercise(address account, uint256 amount, address caller)
         public
         withinExerciseWindow
-        notLocked
         onlyOwner
         nonReentrant
         sufficientCollateral(amount)
@@ -331,13 +318,13 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
 
     /// @notice Redeem the caller's full Receipt balance after the exercise window closes.
     ///         Pro-rata over `(collateral, consideration)` held by this contract.
-    function redeem() public notLocked {
+    function redeem() public {
         redeem(msg.sender, balanceOf(msg.sender));
     }
 
     /// @notice Redeem `amount` of the caller's Receipt after the exercise window closes.
     /// @param amount Receipt tokens to burn.
-    function redeem(uint256 amount) public notLocked {
+    function redeem(uint256 amount) public {
         redeem(msg.sender, amount);
     }
 
@@ -345,7 +332,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     ///         used by keepers to sweep short-side holders).
     /// @param account The Receipt holder whose position is redeemed.
     /// @param amount  Amount of Receipt tokens to burn.
-    function redeem(address account, uint256 amount) public afterExerciseWindow notLocked nonReentrant {
+    function redeem(address account, uint256 amount) public afterExerciseWindow nonReentrant {
         _redeemProRata(account, amount);
     }
 
@@ -381,7 +368,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @dev    Useful for a short-side holder who wants their payout settled in quote currency
     ///         rather than a mix of collateral and consideration.
     /// @param amount Receipt tokens to burn.
-    function redeemConsideration(uint256 amount) public notLocked nonReentrant {
+    function redeemConsideration(uint256 amount) public nonReentrant {
         _redeemConsideration(msg.sender, amount);
     }
 
@@ -404,7 +391,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Redeem `holder`'s full Receipt balance after the exercise window closes.
     ///         No-op for zero-balance accounts. Useful for gas-sponsored cleanup.
     /// @param holder The short-side holder to sweep.
-    function sweep(address holder) public afterExerciseWindow notLocked nonReentrant {
+    function sweep(address holder) public afterExerciseWindow nonReentrant {
         uint256 amount = balanceOf(holder);
         if (amount == 0) return;
         _redeemProRata(holder, amount);
@@ -412,26 +399,13 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
 
     /// @notice Batch form of {sweep}.
     /// @param holders Array of short-side holders to sweep.
-    function sweep(address[] calldata holders) public afterExerciseWindow notLocked nonReentrant {
+    function sweep(address[] calldata holders) public afterExerciseWindow nonReentrant {
         for (uint256 i = 0; i < holders.length; i++) {
             address holder = holders[i];
             uint256 bal = balanceOf(holder);
             if (bal == 0) continue;
             _redeemProRata(holder, bal);
         }
-    }
-
-    // ============ ADMIN ============
-
-    /// @notice Emergency pause. Blocks all user-facing mutations on this contract and its Option.
-    /// @dev    Only callable by the owner (the paired Option, which gates its own `lock()` on Ownable).
-    function lock() public onlyOwner {
-        locked = true;
-    }
-
-    /// @notice Resume after a {lock}.
-    function unlock() public onlyOwner {
-        locked = false;
     }
 
     // ============ CONVERSIONS ============

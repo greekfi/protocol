@@ -74,11 +74,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param amount      Collateral units delivered (consideration paid is `toNeededConsideration(amount)`).
     event Exercise(address longOption, address caller, address holder, uint256 amount);
 
-    /// @notice Emitted when the owner pauses the contract.
-    event ContractLocked();
-    /// @notice Emitted when the owner unpauses the contract.
-    event ContractUnlocked();
-
     /// @notice Thrown when a call that requires a live option is made after expiration.
     error ContractExpired();
     /// @notice Thrown when an account does not hold enough `Option` tokens for the operation.
@@ -87,8 +82,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     error InvalidValue();
     /// @notice Thrown when a zero address is supplied where a contract is required.
     error InvalidAddress();
-    /// @notice Thrown when the option (or its paired receipt) has been locked by the owner.
-    error LockedContract();
     /// @notice Thrown when exercise is attempted after `exerciseDeadline`.
     error ExerciseWindowClosed();
     /// @notice Thrown when pre-expiry exercise is attempted on a European option.
@@ -98,12 +91,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Thrown when {init} is called on a clone that has already been initialised, or on
     ///         the template (whose `receipt` is set to a sentinel by the constructor).
     error AlreadyInitialized();
-
-    /// @dev Blocks mutations while the paired receipt is locked by the owner.
-    modifier notLocked() {
-        if (receipt.locked()) revert LockedContract();
-        _;
-    }
 
     /// @dev Blocks `mint_` once the option has expired — no new options past expiration.
     modifier notExpired() {
@@ -234,14 +221,14 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     // ============ MINT ============
 
     /// @notice Mint `amount` option tokens to the caller, collateralised 1:1 with the underlying.
-    function mint(uint256 amount) public notLocked {
+    function mint(uint256 amount) public {
         mint(msg.sender, amount);
     }
 
     /// @notice Mint `amount` option tokens to `account`. Collateral is pulled from `account`.
     /// @param account Recipient of both `Option` and `Receipt` tokens.
     /// @param amount  Collateral-denominated mint amount.
-    function mint(address account, uint256 amount) public notLocked nonReentrant {
+    function mint(address account, uint256 amount) public nonReentrant {
         mint_(account, amount);
     }
 
@@ -278,14 +265,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @inheritdoc ERC20
     /// @dev Overridden to run the auto-mint / auto-burn hook. Reverts post-expiry —
     ///      the long token stops circulating once expiration passes.
-    function transfer(address to, uint256 amount)
-        public
-        override
-        notPastDeadline
-        notLocked
-        nonReentrant
-        returns (bool)
-    {
+    function transfer(address to, uint256 amount) public override notPastDeadline nonReentrant returns (bool) {
         _settledTransfer(msg.sender, to, amount);
         return true;
     }
@@ -297,7 +277,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
         public
         override
         notPastDeadline
-        notLocked
         nonReentrant
         returns (bool)
     {
@@ -313,7 +292,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Exercise `amount` options as the caller: pay consideration, receive collateral.
     /// @dev    Allowed pre-expiry and within the post-expiry exercise window.
     /// @param amount Collateral units to receive. Consideration paid = `ceil(amount * strike)`.
-    function exercise(uint256 amount) public notLocked {
+    function exercise(uint256 amount) public {
         exercise(msg.sender, amount);
     }
 
@@ -329,7 +308,6 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     function exercise(address holder, uint256 amount)
         public
         canExercise
-        notLocked
         nonReentrant
         validAmount(amount)
         sufficientBalance(holder, amount)
@@ -349,12 +327,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     ///         abort the sweep.
     /// @param holders Option holders whose tokens will be burned.
     /// @param amounts Per-holder collateral units to exercise (must be same length as `holders`).
-    function exercise(address[] calldata holders, uint256[] calldata amounts)
-        external
-        canExercise
-        notLocked
-        nonReentrant
-    {
+    function exercise(address[] calldata holders, uint256[] calldata amounts) external canExercise nonReentrant {
         uint256 n = holders.length;
         if (n != amounts.length) revert InvalidValue();
         Receipt r = receipt;
@@ -378,7 +351,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     ///         depend on the window because both long and short are burned in equal amount).
     ///         Caller must hold both sides in equal amount.
     /// @param amount Collateral-denominated amount to burn from each side.
-    function burn(uint256 amount) public notLocked nonReentrant {
+    function burn(uint256 amount) public nonReentrant {
         burn_(msg.sender, amount);
     }
 
@@ -425,22 +398,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
         });
     }
 
-    // ============ ADMIN ============
-
-    /// @notice Emergency pause — blocks all state-changing paths on this option and its pair.
-    /// @dev    Only callable by the option's owner (the account that called `createOption`).
-    function lock() public onlyOwner {
-        receipt.lock();
-        emit ContractLocked();
-    }
-
-    /// @notice Resume a previously locked option.
-    function unlock() public onlyOwner {
-        receipt.unlock();
-        emit ContractUnlocked();
-    }
-
-    /// @notice Ownership renouncement is permanently disabled — an unowned option has no recovery path.
+    /// @notice Ownership renouncement is permanently disabled — preserved for forward-compatibility
+    ///         in case future versions reintroduce owner-gated paths.
     function renounceOwnership() public pure override {
         revert InvalidAddress();
     }

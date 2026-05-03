@@ -271,21 +271,6 @@ contract OptionTest is Test {
         assertEq(shakyToken.balanceOf(address(this)) - collBefore, redBalance);
     }
 
-    function test_LockAndTransfer() public {
-        option.mint(1);
-        option.lock();
-        vm.expectRevert(Option.LockedContract.selector);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        IERC20(address(option)).transfer(address(0x123), 1);
-    }
-
-    function test_UnlockAndTransfer() public {
-        option.mint(1);
-        option.lock();
-        option.unlock();
-        safeTransfer(address(option), address(0x123), 1);
-    }
-
     function test_BalancesOf() public {
         option.mint(1);
         Balances memory balances = option.balancesOf(address(this));
@@ -489,20 +474,6 @@ contract OptionTest is Test {
 
         vm.expectRevert(Rct.InsufficientConsideration.selector);
         option.exercise(100);
-    }
-
-    function test_LockPreventsTransferFrom() public {
-        option.mint(10);
-        safeTransfer(address(option), address(0x123), 5);
-
-        vm.prank(address(0x123));
-        approve1(address(option));
-
-        option.lock();
-
-        vm.expectRevert(Option.LockedContract.selector);
-        // forge-lint: disable-next-line(erc20-unchecked-transfer)
-        IERC20(address(option)).transferFrom(address(0x123), address(this), 3);
     }
 
     function test_FullLifecycle1() public {
@@ -885,21 +856,6 @@ contract OptionTest is Test {
         assertEq(red.toCollateral(10000e18), 5e18);
     }
 
-    // ============ ACCESS CONTROL TESTS ============
-
-    function test_NonOwnerCannotLock() public {
-        vm.prank(address(0x123));
-        vm.expectRevert();
-        option.lock();
-    }
-
-    function test_NonOwnerCannotUnlock() public {
-        option.lock();
-        vm.prank(address(0x123));
-        vm.expectRevert();
-        option.unlock();
-    }
-
     // ============ FACTORY ALLOWANCE TESTS ============
 
     function test_FactoryAllowanceDecrement() public {
@@ -976,12 +932,6 @@ contract OptionTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Option.Exercise(address(option), address(this), address(this), 1);
         option.exercise(1);
-    }
-
-    function test_LockEmitsEvent() public {
-        vm.expectEmit(false, false, false, false);
-        emit Option.ContractLocked();
-        option.lock();
     }
 
     // ============ BATCH OPERATIONS ============
@@ -1154,38 +1104,6 @@ contract OptionTest is Test {
             address(option),
             factoryAddr
         );
-    }
-
-    function test_LockPreventsExercise() public {
-        option.mint(1e18);
-        option.lock();
-
-        vm.expectRevert(Option.LockedContract.selector);
-        option.exercise(1);
-    }
-
-    function test_LockPreventsMint() public {
-        option.lock();
-
-        vm.expectRevert(Option.LockedContract.selector);
-        option.mint(1);
-    }
-
-    function test_LockPreventsRedeem() public {
-        option.mint(1e18);
-        option.lock();
-
-        vm.expectRevert(Option.LockedContract.selector);
-        option.burn(1);
-    }
-
-    function test_LockPreventsCollateralRedeem() public {
-        option.mint(1e18);
-        option.lock();
-        vm.warp(block.timestamp + 2 days);
-
-        vm.expectRevert(Rct.LockedContract.selector);
-        redemption.redeem(1);
     }
 
     function test_BatchSweepMultipleUsers() public {

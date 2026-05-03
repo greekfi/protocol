@@ -22,8 +22,6 @@ interface IReceipt {
     error InvalidValue();
     /// @notice Zero address supplied where a contract is required.
     error InvalidAddress();
-    /// @notice Option has been paused by its owner.
-    error LockedContract();
     /// @notice Fee-on-transfer token detected (transfer debit ≠ transfer credit).
     error FeeOnTransferNotSupported();
     /// @notice Contract holds less collateral than `amount`.
@@ -53,8 +51,6 @@ interface IReceipt {
     function isPut() external view returns (bool);
     /// @notice `true` if European-style (exercise only allowed in the post-expiry window).
     function isEuro() external view returns (bool);
-    /// @notice Owner-controlled emergency pause flag.
-    function locked() external view returns (bool);
     /// @notice Cached `consideration.decimals()`.
     function consDecimals() external view returns (uint8);
     /// @notice Cached `collateral.decimals()`.
@@ -112,8 +108,4 @@ interface IReceipt {
     function sweep(address holder) external;
     /// @notice Batch sweep.
     function sweep(address[] calldata holders) external;
-    /// @notice Emergency pause (owner-only).
-    function lock() external;
-    /// @notice Reverse of {lock}.
-    function unlock() external;
 }

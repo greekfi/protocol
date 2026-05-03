@@ -57,10 +57,6 @@ interface IOption {
     event Mint(address longOption, address holder, uint256 amount);
     /// @notice Emitted on any {IOption.exercise} overload.
     event Exercise(address longOption, address holder, uint256 amount);
-    /// @notice Emitted on {IOption.lock}.
-    event ContractLocked();
-    /// @notice Emitted on {IOption.unlock}.
-    event ContractUnlocked();
 
     /// @notice Call that requires a live option was made after expiration.
     error ContractExpired();
@@ -70,8 +66,6 @@ interface IOption {
     error InvalidValue();
     /// @notice Zero address supplied where a contract is required.
     error InvalidAddress();
-    /// @notice Option has been paused by its owner.
-    error LockedContract();
     /// @notice Exercise was attempted after `exerciseDeadline`.
     error ExerciseWindowClosed();
     /// @notice Pre-expiry exercise was attempted on a European option.
@@ -128,8 +122,4 @@ interface IOption {
     function exercise(address[] calldata holders, uint256[] calldata amounts) external;
     /// @notice Burn matched Option + Receipt pair; return collateral. Allowed pre-deadline only.
     function burn(uint256 amount) external;
-    /// @notice Emergency pause (owner-only).
-    function lock() external;
-    /// @notice Reverse of {lock}.
-    function unlock() external;
 }

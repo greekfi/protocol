@@ -286,7 +286,7 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     // ============ BLOCKLIST ============
 
     /// @notice Block `token` from being used as collateral or consideration for new options.
-    /// @dev    Owner-only. Does not retroactively affect existing options — use {Option.lock} for that.
+    /// @dev    Owner-only. Does not retroactively affect existing options.
     function blockToken(address token) external onlyOwner nonReentrant {
         if (token == address(0)) revert InvalidAddress();
         blocklist[token] = true;
