@@ -229,6 +229,12 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         _transferOwnership(option_);
     }
 
+    /// @notice Ownership renouncement is permanently disabled — the owner is the paired Option
+    ///         contract, and renouncing would brick `mint` / `burn` / `exercise` (all `onlyOwner`).
+    function renounceOwnership() public pure override {
+        revert InvalidAddress();
+    }
+
     // ============ MINT ============
 
     /// @notice Mint `amount` Receipt tokens to `account`, pulling the matching amount of
@@ -251,7 +257,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         uint256 balanceBefore = collateral.balanceOf(address(this));
         // forge-lint: disable-next-line(unsafe-typecast)
         factory.transferFrom(account, address(this), uint160(amount), address(collateral));
-        if (collateral.balanceOf(address(this)) - balanceBefore != amount) {
+        if (collateral.balanceOf(address(this)) - balanceBefore < amount) {
             revert FeeOnTransferNotSupported();
         }
 
@@ -261,10 +267,11 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     // ============ PAIR BURN (called by Option, valid the entire lifetime) ============
 
     /// @notice Burn matched Option + Receipt pair, return collateral. Only callable by Option.
-    /// @dev    Available the entire option lifetime — pair redemption doesn't depend on the
-    ///         exercise window because both long and short are burned in equal amount.
-    ///         Falls back to a consideration payout if the contract is under-collateralized at
-    ///         the collateral layer (defense-in-depth).
+    /// @dev    Available pre-`exerciseDeadline` only. Once the window closes, all short-side
+    ///         exits must go through `_redeemProRata` so collateral and consideration are split
+    ///         fairly across remaining receipts. Pair burn is unrestricted within the window
+    ///         since both long and short are burned in equal amount and the 1:1 invariant
+    ///         guarantees the contract holds enough collateral.
     /// @param account Recipient of the collateral.
     /// @param amount  Amount of Receipt tokens to burn.
     function burn(address account, uint256 amount)
