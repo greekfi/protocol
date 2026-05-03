@@ -357,7 +357,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         validAmount(amount)
     {
         uint256 ts = totalSupply();
-        uint256 collateralBalance = collateral.balanceOf(address(this));
+        // Cap balance at totalSupply so donations / positive rebases can't push
+        // collateralToSend above amount and underflow the consideration top-up.
+        uint256 collateralBalance = Math.min(collateral.balanceOf(address(this)), ts);
         uint256 collateralToSend = Math.mulDiv(amount, collateralBalance, ts);
         uint256 remainder = amount - collateralToSend;
 
