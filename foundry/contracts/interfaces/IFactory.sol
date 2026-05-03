@@ -66,8 +66,12 @@ interface IFactory {
     function DEFAULT_EXERCISE_WINDOW() external view returns (uint40);
     /// @notice `true` if `token` is blocklisted for new option creation.
     function blocklist(address token) external view returns (bool);
-    /// @notice `true` if `opt` is an Option produced by this factory.
-    function options(address opt) external view returns (bool);
+    /// @notice `true` if `rec` is a Receipt produced by this factory. Validate an Option `opt` by
+    ///         checking `receipts(opt.receipt()) && IReceipt(opt.receipt()).option() == opt`.
+    function receipts(address rec) external view returns (bool);
+    /// @notice Cached `decimals()` per token, set lazily on the first {createOption} touching it
+    ///         or eagerly via {cacheDecimals}. `0` means "not yet cached".
+    function tokenDecimals(address token) external view returns (uint8);
     /// @notice Factory-level allowance: how much of `token` the factory may pull from `owner`.
     function allowance(address token, address owner) external view returns (uint256);
     /// @notice Alias for {blocklist}.
@@ -97,4 +101,8 @@ interface IFactory {
     function enableAutoMintBurn(bool enabled) external;
     /// @notice Grant / revoke blanket operator authority over the caller's options.
     function approveOperator(address operator, bool approved) external;
+    /// @notice Cache `token.decimals()` so future {createOption} calls skip the external CALL.
+    function cacheDecimals(address token) external;
+    /// @notice Batch form of {cacheDecimals}.
+    function cacheDecimals(address[] calldata tokens) external;
 }

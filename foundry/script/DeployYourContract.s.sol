@@ -17,6 +17,6 @@ contract DeployYourContract is ScaffoldETHDeploy {
         Rct receiptTpl = new Rct("Rct", "RCT");
         Option optionTpl = new Option("Option", "OPT");
 
-        new Factory(address(receiptTpl), address(optionTpl));
+        new Factory();
     }
 }

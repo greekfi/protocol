@@ -68,7 +68,8 @@ interface IReceipt {
         bool isEuro_,
         uint40 windowSeconds_,
         address option_,
-        address factory_
+        uint8 collDecimals_,
+        uint8 consDecimals_
     ) external;
 
     /// @notice ERC20 name (rendered `RCT[E]-coll-cons-strike-YYYY-MM-DD`).

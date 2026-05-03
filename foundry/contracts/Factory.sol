@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
@@ -63,13 +64,17 @@ contract Factory is Ownable, ReentrancyGuardTransient {
 
     /// @notice `true` if the address is a Receipt clone this factory created. Doubles as the auth
     ///         gate for {transferFrom} — only registered Receipts can pull from factory allowances.
+    ///         Validate an Option by reading its `receipt()` and confirming
+    ///         `factory.receipts(rec) && Receipt(rec).option() == opt`.
     mapping(address => bool) public receipts;
-
-    /// @notice `true` if the address is an Option clone this factory created.
-    mapping(address => bool) public options;
 
     /// @notice Tokens rejected for new option creation. Does not affect already-created options.
     mapping(address => bool) public blocklist;
+
+    /// @notice Cached `decimals()` per token, populated by {cacheDecimals}. Saves the per-call
+    ///         external CALL during {createOption}. `0` means "not cached yet"; a token whose
+    ///         real decimals are 0 will simply re-fetch every time (no-cost correctness fallback).
+    mapping(address => uint8) public tokenDecimals;
 
     /// @dev Per-token allowance table: `_allowances[token][owner] -> amount`.
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -115,14 +120,14 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     event AutoMintBurnUpdated(address indexed account, bool enabled);
     /// @notice Emitted on {approve} (factory-level allowance set by token owner).
     event Approval(address indexed token, address indexed owner, uint256 amount);
+    /// @notice Emitted the first time a token's `decimals()` is read into the cache.
+    event DecimalsCached(address indexed token, uint8 decimals);
 
-    /// @notice Bind the factory to its immutable templates.
-    /// @param receiptClone_ Deployed Receipt template.
-    /// @param optionClone_  Deployed Option template.
-    constructor(address receiptClone_, address optionClone_) Ownable(msg.sender) {
-        if (receiptClone_ == address(0) || optionClone_ == address(0)) revert InvalidAddress();
-        RECEIPT_CLONE = receiptClone_;
-        OPTION_CLONE = optionClone_;
+    /// @notice Deploys the Option and Receipt templates internally so they record this factory
+    ///         as their immutable `factory` (used to gate `init` and skip per-clone storage).
+    constructor() Ownable(msg.sender) {
+        RECEIPT_CLONE = address(new Receipt("RCT", "RCT"));
+        OPTION_CLONE = address(new Option("OPT", "OPT"));
     }
 
     // ============ OPTION CREATION ============
@@ -143,6 +148,8 @@ contract Factory is Ownable, ReentrancyGuardTransient {
         if (p.collateral == p.consideration) revert InvalidTokens();
 
         uint40 windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
+        uint8 collDec = _decimals(p.collateral);
+        uint8 consDec = _decimals(p.consideration);
 
         address receipt_ = Clones.clone(RECEIPT_CLONE);
         address option_ = Clones.clone(OPTION_CLONE);
@@ -157,12 +164,12 @@ contract Factory is Ownable, ReentrancyGuardTransient {
                 p.isEuro,
                 windowSeconds,
                 option_,
-                address(this)
+                collDec,
+                consDec
             );
-        Option(option_).init(receipt_, msg.sender);
+        Option(option_).init(receipt_);
 
         receipts[receipt_] = true;
-        options[option_] = true;
 
         emit OptionCreated(
             p.collateral,
@@ -303,5 +310,36 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     /// @notice Is `token` on the blocklist?
     function isBlocked(address token) external view returns (bool) {
         return blocklist[token];
+    }
+
+    // ============ DECIMALS CACHE ============
+
+    /// @notice Cache `token`'s `decimals()` so future {createOption} calls skip the external CALL.
+    /// @dev    Permissionless. Idempotent for non-zero-decimal tokens. Reverts if the token
+    ///         doesn't implement {IERC20Metadata.decimals}.
+    /// @param token ERC20 token whose decimals should be cached.
+    function cacheDecimals(address token) public {
+        if (tokenDecimals[token] != 0) return;
+        uint8 d = IERC20Metadata(token).decimals();
+        tokenDecimals[token] = d;
+        emit DecimalsCached(token, d);
+    }
+
+    /// @notice Batch form of {cacheDecimals}.
+    /// @param tokens List of tokens to cache (already-cached entries are no-ops).
+    function cacheDecimals(address[] calldata tokens) external {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            cacheDecimals(tokens[i]);
+        }
+    }
+
+    /// @dev Returns cached decimals for `token`, populating the cache on first miss.
+    function _decimals(address token) internal returns (uint8) {
+        uint8 d = tokenDecimals[token];
+        if (d != 0) return d;
+        d = IERC20Metadata(token).decimals();
+        tokenDecimals[token] = d;
+        emit DecimalsCached(token, d);
+        return d;
     }
 }

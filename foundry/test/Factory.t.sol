@@ -19,7 +19,7 @@ contract FactoryTest is Test {
     function setUp() public {
         Rct collTpl = new Rct("C", "C");
         Option optionTpl = new Option("O", "O");
-        factory = new Factory(address(collTpl), address(optionTpl));
+        factory = new Factory();
         coll = new MockERC20("Coll", "COLL", 18);
         cons = new MockERC20("Cons", "CONS", 18);
         EXP = uint40(block.timestamp + 7 days);
@@ -42,7 +42,7 @@ contract FactoryTest is Test {
     function test_Create_DefaultsTo8hWindow() public {
         CreateParams memory p = _basicParams();
         address opt = factory.createOption(p);
-        assertTrue(factory.options(opt));
+        assertTrue(factory.receipts(address(Option(opt).receipt())));
         Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
     }
@@ -99,26 +99,9 @@ contract FactoryTest is Test {
                 windowSeconds: 0
             })
         );
-        assertTrue(factory.options(opt));
+        assertTrue(factory.receipts(address(Option(opt).receipt())));
         Rct c = Rct(Option(opt).receipt());
         assertEq(uint256(c.exerciseDeadline()), uint256(EXP) + 8 hours);
-    }
-
-    // ======== Template validation ========
-
-    function test_TemplateValidation_BothZeroReverts() public {
-        vm.expectRevert(Factory.InvalidAddress.selector);
-        new Factory(address(0), address(0));
-    }
-
-    function test_TemplateValidation_RedemptionZeroReverts() public {
-        vm.expectRevert(Factory.InvalidAddress.selector);
-        new Factory(address(0), address(0x1));
-    }
-
-    function test_TemplateValidation_OptionZeroReverts() public {
-        vm.expectRevert(Factory.InvalidAddress.selector);
-        new Factory(address(0x1), address(0));
     }
 
     // ======== Blocklist ========

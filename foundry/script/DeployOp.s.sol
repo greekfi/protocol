@@ -21,7 +21,7 @@ contract DeployOp is Script, ScaffoldETHDeploy {
         Rct receiptTpl = new Rct("Rct", "RCT");
         Option optionTpl = new Option("Option", "OPT");
 
-        Factory factory = new Factory(address(receiptTpl), address(optionTpl));
+        Factory factory = new Factory();
         console.log("Factory deployed at:", address(factory));
 
         YieldVault shakyVault =

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -53,12 +52,13 @@ interface IFactoryTransfer {
  *         `init()` is used instead of a constructor. Owner of each clone is its paired
  *         {Option} contract — only Option can drive mint / exercise / pair-redeem.
  */
-contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
-    /// @dev Storage layout — packed into 4 slots (was 5 + OZ Initializable's flag):
+contract Receipt is ERC20, ReentrancyGuardTransient {
+    /// @dev Storage layout — packed into 4 slots (factory is now `immutable`, lives in code):
     ///      slot 0: strike (32)
     ///      slot 1: collateral (20) + consDecimals (1) + collDecimals (1)
     ///      slot 2: consideration (20)
-    ///      slot 3: factory (20) + expirationDate (5) + exerciseDeadline (5) + isPut (1) + isEuro (1)
+    ///      slot 3: expirationDate (5) + exerciseDeadline (5) + isPut (1) + isEuro (1)
+    ///      slot 4: option (20) — also the init sentinel
     /// @notice Strike price, 18-decimal fixed point, "consideration per collateral".
     /// @dev For puts this is the *inverted* human strike (see {Option} `name()` for display).
     uint256 public strike;
@@ -74,8 +74,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     IERC20 public consideration;
 
     /// @notice Factory that created this option, used to pull tokens through its Permit2-style
-    ///         allowance registry. Doubles as the init guard — non-zero means initialised.
-    IFactoryTransfer public factory;
+    ///         allowance registry. Set in the template constructor (= the factory that deployed
+    ///         it) and inherited by every clone via the template's runtime bytecode.
+    IFactoryTransfer public immutable factory;
 
     /// @notice Unix timestamp at which the option expires.
     uint40 public expirationDate;
@@ -88,9 +89,16 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     ///         post-expiry window. `false` for American-style: exercise allowed pre-expiry too.
     bool public isEuro;
 
+    /// @notice The paired {Option} contract. Only this address can call mint / burn / exercise.
+    ///         Doubles as the init guard — set to a non-zero sentinel in the template constructor
+    ///         so the template itself fails {init}, and to the real Option address in clone init.
+    address public option;
+
     /// @notice Decimal basis of the strike — fixed at 18 and independent of token decimals.
     uint8 public constant STRIKE_DECIMALS = 18;
 
+    /// @notice Thrown when a privileged path is called by anyone other than the paired {Option}.
+    error UnauthorizedCaller();
     /// @notice Thrown when a pre-expiry-only path (mint) runs after expiration.
     error ContractNotExpired();
     /// @notice Thrown when a post-expiry-only path runs before expiration.
@@ -125,6 +133,12 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param holder Recipient of the payout.
     /// @param amount Token units sent.
     event Redeemed(address option, address token, address holder, uint256 amount);
+
+    /// @dev Restricts a privileged call to the paired {Option} contract only.
+    modifier onlyOption() {
+        if (msg.sender != option) revert UnauthorizedCaller();
+        _;
+    }
 
     /// @dev Blocks calls that must happen while the option is still live (e.g. mint).
     modifier notExpired() {
@@ -181,8 +195,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Template constructor. Never called for user-facing instances; each clone goes
     ///         through {init} instead. Sets `factory` to a non-zero sentinel so the template
     ///         itself fails the {init} guard.
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable(msg.sender) {
-        factory = IFactoryTransfer(address(0xdead));
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+        factory = IFactoryTransfer(msg.sender);
+        option = address(0xdead);
     }
 
     /// @notice Initialises a freshly-cloned Receipt. Called exactly once by the factory.
@@ -194,8 +209,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param isEuro_        True for European (exercise only post-expiry within the window), false
     ///                       for American (exercise any time before `exerciseDeadline`).
     /// @param windowSeconds_ Length of the post-expiry exercise window in seconds.
-    /// @param option_        Paired {Option} contract — becomes this Receipt's owner.
-    /// @param factory_       {Factory} used as the centralised allowance / transfer authority.
+    /// @param option_        Paired {Option} contract — only this address can call mint/burn/exercise.
+    /// @param collDecimals_  Cached `decimals()` of the collateral token (passed by Factory's cache).
+    /// @param consDecimals_  Cached `decimals()` of the consideration token.
     function init(
         address collateral_,
         address consideration_,
@@ -205,12 +221,13 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         bool isEuro_,
         uint40 windowSeconds_,
         address option_,
-        address factory_
+        uint8 collDecimals_,
+        uint8 consDecimals_
     ) public {
-        if (address(factory) != address(0)) revert AlreadyInitialized();
+        if (option != address(0)) revert AlreadyInitialized();
+        if (msg.sender != address(factory)) revert UnauthorizedCaller();
         if (collateral_ == address(0)) revert InvalidAddress();
         if (consideration_ == address(0)) revert InvalidAddress();
-        if (factory_ == address(0)) revert InvalidAddress();
         if (option_ == address(0)) revert InvalidAddress();
         if (strike_ == 0) revert InvalidValue();
         if (expirationDate_ < block.timestamp) revert InvalidValue();
@@ -223,16 +240,9 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         strike = strike_;
         isPut = isPut_;
         isEuro = isEuro_;
-        factory = IFactoryTransfer(factory_);
-        consDecimals = IERC20Metadata(consideration_).decimals();
-        collDecimals = IERC20Metadata(collateral_).decimals();
-        _transferOwnership(option_);
-    }
-
-    /// @notice Ownership renouncement is permanently disabled — the owner is the paired Option
-    ///         contract, and renouncing would brick `mint` / `burn` / `exercise` (all `onlyOwner`).
-    function renounceOwnership() public pure override {
-        revert InvalidAddress();
+        consDecimals = consDecimals_;
+        collDecimals = collDecimals_;
+        option = option_;
     }
 
     // ============ MINT ============
@@ -246,7 +256,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param amount  Collateral-denominated amount (same decimals as the collateral token).
     function mint(address account, uint256 amount)
         public
-        onlyOwner
+        onlyOption
         notExpired
         nonReentrant
         validAmount(amount)
@@ -276,7 +286,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     /// @param amount  Amount of Receipt tokens to burn.
     function burn(address account, uint256 amount)
         public
-        onlyOwner
+        onlyOption
         nonReentrant
         sufficientBalance(account, amount)
         validAmount(amount)
@@ -287,7 +297,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         // enough collateral is on hand.
         _burn(account, amount);
         collateral.safeTransfer(account, amount);
-        emit Redeemed(address(owner()), address(collateral), account, amount);
+        emit Redeemed(option, address(collateral), account, amount);
     }
 
     // ============ EXERCISE ============
@@ -303,7 +313,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
     function exercise(address account, uint256 amount, address caller)
         public
         withinExerciseWindow
-        onlyOwner
+        onlyOption
         nonReentrant
         sufficientCollateral(amount)
         validAmount(amount)
@@ -366,7 +376,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
             uint256 consToSend = toConsideration(remainder);
             if (consToSend > 0) consideration.safeTransfer(account, consToSend);
         }
-        emit Redeemed(address(owner()), address(collateral), account, collateralToSend);
+        emit Redeemed(option, address(collateral), account, collateralToSend);
     }
 
     // ============ REDEEM CONSIDERATION ============
@@ -390,7 +400,7 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         uint256 consAmount = toConsideration(collAmount);
         if (consAmount == 0) revert InvalidValue();
         consideration.safeTransfer(account, consAmount);
-        emit Redeemed(address(owner()), address(consideration), account, consAmount);
+        emit Redeemed(option, address(consideration), account, consAmount);
     }
 
     // ============ SWEEPS ============
@@ -485,10 +495,5 @@ contract Receipt is ERC20, Ownable, ReentrancyGuardTransient {
         IERC20Metadata m = IERC20Metadata(address(consideration));
         return
             TokenData({ address_: address(consideration), name: m.name(), symbol: m.symbol(), decimals: m.decimals() });
-    }
-
-    /// @notice Paired Option contract (also this Receipt's owner).
-    function option() public view returns (address) {
-        return owner();
     }
 }

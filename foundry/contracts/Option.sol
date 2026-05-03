@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -56,10 +55,14 @@ interface IFactory {
  * @dev    Deployed once as a template; the factory produces per-option instances via
  *         EIP-1167 minimal proxy clones. `init()` is used instead of a constructor.
  */
-contract Option is ERC20, Ownable, ReentrancyGuardTransient {
+contract Option is ERC20, ReentrancyGuardTransient {
     /// @notice Paired short-side ERC20 (collateral receipt) that holds the collateral and handles
     ///         settlement math. Doubles as the {init} guard — non-zero means initialised.
     Receipt public receipt;
+
+    /// @notice Factory that created this option. Set in the template constructor (= the factory
+    ///         that deployed it) and inherited by every clone via the template's runtime bytecode.
+    IFactory public immutable FACTORY;
 
     /// @notice Emitted when new options are minted against fresh collateral.
     /// @param longOption  The Option contract (always `address(this)`).
@@ -91,6 +94,8 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     /// @notice Thrown when {init} is called on a clone that has already been initialised, or on
     ///         the template (whose `receipt` is set to a sentinel by the constructor).
     error AlreadyInitialized();
+    /// @notice Thrown when {init} is called by anyone other than the factory.
+    error UnauthorizedCaller();
 
     /// @dev Blocks `mint_` once the option has expired — no new options past expiration.
     modifier notExpired() {
@@ -130,26 +135,25 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     ///         itself fails the {init} guard.
     /// @param name_   Placeholder name (overridden by the computed `name()` view).
     /// @param symbol_ Placeholder symbol (overridden by the computed `symbol()` view).
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable(msg.sender) {
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
+        FACTORY = IFactory(msg.sender);
         receipt = Receipt(address(0xdead));
     }
 
     /// @notice Initialises a freshly-cloned Option. Called exactly once by the factory.
     /// @param receipt_ Address of the paired {Receipt} contract — immutable for this option.
-    /// @param owner_   Admin of this option (receives `Ownable` rights; typically the user who
-    ///                 called `factory.createOption`).
-    function init(address receipt_, address owner_) public {
+    function init(address receipt_) public {
         if (address(receipt) != address(0)) revert AlreadyInitialized();
-        if (receipt_ == address(0) || owner_ == address(0)) revert InvalidAddress();
+        if (msg.sender != address(FACTORY)) revert UnauthorizedCaller();
+        if (receipt_ == address(0)) revert InvalidAddress();
         receipt = Receipt(receipt_);
-        _transferOwnership(owner_);
     }
 
     // ============ VIEWS ============
 
     /// @notice Address of the {Factory} that created this option. Read from the paired Receipt.
     function factory() public view returns (address) {
-        return address(receipt.factory());
+        return address(FACTORY);
     }
 
     /// @notice Underlying collateral token (e.g. WETH for a WETH/USDC call).
@@ -248,13 +252,13 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
     function _settledTransfer(address from, address to, uint256 value) internal {
         uint256 balance = balanceOf(from);
         if (balance < value) {
-            if (!IFactory(factory()).autoMintBurn(from)) revert InsufficientBalance();
+            if (!FACTORY.autoMintBurn(from)) revert InsufficientBalance();
             mint_(from, value - balance);
         }
 
         _transfer(from, to, value);
 
-        if (IFactory(factory()).autoMintBurn(to)) {
+        if (FACTORY.autoMintBurn(to)) {
             uint256 receiptBal = receipt.balanceOf(to);
             if (receiptBal > 0) {
                 burn_(to, Math.min(receiptBal, value));
@@ -280,7 +284,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
         nonReentrant
         returns (bool)
     {
-        if (msg.sender != from && !IFactory(factory()).approvedOperator(from, msg.sender)) {
+        if (msg.sender != from && !FACTORY.approvedOperator(from, msg.sender)) {
             _spendAllowance(from, msg.sender, amount);
         }
         _settledTransfer(from, to, amount);
@@ -312,7 +316,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
         validAmount(amount)
         sufficientBalance(holder, amount)
     {
-        if (msg.sender != holder && !IFactory(factory()).exerciseAllowed(holder, msg.sender)) {
+        if (msg.sender != holder && !FACTORY.exerciseAllowed(holder, msg.sender)) {
             revert ExerciseNotAllowed();
         }
         _burn(holder, amount);
@@ -331,7 +335,7 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
         uint256 n = holders.length;
         if (n != amounts.length) revert InvalidValue();
         Receipt r = receipt;
-        IFactory f = IFactory(factory());
+        IFactory f = FACTORY;
         for (uint256 i = 0; i < n; i++) {
             address h = holders[i];
             uint256 a = amounts[i];
@@ -396,11 +400,5 @@ contract Option is ERC20, Ownable, ReentrancyGuardTransient {
             isEuro: isEuro(),
             exerciseDeadline: exerciseDeadline()
         });
-    }
-
-    /// @notice Ownership renouncement is permanently disabled — preserved for forward-compatibility
-    ///         in case future versions reintroduce owner-gated paths.
-    function renounceOwnership() public pure override {
-        revert InvalidAddress();
     }
 }

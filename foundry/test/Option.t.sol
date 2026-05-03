@@ -51,7 +51,7 @@ contract OptionTest is Test {
         optionClone = new Option("Long Option", "LONG");
 
         // Deploy Factory
-        factory = new Factory(address(redemptionClone), address(optionClone));
+        factory = new Factory();
         factoryAddr = address(factory);
 
         CreateParams[] memory options = new CreateParams[](1);
@@ -971,7 +971,7 @@ contract OptionTest is Test {
 
         for (uint256 i = 0; i < 3; i++) {
             assertTrue(addrs[i] != address(0));
-            assertTrue(factory.options(addrs[i]));
+            assertTrue(factory.receipts(address(Option(addrs[i]).receipt())));
         }
     }
 
@@ -1087,7 +1087,7 @@ contract OptionTest is Test {
     function test_ReinitCloneReverts() public {
         // Cloned option is already initialized — calling init again should revert
         vm.expectRevert();
-        option.init(address(redemption), address(this));
+        option.init(address(redemption));
     }
 
     function test_ReinitCollateralCloneReverts() public {
@@ -1102,7 +1102,8 @@ contract OptionTest is Test {
             false,
             uint40(8 hours),
             address(option),
-            factoryAddr
+            18,
+            18
         );
     }
 

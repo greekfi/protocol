@@ -29,7 +29,7 @@ contract ExerciseWindowTest is Test {
     function setUp() public {
         Rct collTpl = new Rct("C", "C");
         Option optTpl = new Option("O", "O");
-        factory = new Factory(address(collTpl), address(optTpl));
+        factory = new Factory();
 
         coll = new MockERC20("Coll", "COLL", 18);
         cons = new MockERC20("Cons", "CONS", 18);

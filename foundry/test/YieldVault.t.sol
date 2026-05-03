@@ -167,7 +167,7 @@ contract YieldVaultTest is Test {
 
         Rct redemptionClone = new Rct("Short Option", "SHORT");
         Option optionClone = new Option("Long Option", "LONG");
-        factory = new Factory(address(redemptionClone), address(optionClone));
+        factory = new Factory();
 
         vault = new YieldVault(IERC20(address(shakyToken)), "Greek Shaky Vault", "gSHAKY", address(factory));
         vault.setupFactoryApproval();

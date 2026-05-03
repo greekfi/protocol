@@ -57,7 +57,7 @@ contract GasAnalysis is Test {
         optionTemplate = new Option("Long Template", "LONG");
 
         // Deploy Factory
-        factory = new Factory(address(redemptionTemplate), address(optionTemplate));
+        factory = new Factory();
 
         // Create an option pair via factory (required for testing Option/Collateral)
         CreateParams[] memory params = new CreateParams[](1);
@@ -124,6 +124,22 @@ contract GasAnalysis is Test {
                 windowSeconds: 0
             })
         );
+    }
+
+    function test_Gas_Factory_CreateOptions_20() public {
+        CreateParams[] memory params = new CreateParams[](20);
+        for (uint256 i = 0; i < 20; i++) {
+            params[i] = CreateParams({
+                collateral: address(shakyToken),
+                consideration: address(stableToken),
+                expirationDate: uint40(block.timestamp + 30 days + (i * 1 days)),
+                strike: uint96(1e18 + (i * 0.1e18)),
+                isPut: false,
+                isEuro: false,
+                windowSeconds: 0
+            });
+        }
+        factory.createOptions(params);
     }
 
     function testFuzz_Gas_Factory_CreateMultipleOptions(uint8 count) public {

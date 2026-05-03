@@ -74,7 +74,7 @@ interface IOption {
     /// @notice Paired short-side {Receipt} contract.
     function receipt() external view returns (address);
     /// @notice One-time initialisation (factory-only for clones).
-    function init(address receipt_, address owner) external;
+    function init(address receipt_) external;
 
     /// @notice ERC20 name (rendered `OPT-coll-cons-strike-YYYY-MM-DD`).
     function name() external view returns (string memory);
