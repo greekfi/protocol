@@ -133,8 +133,6 @@ contract Option is ERC20, ReentrancyGuardTransient {
     /// @notice Template constructor. Never called for user-facing instances; each clone goes
     ///         through {init} instead. Sets `receipt` to a non-zero sentinel so the template
     ///         itself fails the {init} guard.
-    /// @param name_   Placeholder name (overridden by the computed `name()` view).
-    /// @param symbol_ Placeholder symbol (overridden by the computed `symbol()` view).
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
         FACTORY = IFactory(msg.sender);
         receipt = Receipt(address(0xdead));

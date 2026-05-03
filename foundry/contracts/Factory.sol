@@ -10,6 +10,7 @@ import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/Reentran
 
 import { Option } from "./Option.sol";
 import { Receipt } from "./Receipt.sol";
+import { ClonesWithImmutableArgs } from "./lib/ClonesWithImmutableArgs.sol";
 import { CreateParams } from "./interfaces/IFactory.sol";
 
 using SafeERC20 for ERC20;
@@ -95,6 +96,8 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     error InvalidAddress();
     /// @notice Thrown when `collateral == consideration` (no real option pair).
     error InvalidTokens();
+    /// @notice Thrown when a value param (strike, expiration, window) is invalid.
+    error InvalidValue();
     /// @notice Thrown when {transferFrom} is called with `allowance < amount`.
     error InsufficientAllowance();
 
@@ -144,29 +147,114 @@ contract Factory is Ownable, ReentrancyGuardTransient {
     ///          - `windowSeconds`: post-expiry exercise window length; `0` → {DEFAULT_EXERCISE_WINDOW}.
     /// @return The new {Option} address.
     function createOption(CreateParams memory p) public nonReentrant returns (address) {
+        return _createOption(p, bytes32(0), false);
+    }
+
+    /// @notice CREATE2 variant of {createOption}: deploys both clones at deterministic addresses
+    ///         derived from `optionSalt` and `receiptSalt` (each namespaced by `msg.sender` to
+    ///         prevent salt collisions across users).
+    /// @dev    Mine the salts off-chain to get vanity addresses (e.g. starting with `0xeeee`).
+    ///         Use {predictAddresses} to verify a (salt, params) pair before submitting on-chain.
+    /// @param p             See {CreateParams}.
+    /// @param optionSalt    User-supplied entropy for the Option clone's CREATE2 salt.
+    /// @param receiptSalt   User-supplied entropy for the Receipt clone's CREATE2 salt.
+    /// @return The new {Option} address.
+    function createOption(CreateParams memory p, bytes32 optionSalt, bytes32 receiptSalt)
+        public
+        nonReentrant
+        returns (address)
+    {
+        return _createOptionDeterministic(p, optionSalt, receiptSalt);
+    }
+
+    /// @dev CREATE path: Option via EIP-1167, Receipt via cloneWithImmutableArgs.
+    function _createOption(
+        CreateParams memory p,
+        bytes32,
+        /*unused*/
+        bool /*unused*/
+    )
+        internal
+        returns (address)
+    {
+        (uint40 windowSeconds, uint8 collDec, uint8 consDec) = _validateAndCacheDecimals(p);
+
+        // Deploy Option first so we know its address before encoding Receipt's immutable args.
+        address option_ = Clones.clone(OPTION_CLONE);
+        bytes memory args = _encodeReceiptArgs(p, option_, windowSeconds, collDec, consDec);
+        address receipt_ = ClonesWithImmutableArgs.clone(RECEIPT_CLONE, args);
+
+        _wireUpPair(receipt_, option_, p, windowSeconds);
+        return option_;
+    }
+
+    /// @dev Deterministic path: Option via Clones.cloneDeterministic (EIP-1167 + CREATE2),
+    ///      Receipt via clone3 (CREATE3 with caller-provided salt). Salts are namespaced with
+    ///      msg.sender so two users mining the same raw salt don't collide on-chain.
+    function _createOptionDeterministic(CreateParams memory p, bytes32 optionSalt, bytes32 receiptSalt)
+        internal
+        returns (address)
+    {
+        (uint40 windowSeconds, uint8 collDec, uint8 consDec) = _validateAndCacheDecimals(p);
+
+        bytes32 oFinal = keccak256(abi.encode(msg.sender, optionSalt));
+        bytes32 rFinal = keccak256(abi.encode(msg.sender, receiptSalt));
+
+        address option_ = Clones.cloneDeterministic(OPTION_CLONE, oFinal);
+        bytes memory args = _encodeReceiptArgs(p, option_, windowSeconds, collDec, consDec);
+        address receipt_ = ClonesWithImmutableArgs.clone3(RECEIPT_CLONE, args, rFinal);
+
+        _wireUpPair(receipt_, option_, p, windowSeconds);
+        return option_;
+    }
+
+    /// @dev Validate `p` (formerly done in Receipt.init), cache decimals, and resolve windowSeconds.
+    function _validateAndCacheDecimals(CreateParams memory p)
+        internal
+        returns (uint40 windowSeconds, uint8 collDec, uint8 consDec)
+    {
         if (blocklist[p.collateral] || blocklist[p.consideration]) revert BlocklistedToken();
         if (p.collateral == p.consideration) revert InvalidTokens();
+        if (p.collateral == address(0) || p.consideration == address(0)) revert InvalidAddress();
+        if (p.strike == 0) revert InvalidValue();
+        if (p.expirationDate < block.timestamp) revert InvalidValue();
 
-        uint40 windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
-        uint8 collDec = _decimals(p.collateral);
-        uint8 consDec = _decimals(p.consideration);
+        windowSeconds = p.windowSeconds == 0 ? DEFAULT_EXERCISE_WINDOW : p.windowSeconds;
+        if (p.isEuro && windowSeconds == 0) revert InvalidValue();
 
-        address receipt_ = Clones.clone(RECEIPT_CLONE);
-        address option_ = Clones.clone(OPTION_CLONE);
+        collDec = _decimals(p.collateral);
+        consDec = _decimals(p.consideration);
+    }
 
-        Receipt(receipt_)
-            .init(
-                p.collateral,
-                p.consideration,
-                p.expirationDate,
-                p.strike,
-                p.isPut,
-                p.isEuro,
-                windowSeconds,
-                option_,
-                collDec,
-                consDec
-            );
+    /// @dev Encode Receipt's immutable args, packed (112 bytes total).
+    ///      Layout MUST match the offsets used by Receipt's getter functions.
+    function _encodeReceiptArgs(
+        CreateParams memory p,
+        address option_,
+        uint40 windowSeconds,
+        uint8 collDec,
+        uint8 consDec
+    ) internal pure returns (bytes memory) {
+        // p.strike is uint96; cast to uint256 so abi.encodePacked emits 32 bytes (matching the
+        // _getArgUint256(0) read in Receipt). Without this cast it would emit 12 bytes and shift
+        // every following offset by -20.
+        return abi.encodePacked(
+            uint256(p.strike), // 32B at offset 0
+            p.collateral, // 20B at offset 32
+            p.consideration, // 20B at offset 52
+            option_, // 20B at offset 72
+            uint64(p.expirationDate), // 8B at offset 92
+            uint64(uint64(p.expirationDate) + uint64(windowSeconds)), // 8B at offset 100
+            uint8(p.isPut ? 1 : 0), // 1B at offset 108
+            uint8(p.isEuro ? 1 : 0), // 1B at offset 109
+            collDec, // 1B at offset 110
+            consDec // 1B at offset 111
+        );
+    }
+
+    /// @dev Init Option (sets its `receipt` storage), register the receipt, emit the event.
+    ///      Receipt has no init: its state is fully baked into the clone's immutable args.
+    function _wireUpPair(address receipt_, address option_, CreateParams memory p, uint40 windowSeconds) internal {
         Option(option_).init(receipt_);
 
         receipts[receipt_] = true;
@@ -182,7 +270,21 @@ contract Factory is Ownable, ReentrancyGuardTransient {
             option_,
             receipt_
         );
-        return option_;
+    }
+
+    /// @notice Predict the deterministic addresses {createOption(p, optionSalt, receiptSalt)}
+    ///         would produce for `caller`. Useful in off-chain salt mining.
+    /// @dev    Receipt's address (CREATE3 via clone3) only depends on `(factory, namespaced-salt)`,
+    ///         so prediction doesn't need `p`.
+    function predictAddresses(address caller, bytes32 optionSalt, bytes32 receiptSalt)
+        external
+        view
+        returns (address option_, address receipt_)
+    {
+        bytes32 oFinal = keccak256(abi.encode(caller, optionSalt));
+        bytes32 rFinal = keccak256(abi.encode(caller, receiptSalt));
+        option_ = Clones.predictDeterministicAddress(OPTION_CLONE, oFinal, address(this));
+        receipt_ = ClonesWithImmutableArgs.addressOfClone3(rFinal);
     }
 
     /// @notice Batch form of {createOption}. Same ordering in → same ordering out.

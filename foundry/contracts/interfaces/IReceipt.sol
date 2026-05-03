@@ -58,20 +58,6 @@ interface IReceipt {
     /// @notice Decimal basis of the strike (always 18).
     function STRIKE_DECIMALS() external view returns (uint8);
 
-    /// @notice One-time initialisation (factory-only for clones).
-    function init(
-        address collateral_,
-        address consideration_,
-        uint40 expirationDate_,
-        uint256 strike_,
-        bool isPut_,
-        bool isEuro_,
-        uint40 windowSeconds_,
-        address option_,
-        uint8 collDecimals_,
-        uint8 consDecimals_
-    ) external;
-
     /// @notice ERC20 name (rendered `RCT[E]-coll-cons-strike-YYYY-MM-DD`).
     function name() external view returns (string memory);
     /// @notice ERC20 symbol (matches `name`).

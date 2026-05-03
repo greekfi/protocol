@@ -74,14 +74,14 @@ contract FactoryTest is Test {
     function test_ZeroStrikeReverts() public {
         CreateParams memory p = _basicParams();
         p.strike = 0;
-        vm.expectRevert(Rct.InvalidValue.selector);
+        vm.expectRevert(Factory.InvalidValue.selector);
         factory.createOption(p);
     }
 
     function test_PastExpiryReverts() public {
         CreateParams memory p = _basicParams();
         p.expirationDate = uint40(block.timestamp - 1);
-        vm.expectRevert(Rct.InvalidValue.selector);
+        vm.expectRevert(Factory.InvalidValue.selector);
         factory.createOption(p);
     }
 
@@ -116,5 +116,46 @@ contract FactoryTest is Test {
     function test_UnblockZeroAddressReverts() public {
         vm.expectRevert(Factory.InvalidAddress.selector);
         factory.unblockToken(address(0));
+    }
+
+    // ======== CREATE2 / vanity addresses ========
+
+    function test_CreateOption_Deterministic_PredictMatchesActual() public {
+        bytes32 oSalt = bytes32(uint256(0xdeadbeef));
+        bytes32 rSalt = bytes32(uint256(0xbeefdead));
+
+        (address predOpt, address predRec) = factory.predictAddresses(address(this), oSalt, rSalt);
+
+        address opt = factory.createOption(_basicParams(), oSalt, rSalt);
+        address rec = address(Option(opt).receipt());
+
+        assertEq(opt, predOpt);
+        assertEq(rec, predRec);
+        assertTrue(factory.receipts(rec));
+    }
+
+    function test_CreateOption_Deterministic_DifferentSendersDontCollide() public {
+        bytes32 sameSalt = bytes32(uint256(1));
+
+        // User A creates with sameSalt
+        address optA = factory.createOption(_basicParams(), sameSalt, sameSalt);
+
+        // User B creates with the same salt — should NOT collide (salts namespaced by msg.sender)
+        vm.prank(address(0x123));
+        address optB = factory.createOption(_basicParams(), sameSalt, sameSalt);
+
+        assertTrue(optA != optB);
+        assertTrue(optA != address(0));
+        assertTrue(optB != address(0));
+    }
+
+    function test_CreateOption_Deterministic_SameSenderSameSaltReverts() public {
+        bytes32 oSalt = bytes32(uint256(42));
+        bytes32 rSalt = bytes32(uint256(43));
+        factory.createOption(_basicParams(), oSalt, rSalt);
+
+        // Re-using the same salts on the same sender hits CREATE2 collision
+        vm.expectRevert();
+        factory.createOption(_basicParams(), oSalt, rSalt);
     }
 }

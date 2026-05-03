@@ -238,6 +238,38 @@ contract GasAnalysis is Test {
     }
 
     // ============================================
+    // SWAP-WITH-AUTO-MINT scenarios (Bebop-style RFQ)
+    // ============================================
+
+    /// @notice Cost when an approved operator (e.g., Bebop's settlement contract) pulls
+    ///         options from a user who has zero option balance but has the auto-mint flag
+    ///         and a factory-side collateral allowance. The operator-path skips
+    ///         _spendAllowance, so this measures the pure auto-mint + operator-transferFrom cost.
+    function test_Gas_Swap_OperatorAutoMint() public {
+        // Setup: user is `address(this)`. Approve a "DEX" address as blanket operator.
+        factory.approveOperator(address(0xDEEF), true);
+        factory.enableAutoMintBurn(true);
+        // user has 0 options, factory.approve(coll, max) is already set in setUp
+
+        // DEX pulls options to a taker — auto-mint fires
+        vm.prank(address(0xDEEF));
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
+        option.transferFrom(address(this), address(0xBEEF), 1e18);
+    }
+
+    /// @notice Same as above but with a fresh (non-warm) auto-mint flag set just before —
+    ///         this is the "first-ever swap" cost where every storage slot the path touches is
+    ///         cold.
+    function test_Gas_Swap_OperatorAutoMint_AllCold() public {
+        factory.approveOperator(address(0xDEEF), true);
+        factory.enableAutoMintBurn(true);
+        // No prior mint, no prior allowance touch beyond setUp.
+        vm.prank(address(0xDEEF));
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
+        option.transferFrom(address(this), address(0xBEEF), 1e18);
+    }
+
+    // ============================================
     // OPTION GAS TESTS - VIEW FUNCTIONS
     // ============================================
 

@@ -1055,7 +1055,7 @@ contract OptionTest is Test {
     }
 
     function test_CreateOptionPastExpirationReverts() public {
-        vm.expectRevert(Rct.InvalidValue.selector);
+        vm.expectRevert(Factory.InvalidValue.selector);
         factory.createOption(
             CreateParams({
                 collateral: shakyTokenAddr,
@@ -1070,7 +1070,7 @@ contract OptionTest is Test {
     }
 
     function test_CreateOptionZeroStrikeReverts() public {
-        vm.expectRevert(Rct.InvalidValue.selector);
+        vm.expectRevert(Factory.InvalidValue.selector);
         factory.createOption(
             CreateParams({
                 collateral: shakyTokenAddr,
@@ -1088,23 +1088,6 @@ contract OptionTest is Test {
         // Cloned option is already initialized — calling init again should revert
         vm.expectRevert();
         option.init(address(redemption));
-    }
-
-    function test_ReinitCollateralCloneReverts() public {
-        vm.prank(address(option));
-        vm.expectRevert();
-        redemption.init(
-            shakyTokenAddr,
-            stableTokenAddr,
-            uint40(block.timestamp + 1 days),
-            1e18,
-            false,
-            false,
-            uint40(8 hours),
-            address(option),
-            18,
-            18
-        );
     }
 
     function test_BatchSweepMultipleUsers() public {
